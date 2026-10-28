@@ -1111,6 +1111,8 @@ describe('THE-334 · what it may not disturb', () => {
       '225e9a747654609050fc2be0a2205dc396c5b83d105ef86f625059bae2848fa6',
       // 🔴 APPENDED BY UI polish, 23 Oct (THE-377) - the Products tab joins the CONTENT group after Courses, on BOTH shells, so the drawer reaches the new Products page. No other id moved and the two arrays stay element-for-element equal.
       '9b2b32084c6e04706fa80e8eb1e166960a676f55b21f07000cf1d7c6c9091ace',
+      // Community setup joins the Ministry group on both admin shells.
+      '88a3ef69573272bbbc4ed84722f7c903cb64954bc5e223fafed40631a4667bae',
     ];
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
     expect(

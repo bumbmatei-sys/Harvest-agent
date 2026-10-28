@@ -638,7 +638,7 @@ const AppInner: React.FC = () => {
                   Hiding the dashboard must not re-open that. */}
               {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
-                : <MainApp onNavigate={handleNavigate} />}
+                : <MainApp onNavigate={handleNavigate} isAdminPreview={isAdmin} />}
               {/* THE-292 — the same prompt on the member surface. Coverage is a
                   TENANT SETTING, not a funnel property: `Onboarding` pushes its
                   location step only when `default_country`/`default_city` is in

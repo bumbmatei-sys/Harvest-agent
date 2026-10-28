@@ -270,6 +270,55 @@ describe('a sidebar group with no visible items does not render', () => {
 });
 
 // ─── 2. Home, exactly once ───────────────────────────────────────────────────
+describe('community navigation', () => {
+  it('anchors the real phone tabs outside the scrolling content and reserves their safe area', async () => {
+    await mount('church');
+    const nav = container.querySelector<HTMLElement>('nav[aria-label="Mobile navigation"]')!;
+    expect(nav).toBeTruthy();
+    // THE-555: one original shell owns fixed positioning, inset and translation.
+    const navShell = nav.closest<HTMLElement>('.fixed')!;
+    expect(navShell).toBeTruthy();
+    expect(navShell.classList.contains('bottom-0')).toBe(true);
+    expect(navShell.classList.contains('py-2')).toBe(true);
+    expect(navShell.classList.contains('pb-[calc(8px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(navShell.classList.contains('max-lg:translate-y-0')).toBe(true);
+    // Ancestors ABOVE the fixed shell must not re-anchor it.
+    for (let ancestor = navShell.parentElement; ancestor && ancestor !== container; ancestor = ancestor.parentElement) {
+      expect([...ancestor.classList].some(token => /translate|transform/.test(token))).toBe(false);
+    }
+    const header = container.querySelector('[aria-label="Switch community"]')!.parentElement!.parentElement!;
+    expect(header.classList.contains('sticky')).toBe(true);
+    expect(header.classList.contains('top-0')).toBe(true);
+    expect(header.classList.contains('shrink-0')).toBe(true);
+    const feed = container.querySelector('[data-testid="news-tab"]')!;
+    expect(feed).toBeTruthy();
+    let content = feed.parentElement!;
+    while (!content.classList.contains('overflow-y-auto') && content.parentElement) content = content.parentElement;
+    expect(content.classList.contains('min-h-0')).toBe(true);
+    expect(content.classList.contains('max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(content.contains(header)).toBe(false);
+    expect(content.contains(nav)).toBe(false);
+    const pane = feed.closest('[class*="max-lg:relative"]');
+    expect(pane?.classList.contains('max-lg:h-auto')).toBe(true);
+    await act(async () => { container.querySelector<HTMLElement>('[aria-label="Search communities"]')!.click(); });
+    expect(content.textContent).toContain('Discover communities');
+    expect(content.classList.contains('max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+  });
+
+  it('shows both sidebar entries and opens their views', async () => {
+    await mount('church');
+    const buttons = Array.from(container.querySelectorAll('button'));
+    const communities = buttons.find(button => button.textContent?.trim() === 'Communities');
+    const discover = buttons.find(button => button.textContent?.trim() === 'Discover');
+    expect(communities?.querySelector('svg')).toBeTruthy();
+    expect(discover?.querySelector('svg')).toBeTruthy();
+    await act(async () => { discover!.click(); });
+    expect(container.textContent).toContain('Discover communities');
+    await act(async () => { communities!.click(); });
+    expect(container.textContent).toContain('Your communities');
+  });
+});
+
 describe('Home appears in exactly one group, on every tier', () => {
   for (const plan of ['free', ...PRICED] as const) {
     for (const hasCourse of [true, false]) {

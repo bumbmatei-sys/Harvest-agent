@@ -487,7 +487,30 @@ describe('the #425 editor toolbar still renders as one horizontally-scrolling ro
   it('is untouched by this ticket', () => {
     // The toolbar is RichTextEditor's, mounted into this screen. THE-305 edits
     // neither the component nor its mount, which is the whole claim.
-    expect(changedSince('src/components/RichTextEditor.tsx'), 'the toolbar component was edited').toEqual([]);
+    //
+    // ⚠️ AMENDED, and RECORDED here rather than deleted or relaxed. The
+    // byte-identity claim on RichTextEditor.tsx held on THE-305's branch and
+    // stopped holding when the blog-editor font fix legitimately landed on that
+    // file: `DEFAULT_PROSE_CLASS` drops `xl:prose-2xl`, pins 18px at lg, and
+    // the doc comments beside it were rewritten to say why. Neither shape can
+    // move the toolbar, so the claim survives as a claim about the CONTENT of
+    // the diff — exactly as the course.constants.ts pin below was narrowed for
+    // THE-311: whatever anyone does to RichTextEditor.tsx, the changed lines
+    // may be comment prose or the one named `DEFAULT_PROSE_CLASS`
+    // declaration, and nothing else.
+    //
+    // ⚠️ AMENDED AGAIN (#559 review, B1). The first version of the three
+    // exemptions below was probed and found loose: it exempted code hiding
+    // after the declaration on the same line, code after an inline comment, any
+    // code line whose second character happened to be a sign, and any line
+    // starting with `*`. All decisions now run through the ONE function
+    // `isFlaggedEditorDiffLine`, whose exemptions are exact, and the table
+    // beside it pins each shape — flagged and exempt — so a loosening fails
+    // there and not only against whatever this branch happens to diff.
+    const editorDiff = execFileSync('git', ['diff', baseRef(), '--', 'src/components/RichTextEditor.tsx'],
+      { cwd: ROOT, encoding: 'utf8' });
+    const editorTouched = editorDiff.split('\n').filter(isFlaggedEditorDiffLine);
+    expect(editorTouched, 'the toolbar component was edited beyond the prose cap').toEqual([]);
     const diff = execFileSync('git', ['diff', baseRef(), '--', 'src/components/AdminCourseEditor.tsx'],
       { cwd: ROOT, encoding: 'utf8' });
     const touched = diff.split('\n')
@@ -529,6 +552,120 @@ function changedSince(...paths: string[]): string[] {
   return execFileSync('git', ['diff', '--name-only', baseRef(), '--', ...paths],
     { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 }
+
+/**
+ * The one filter THE-305's RichTextEditor claim runs over a `+`/`-` diff line:
+ * TRUE when the line is code the guard must flag, FALSE when the line is
+ * exempt. Extracted from the guard so the table below can run it over known-bad
+ * lines — the #559 review probed the first version of the three filters and
+ * every bad shape in that table came back exempt.
+ *
+ * Three exemptions, each exact for a reason the probe gave:
+ *
+ *   · HEADERS — only `--- a/...` and `+++ b/...` (a sign, two more signs, then
+ *     a space) are diff metadata. The old second-character check also dropped
+ *     CODE whose second character happened to be a sign: `---i;`, `+--i;`,
+ *     `+-1`.
+ *
+ *   · COMMENTS — a line that STARTS as a comment (`//`, `/*`, the marker that
+ *     closes one, or a `*` continuing a docblock) AND carries no code after a
+ *     closing comment end. Without the second half, code hides behind an
+ *     inline comment. And `*` must not lead into an identifier character, so
+ *     `+*ptr = 1;` is code while `* prose` and a lone close stay comment — the
+ *     star-space form is indistinguishable from a docblock continuation and
+ *     the real diff needs those exempt.
+ *
+ *   · THE DECLARATION — `DEFAULT_PROSE_CLASS`'s own line and nothing else: the
+ *     value must fill the quotes and the line must END at the `';`. The old
+ *     open-ended match on the name also exempted a declaration with code
+ *     trailing it on the same line.
+ */
+function isFlaggedEditorDiffLine(l: string): boolean {
+  // `--- a/...` and `+++ b/...` file headers are the only metadata lines that
+  // look like content; every other sign-prefixed line IS content.
+  if (!/^[+-](?![+-]{2} )/.test(l)) return false;
+  // The one code line the font fix touches: the named default, whole line.
+  if (/^[+-]export const DEFAULT_PROSE_CLASS = '[^']*';$/.test(l)) return false;
+  // Comment prose, with no code hiding after a closing comment end.
+  if (/^[+-]\s*(\/\/|\/\*|\*(?![A-Za-z0-9_$]))/.test(l) && !/\*\/\s*\S/.test(l)) return false;
+  return true;
+}
+
+/**
+ * The filter's exact shape, pinned. Two groups: the lines the #559 review
+ * probed — each must be FLAGGED — and every content line of this branch's real
+ * `git diff` for RichTextEditor.tsx (plus its two file-header lines), each of
+ * which must be EXEMPT. The live guard above runs the same function over the
+ * actual diff; this table is what fails when the EXEMPTIONS are loosened,
+ * which is exactly how the first version passed: probes that should be flagged
+ * came back exempt and nothing said so.
+ */
+describe('isFlaggedEditorDiffLine exempts only comments and the one declaration', () => {
+  const CASES: ReadonlyArray<readonly [line: string, flagged: boolean]> = [
+    // ── the #559 probes: each was exempt under the loose filters ──
+    // code trailing the declaration on the same line
+    ["+export const DEFAULT_PROSE_CLASS = 'p'; toolbar.hidden = true;", true],
+    // code trailing an inline block comment
+    ['+/* x */ toolbar.hidden = true;', true],
+    // a removed code line `--i;` — the old header filter ate every sign pair
+    ['---i;', true],
+    ['+--i;', true],
+    ['+-1', true],
+    // code starting with `*` — a dereference, not a docblock continuation
+    ['+*ptr = 1;', true],
+    // an ordinary code line (control)
+    ['+  return <div/>;', true],
+    // ── the real diff lines of this branch: all exempt ──
+    ['--- a/src/components/RichTextEditor.tsx', false],
+    ['+++ b/src/components/RichTextEditor.tsx', false],
+    ['- * The prose ramp every editor in the app has had, unchanged.', false],
+    ['- * `xl:prose-2xl` is a 1.5rem base above 1280px, which is a deliberate reading', false],
+    ['- * size for long-form writing and the wrong one for a dense screen. Named so the', false],
+    ['- * default is a value with a reason rather than a string nobody can question.', false],
+    ["-export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl';", false],
+    ['-   * Defaults to the responsive ramp every caller has always had. That ramp ends', false],
+    ['-   * at `xl:prose-2xl`, whose base is 1.5rem — fine for a blog post being written', false],
+    ['-   * at reading size, far too big for a notes app, where it rendered the body and', false],
+    ['-   * its placeholder at 24px on any monitor. A caller whose measure is not a', false],
+    ["-   * document's passes its own instead of every screen inheriting one screen's.", false],
+    ['+ * The prose ramp every editor in the app has had, capped at `lg:prose-lg` and', false],
+    ['+ * pinned to a true 18px at `lg`.', false],
+    ['+ * The cap is the point: the editor body tops out at 18px, the size the', false],
+    ['+ * published article renders at (the blog article pins its body the same way,', false],
+    ['+ * `lg:text-[18px]` in `src/app/blog/[id]/page.tsx`), so a piece is written at', false],
+    ['+ * the size it is read. The dropped `xl:prose-2xl` ran past that — a 1.5rem', false],
+    ['+ * base above 1280px, a deliberate reading size for long-form writing and the', false],
+    ['+ * wrong one for a dense screen.', false],
+    ['+ *', false],
+    ['+ * `lg:prose-lg` alone does NOT reach 18px: the desktop rem trim (:root 14.5px', false],
+    ['+ * at 1024px in globals.css) lands its 1.125rem at ~16.3px. The `lg:text-[18px]`', false],
+    ['+ * pin is px for exactly that reason, and it out-ranks `lg:prose-lg`: both', false],
+    ['+ * compile into the utilities layer and the text utility is emitted after the', false],
+    ['+ * typography block, so from 1024px up the body holds 18px exactly. Below `lg`', false],
+    ['+ * the ramp is unchanged — `prose-sm` on a phone, `sm:prose` between. Named so', false],
+    ['+ * the default is a value with a reason rather than a string nobody can', false],
+    ['+ * question.', false],
+    ['+ */', false],
+    ["+export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg lg:text-[18px]';", false],
+    ['+   * Defaults to the shared responsive ramp: capped at `lg:prose-lg` and pinned', false],
+    ['+   * to a true 18px at `lg`, so the body tops out at the size the published', false],
+    ["+   * article renders at. A caller whose measure is not a document's passes its", false],
+    ["+   * own instead of every screen inheriting one screen's.", false],
+  ];
+
+  it.each(CASES)('%s → flagged: %s', (line, flagged) => {
+    expect(isFlaggedEditorDiffLine(line)).toBe(flagged);
+  });
+
+  it('and the table itself is not vacuous', () => {
+    // A table whose rows all agreed with each other would prove nothing; both
+    // directions must be present.
+    expect(CASES.filter(([, flagged]) => flagged).length).toBeGreaterThanOrEqual(6);
+    expect(CASES.filter(([, flagged]) => !flagged).length).toBeGreaterThanOrEqual(20);
+    expect(new Set(CASES.map(([line]) => line)).size, 'a duplicate row is padding the table')
+      .toBe(CASES.length);
+  });
+});
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it('adds no hex literal to the editor', () => {
@@ -745,6 +882,16 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     '1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da',
     // APPENDED BY THE TWO-PLAN REPRICING (THE-378), nothing above removed or rewritten. AdminDashboard.tsx: the plan is read through canonicalPlanId, the Check-In withholding keys off church instead of plus, and the Accounting entry is labelled Giving records. No route, permission term or write path moved.
     '3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f',
+    // Community setup adds its screen and navigation entry.
+    '1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158',
+    // APPENDED BY THE-555 - Lucide nav icon swap: Newsletter uses Mailbox and Community uses ToolCase through NAV_ICONS. Retains the required shadcn Button conversions, names their state classes locally, and preserves phone touch floors. No nav array structure, route, permission, entitlement or screen mount changed.
+    'd124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e',
+    // THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.
+    'ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2',
+    // THE-555 review F1: Community setup navigation and render gates now require hasFullAccess || perms.manageCommunity, matching the settings API permission. A manageSettings-only admin cannot reach the screen; a manageCommunity-only admin can.
+    '7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1',
+    // THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained.
+    'fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {
@@ -917,7 +1064,8 @@ describe('the files this ticket must not open are byte-identical', () => {
     expect(touched.filter((f) => f !== 'package.json' && f !== 'package-lock.json'), 'a dependency was added').toEqual([]);
     const deps = Object.keys(JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).dependencies);
     expect(deps).toContain('@tanstack/react-table');
-    expect(deps).toHaveLength(70);
+    expect(deps).toContain('embla-carousel-react'); // THE-555 gallery
+    expect(deps).toHaveLength(70 + 1);
     // Eden shell pass restyles button.tsx and sidebar.tsx and re-records the
     // ledgers. Those six are allowed. An exact list is true only while this
     // branch is unmerged: after it lands, the diff against main is empty and
@@ -933,6 +1081,8 @@ describe('the files this ticket must not open are byte-identical', () => {
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // THE-555: the new shadcn gallery primitive, recorded in ds-primitives.
+      'src/components/ui/carousel.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changedSince('src/components/ui/')), 'a ui primitive was added or edited').toEqual([]);

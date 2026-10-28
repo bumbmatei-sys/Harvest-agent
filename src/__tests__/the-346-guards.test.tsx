@@ -21,6 +21,9 @@ import { ownershipFailure } from './__fixtures__/ownership-register';
  *     fetched after revoke, which is the one item here that can leak a note.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('hex');
@@ -347,7 +350,7 @@ describe('every element this ticket touches uses its primitive', () => {
       .filter((f) => f.endsWith('.tsx'))
       .map((f) => f.replace(/\.tsx$/, ''))
       .sort();
-    expect(installed.length, 'the primitive count moved').toBe(43);
+    expect(installed.length, 'the primitive count moved').toBe(43 + THE_555_PRIMITIVES.length);
     expect(installed, 'accordion is the one absent primitive').not.toContain('accordion');
     for (const needed of ['dropdown-menu', 'tabs', 'toggle-group', 'button-group', 'switch', 'dialog', 'sheet', 'popover', 'alert']) {
       expect(installed, `${needed} is missing`).toContain(needed);

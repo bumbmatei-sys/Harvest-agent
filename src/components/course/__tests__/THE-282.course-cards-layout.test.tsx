@@ -15,6 +15,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { buildAppCss } from '../../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../../test/support/browser-measure';
 import { setUpOrFail } from '../../../test/support/suite-setup';
+import { stripComments } from '../../../__tests__/__fixtures__/the-346-strip-comments';
 import { CourseLibrary } from '../CourseLibrary';
 import { TAP_TARGET_PX } from '../CourseCard';
 import type { Author, Course, Lesson } from '../../../types/course.types';
@@ -95,8 +96,8 @@ const COMPLETED = new Set(['c1-1', 'c2-1', 'c2-2', 'c2-3']);
  * 🔴 Read, never copied: a hand-typed nav that has since moved would let every
  * clearance assertion below pass against nothing.
  */
-function navClass(): string {
-  const shell = src('src/components/MainApp.tsx');
+function navClass(): { desktop: string; mobile: string } {
+  const shell = stripComments(src('src/components/MainApp.tsx'));
   const match = /<div className=\{`(bg-surface-raised border-t lg:border-t-0[^`]*)`\}>/.exec(shell);
   if (!match) {
     throw new Error(
@@ -121,7 +122,11 @@ function navClass(): string {
   for (const required of ['fixed', 'bottom-0', 'z-[100]', 'env(safe-area-inset-bottom)']) {
     expect(cls, `the member bottom nav no longer carries ${required}`).toContain(required);
   }
-  return cls;
+  const mobileSource = stripComments(src('src/components/community/MobileCommunityNav.tsx'));
+  const mobile = /<nav aria-label="Mobile navigation" className="([^"]+)"/.exec(mobileSource);
+  if (!mobile) throw new Error('MobileCommunityTabs no longer exposes its shipped nav classes');
+  // THE-555: MainApp owns positioning, safe area and translation for both layouts.
+  return { desktop: cls, mobile: mobile[1] };
 }
 
 interface Box {
@@ -133,6 +138,7 @@ let browser: MeasuringBrowser;
 setUpOrFail(async () => {
   const css = await buildAppCss();
 
+  const nav = navClass();
   const body = renderToStaticMarkup(
     <div>
       {/*
@@ -155,8 +161,11 @@ setUpOrFail(async () => {
         </div>
       </div>
 
-      <div data-nav className={navClass()}>
-        <span style={{ display: 'inline-block', height: '44px' }} />
+      <div data-desktop-nav className={nav.desktop}>
+        <span className="hidden lg:inline-block" style={{ height: '44px' }} />
+        <nav data-mobile-nav className={nav.mobile}>
+          <span style={{ display: 'inline-block', height: '44px' }} />
+        </nav>
       </div>
     </div>,
   );
@@ -201,7 +210,7 @@ async function read(viewport: number, height?: number) {
       if (!el) throw new Error(s + ' did not render');
       return el;
     };
-    const nav = q('[data-nav]');
+    const nav = q('[data-desktop-nav]');
     const navCs = getComputedStyle(nav);
     const scroller = q('[data-category-pill]').parentElement;
     const scs = getComputedStyle(scroller);
@@ -462,7 +471,7 @@ describe('10 — the last card clears the bottom nav at 380px', () => {
         window.scrollTo(0, document.documentElement.scrollHeight);
         const cards = [...document.querySelectorAll('[data-course-card]')];
         const card = cards[cards.length - 1].getBoundingClientRect();
-        const nav = document.querySelector('[data-nav]').getBoundingClientRect();
+        const nav = document.querySelector('[data-desktop-nav]').getBoundingClientRect();
         return { cardBottom: card.bottom, navTop: nav.top, scrolled: window.scrollY };
       })()`,
       PHONE_HEIGHT,
@@ -495,7 +504,7 @@ describe('10 — the last card clears the bottom nav at 380px', () => {
         window.scrollTo(0, document.documentElement.scrollHeight);
         const cards = [...document.querySelectorAll('[data-course-card]')];
         const card = cards[cards.length - 1].getBoundingClientRect();
-        const nav = document.querySelector('[data-nav]').getBoundingClientRect();
+        const nav = document.querySelector('[data-desktop-nav]').getBoundingClientRect();
         return { cardBottom: card.bottom, navTop: nav.top };
       })()`,
       PHONE_HEIGHT,

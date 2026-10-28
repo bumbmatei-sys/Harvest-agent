@@ -466,7 +466,8 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
   at 38px. `min-h-11` is not inert — it is doing work. `Button`'s intrinsic sizes all sit
   below both floors, so a bare `<Button>` does not meet the floor by itself.
 - **Terminology**: "Ministries", not "churches", in user-facing copy.
-- 43 shadcn primitives are installed under `src/components/ui/`, digest-pinned.
+- Installed shadcn primitives live under `src/components/ui/`, digest-pinned by
+  `src/components/ui/__tests__/ds-primitives.test.tsx`; THE-555 adds Carousel.
   **`accordion` and `rating` are both absent** — check before importing, and grep both the
   `@/` and the relative `./ui/` spellings when you are looking for a primitive's usage.
 

@@ -1,0 +1,1215 @@
+{
+  "ticket": "THE-555",
+  "entries": [
+    {
+      "file": "src/lib/community/review-aggregate.ts",
+      "digest": "e2b91b459cf8b52658dcd6ac3a97893e597c1a5a49ac4b21b05642c20082b8b6",
+      "why": "Defines the server-side arithmetic for adding, editing and deleting community reviews. It checks the existing sum, count and average before applying a delta so corrupt stored totals fail visibly rather than publishing an inaccurate rating. This helper is not yet connected to a write route."
+    },
+    {
+      "file": "src/lib/community/review-aggregate.test.ts",
+      "digest": "972a8f0776369d355051b3992d5b5ecc5b0b15779b50e9aea124428a214e6dc3",
+      "why": "Covers review creation, edits, deletion and invalid aggregate state. An edit mutation that failed to subtract the previous rating made this test fail, confirming that the test detects a double-counted rating."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "c080ec0563817cba1a08e2bc07fd9a589db9e344f6e30a614d1c0c8fdefa8686",
+      "why": "Adds a shadcn gallery carousel and displays and filters published community ratings."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "e5eaaf201160a67954f233dd976373f0aa3a899649bc5ce5d48061980a2a96f4",
+      "why": "Checks gallery rendering and rating filtering in community discovery. This preserves coverage for discovery behavior as the feature evolves."
+    },
+    {
+      "file": "src/lib/community/public-listing.ts",
+      "digest": "543108ba48d7889f32c3c70d2e2a7fa38850a3e1370d26643f401f226f1fd81e",
+      "why": "Validates and projects public rating summaries without exposing additional fields."
+    },
+    {
+      "file": "src/lib/community/public-listing.test.ts",
+      "digest": "43cc54d6480eeea77f516a72845c9e0ce42f812a2e728bfe96dd9bf4fa61bfca",
+      "why": "Checks valid, missing and malformed public rating summaries. This preserves coverage for discovery behavior as the feature evolves."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "82192141a02e00cfcadab5cb76049e6235f35ffc011f68f89e6fdeef9a592d6e",
+      "why": "Adds tenant-member review reads and denies all client writes beneath community settings; server transactions own the review records and aggregate."
+    },
+    {
+      "file": "src/lib/community/review-aggregate.ts",
+      "digest": "963b6a633f626592c51fa18b6ffed77cb0a0b036f23c022945a31ce050c76d97",
+      "why": "Rounds the server-maintained average to one decimal and validates persisted aggregate state before applying review deltas."
+    },
+    {
+      "file": "src/lib/community/review-aggregate.test.ts",
+      "digest": "37dd2b56d2651e0c6e708cc92335927bc864f7d22b7e76665df12201eabcb0f1",
+      "why": "Tests rounded averages and subsequent changes alongside the create edit and delete aggregate invariants."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "46c25749e1e6bee4767ff2ffdcadbed4928bb7c532d114443768e67efaf27016",
+      "why": "Provides authenticated review writes and paginated public projection while maintaining both aggregate documents transactionally."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "225156b30732256b13a62bb430da23a8f52c0565f904a0b142aa9fb6e2ae2be8",
+      "why": "Covers membership and admin refusals, validation, review changes, aggregate updates, and the public privacy projection."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "e7222334111174356f767bf6db6fe4ae3253d404eb789446d87d5b5b68b40b79",
+      "why": "Preserves the server-owned review aggregate when saving settings and regenerating a public community listing."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "9ccee6a9dd402d0637d43d75b05101c55c5e137597e8d918d791505a8b0357cd",
+      "why": "Checks that settings saves ignore submitted ratings and preserve the stored aggregate on the public listing."
+    },
+    {
+      "file": "src/app/discover/page.test.tsx",
+      "digest": "7f74dbfdb7379320c066cf46f7a643c9922b1122e7b478b2b2398ff4c6fda980",
+      "why": "Records the existing discovery routing test digest already present in this branch for the ownership guard."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "547c08b5ef15a8e4e03008e5c2501c55087169f8ce85400861743eb7a10330e7",
+      "why": "Records the existing community settings editor digest already present in this branch for the ownership guard."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.tsx",
+      "digest": "e4d79928f5a841119d3d6ca920c74f25d586dd4b7d910294a4e98bcf2c4acbe8",
+      "why": "Provides accessible review display, sorting, member-only editing and error handling using shared UI components."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.test.tsx",
+      "digest": "05391a98f4097a03b338539cddbe2aa1aa2240b143c0fd162e9ed693bd14847e",
+      "why": "Exercises the review summary, sorting requests, required rating, text limit and admin access restrictions."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "f2511518d6343302e0e7be6faa3270d23188022a6b2b6b38e65ac5f61bf91dbf",
+      "why": "Shows review summaries and detail views, restricts pricing to free and provides the public Harvest footer."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "b87a53ba4277893aa7b3d6e1df352cc001fea59d65f8400eb11b0ed52f28fe22",
+      "why": "Covers community discovery, free pricing, disabled paid filtering and review summary presentation."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "f2f5e660dbe301ccbe45728b675617ea57f7322afdad5d1ff7c7c2087ca11f58",
+      "why": "Passes authenticated tenant membership to discovery so only eligible members can manage their review."
+    },
+    {
+      "file": "src/components/community/PublicDiscover.tsx",
+      "digest": "59ebf8aa0a8c9b597cc3df6b0f3ac87fe7e21f84da831e3232c6f06b0664f3f9",
+      "why": "Displays the shared discovery experience with a Harvest footer for public visitors."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "435e0a27846c2c31ef4fdc43a1437219a5b9ffbcea37af74fcd30dbada576cfa",
+      "why": "Adds a free pricing choice and a disabled paid option labelled coming soon in the community builder."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.test.tsx",
+      "digest": "e61c3f152a2ce00bd72db5cd40df5f0863dec938ca4c02192a4f982b71a2dfef",
+      "why": "Checks the pricing option is disabled alongside the existing settings editor behavior."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "4506a07b2a944ca80cda95e6493e60ebe27953f5b2f93eb029eec7bd6fd84df8",
+      "why": "Passes the current tenant into discovery to identify eligible community members for reviews."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "3cca34d597d7aae4d4ff76eddff9bdcd3c614820580c57357765f4ba02778f4b",
+      "why": "Returns the transaction aggregate and provides an authenticated own-review and admin eligibility lookup."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "0794b7c882c7d6c5c6016ec7fa3765d2a3e6408e03c2e4cc40128b22beb2bead",
+      "why": "Checks own-review privacy, admin refusal and transaction aggregate responses for the review interface."
+    },
+    {
+      "file": "src/lib/community/branding.ts",
+      "digest": "5ef16c2f1af01ceba22d00e5f32e20c0243ac36d6cb8c1b05642d9aefeded17a",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/branding.test.ts",
+      "digest": "d7eaa78b15d72fa50990ede56cc04cb67401388f79fd7930978adecfa043bb9a",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/settings.ts",
+      "digest": "af7b6f854f6a6016f5c156ea0af18dc65320d9d3ca220fbbc05fce52814a3bfd",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/listing.ts",
+      "digest": "da69fb0d17ffcdd06ee9657dc650c293ed8edfc0fba84b74838a552d90cc1195",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/listing.test.ts",
+      "digest": "d37dab17d4c4e8bc7e665a603de9d1de898833988af916561f8fb957109e41ed",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/public-listing.ts",
+      "digest": "f4d303f1a9bf3b778ccd6aa2e4a8241bce66aacebbb5cd9eac335f406aa27e31",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/branding.css",
+      "digest": "d66dddfa1b0b35bb294ff3d27da430ca7ba0946f760f14f7d0af390e36b7cf18",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "cb5f1e9e8c437730ff0701ddcbba0adb536aedbfa5f49d519db49c9458d4d503",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "070d5b6e822bc660ce984494e7ab9aba9d708e2dc38882083cfdd912bad3d6eb",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "815d92a7bccbdbb1f8e8039545fb0e7971ae67ca6e598d75fb2df2e2b93f7eb5",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "f87e008e77a5ad6d059e8b3e0b3bfe786ef0fea0e6b76ed0dc15aadcd3396da0",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "46bf2e15d394a47438318ba0b1762f9059ce811e3766b81eac029dff3b3dffb6",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "a301dfb712561060e1b06fe9dc5c91b7419c6906c1b5516c2b58bb9d4b367e64",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "375d42cfd36de3f1078ad7f0425ee82933e9b03b8f8de215ab0d588bf62bb736",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-digests.json",
+      "digest": "e2622f554df34d2f17efe314a408b172015c5c257f2443652682844ae00b4a0f",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-class-counts.json",
+      "digest": "b85a03f9072504ac11356dedced34d2ba3e9395149f29980af01b7f8391e18f2",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/carousel.tsx",
+      "digest": "7cb0820eb976544895da1efa2b7d350bd73e65586c62c0a7fad9a6896c9fdb8d",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "8ff8f29d8a1641aa1a2121529e900eb14da4a0c78ab62a8188aa77b135698583",
+      "why": "Records the carousel primitive, review adopter and installed dependency entries while preserving existing inventory and lockfile pins."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "46d05813562816f1aa4a035b3db7288e17875f3b8f4c031c171c56022e9e880d",
+      "why": "Records the review rating toggle group adopter with the required explanation and preserves the carousel inventory and lockfile pins."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "65891617befadc19db40de581b99fd77a4634b367c238fc1927fa248863570f0",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "063841a792375c73e3d61e235080b392d035a41c1d68db99bba82401ba0580e2",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "45acf0162530c6145b6306c429b60e46a277dbaec9db63475fe5def73b655c5f",
+      "why": "Records the merged discovery shell and community post card guard inventories while preserving earlier pins."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7ace2e38fa7ea74c76bb53f13460bec86d0d02508dbc8c01f7d4f1534dcc2034",
+      "why": "Records the merged discovery shell and community post card guard inventories while preserving earlier pins."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "2630f44eaa8424a32343839a74de1b84cd09b69d4ca0af702925cf4a8f66a3a3",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "61f5092c7589d1028f07a78be82b94eb905fdb87838d8fb14d739c7ae72d075a",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "291db3b2b7eeaec912a55beef350d15e48623b8cdb622f114fe7554723a7747d",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "26449e63f402e050caeb5699d754f4474fb27eee88b34f1db58dd567cb0fc0f2",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "b9ce065b04e1ebd1a9c1e05fefabf43e1a6196901863baa8a9ca31a7faf55d79",
+      "why": "Unions both branches of the reviewed source pins and appends the combined feed digests while retaining historical pins, community inventories and re-anchored layout checks."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1",
+      "why": "Records the automatic merge of PR 554 bounded comment activity, event gating and member pin preservation with PR 555 mobile composer and post detail sheets."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640",
+      "why": "Resolves the import conflict by retaining PR 555 mobile post sheets and PR 554 shared comment activity, bounded comments, event gating and post card presentation."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "ed820427c5913a6dce0bef1fe3a62df0cd5d8361fa37b71d0c60702b3f36ec34",
+      "why": "Retains the PR 554 dropdown trigger and PR 555 discovery touch inventories, recording that the mobile header touch targets now reside in MobileCommunityNav instead of MainApp."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "0199648d85d2014ff49b2d1a7ac064032bce87e7ac856d9bf5de6bad5aa05cac",
+      "why": "Updates the pin-preservation test to select the shared dropdown menu item by role; a planted unconditional isPinned write still makes the original assertion fail."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "312fbad342f1befa5768f2e2667303c8d467efb2cef60e72595a329f09d57b61",
+      "why": "Completes THE-555 phone shell polish with viewport-fixed tabs outside transformed ancestors, a sticky header, dynamic viewport height and scrollable feed content that reserves the full tab height and safe area."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "0ce913ae74c0442261dc7d7d3736f84c7f0e8e1fd0ab35ddd6836fdfa9fd4e98",
+      "why": "Records THE-555 phone tabs fixed to the viewport with safe-area padding and the shadcn profile sheet with member identity, icon actions and initial focus on the sheet title."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "ec7802bbdcfea44a08aa3dd1f6864db83f9745b8b2be6a07167301bda6abe5d9",
+      "why": "Records THE-555 profile coverage for member name, shadcn profile and dashboard icons, admin visibility and dashboard navigation while preserving existing switcher checks."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "0a42e0cde9e5e89aa44e084205a0247bd16eb389b606bd311a3d3632e2a3d4de",
+      "why": "Records THE-555 compact member and rating metadata, right-aligned Free badges, desktop header Join action and mobile-only Join bar with footer clearance."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "31e467d5a0a33b9dcdfb466f0a6353fbf9af908cce5da7e5362b49a23d7dc26f",
+      "why": "Records THE-555 wording coverage for member counts and compact accessible ratings, plus desktop and mobile Join placement and reserved mobile footer space."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.tsx",
+      "digest": "bddc4b494fe63bcdd34a5b446d95c75d841c36f622e2d863113d1abfe71fa350",
+      "why": "Records THE-555 capitalised Newest, Highest and Lowest labels in the shadcn Select while preserving the existing lowercase review API sort values."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.test.tsx",
+      "digest": "1cc468f938ac380fa0263731cb9ae8499d12652638c0947a2fd44dc15f9b0860",
+      "why": "Records THE-555 review sort coverage for all three capitalised labels and the unchanged lowercase API sorting values after selecting Highest and Lowest."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "8b535e60e5b21115dbf58c0780160df4fe4358a92a2efb87050e21bcae72574a",
+      "why": "Appends the final THE-555 MainApp digest without replacing prior pins and supplies documentId in the Firestore mock so the real AllNews feed renders and its existing mobile inventories execute."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "591be9478db33a297463598c65e9d9ebecb14d4ebc4b16fb709a41c1de248d7a",
+      "why": "Records THE-555 composed navigation class measurements for phone and legacy tablet roots, retaining inset, geometry, touch-target and overlay layering assertions."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "dd08e5f0aebcaa7ae05d8bc1f178070508fe9c90119214ac1e8a23239f15447f",
+      "why": "Mounts the real THE-555 MainApp phone navigation to check fixed tabs, sticky header, ancestor placement, scroll clearance and discovery navigation. Removing fixed positioning or reserved content padding makes the new check fail."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca",
+      "why": "THE-555 merge combines PR 554's newest-post ordering before the fifty-post cap, bounded comment activity and shared post presentation with THE-555 mobile post detail sheets; every earlier accepted digest is retained."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4fe9788a161fd88d16aefb82de738171e44db1c2969a466dc4c9c29609a82aab",
+      "why": "THE-555 merge unions both AllNews source pin lists, appends the combined mobile-sheet and ordered-query digest, and records the exact paragraph, paragraph, CommunityEntryDialog tree while retaining the remaining historical element comparison."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "be1c63d5d4bb74d017ccdf463d5f91f0485630a495cdcb7e7a91dc12a8eb76ef",
+      "why": "THE-555 merge records PR 554's extracted scoped user picker without replacing earlier pins: exactly two inline user reads move to the shared loader, whose tenant filter, deterministic order and cap are checked alongside the remaining path inventory."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "fb399d484214eda8ee9f18954594df27447609d1e978852d37256c82d01777ca",
+      "why": "THE-555 merge appends PR 554's reviewed tenant-scoped picker digests to the existing AdminCommunity accepted set; historical digests remain and an unrecorded source change still fails the guard."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "bc687673660b78440d18bfc508a5a3308ada43fa72dfeaebb9ae7bbe4734eef3",
+      "why": "THE-555 merge reanchors the channel-message rules guard to PR 554's sender identity checks and community-permission or channel-membership posting authorization, preserving its assertion that message payload fields have no allowlist."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "db3caa8d2798440ba9bbd5928b4b7afc604cb6be2c0f54d8f1cd59b5ee60b11d",
+      "why": "THE-555 merge retains all nine rules tests covering PR 554's tenant admin, settings, channel, sender identity, default-group and pin protections together with THE-555 public discovery and server-owned review read and write boundaries."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "50b63d34807bfca5775c87b639718d848f48427d7ae6ca24386381ef85ddad69",
+      "why": "Records the intended historical community settings-error alert immediately before AllNews after the entry-error paragraph and dialog are folded out; preserves the remaining element tree and class literal comparisons. Missing alerts, additional wrappers and unrelated class changes were each rejected by mutation checks."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "cd2af731227407bdebbd70f1520b3d021fb42fd1fb9aed1fb20b222ee0f795eb",
+      "why": "THE-555 preserves the community-first logo fallback in a named binding so tenant-logo discovery continues checking the real plated image."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "27f827150849f0d8c5c54c2948631785040ca310dff6243f000cf80d139f868e",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "1fe0718db69aee4825cf2ec505dc998def7f4fdd50d99c1f1f8a1a5b0b96aa1c",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-329-guards.test.ts",
+      "digest": "742ba43f29ecd3aaf1ee0ab33704c812b1e4942f14516ea7c8f7c9e61a9394be",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-355.public-payment.guards.test.ts",
+      "digest": "7d053bfe7be38e666cafba5446e6486462e9d890eeb9110ad41391061accc804",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "4f950caea8d8b1ef7c74c7e1c15f50b7950f7a699e6e52b734b5189d6d6c783e",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "36b0faf92c4162c6267db5a425d98e6b8ad8d994187ba733ba616286d3696e4f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-350.manual-donation-invoice.test.ts",
+      "digest": "68251964a8279b6a495c0155f27013ea577f72e63bfedfa14d38f7e775f5e8ea",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-347.date-formatter-guards.test.ts",
+      "digest": "4198fb90ebf33f8cd38f142a504100aeb76782060e50ca2bb34399290416c5f3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-273-toast-dark-mode.test.tsx",
+      "digest": "7d2e6e091faa4ce8d7ee01620c862722468c2db17a286f3354b6d77389a35d89",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "53b057a854d9ad67f020fb10794574333289b54647c9b2664178446b46751240",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "a6d91df9efbb3241308bf8e6ddb99747cf908e34a4ad787da023a882472f73da",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-272-shadcn-batch-b.test.ts",
+      "digest": "a43c0123f0cbbd4341ab388d0506e3610ed2c9860a35fc912ad88493e9b49d88",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-357.guards.test.ts",
+      "digest": "a3df053c00498202bbd948cce83857595817d8fa4e781ca661c4940e16f848d5",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-362.guards.test.ts",
+      "digest": "3d36ed2ef19b7d4934e8b71d8eb06ccbed08a642adcdf6610a4f1e2d8e934155",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-356.guards.test.ts",
+      "digest": "8aa95889cc511e642ef99d2a51e54e6ef8afb6d8a3e724941efc60e8bcf2c3b1",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-319.composition-guards.test.ts",
+      "digest": "d83aa47d2257a7cc3c65d34dc1b742f6adc247297ea958bc278317c5b57ead80",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-270-sidebar-install.test.ts",
+      "digest": "d0cfddc9f4bb72a9e07356428fc63e86d78e4f157164d455f6f1bfe1ff579012",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "328ef98337e49469a8f31484b2b67328124393ecb67999a559c54b3332789bc2",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/ui/carousel.tsx",
+      "digest": "bb2fb1ec0e14eb2e8ca17f429d8e2631bf15298b46aea139a1c2a4f9e1ff2521",
+      "why": "THE-555 repairs the registry cn import to use the shared utility; the Carousel keeps its vendored structure and the bogus npm artefact is removed."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "427319f030e634a2cecea675562f1cd8232027ed5b602b29979f5fbc1b29b68f",
+      "why": "THE-555 gives the discovery card button a mobile touch floor and moves responsive join visibility onto its wrapper so button sizing remains measurable."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "614a042cc224cabeca6a26be7415d65ec73a87dae8b34220c9f347f9ece3e135",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "f576a1efefea0b58fc9eb2d015c559a00545ce709630ad648a4d305c246e5fa5",
+      "why": "THE-555 reanchors composer measurements to the min-height shell and mounts the shipped mobile navigation behind its real visibility expression; hit tests and exit checks remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-363.ticket-guards.test.ts",
+      "digest": "5fbbd3e39796a98eb7d9d918ddf24e18f1d580717fd132330e9113a1863d4664",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-366.rating-scale.guards.test.ts",
+      "digest": "ec5b6dca8f35aa0bac9f2316587c2c8cd29cd4c8e46bf4858830f951ca44295a",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-331.untouched.test.ts",
+      "digest": "6513a7f240cdeab97b230f811d400613b33400370ba33a288d44b9d10e8590ab",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-358.account-menu.test.tsx",
+      "digest": "68e19cb865e554a4cc278b87425d7fb806b59db717bed9c9a54dd0496eab652f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.orphan-signup.guards.test.ts",
+      "digest": "106866eca4f41abe6aa7d3fb0958f70a4dbc90378a78a0503515a733cf02416f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "2b29ee688a8bbb8b2278f764a067c774cdb5e3cf0059cccdd09134479e4052c3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-331.attach-picker.test.tsx",
+      "digest": "44d2f5ab47c64df89f81bd754eb6d4a7a8ff1b192b6c3e6990b39e14a51014a3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-320.sms-surfaces.layout.test.tsx",
+      "digest": "d508f6ba88f00aab55f2a560fbd86d905f7a7470a2457e03bfe0c313bb61d92d",
+      "why": "THE-555 fixes the static harness font to its original DejaVu Sans fallback, retaining every recorded dimension instead of depending on locally installed Inter."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-status.test.tsx",
+      "digest": "5ef506e7b1b5bbb762b10e80faa3800157724f0c8f44c79491d9918341b51f05",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "81ad2fb55fba510624c73daa527390170004c9702c3761ce02718901153babee",
+      "why": "THE-555 measures the shipped mobile navigation at phone widths and the original bar above them, preserving viewport anchoring, safe-area and card-clearance assertions."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.layout.test.tsx",
+      "digest": "ff67965a52c5e7bf96f62d498a6aa72b6ed5833f9a3f03d52f8e2acb34cd04d6",
+      "why": "THE-555 fixes the static harness font to its original DejaVu Sans fallback, retaining every recorded dimension instead of depending on locally installed Inter."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.test.ts",
+      "digest": "a2b1865482a0daf8f059b2f5c1c305c2f685ed98fe22e07a855c98012819206d",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-digests.json",
+      "digest": "dab5330952911ac6e6fa13d2cf952896edd447fee70cfaed7d9a2205082b1cb8",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "95a12d53c29cbd7e4307086048e695e56b2e244b2a30a794e3088628a45fc9de",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "9e79dbce5a1bcc868182d8214f00a9505a618c36f92cd73612079c440173c581",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "c175174433c4fdd0618d9bb8f46f8f4932db01b8e8460728d2c5b28246715f37",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "ea95c5a751c8b1a1d4e9d51f92e6839e08e8657d9988633d37e61e1ea55f3115",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "0b2dfa2e8fb37b04a654e724173a9dd4a9cffdc3517f4808c4d5ecf4dc5119d1",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "fa514e5b0ca6c2340ad5739882bc2bd3a2e27b3a20267f98a25838716b75adc2",
+      "why": "THE-555 retains the merged PR 554 UID-only DM counterpart rule: protected UID roles or tenant ownership identify the other admin; legacy profile emails and participantRoles grant nothing. No rule edited during this reconciliation."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "c73fa69b7e4f3fe92915802a99fb958f46a3fb054fea52c763855f5aa8f6d6f5",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/THE-362.guards.test.ts",
+      "digest": "2c34766cd4e42a7d2e45033c8673fa3017fa30d8fbd8d70cc4c7a1b838f70092",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "26fe75c034003933080364339ff39cd8619e953c2e0cdcdcfa53fca2899d54d4",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "1652123ee9029a5250645f5cb7725fa84b4c546102e5b7677d71369b86340a36",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "ede1abc8df1cbe194bd79e7944eaa090d56d9c79161d39933c4ea69771ebeced",
+      "why": "THE-555 records the merged PR 554 sender byline binding and bounded comment reads alongside the reviewed post presentation; both security and discovery changes are retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "b9176180d56b3e3935396ffa727af02fb948ad7f2cf5438820725c5da4fb6bea",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "83fe7ed80943eb9d66e7d37530db699dcf52d518ff53b56c3525e4543911c538",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "e8c2467792b44903f7a52aae5132d4b9ca1a2487e4ae32b0748a141842c52e2f",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "778d8b1e34268d0e8a399246a01f5f62ce352deed23d9e731e7bd498df247bf0",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "06b1970283ab0c53f7543f504b925f0f915a852480175a1cc27ad42eb9d806d6",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.orphan-signup.guards.test.ts",
+      "digest": "ada65101d2a8caabb29f001b17c4884f2758f5cd64db1c8b497f68ab31595f0c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "06b358783893173e83c6020b1915fe95ef9bea3dfeaebb092f137cdd192a535a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "17d1b3913c093205c4bdb2dd391dec3c60b778cc95e145d0c8e026bd1e5b526a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "5e93bf3111994d11d57b9392502179d75836d3a9938ed3a671baf7e9e33a5516",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "f5c9c2354b35f5d98638db6251069ef626ded753bd8bc284a725c135fe297eee",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "4a6ec24fd4d00ac805cade5d40facd2940c8effd84164730327eb9b516beaa9d",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "86fc0465b4370590111decf0a54c5f043c45b037f2718216d46fbf1d914606d8",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "bd8e1b7e190e04de2adc1d522789ba4ce60640877fdfda4a742ced48ca895b05",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "e45f5dcf2d8970233d1aaefed730bc962c90c55061eac571a4b447544b3dfbc9",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "338899f33b32a8a8dfd1469f1612e6ad5b11ff726ed269a57c0463bfd50be738",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "6001d556a5ac41bf8858a2e0d52066fb9a59b88fc4d5013805107a20190d733c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "601294bfc9fbb7ddd4ef014e3becd3bc8eb6040ff1cc1a5dbc04d3b171ed249e",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "05e1a6b5e9287072fec43886b50e2d6b215e0b882ed3ccc6535f1e3f55f0e125",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "f66298b13d0fc200d16904080e8bf89f38bfc7d3ee37043c0e36c08ff56b16d4",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "9f93252014c79713f429a8b1e4b7ac4e013f24816a0851961a887a5c22f75259",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "2ca57f28c218f6271140a48892c8810c732c4c700b0e9c74728c9186d5fa7269",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "a5dea2f868411cdb8e2ce733e28be7ebf1702bab6941a4e70ea084c82ec9d550",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.community-settings.test.tsx",
+      "digest": "6e6b2d6dcca7a9a90e51615355d541c08dd0bec8e4adeb93cd3241a63ab07afb",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4c7e81c7d8aee50947e25909402a02843b703dd4cb412573766533349d4ed308",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "a712015bce570cc12b7c3066dfd663e7ea995e32d9152908ad884431e4295c66",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "b1ec3b075df28c95302245fb786bf41bea56150f34d93c6e78fc0ded5e7b73ea",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminContentBar.tsx",
+      "digest": "0bc7534889874f15eca6b79b5fb4709125214e0cc247f9c1661e8c38dfe33dde",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "d142125ad8d126256c87d37c4b81f200ce106ed0d8c0ed2a932dd62fb578a2bb",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "be6737ec6cb561ea09b6815ec60a3f7ba6652f60130a1a3fe336425fd3656995",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "77181161c8d04ce3e193670dbc95271e0a43b0a9f9572bcad9e275757080950c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "f2e3392d2a8bb4defb6fba1ae16e8cea3a090da5cac95ea074bb75b6eb564a6a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/layout/nav-icons.ts",
+      "digest": "c4a50f16d2a76ceb9e84260e725e1088075bca784bd600ee0fb1f784b13b1ec0",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e",
+      "why": "THE-555 round 4: Lucide Newsletter and Community navigation icon swap with required shadcn Button conversions retained. Stateful classes are named locally for the floor resolver; no nav array structure, route, permission, entitlement or screen mount changed."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "686af637a57e383b2c9f4c65730b2ee30b486e6bc705fc2d78db0aef4934240a",
+      "why": "THE-555 round 4: Restores the original single navigation shell with safe-area padding, py-2 and scroll translation, and mounts the shadcn mobile tabs inside it. Stateful Button classes are named locally without adding colour literals or changing the frozen layout module."
+    },
+    {
+      "file": "src/__tests__/theming-member-app.test.ts",
+      "digest": "35673e017e705fa851b29cfdc63f81a1f535396a86859b44b94f2754a1ddecc9",
+      "why": "THE-555 round 4: Keeps the deliberately black photo scrim assertion intact and removes the obsolete custom attachment-menu shadow literal from the exact baseline. The replaced shadcn DropdownMenu uses token-based shadows and introduces no new colour literal."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "6b4a5f95fcdd094ceedcea991fe0a949faecc94c096f2d4b18007e0025422ba7",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "8b74bfcba6bb78087ec616736900cb8ad20fff80d72bfc08f5bba868462c065f",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "6288cf77c5138d4d8d2a85a71a0d26212961f8b4dff4c9af492079eb0ba1950f",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "f805e6fe5cd11b8f5133fcb8d96cf1f9f907666352fc0463fbf8bcb771cfb60c",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "56fe38fc9055c8c5f17bbbee206c0bba8c229df1f91db8ecdb24266486f03c9b",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "054119863bbef32d6b3edb8fe370bf54fd0365d601f42f3018ed1ce774a71751",
+      "why": "THE-555 round 4: Names mobile shadcn Button classes locally and expresses active state with a data attribute, so the existing touch-floor resolver can discover and measure the preview without dropping a conditional class."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "e9285dda8170782879cd0423c6fe30603b70821340dc553dd32063e24e7ccf98",
+      "why": "THE-555 round 4: Restores the pinned black photo scrim and the paperclip p-2/-ml-2 optical alignment while retaining shadcn Avatar, DropdownMenu and Button controls. Pin state classes are named so the touch-floor resolver can measure every state."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "8cc8ea7356aa93f48dc0198c507db2a8306a0c14abd1c9a66ac5d9ccf266df0e",
+      "why": "THE-555 round 4: The mobile shadcn navigation now inherits fixed positioning, padding, safe-area inset and hide-on-scroll translation from MainApp, preventing a second independently positioned bottom bar. Existing Lucide icons and 44px tab floors remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "23bcba33a53289ecf355a57b8e5e39fe64e6110332993633a4eadaaa10c4b932",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-346.six-defects.layout.test.tsx",
+      "digest": "3bccab65892f948ce67025d39ff0f6c775ed02a9dfd2bcf22dfc264cbc80a399",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-279.editor-toolbar.test.tsx",
+      "digest": "1bf1a800c806348ee7a97ff9291c5cbc69a60682b60385d446192c673023d8d0",
+      "why": "THE-555 round 4: Checks colour utilities at the utility boundary after parsing variants, so Lucide text-align icon identity classes are not mistaken for colours. A planted text-red-500 mutation still fails the unchanged themed-colour assertion."
+    },
+    {
+      "file": "src/components/__tests__/preauth-funnel.desktop-layout.test.tsx",
+      "digest": "8f0c4b27647b64595ed59f54c06156fa60d4ce68754f485f0b8db5f0edc6a110",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "1aaf4b66991f1e315858d5905897aef08792e1ab115ade9022b396ce93276f64",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/AdminCourseEditor.course-info.test.tsx",
+      "digest": "b53b8b1929ad8cfb0acd1d8ecdcc7b9949b5c0671d7f18e6d511419112c78e18",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "62a06390755affe0d844ebf6f4a4296106a1ee401c6be69bb7850de6b8fc9b20",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "b92c2dd239117f988bd3170c76e94c7dd1a3fe735d7721f2c0528c48a4eecb70",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "e1ee5e26caf53a9a0d72407189771e39649f1c5b0a04711dc7c36ac5caed4256",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "daad7f947ebeefa3853865e167105e5ba79be76ee22f6fffc5b48772bddfbb39",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/EnterpriseContactModal.desktop-layout.test.tsx",
+      "digest": "a7928e7f10676013b46ad774bb12ce6709c8084eacf66838c92af187ec173a9a",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/EnterpriseContactModal.mobile-layer.json",
+      "digest": "dd29506b2eebd57b2e46aea78d356b3483b302e0588df3f359bdfda0ebf2b8e0",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/admin-data-screens-mobile.json",
+      "digest": "edc7c221073779cbc17de61ab77c967f43dac31c45922bcbede6bc21c643789a",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/preauth-funnel.json",
+      "digest": "f8e68e64bbef80162543a1c92d6399a371952370715c5e5e541ddf18015c3997",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "8d39e29d83e352aa701e3e653e59fcd07078b913c717a313f8f7f03f2733dc99",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.layout.test.tsx",
+      "digest": "5401582abd062e905b4d71ba030492cc81ef76ac0841ec00a94d6af9dc164687",
+      "why": "THE-555 round 4: Appends the lucide-react 0.453.0 to 0.577.0 Search glyph amendment while preserving the original geometry fixture, SVG root boxes and every non-SVG box. The SVG handle changes from 4.3 to 4.34 units and its child order changes; browser confirmation remains external."
+    },
+    {
+      "file": "src/components/course/__tests__/__fixtures__/the-311-lucide-0.577-geometry.json",
+      "digest": "3beaa0cb31923e0ded1c9fda0f552a7f49a50c97d2f77e66b3aa05661f6c86b4",
+      "why": "THE-555 round 4: Appends the lucide-react 0.453.0 to 0.577.0 Search glyph amendment while preserving the original geometry fixture, SVG root boxes and every non-SVG box. The SVG handle changes from 4.3 to 4.34 units and its child order changes; browser confirmation remains external."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.community-settings.test.tsx",
+      "digest": "8377fd789b145028ad8df98a575070a0253b44ed259892f4370718eec8bb4df5",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "98959de2c5caf52f16be95aede2e4a7dff0beeb057de0e7ace7401784d0fd614",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "b4944d8e899a578523581eb75f61516b47cf73d97c05121582eafe88579b2cb4",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2",
+      "why": "THE-555 round 5: keeps Mailbox and ToolCase navigation and all existing plan and permission gates; moves desktop-logo visibility to its wrapper so the shadcn Button retains its min-h-11 floor when measured independently."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "b1c0b69372231837e9a920c6d9b3e99b31fecc507c93314aecfcd37bfbd31120",
+      "why": "THE-555 round 5: preserves the shared safe-area navigation shell and Skool mobile tabs; gives the shadcn profile Button a 44px phone floor while keeping its desktop size."
+    },
+    {
+      "file": "src/components/admin-shell/AdminContentBar.tsx",
+      "digest": "ed1c2ce6d29d12911725bae426a67f3775a0bf5f3a7ae189779a98d5ff5c6b1e",
+      "why": "THE-555 round 5: gives the shadcn breadcrumb link Button min-h-11 below sm and hands density back from sm upward."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "0a3d7259269ec0e6d91cc34bbdcea2dd4113300add001cb2a439f79864e56576",
+      "why": "THE-555 round 5: moves the desktop logo visibility to its wrapper and gives the shadcn Button an explicit min-h-11 floor."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "f8cd6782a9aebe83c85c38ee24e0d01399f66dd0274948b7cafc984f9916ee81",
+      "why": "THE-555 round 5: appends final MainApp and AdminPostComposer digests and a reviewed MainApp-only fixture revision for the restored shared nav shell, Skool tabs, Lucide/state classes and profile touch floor. Removes unconditional fixture rewriting so assertions compare against fixed records; all three rendering guards reject planted drift."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "2c6aa1daf07baa1387a6d260e08d0f24eaa0d110afb63f9e0ba58fc520328b93",
+      "why": "THE-555 round 5: records only MainApp rendering after r4 restored the fixed safe-area shell, removed duplicate mobile nav wrappers, adopted Skool tabs and Lucide/state classes, and r5 added the profile touch floor. The other three surfaces remain byte-identical."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "7da63d1baa38e98c4229788074963b8419a8f4afcdaff6fc877dfcfb890fbcbd",
+      "why": "THE-555 round 5: records MainApp and AdminContentBar in the existing min-h-11 sweep; keeps the exact inventory assertion."
+    },
+    {
+      "file": "src/components/course/__tests__/__fixtures__/the-311-lucide-0.577-geometry.json",
+      "digest": "aaf73cdb50824706c2e559fd75e82c5ee452b4c9535b8d260fb3831d4b168308",
+      "why": "THE-555 round 5: corrects the Lucide Search handle y-coordinate to 106.98px at 1024px as measured in 555-full-r4.log. The 1280/1440 SVG roots share the same position and correction. Original geometry fixture and all non-SVG bounds remain pinned; browser verification is still required outside the sandbox."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "fe39688ca5f2422dc4aca2c92aff20f0dfea4f5ddb23f53f6575f08b67dbb188",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "bcf0099cf415f23c821d226518331435d3fde31244a1354432fbfb33e5da41ab",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "de850de5adc05c59a7faccdbc720a83f441e00ae89e79582336608bddb4b6a30",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "611ce5950459500c6cbef3eb102b7e2c434ad1335300920ba5462c8cd2e13c29",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "76209ccaaccd38605fe6139f45c870b4a79f36076b30a21ca6c231ff9e9376ed",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "5b130e50271f26bbe84f43c3a7aa2aebe6736d3646bb7c8b93c140bf29b66db8",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "55fc9e417ff77e7adb1dc6001094caf37ab9b14b13639a9cc4409478cce0b4ea",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "69c5e639865ba70328dcf50b53c6dbcfc79801dfb0923a1bd780e30a2b7aed46",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "0aae677850c90726c6948ccf97696cff53fe3e8979fc3e8266828394bf06baa7",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 member feed presentation and controls; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "why": "Retains PR 554 shadcn ghost Button group rows and THE-555 left alignment, full-width wrapping, Badge unread count and min-h-11 touch floor; removes the duplicate Button import introduced by the merge."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "24158b4a9053e644c340e4fabee39c6a4f2fb8b4c30e53bd8e89c0e5f2d4f83f",
+      "why": "Unions both branches explanations for the composer touch floor and preserves the full exact min-h-11 sweep inventory, including THE-555 MainApp and AdminContentBar entries; no sweep assertion is removed."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 mobile post sheet; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e369cefd12a60cda0c00fcd6f232a87a0f3d7e26e6ac92aaf83f12b4d5f1f1f0",
+      "why": "Unions both branches source pins and historical Messages fixture checks, appends final merged source and fixture digests and retains THE-555 discovery shell normalization, group alignment and touch-floor comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "0a0e8181e6f44f579b55695119f5404d295514e23d52e670320ba50bbafdd4ec",
+      "why": "Records the automatically merged admin community and sidebar source pins from PR 554 and THE-555; no assertion or source inventory was changed while resolving the four explicit conflicts."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "ffa40f6cc08c5769ba21bc249ed3f8bcf70df0d949aaed221f11cbe25b018ee6",
+      "why": "Records the automatic union of PR 554 shadcn UserMessages Input accepted values with THE-555 community navigation pins; every prior accepted value and navigation authorization assertion remains intact."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "fa13f2ce126264e307d82a139ec68e204016e6e5cbfd1a644337fcc89a27efc8",
+      "why": "Records the automatic union of PR 554 comment tenant, field allowlist, byline and authorization regressions with THE-555 public discovery and server-owned review rules tests. No emulator test was edited during conflict resolution."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "8858c0abe8888a61f0b4ce6a9e6ab92d2c4bc62284be15c40a583591fed61f47",
+      "why": "Records the automatic merge retaining PR 554 exact-six-field parent-tenant comment authorization and UID-only counterpart guards with THE-555 shared safe-area navigation and sender identity protections."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8",
+      "why": "Combines PR 554 ghost Button, Input and Textarea controls and responsive intrinsic sizing with THE-555 Avatar, ToggleGroup, DropdownMenu, named pin states and THE-346 avatar/paperclip anchors; retains 44px mobile targets."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
+      "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1",
+      "why": "THE-555 review F1: Aligns Community setup tab visibility and direct screen access with hasFullAccess || perms.manageCommunity, matching the settings API instead of the unrelated manageSettings grant."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "6f13e57fdcd86ec7d4bc3a07012c94e8f17a0a953425b3aa6e568c1aadcd23fc",
+      "why": "THE-555 review B1: Replaces the mobile community composer trigger with the existing shadcn outline Button, preserving its click action, full width, wrapping and min-h-11 touch floor."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "44464d456ec338cbff6ec50f19ba856a618ef54aea129e701b53c5a15a4484ac",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "5efe68f682a97290c56c84aa41fcec74649d21f89848c9b56d4d23c58c0dd1e5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "e9be25bdf11e518c1d297c34ad2d35d68f119ce4e4dfef69e78ed8dc5fec34ce",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "490087ade6543e21dfda5d69a9bc02f2df15a5464e1850a3b0d98952ccd4305b",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "4c757b2b6f950eb14d5f9aae437a2ad84dd818f33488776a99e8fffe884aa1f5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "94da079652d996c2a87f9aedbc3ba13ad67501092f8f0da82a2c46ac3da89eb5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "929a9ad9a5b2fd1328ef42719651abaae56190b038e411353dec8de144485972",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "9b5522d3042bf878d659596a876a6ac765dc8d381f83917222f4612918d19f6d",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "34b9a55e1170d30d7b437ca9a6680f876104c51a6d82a4d52350364fc71c82be",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "b52b8042c7f02a5269ff77b2c23e68acf0a6c152ff92a4817093c583fdbd5509",
+      "why": "THE-555 review B1: Appends the NewsTab source digest for the shadcn outline composer trigger. Earlier digests and all rendered fixture records remain intact; seeded rendering does not exercise the mobile trigger."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "46d5a2a8cf7363a825d0d375f3f83d13bc47bc48c1c7435bf7729a10027dea7a",
+      "why": "THE-555 review F1: Renders the real admin shell for manageSettings-only and manageCommunity-only limited admins and checks both Community setup visibility and direct screen access. Separate nav and render gate reversions each fail both cases."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d",
+      "why": "THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "e2a6999d43ea58565158bfac5631cb4215d1690e59ec7a3a996b56d95725b1af",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "af536389cf93188e1b969c476de2e80fb3e2f70c1eb3a866da209c54fa75de4d",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "b7abb57df198b3ba1a86285f26a71040e49791dee6471b9896b97a58135d87f8",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "c26c38c4e9b78db97530f9d54caa0ceb5ecae02519226aeae0bdb1f1ff67ebaa",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "2dcb8c232660cd9c9988f2c5e7c21efc5f03016d487145b53568f457e4441898",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "b2aaaeb1afea8f775cc751b350c9fee07168112e0bedbe8d5a5be01a1c14df52",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "6ca167dfc3d912fb76b2179ac445fd0d1451b1d258e2d215b884e85947389907",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "b483ad07ac04c496ed0a40ae851ce4f9018f40626ea4b857803f33d4acb9b761",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "195dd16c34f6c1de904176945bfe6ee5cbdc8db5915ba5d3b03a5670af9e91b4",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "1b60c77c531d30abe73ef41f13f9b2a3a3e747c2ce213f1adb0e7648cfd382a0",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "4e71e2ae8e394f4c290b45122b61625f2a5f2c4149397827555ff749af3c902b",
+      "why": "Merge of PR 554 a67942f (Bugbot: question type Select renders its label via a SelectValue render function, with a closed-trigger label test) into THE-555 settings editor with branding, gallery and pricing; no other change."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.test.tsx",
+      "digest": "f3eb390015739011f7fa260d9eb512f85fda51457b47be913685d77858ed86ca",
+      "why": "Merge of PR 554 a67942f (Bugbot: question type Select renders its label via a SelectValue render function, with a closed-trigger label test) into THE-555 settings editor with branding, gallery and pricing; no other change."
+    }
+  ]
+}

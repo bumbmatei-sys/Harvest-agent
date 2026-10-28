@@ -51,6 +51,9 @@ import {
 } from './__fixtures__/ownership-register';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
@@ -821,7 +824,7 @@ describe('AdminDashboard.tsx, layout.tsx, firestore and functions/ are byte-iden
       .filter((f) => f.endsWith('.tsx') || f.endsWith('.ts'))
       .sort()
       .map((f) => `src/components/ui/${f}`);
-    expect(files).toHaveLength(43);
+    expect(files).toHaveLength(43 + THE_555_PRIMITIVES.length);
     const tree = sha256(files.map((f) => `${f}:${sha256(readFileSync(path.join(REPO_ROOT, f)))}`).join('\n'));
     expect(read('src/__tests__/the-299-retention-guards.test.ts'), 'a primitive was edited')
       .toContain(tree);

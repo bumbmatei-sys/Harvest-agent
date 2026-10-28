@@ -26,6 +26,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
+// THE-555: shadcn Carousel; bytes are pinned by ds-primitives.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('hex');
 const digestOf = (rel: string) => sha256(readFileSync(path.join(ROOT, rel)));
@@ -117,7 +120,7 @@ describe('🔴 all pre-existing primitives are byte-identical', () => {
     const onDisk = readdirSync(path.join(ROOT, 'src/components/ui'))
       .filter((f) => f.endsWith('.tsx'))
       .sort();
-    expect(onDisk).toEqual(Object.keys(PRIMITIVES).sort());
+    expect(onDisk).toEqual([...Object.keys(PRIMITIVES), ...THE_555_PRIMITIVES].sort());
   });
 
   it.each(Object.entries(PRIMITIVES))('%s is unchanged', (file, digest) => {
