@@ -617,6 +617,10 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
    * The same shape, for the same reason, as `the-290-giving-guards.test.ts`.
    */
   const ADMIN_DASHBOARD_DIGESTS = [
+    // #557: Initial sign-up pages navigation and shared screen.
+    '2910cbb6e895a1a636cb60710a74bcfd34bbdaf8f410ca8cbb540c6a42018d82',
+    // #557: Add permission-gated sign-up pages navigation and shared screen.
+    '83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a',
     // main at 902763a, where this branch started.
     '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
     // main at 133d557 — THE-291 (#434) removed the client-side write to plan.

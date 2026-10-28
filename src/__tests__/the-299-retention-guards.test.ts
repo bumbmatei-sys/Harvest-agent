@@ -678,6 +678,8 @@ describe('no npm dependency was added', () => {
  */
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
+    ['2910cbb6e895a1a636cb60710a74bcfd34bbdaf8f410ca8cbb540c6a42018d82', '#557: Initial sign-up pages navigation and shared screen.'],
+    ['83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a', '#557: Add permission-gated sign-up pages navigation and shared screen.'],
     ['d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e', 'THE-555 round 4: Lucide nav icon swap; Newsletter uses Mailbox and Community uses ToolCase, with existing plan and permission gates retained.'],
     ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
     ['8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],

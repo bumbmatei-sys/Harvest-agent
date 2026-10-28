@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { parseSignupPageInput } from '@/lib/signup-pages/model';
 import { authorizePage, toStoredFields, validId } from '@/lib/signup-pages/server';
@@ -8,7 +8,13 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
-    const pages = await adminDb.collection('signup_pages').where('ownerUid', '==', user.uid).get();
+    const tenantId = request.nextUrl.searchParams.get('tenantId');
+    if (tenantId !== null && !validId(tenantId)) return NextResponse.json({ error: 'Invalid tenant' }, { status: 400 });
+    if (tenantId !== null) {
+      const permitted = await requireTenantPermission(request, tenantId, 'manageForms');
+      if (permitted instanceof NextResponse) return permitted;
+    }
+    const pages = await adminDb.collection('signup_pages').where(tenantId !== null ? 'tenantId' : 'ownerUid', '==', tenantId !== null ? tenantId : user.uid).get();
     return NextResponse.json({ pages: pages.docs.map((doc) => ({ ...doc.data(), id: doc.id })) });
   } catch { return NextResponse.json({ error: 'Could not load pages' }, { status: 503 }); }
 }

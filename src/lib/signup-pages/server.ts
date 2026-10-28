@@ -37,3 +37,18 @@ export async function authorizePage(request: NextRequest, pageId: string) {
   }
   return { ref, page, user };
 }
+
+/** Resolve a public handle without exposing owner or submission data. Throws on read or data failures. */
+export async function getPublicSignupPage(handle: string) {
+  const { isValidSignupHandle } = await import('./model');
+  if (!isValidSignupHandle(handle)) return null;
+  const reservation = await adminDb.collection('signup_handles').doc(handle).get();
+  if (!reservation.exists) return null;
+  const id = reservation.data()?.pageId;
+  if (!validId(id)) throw new Error('Invalid signup handle data');
+  const page = (await adminDb.collection('signup_pages').doc(id).get()).data();
+  if (!page || page.active !== true || page.handle !== handle) return null;
+  const fields = fromStoredFields(page.fields);
+  if (!fields || typeof page.title !== 'string' || typeof page.message !== 'string') throw new Error('Invalid signup page data');
+  return { title: page.title, message: page.message, fields };
+}

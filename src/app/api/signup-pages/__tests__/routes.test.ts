@@ -39,6 +39,13 @@ describe('signup page routes', () => {
     mocks.requireAuth.mockResolvedValueOnce(NextResponse.json({}, { status: 401 }));
     expect((await list(request('GET'))).status).toBe(401);
   });
+  it('requires forms permission for a tenant-wide list', async () => {
+    const req = new NextRequest('http://localhost/api/signup-pages?tenantId=tenant');
+    expect((await list(req)).status).toBe(403);
+    mocks.requireTenantPermission.mockResolvedValueOnce({ uid: 'admin', tenantId: 'tenant' });
+    expect((await list(req)).status).toBe(200);
+    expect(mocks.requireTenantPermission).toHaveBeenCalledWith(req, 'tenant', 'manageForms');
+  });
   it('reserves a unique handle with the page atomically', async () => {
     const input = { handle: 'fresh', title: 'Title', message: '', fields };
     expect((await create(request('POST', input))).status).toBe(201);
