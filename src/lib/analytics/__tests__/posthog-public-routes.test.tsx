@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 
@@ -393,7 +393,7 @@ describe('1 — every route in the stated list emits a pageview', () => {
     // Dev-only layout previews. Production calls notFound(), so there is no
     // document to count and they are not analytics routes. The list is named:
     // any other page still fails the comparison below.
-    const devOnlyPreviews = ['/preview/admin-shell', '/preview/blog-schedule', '/dev/signups'].filter(route => route !== '/dev/signups' || existsSync(path.join(ROOT, 'src/app/dev/signups/page.tsx')));
+    const devOnlyPreviews = ['/preview/admin-shell', '/preview/blog-schedule'];
     for (const route of devOnlyPreviews) {
       expect(found).toContain(route);
       const preview = readFileSync(path.join(ROOT, `src/app${route}/page.tsx`), 'utf8');

@@ -5,7 +5,7 @@ import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-commen
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommunitiesView, DiscoverView, CommunityAbout, filterListings, type Listing } from './DiscoveryViews';
-import { Compass, ToolCase, Wallpaper, Mailbox, ClipboardList } from 'lucide-react';
+import { Compass, ToolCase, Wallpaper, Mailbox } from 'lucide-react';
 import { NAV_ICONS } from '@/components/layout/nav-icons';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -19,7 +19,7 @@ const root = createRoot(host);
 afterEach(async () => { await act(async () => root.render(null)); });
 describe('community views', () => {
   it('shares only the founder-selected standard Lucide navigation icons', () => {
-    expect(NAV_ICONS).toEqual({ signups: ClipboardList, discover: Compass, communities: ToolCase, website: Wallpaper, newsletter: Mailbox });
+    expect(NAV_ICONS).toEqual({ discover: Compass, communities: ToolCase, website: Wallpaper, newsletter: Mailbox });
   });
   it('uses shared controls throughout the community surfaces', () => {
     const root = process.cwd();

@@ -394,7 +394,112 @@
     {
       "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
       "digest": "2d938be2c31c70b483082f7e171ddfabc7f9d010d5b79471cfa6924b9faa5894",
-      "why": "#557 records the sign-up pages entry in each tier navigation inventory."
+      "why": "#557 records the sign-up pages entry in each tier navigation inventory. The existing tier coverage and assertions remain intact."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "598273445b5932c0dcb0e90792bfd6e22a5901bb9aada4de5181c0018c1a8ac9",
+      "why": "#557 merge records the resulting file alongside the existing Community records and preserves all previous assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "db76999637372ae13ab25cbcd8712292cd3f5299783339d3b77efe056f7e4bdd",
+      "why": "#557 merge records the resulting file alongside the existing Community records and preserves all previous assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-334.nav-rail-coordination.test.tsx",
+      "digest": "f87433a6c693dcb07875894a1303e97aaa549961aec2ecb689908c460f56646f",
+      "why": "#557 merge records the resulting file alongside the existing Community records and preserves all previous assertions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "26fa419f92479736a829b2306b52850eba268d075e6d9b124a0a0a417df328e3",
+      "why": "#557 merge records the resulting file alongside the existing Community records and preserves all previous assertions."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "ce55351220a42d0c7222a33a59b929277b0a5317f319f23d9f340b4cec40945d",
+      "why": "#557 merge records the resulting file alongside the existing Community records and preserves all previous assertions."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "eeeda4698f827d7830a690580201e509442d0122ee1a5fca7328c5b5b9984f9c",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "2dc67b592244fbc6cee5688abc35cbac1c0732c35949d6a20db95b45cbda7f6c",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "36e6fbfc779c4a268587e8346e7e9a7577411d90e0c281c222b9cd868d19ffbe",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "1cbb15b3dae8ff7c3822413b36a44f2f7e29c677c86472d00dc04cf0907602e8",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "ddb4d000bdb15967c2757f33c63c201bf16418ab224de5cd56eec352bebd54cd",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "b8d777c7f1f4a64e1addd31dceb73e19a4db1c738a2518fdf1cc41ee3d29e311",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7a050a8617546b1e2f4224360ede9835fbfbd58019d3b414801d314d6ea7b376",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "b4944d8e899a578523581eb75f61516b47cf73d97c05121582eafe88579b2cb4",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "24158b4a9053e644c340e4fabee39c6a4f2fb8b4c30e53bd8e89c0e5f2d4f83f",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "689e4a635d3eae9eb7e00b5d154d0e9d0021b7c09256822439b04efbcb15b40b",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "f2f5e660dbe301ccbe45728b675617ea57f7322afdad5d1ff7c7c2087ca11f58",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "77181161c8d04ce3e193670dbc95271e0a43b0a9f9572bcad9e275757080950c",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "8cc8ea7356aa93f48dc0198c507db2a8306a0c14abd1c9a66ac5d9ccf266df0e",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/layout/nav-icons.ts",
+      "digest": "c4a50f16d2a76ceb9e84260e725e1088075bca784bd600ee0fb1f784b13b1ec0",
+      "why": "#557 records the merged sign-up change with the current Community version and preserves previous guard assertions."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.tsx",
+      "digest": "cbd133381283f57e4b78a1f50cf8e7650835ec3cfa9de63be29d9e8544c8369b",
+      "why": "#557 adapts the Free shell to the final Community interfaces and preserves an explicit error when account loading fails."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "46f6acdf3315b7c779b6583c40ba4efac43dea96890d0df1e843f63cb2eeec6f",
+      "why": "#557 appends the Free entitlement matrix digest while preserving the original reprice digest and all existing assertions."
     }
   ]
 }

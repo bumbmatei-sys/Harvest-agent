@@ -570,6 +570,11 @@
       "file": "src/components/community/CommunitySettingsEditor.tsx",
       "digest": "620e6cf8b4cf2b33fd19c2f7b70e8c045a5c7261179a4cb19965105220acd250",
       "why": "Reviewer B3 raw select -> shadcn Select, ported verbatim from #555, including the question Type control and its import."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "4123927b885f43197fa515c026034bf9ccd069a62b344b3769abf11821266a5c",
+      "why": "PR 554 Bugbot follow-up renders human-readable question type labels in the closed Select trigger using the existing SelectValue render-function pattern. Regression tests cover both types and reject removal of the renderer; all prior digests are preserved."
     }
   ]
 }

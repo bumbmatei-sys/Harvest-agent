@@ -12,12 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import type { CommunityModule } from '@/lib/community/settings';
 import type { LoadState, MemberCommunity } from './DiscoveryViews';
 
-export const FREE_MEMBER_TABS = [
-  { id: 'discover', label: 'Discover', icon: NAV_ICONS.discover },
-  { id: 'communities', label: 'Communities', icon: NAV_ICONS.communities },
-  { id: 'signups', label: 'Sign-ups', icon: NAV_ICONS.signups },
-] as const;
-
 export type MobileTab = { id: string; label: string; icon: React.ElementType; onClick: () => void; active: boolean };
 const tabModules: Record<string, CommunityModule> = { news: 'news', blog: 'blog', courses: 'courses', events: 'events', messages: 'messages', prayer: 'prayer', partner: 'give', livestream: 'livestream', bible: 'bible', map: 'map' };
 export function enabledMobileTabs<T extends { id: string }>(tabs: T[], modules: Record<CommunityModule, boolean>): T[] {
@@ -38,10 +32,7 @@ export function MobileCommunityHeader({ name, logo, onSwitch, onSearch }: { name
   </div>;
 }
 
-export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive, onCommunities, onDiscover, freeTabs }: { freeTabs?: { active: string; onSelect: (tab: string) => void }; onHome: () => void; onCommunities?: () => void; onDiscover?: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
-  if (freeTabs) return <nav aria-label="Mobile navigation" className="flex w-full lg:hidden">
-    {FREE_MEMBER_TABS.map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" className="min-h-11 min-w-0 flex-1 flex-col gap-1 px-1" aria-label={label} aria-current={freeTabs.active === id ? 'page' : undefined} onClick={() => freeTabs.onSelect(id)}><Icon size={20} /><span className="text-xs">{label}</span></Button>)}
-  </nav>;
+export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive, onCommunities, onDiscover }: { onHome: () => void; onCommunities?: () => void; onDiscover?: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
   return <nav aria-label="Mobile navigation" className="flex w-full lg:hidden">
     <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
     {onCommunities && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Communities" onClick={onCommunities}><NAV_ICONS.communities size={20} /></Button>}
