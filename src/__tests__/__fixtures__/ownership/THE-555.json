@@ -365,6 +365,41 @@
       "file": "src/app/dev/community/page.tsx",
       "digest": "99409f09f2d5a8d406c9746f5ed9df0a1dceb47d07ba8b6c5498e55ca06f34ef",
       "why": "Keeps the THE-555 local mobile harness on the production shell scrolling model with a fixed-height viewport, sticky header and mock feed cards using the shared PostPresentation and shadcn components."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca",
+      "why": "THE-555 merge combines PR 554's newest-post ordering before the fifty-post cap, bounded comment activity and shared post presentation with THE-555 mobile post detail sheets; every earlier accepted digest is retained."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4fe9788a161fd88d16aefb82de738171e44db1c2969a466dc4c9c29609a82aab",
+      "why": "THE-555 merge unions both AllNews source pin lists, appends the combined mobile-sheet and ordered-query digest, and records the exact paragraph, paragraph, CommunityEntryDialog tree while retaining the remaining historical element comparison."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "be1c63d5d4bb74d017ccdf463d5f91f0485630a495cdcb7e7a91dc12a8eb76ef",
+      "why": "THE-555 merge records PR 554's extracted scoped user picker without replacing earlier pins: exactly two inline user reads move to the shared loader, whose tenant filter, deterministic order and cap are checked alongside the remaining path inventory."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "fb399d484214eda8ee9f18954594df27447609d1e978852d37256c82d01777ca",
+      "why": "THE-555 merge appends PR 554's reviewed tenant-scoped picker digests to the existing AdminCommunity accepted set; historical digests remain and an unrecorded source change still fails the guard."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "bc687673660b78440d18bfc508a5a3308ada43fa72dfeaebb9ae7bbe4734eef3",
+      "why": "THE-555 merge reanchors the channel-message rules guard to PR 554's sender identity checks and community-permission or channel-membership posting authorization, preserving its assertion that message payload fields have no allowlist."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "db3caa8d2798440ba9bbd5928b4b7afc604cb6be2c0f54d8f1cd59b5ee60b11d",
+      "why": "THE-555 merge retains all nine rules tests covering PR 554's tenant admin, settings, channel, sender identity, default-group and pin protections together with THE-555 public discovery and server-owned review read and write boundaries."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "50b63d34807bfca5775c87b639718d848f48427d7ae6ca24386381ef85ddad69",
+      "why": "Records the intended historical community settings-error alert immediately before AllNews after the entry-error paragraph and dialog are folded out; preserves the remaining element tree and class literal comparisons. Missing alerts, additional wrappers and unrelated class changes were each rejected by mutation checks."
     }
   ]
 }

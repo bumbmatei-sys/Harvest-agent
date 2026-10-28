@@ -1364,7 +1364,11 @@ describe('no behaviour changed on any screen in scope', () => {
       '92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac',
       'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495',
       // PR 555 merge keeps the mobile post sheet and PR 554 comment activity.
-      'f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640'])
+      'f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640',
+      // PR 554 round three selects the newest 50 posts before promoting pins.
+      'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644',
+      // THE-555 merge keeps the mobile post sheet and PR 554's ordered query.
+      '4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 
@@ -1537,10 +1541,16 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(mainAppTags.slice(productsIndex - 1, productsIndex + 2)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
     mainAppTags.splice(productsIndex, 1);
     const entryIndex = mainAppTags.indexOf('CommunityEntryDialog');
-    // The settings fallback reuses renderLoading; only the alert and dialog
-    // remain as additions to the original shell tree.
-    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['div', 'p', 'CommunityEntryDialog']);
+    // The reviewed community settings fallback ends with the existing paragraph,
+    // then the error paragraph and entry dialog. THE-555 records that exact
+    // tree; the remaining tags must still equal the original shell inventory.
+    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['p', 'p', 'CommunityEntryDialog']);
     mainAppTags.splice(entryIndex - 1, 2);
+    const allNewsIndex = mainAppTags.indexOf('AllNews');
+    // The settings-error alert precedes the full-screen feed, after the two
+    // loading wrappers. Record only that paragraph; every other tag stays pinned.
+    expect(mainAppTags.slice(allNewsIndex - 3, allNewsIndex + 1)).toEqual(['div', 'div', 'p', 'AllNews']);
+    mainAppTags.splice(allNewsIndex - 1, 1);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.

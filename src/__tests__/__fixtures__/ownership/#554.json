@@ -250,6 +250,16 @@
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "ed820427c5913a6dce0bef1fe3a62df0cd5d8361fa37b71d0c60702b3f36ec34",
       "why": "Retains the PR 554 dropdown trigger and PR 555 discovery touch inventories, recording that the mobile header touch targets now reside in MobileCommunityNav instead of MainApp."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644",
+      "why": "Round three selects the newest tenant posts using the existing tenantId and createdAt index, retaining pins only from that slice and preserving all prior guard digests."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "a46c1752dc5e270f6571c03b57285c3556d86511a0806ae135b9f9945bdbb9ff",
+      "why": "Round three appends the reviewed AllNews query correction to the existing source pins, preserving every previously accepted digest and layout comparison."
     }
   ]
 }

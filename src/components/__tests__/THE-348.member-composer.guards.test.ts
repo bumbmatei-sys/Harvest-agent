@@ -81,7 +81,7 @@ const ADMIN_DASHBOARD = 'src/components/AdminDashboard.tsx';
  * this repo has recorded thirteen times.
  */
 describe('🔴 a non-admin CANNOT be stopped by the button alone — what the rules permit', () => {
-  const RULES = read('firestore.rules');
+  const RULES = code('firestore.rules');
 
   /** One rule body, from `match /<name>/{...} {` to its closing brace. */
   const ruleBlock = (name: string): string => {
@@ -124,8 +124,16 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
 
   it('channelMessages create checks channel access without constraining the payload', () => {
     const clause = createClause(ruleBlock('channelMessages'));
-    expect(clause).toContain("channelAccess(get(");
-    expect(read('firestore.rules')).toContain("request.auth.uid in channel.get('members', [])");
+    // PR 554 checks sender identity and permits community managers or channel
+    // members; a limited admin role alone no longer grants posting access.
+    expect(clause).toContain('belongsToTenant(tenantId)');
+    expect(clause).toContain("request.resource.data.get('senderId', '') == request.auth.uid");
+    expect(clause).toContain("request.resource.data.get('senderName', '') ==");
+    expect(clause).toContain("request.resource.data.get('senderRole', '') == 'user'");
+    expect(clause).toContain("request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId)");
+    expect(clause).toContain("(hasPermission('manageCommunity', tenantId) || channelMemberAccess(get(");
+    expect(clause).toContain('$(request.resource.data.channelId)).data)');
+    expect(RULES).toContain("request.auth.uid in channel.get('members', [])");
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
   });

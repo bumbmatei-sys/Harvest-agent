@@ -56,6 +56,7 @@ vi.mock('firebase/firestore', () => ({
   addDoc: async (col: any, data: any) => { fx.adds.push({ path: col?.__path, data }); return { id: 'new-doc' }; },
   updateDoc: async () => {},
   deleteDoc: async () => {},
+  getCountFromServer: async () => ({ data: () => ({ count: 1 }) }),
   // The feed derives `canManage` from the user doc, and the comment kebab only
   // offers "Message privately" to a moderator. Give the signed-in user that
   // capability — it is orthogonal to the tenant-scope behaviour under test.
@@ -263,9 +264,9 @@ for (const [label, importer] of [
       const composer = () => Array.from(container.querySelectorAll('input')).find((i) =>
         (i.placeholder || '').toLowerCase().includes('comment')
       );
-      const dmButton = () => Array.from(container.querySelectorAll('button')).find((b) =>
+      const dmButton = () => Array.from(document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')).find((b) =>
         (b.textContent || '').includes('Message privately')
-      ) as HTMLButtonElement | undefined;
+      );
 
       // Phase 1: expand the comments section. Its toggle is an icon + a count
       // with no stable hook, so click candidates until the composer appears —

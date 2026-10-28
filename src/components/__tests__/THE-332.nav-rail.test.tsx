@@ -874,6 +874,9 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'eca86542f3f017f35dc9fca7da43e44a42b0afc4de33d9e9846dbb5551c2a055',
     // PR 554 bounds group reads and binds sender identity.
     '86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c',
+    // THE-555 merge retains PR 554's explicit tenant filters before picker caps.
+    '4731b86b68aa60f38fe8d71b519121cb1582c9059d361179e55115a9e5b5144e',
+    '10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
