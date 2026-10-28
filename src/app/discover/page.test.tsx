@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { matchAnalyticsRoute } from '@/lib/analytics/routes';
-import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
-import { makeDiscoveryListing } from '@/lib/community/listing';
-import { defaultCommunitySettings } from '@/lib/community/settings';
 
 const mocks = vi.hoisted(() => ({ host: 'theharvest.app', get: vi.fn(), collection: vi.fn() }));
 vi.mock('next/headers', () => ({ headers: () => ({ get: () => mocks.host }) }));
@@ -45,9 +42,7 @@ describe('public discover page', () => {
     mocks.get.mockResolvedValue({ docs: [{ data: () => ({ ...listing, slug: 'www' }) }] });
     expect(renderToStaticMarkup(await DiscoverPage())).toContain('Could not load communities');
   });
-  it('reserves discover and registers the public route', () => {
-    expect(isNonTenantSubdomain('discover')).toBe(true);
-    expect(() => makeDiscoveryListing('id', { name: 'Test', subdomain: 'discover' }, defaultCommunitySettings(), 0, new Date())).toThrow();
+  it('registers the public route', () => {
     expect(matchAnalyticsRoute('/discover')).toMatchObject({ entry: 'next-page', surface: 'public', public: true });
   });
 });

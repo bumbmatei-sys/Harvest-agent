@@ -805,6 +805,8 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseProductList.tsx',
       'src/components/courses/builder/AccessSection.tsx',
+      // THE-999999: discovery and community lists show known card shapes while loading; errors remain visible.
+      'src/components/community/DiscoveryViews.tsx',
     ],
     breadcrumb: [
       'src/components/docs/DocsBreadcrumb.tsx',

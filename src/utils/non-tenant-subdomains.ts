@@ -30,7 +30,7 @@
  */
 export const AFFILIATE_SUBDOMAIN = 'affiliate';
 
-export const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin', 'discover', AFFILIATE_SUBDOMAIN]);
+export const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin', AFFILIATE_SUBDOMAIN]);
 
 /**
  * True when `subdomain` (the first label of a *.theharvest.app host) is a

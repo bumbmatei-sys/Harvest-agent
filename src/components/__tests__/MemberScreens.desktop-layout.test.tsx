@@ -1299,10 +1299,31 @@ describe('no behaviour changed on any screen in scope', () => {
     .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER)[^}]*\}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
-  it.each(['AllNews', 'BiblePage'] as const)(
-    '%s differs from the pre-PR revision only in class strings', (n) => {
-      expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
-    });
+  it('BiblePage differs from the pre-PR revision only in class strings', () => {
+    expect(strip(read('BiblePage.tsx'))).toBe(strip(at('BiblePage.tsx')));
+  });
+
+  it('AllNews differs only by the mobile post detail sheet and class strings', () => {
+    // Undo each exact community change before comparing the complete source. A
+    // missing or modified change fails here rather than weakening the comparison.
+    let now = read('AllNews.tsx');
+    const changes: Array<[string, string]> = [
+      // These two layout-only JSX comments already exist on main. Removing their
+      // exact wrappers prevents the comment stripper leaving empty JSX braces.
+      ["{/* Rule 6 (form-layout.ts): the header tracks the feed's measure so the\n          back arrow stays flush with the first card's left edge. `lg:max-w-2xl`\n          was the same intent written in rem — and rem is why it rendered 609px\n          and not the 672px its name says (globals.css trims the base to 14.5px\n          above 1024px). Same gate, a named px value. */}", ''],
+      ["{/* Rule 6 — the feed itself. A news feed is read, so it takes the reading\n          measure rather than a page or form measure. 609px -> 680px. */}", ''],
+      ["import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';\n", ''],
+      ["  const [mobileCommunity, setMobileCommunity] = useState(false);\n  const [detailPost, setDetailPost] = useState<string | null>(null);\n  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);\n", ''],
+      ["posts.map((post, index) => {\n            const card = <div", "posts.map((post, index) => (\n            <div"],
+      ["onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}", "onClick={() => toggleComments(post.id)}"],
+      ["</div>;\n            return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side=\"bottom\" className=\"h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]\"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;\n          })", "</div>\n          ))"],
+    ];
+    for (const [added, original] of changes) {
+      expect(now.split(added), 'the recorded mobile change must occur exactly once').toHaveLength(2);
+      now = now.replace(added, original);
+    }
+    expect(strip(now)).toBe(strip(at('AllNews.tsx')));
+  });
 
   /**
    * 🔴 `UserMessages` IS NO LONGER ON THAT LIST, and this is the entry that

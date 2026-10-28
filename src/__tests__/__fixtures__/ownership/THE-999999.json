@@ -236,6 +236,41 @@
       "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
       "digest": "e911777ef302dc0a4e42f1e17634eb65b0792cf841c911c52301cfaf61311dc8",
       "why": "Record the navigation and safe-area inventory after merging the community discovery shell and digital products changes."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "ticket": "THE-999999",
+      "reason": "Record the community discovery loading cards as a Skeleton adopter while preserving separate error and empty states.",
+      "digest": "358591d5eb2b8abf9961269abe21ab40cfea75aa8891868a9ce944e28f16a1dc",
+      "why": "Record the community discovery loading cards as a Skeleton adopter while preserving separate error and empty states."
+    },
+    {
+      "file": "src/app/discover/page.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Keep coverage for public discover routing and tenant-host rejection without reserving a tenant subdomain.",
+      "digest": "fe5c29995867ee0b75007d7a28dd15f6da9db75d4ba2668c3eead72648394cac",
+      "why": "Keep coverage for public discover routing and tenant-host rejection without reserving a tenant subdomain."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "ticket": "THE-999999",
+      "reason": "Apply the existing tenant logo plate to the mobile community switcher so logos remain legible in dark themes.",
+      "digest": "64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3",
+      "why": "Apply the existing tenant logo plate to the mobile community switcher so logos remain legible in dark themes."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Record the exact mobile post detail sheet changes while retaining the full pre-existing source comparison for AllNews.",
+      "digest": "4b959745f4e2ccb244d4b859ce506ac0adfda87f19bf4d3dabb40893390ea057",
+      "why": "Record the exact mobile post detail sheet changes while retaining the full pre-existing source comparison for AllNews."
+    },
+    {
+      "file": "src/utils/non-tenant-subdomains.ts",
+      "ticket": "THE-999999",
+      "reason": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only.",
+      "digest": "d9b07f46dfaa41896ad732866b2b9e09cabfa6f4f02ddb6e4d30a5066d2295d9",
+      "why": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only."
     }
   ]
 }
