@@ -108,6 +108,26 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
     return m![1].replace(/\s+/g, ' ').trim();
   };
 
+  it('comment creation binds the tenant, exact payload keys and profile byline', () => {
+    const clause = createClause(ruleBlock('comments'));
+    const parent = "get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')";
+    expect(clause).toContain(`belongsToTenant(${parent})`);
+    expect(clause).toContain(`request.resource.data.tenantId == ${parent}`);
+    const keys = "['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']";
+    expect(clause).toContain(`request.resource.data.keys().hasOnly(${keys})`);
+    expect(clause).toContain(`request.resource.data.keys().hasAll(${keys})`);
+    expect(clause).toContain('request.resource.data.authorId == request.auth.uid');
+    expect(clause).toContain('memberPostByline(request.resource.data)');
+    expect(clause).toContain('request.resource.data.content is string');
+    expect(clause).toContain('request.resource.data.content.size() <= 280');
+    const byline = RULES.match(/function memberPostByline\(post\)[\s\S]*?\n    }/);
+    expect(byline).not.toBeNull();
+    expect(byline![0]).toContain("userData().get('displayName', '')");
+    expect(byline![0]).toContain("request.auth.token.get('name', 'Member')");
+    expect(byline![0]).toContain("userData().get('photoURL', '')");
+    expect(byline![0]).toContain("!post.keys().hasAny(['authorLevel'])");
+  });
+
   it('dmMessages create checks participation and an admin counterpart without a payload allowlist', () => {
     const clause = createClause(ruleBlock('dmMessages'));
     // Identity and thread eligibility remain enforced server-side.

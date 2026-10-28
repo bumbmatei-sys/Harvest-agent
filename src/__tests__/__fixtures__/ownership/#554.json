@@ -280,6 +280,91 @@
       "file": "src/app/api/community/dm-counterpart/route.test.ts",
       "digest": "30ac84d169178475c1d23af623574448984e785766f6b1290957541685ae6650",
       "why": "PR 554 covers stale owner, roster and platform profile email denial for both matching and foreign profile tenants, preserves protected role and owner identity, and verifies that counterpart eligibility no longer reads the email roster."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "3c4121d46838dddb1cfd03369e9bb0e2b27902e4f0434d2d102f6ac87ebc5294",
+      "why": "PR 554 final review scopes comment creation to the parent tenant, requires exactly six fields and binds names and photos to the commenter profile; production rules deployment still requires the founder go."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "6cee8b5dc18f3482dabf26fa6d35fd5200176f4ac47fd73ef7dba8ddd5d558f4",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "b6ee8784f381206a2f4ff4894b4ea59a1994835c539faf8f77bf3b767739b1b1",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "6c9bc5697460e05528193829bbaf889de85c1effe244f6f2378d4ad1041616c7",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "af984b8150e09ed4462651e8232dbd860f82676900a85b9ac02e538dd89fd8b8",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "55e2e910ad61b8e76c2f52ace0323eac01422fb58e9d2cf0bdccfc289cbadd0f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "11edad7746e77e253f941b3699892dba18b6b89496a248a797eb5992b8018b7f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "c2a2b00fd3c303df1ca8f36fe1541f41ee897c26568adba3486f163ec453037c",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "5d2d4762d09942798edb4139ba4cb4050a44851819fb6788b203e2859b7b70ce",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "52b66bc26bee9cfe0741bcbb5d7133144cf79cc605f3cff407bf18f8281624ef",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "2164b2ffe993e1641ce610542c9beccbdc240087e01debf3ff59c59ecf22862f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "2041d5b0705353ab476f61b3c3acbdb652964ec01f52a7eb1adb3aa17bc0d219",
+      "why": "PR 554 final review completes the scoped church_admin fixture and appends all shadcn source pins, retaining the earlier guard values and authorization checks."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "965f0a413be4995152e8d68dcb1379437bca657719322f548753fb02de1516e8",
+      "why": "PR 554 final review completes the scoped church_admin fixture and appends all shadcn source pins, retaining the earlier guard values and authorization checks."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "d81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41",
+      "why": "PR 554 final review records static selected-state classes for the shadcn composer, retaining phone touch floors and all previous source pins so the button guard can resolve every control."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4487dc411c2a13becbfcbc70a92cdd17bf5aaac6b5a8265706a3b06cf7187146",
+      "why": "PR 554 final review records static selected-state classes for the shadcn composer, retaining phone touch floors and all previous source pins so the button guard can resolve every control."
     }
   ]
 }

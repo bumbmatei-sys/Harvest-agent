@@ -433,7 +433,16 @@ describe('community step 1 pins', () => {
     const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
     // PR 554 security review aligns the member composer with the rules' byline binding.
     const bylineBinding: Record<string, string> = { 'NewsTab.tsx': '43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb' };
-    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 final review binds comments and adopts shadcn controls with phone touch floors.
+    const finalReview: Record<string, string> = {
+      "NewsTab.tsx": "b6ee8784f381206a2f4ff4894b4ea59a1994835c539faf8f77bf3b767739b1b1",
+      "UserMessages.tsx": "5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3",
+      "community/GroupList.tsx": "af984b8150e09ed4462651e8232dbd860f82676900a85b9ac02e538dd89fd8b8",
+      "community/AdminPostComposer.tsx": "55e2e910ad61b8e76c2f52ace0323eac01422fb58e9d2cf0bdccfc289cbadd0f"
+};
+    // Keep selected states in static aria-pressed classes so the button floor guard measures them.
+    const staticControls: Record<string, string> = { 'community/AdminPostComposer.tsx': 'd81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41' };
+    expect([staticControls[file], finalReview[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -1313,7 +1322,9 @@ describe('no behaviour changed on any screen in scope', () => {
       '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
       'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495',
       // PR 554 round three selects the newest 50 posts before promoting pins.
-      'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644'])
+      'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644',
+      // PR 554 final review binds comment bylines and omits untrusted comment levels.
+      'f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 

@@ -26,7 +26,6 @@ interface Comment {
   authorId: string;
   authorName: string;
   authorPhoto?: string;
-  authorLevel?: number;
   content: string;
   createdAt: string;
 }
@@ -354,24 +353,20 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
       return;
     }
     try {
-      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
-      // resolver returns null for a super admin on the apex ("all tenants",
-      // right for a read), which stamped `tenantId: null` on the comment.
-      //
-      // Scope of the harm, stated precisely: NO rule reads a comment's own
-      // tenantId (the read scopes off the parent post's, create validates
-      // authorId/content/keys only, delete is authorId-only), so a null here
-      // does not orphan the comment. It is simply wrong denormalised data that
-      // any future tenant-filtered query or export would silently miss.
-      // `|| null` is kept — the field's `string | null` contract is unchanged.
+      // Comment rules require a real tenant and the same profile-bound byline as member posts.
       const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new Error('A ministry is required to comment.');
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userData = userSnap.exists() ? userSnap.data() : null;
+      const authorName = userData?.displayName || user.displayName || 'Member';
+      const authorPhoto = userData?.photoURL || '';
       await addDoc(collection(db, 'community_posts', postId, 'comments'), {
         authorId: user.uid,
-        authorName: user.displayName || 'Member',
-        authorPhoto: user.photoURL || '',
+        authorName,
+        authorPhoto,
         content: text,
         createdAt: new Date().toISOString(),
-        tenantId: tenantId || null,
+        tenantId,
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
     } catch (error) {
@@ -639,7 +634,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                   {commentErrors[post.id] && <p role="alert" className="text-xs text-muted">Could not load comments.</p>}
                 {!commentErrors[post.id] && postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} level={comment.authorLevel} small />
+                      <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} small />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-strong">{comment.authorName}</span>

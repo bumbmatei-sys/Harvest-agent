@@ -876,6 +876,8 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c',
     // PR 554 extracts roster reads into the shared tenant-scoped loader.
     '10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d',
+    // PR 554 final review replaces member and onboarding actions with shadcn Buttons.
+    '6c9bc5697460e05528193829bbaf889de85c1effe244f6f2378d4ad1041616c7',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
@@ -1016,5 +1018,7 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
     // PR 554 bounds group reads and binds sender identity.
     'ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f',
+    // PR 554 final review uses the shared Input for group search with its phone touch floor.
+    '5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3',
   ],
 };
