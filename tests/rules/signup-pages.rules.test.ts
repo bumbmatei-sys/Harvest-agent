@@ -14,16 +14,18 @@ afterAll(teardownEnv);
 
 describe('signup pages', () => {
   it('restricts pages and submissions to owner and permitted tenant admins', async () => {
-    for (const ctx of [await member(), await fullAdmin(), await asUid('forms-admin')]) {
-      await assertSucceeds(ctx.firestore().doc('signup_pages/page').get());
-      await assertSucceeds(ctx.firestore().collection('signup_pages/page/submissions').get());
+    const ownerDb = (await member()).firestore();
+    for (const db of [ownerDb, (await fullAdmin()).firestore(), (await asUid('forms-admin')).firestore()]) {
+      await assertSucceeds(db.doc('signup_pages/page').get());
+      await assertSucceeds(db.collection('signup_pages/page/submissions').get());
     }
     for (const ctx of [await member2(), await adminB(), await asUid('other-admin'), (await getEnv()).unauthenticatedContext()]) {
-      await assertFails(ctx.firestore().doc('signup_pages/page').get());
-      await assertFails(ctx.firestore().doc('signup_pages/page/submissions/one').get());
+      const db = ctx.firestore();
+      await assertFails(db.doc('signup_pages/page').get());
+      await assertFails(db.doc('signup_pages/page/submissions/one').get());
     }
-    await assertSucceeds((await member()).firestore().collection('signup_pages').where('ownerUid', '==', MEMBER_UID).get());
-    await assertFails((await member()).firestore().collection('signup_pages').get());
+    await assertSucceeds(ownerDb.collection('signup_pages').where('ownerUid', '==', MEMBER_UID).get());
+    await assertFails(ownerDb.collection('signup_pages').get());
   });
   it('denies every client write and handle read', async () => {
     for (const ctx of [await member(), await fullAdmin(), (await getEnv()).unauthenticatedContext()]) {
