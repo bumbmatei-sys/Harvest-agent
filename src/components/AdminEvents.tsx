@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
-  Check, Download, Search, ChevronRight, Globe, X, Pin, QrCode, Copy,
-  Ticket, Tag, ArrowUp, ArrowDown, Link2, Repeat,
+  Check, Download, Search, ChevronRight, ChevronDown, Globe, X, Pin, QrCode, Copy,
+  Ticket, Tag, ArrowUp, ArrowDown, Link2, Repeat, Ban, CalendarX,
 } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -25,7 +25,10 @@ import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -332,6 +335,11 @@ const AdminEvents: React.FC = () => {
   const [confirmNote, setConfirmNote] = useState<{ id: string; ok: boolean; text: string } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  // THE-379 (events remodel) — the detail screen's own additions: a
+  // confirming dialog before a soft "cancel the whole event" write, and
+  // which registration row currently has its answers expanded.
+  const [showCancelEventConfirm, setShowCancelEventConfirm] = useState(false);
+  const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
 
   // Registration-engine sub-forms (inside the create/edit form)
   const emptyTicket = { name: '', description: '', price: '0', capacity: '' };
@@ -559,6 +567,43 @@ const AdminEvents: React.FC = () => {
     } catch (e) { notifyError('Failed to delete event', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
+  };
+
+  /**
+   * THE-379 — "Cancel event" is a SOFT write, never a delete. The founder's
+   * existing Delete button above removes the document outright; this sets
+   * `status: 'cancelled'`, which the public page and the ICS calendar
+   * already exclude on (THE-308/THE-313's own inventory: "Draft/cancelled →
+   * public page 404s, excluded from calendar") — no reader needed a change
+   * for this, because the enum member already existed and nothing wrote it.
+   */
+  const cancelEvent = async () => {
+    if (!selected || !tenantId) return;
+    try {
+      await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), { status: 'cancelled' });
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
+      setSelected({ ...selected, status: 'cancelled' });
+    } catch (e) { notifyError('Failed to cancel event', e); }
+  };
+
+  /**
+   * Cancels ONE run of a recurring event's series, leaving every other run
+   * (and the series itself) untouched. `expandRuns` already excludes a
+   * cancelled date from every reader — the admin form's own run expansion,
+   * the public page's picker and the submit route's validation — so this is
+   * the one write all three already know how to honour.
+   */
+  const cancelRun = async (runDate: string) => {
+    if (!selected || !tenantId || !selected.recurrence) return;
+    const nextRecurrence = {
+      ...selected.recurrence,
+      cancelledRuns: [...(selected.recurrence.cancelledRuns || []), runDate],
+    };
+    try {
+      await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), { recurrence: nextRecurrence });
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
+      setSelected({ ...selected, recurrence: nextRecurrence });
+    } catch (e) { notifyError('Failed to cancel that date', e); }
   };
 
   const togglePin = async (ev: Event) => {
@@ -1323,225 +1368,390 @@ const AdminEvents: React.FC = () => {
       r.email.toLowerCase().includes(regSearch.toLowerCase()) ||
       r.ticketCode.toLowerCase().includes(regSearch.toLowerCase())
     );
-    return (
-      <div className={FORM_CONTAINER}>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-bold text-strong truncate font-display">{selected.title}</h2>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
-              {selected.status}
-            </span>
+    // THE-379 — the SAME confirm/reject surface the attendee row always had,
+    // narrowed to the rows that actually need it. `manualConfirmationMode()`
+    // gates the whole tab: with no manual rail there is nothing to confirm.
+    const pendingRegs = manualConfirmationMode()
+      ? registrations.filter(r => paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid')
+      : [];
+    // A recurring event's own next runs, read with the SAME `expandRuns` the
+    // create form, the public page and the submit route all use, so this
+    // list can never show a date the server would reject or hide one it
+    // would accept.
+    const recurrence = selected.recurrence || null;
+    const upcomingRuns = recurrence && selected.startDate
+      ? expandRuns(
+          {
+            startDate: selected.startDate.toDate(),
+            endDate: (selected.endDate || selected.startDate).toDate(),
+            timeZone: selected.timeZone,
+            recurrence,
+          },
+          new Date(),
+          new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+        ).slice(0, 8)
+      : [];
+    const questions = Array.isArray(selected.registrationQuestions) ? selected.registrationQuestions : [];
+
+    /** One attendee row, shared by the Registrations and Payments pending tabs. */
+    const regRow = (r: Registration) => (
+      <div key={r.id} className="bg-surface-raised rounded-2xl px-4 py-3 border border-line shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+            style={{ backgroundColor: r.status === 'attended' ? '#6E8E52' : 'var(--brand-color, #d4a017)' }}>
+            {r.name.charAt(0).toUpperCase()}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-strong truncate">{r.name}</p>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                r.status === 'attended' ? 'bg-field-100 text-field-700' :
+                r.status === 'confirmed' ? 'bg-sky-100 text-sky-700' :
+                r.status === 'waitlisted' ? 'bg-wheat-100 text-wheat-700' : 'bg-red-100 text-red-600'
+              }`}>{registrationStatusLabel(r.status)}</span>
+            </div>
+            <p className="text-xs text-faint">
+              {r.email} · #{r.ticketCode}{r.ticketTypeName ? ` · ${r.ticketTypeName}` : ''}{r.runDate ? ` · ${r.runDate}` : ''}
+            </p>
+            {/*
+              🔴 THE-351 — WHAT THE VOLUNTEER ON THE DOOR SEES, AND IT
+              CHANGES NOTHING ABOUT WHETHER THE PERSON COMES IN.
+
+              ✅ THE FOUNDER'S DECISION: LET THEM IN, FLAGGED. The Check In
+              control below is gated on `r.status === 'confirmed'` —
+              REGISTRATION status, which has never meant money — and this
+              flag is rendered BESIDE it, never in place of it. Somebody
+              who paid on Friday and was not confirmed until Sunday walks
+              in. Turning a paying guest away because an admin had not
+              tapped a button is the worst outcome this ticket could
+              produce, and the shape of this JSX is what makes it
+              impossible: there is no branch here that reaches `checkIn`.
+
+              ⚠️ THE WORDING IS SHORT AND NEUTRAL ON PURPOSE. It names the
+              RECORD's state ("Payment not confirmed"), never the person's
+              ("hasn't paid"), so it is enough for the volunteer to act on
+              and not enough to embarrass the guest if they read it over a
+              shoulder. The instruction — "Let them in" — is in the title
+              attribute, where the volunteer looks and the queue does not.
+            */}
+            {(() => {
+              const pay = paymentStateOf(r);
+              if (pay === 'free') return null;
+              return pay === 'confirmed' ? (
+                <span data-door-payment="confirmed" className="text-[10px] font-semibold text-field-700">
+                  {DOOR_CONFIRMED_BADGE}
+                </span>
+              ) : (
+                <span
+                  data-door-payment="unconfirmed"
+                  title={DOOR_UNCONFIRMED_HELP}
+                  className="text-[10px] font-semibold text-wheat-700"
+                >
+                  {DOOR_UNCONFIRMED_BADGE}
+                </span>
+              );
+            })()}
+            {confirmNote && confirmNote.id === r.id && (
+              <span
+                data-confirm-note={confirmNote.ok ? 'ok' : 'failed'}
+                className={`block text-[10px] font-semibold ${confirmNote.ok ? 'text-muted' : 'text-destructive'}`}
+              >
+                {confirmNote.text}
+              </span>
+            )}
+          </div>
+          {questions.length > 0 && r.answers && Object.keys(r.answers).length > 0 && (
+            <button
+              onClick={() => setExpandedRegId(expandedRegId === r.id ? null : r.id)}
+              className="p-1.5 rounded-lg hover:bg-surface-sunken text-faint flex-shrink-0"
+              aria-label={expandedRegId === r.id ? 'Hide answers' : 'Show answers'}
+            >
+              <ChevronDown size={14} className={`transition-transform ${expandedRegId === r.id ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+          {/* 🔴 THE-351 — Confirm sits BESIDE Check In and never in place
+              of it: the founder's decision is that an unconfirmed guest
+              walks in, so the door control below is reached on exactly
+              the same condition it always was. */}
+          {manualConfirmationMode() && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
+            <button
+              onClick={() => void confirmPayment(r)}
+              disabled={confirming === r.id}
+              data-row-confirm-payment
+              title={CONFIRM_BUTTON_HELP}
+              // 🔴 `bg-gold` IS `var(--brand-color)` (tailwind.config.ts:
+              // "Tenant-overridable action gold"), so this mints no colour
+              // literal at all — unlike the five pre-existing
+              // `var(--brand-color, #d4a017)` fallbacks in this file,
+              // which THE-346's registry pins by value and which a sixth
+              // would have added to.
+              className={`min-h-11 px-3 rounded-xl text-xs font-semibold text-white bg-gold disabled:opacity-50 flex-shrink-0 ${CONTROL_DENSITY.action}`}
+            >
+              {confirming === r.id ? 'Recording…' : CONFIRM_BUTTON}
+            </button>
+          )}
+          {r.status === 'confirmed' && (
+            <button
+              onClick={() => checkIn(r)}
+              disabled={checkingIn === r.id}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-field-100 text-field-700 hover:bg-field-200 disabled:opacity-50 flex-shrink-0"
+            >
+              <Check size={12} /> Check In
+            </button>
+          )}
+        </div>
+        {/* Registration questions — THE-379's "answers expandable". */}
+        {expandedRegId === r.id && questions.length > 0 && r.answers && (
+          <div className="mt-3 pt-3 border-t border-line space-y-1.5">
+            {questions.map(q => (
+              r.answers?.[q.id] ? (
+                <div key={q.id} className="text-xs">
+                  <span className="text-faint">{q.label}: </span>
+                  <span className="text-body font-medium">{r.answers[q.id]}</span>
+                </div>
+              ) : null
+            ))}
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      // 🔴 `key` is load-bearing, not cosmetic. This view's root and the list
+      // view's root below are both a bare `<div className={FORM_CONTAINER}>`,
+      // so without a key React reconciles them as the SAME element across a
+      // view switch and reuses whatever sits at the matching position inside
+      // — including this tab group, next to the list view's OWN `<Tabs
+      // value={listTab} onValueChange=…>`. That left this Tabs root
+      // "changing from controlled to uncontrolled" on every click into a
+      // detail (Base UI warns on exactly this), stuck on a value neither
+      // TabsContent here is named, so nothing in it ever painted.
+      <div key="event-detail" className={FORM_CONTAINER}>
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-bold text-strong truncate font-display">{selected.title}</h2>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
+                {selected.status}
+              </span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+              {selected.startDate && (
+                <span className="flex items-center gap-1">
+                  <Clock size={13} /> {[fmtWeekdayDate(selected.startDate), fmtTimeRange(selected.startDate, selected.endDate)].filter(Boolean).join(' · ')}
+                </span>
+              )}
+              {selected.isOnline ? (
+                <span className="flex items-center gap-1"><Globe size={13} /> Online</span>
+              ) : selected.location ? (
+                <span className="flex items-center gap-1"><MapPin size={13} /> {selected.location}</span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+              {copied ? <Check size={13} /> : <Link2 size={13} />} {copied ? 'Copied!' : 'Share link'}
+            </button>
             <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken">
               <Edit2 size={15} className="text-muted" />
             </button>
+            {selected.status !== 'cancelled' && selected.status !== 'completed' && (
+              <button onClick={() => setShowCancelEventConfirm(true)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken" title="Cancel event">
+                <Ban size={15} className="text-muted" />
+              </button>
+            )}
             <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-red-100 hover:bg-red-50">
               <Trash2 size={15} className="text-red-400" />
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
-            <div className="text-2xl font-bold text-strong">{registrations.length}</div>
-            <div className="text-xs text-faint mt-0.5">Total</div>
-          </div>
-          <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
-            <div className="text-2xl font-bold text-field-600">{confirmed}</div>
-            <div className="text-xs text-faint mt-0.5">{REGISTERED_STAT_LABEL}</div>
-          </div>
-          <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
-            <div className="text-2xl font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{attended}</div>
-            <div className="text-xs text-faint mt-0.5">Attended</div>
-          </div>
-        </div>
+        {/* "Cancel event" — a SOFT write (status: 'cancelled'), never the hard
+            delete the Trash icon above performs. Same confirm-dialog primitive
+            CancelPlanBlock.tsx uses for "Cancel Subscription", not a dedicated
+            AlertDialog primitive — adding one would move the shadcn primitive
+            count every guard in this repo pins by number. */}
+        <Dialog open={showCancelEventConfirm} onOpenChange={setShowCancelEventConfirm}>
+          <DialogContent className="max-w-md" showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-strong font-display">Cancel this event?</DialogTitle>
+            </DialogHeader>
+            <DialogDescription className="text-muted text-sm">
+              {selected.title} will show as cancelled. Registrations are not deleted and stay visible here.
+            </DialogDescription>
+            <DialogFooter>
+              <DialogClose className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
+                Keep event
+              </DialogClose>
+              <button
+                onClick={() => { void cancelEvent(); setShowCancelEventConfirm(false); }}
+                className={`flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
+              >
+                Cancel event
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {/* 🔴 THE-326 — THE RUN SHEET IS NOT MOUNTED HERE ANY MORE.
-            It was `ServicePlanPanel`, two clicks deep behind an event, which is
-            the defect this ticket fixes: planning a Sunday service is a weekly
-            rhythm with a rota and volunteers hanging off it, not a panel on an
-            event's detail page. It lives in the Service planning section
-            (`AdminServices`), which reads the same `servicePlans` documents
-            against the same `eventId` — the data did not move, only the door.
-            ⚠️ The plan is still keyed to THIS event; see `AdminServices`'s
-            header for why that is a contract and not a convenience. */}
+        <Tabs defaultValue="overview" className="mt-2">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="registrations">Registrations{registrations.length > 0 ? ` (${registrations.length})` : ''}</TabsTrigger>
+            {manualConfirmationMode() && (
+              <TabsTrigger value="pending">Payments pending{pendingRegs.length > 0 ? ` (${pendingRegs.length})` : ''}</TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* Registration panel — only for registration-enabled events */}
-        {selected.registrationEnabled && (
-          <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs mb-5">
-            <h3 className="text-sm font-bold text-body mb-3 flex items-center gap-1.5 font-display"><Ticket size={14} /> Public Registration</h3>
-            <div className="grid sm:grid-cols-[auto_1fr] gap-4 items-start">
-              <div className="text-center">
-                {qrDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={qrDataUrl} alt="Registration QR code" className="w-36 h-36 mx-auto" />
-                ) : (
-                  <div className="w-36 h-36 mx-auto flex items-center justify-center text-stone-300 border border-dashed border-line rounded-xl"><QrCode size={40} /></div>
-                )}
+          <TabsContent value="overview">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3 mb-5 mt-4">
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
+                <div className="text-2xl font-bold text-strong">{registrations.length}</div>
+                <div className="text-xs text-faint mt-0.5">Total</div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted mb-1">Registration link</p>
-                <p className="text-xs text-muted break-all mb-2">{registrationUrl(selected.id)}</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
-                    {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy link'}
-                  </button>
-                  {qrDataUrl && (
-                    <a href={qrDataUrl} download={`${selected.title.replace(/[^a-z0-9]/gi, '_')}_qr.png`}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
-                      <Download size={13} /> QR
-                    </a>
-                  )}
-                  <a href={registrationUrl(selected.id)} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
-                    <Link2 size={13} /> Open
-                  </a>
-                </div>
-
-                {/* Ticket type breakdown */}
-                {ticketTypes.length > 0 && (
-                  <div className="mt-4 space-y-1.5">
-                    {ticketTypes.map(t => {
-                      const count = registrations.filter(r => r.ticketTypeId === t.id && !r.waitlisted).length;
-                      return (
-                        <div key={t.id} className="flex items-center justify-between text-xs">
-                          <span className="text-body font-medium truncate">{t.name}</span>
-                          <span className="text-faint">{count} registered{t.capacity == null ? '' : ` / ${t.capacity} capacity`}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {selected.waitlistEnabled && (
-                  <p className="text-xs text-wheat-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
-                )}
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
+                <div className="text-2xl font-bold text-field-600">{confirmed}</div>
+                <div className="text-xs text-faint mt-0.5">{REGISTERED_STAT_LABEL}</div>
+              </div>
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
+                <div className="text-2xl font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{attended}</div>
+                <div className="text-xs text-faint mt-0.5">Attended</div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Attendee list */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input value={regSearch} onChange={e => setRegSearch(e.target.value)}
-              placeholder="Search attendees..." className={`w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
-          </div>
-          {registrations.length > 0 && (
-            <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
-              <Download size={13} /> Export CSV
-            </button>
-          )}
-        </div>
+            {/* 🔴 THE-326 — THE RUN SHEET IS NOT MOUNTED HERE ANY MORE.
+                It was `ServicePlanPanel`, two clicks deep behind an event, which is
+                the defect this ticket fixes: planning a Sunday service is a weekly
+                rhythm with a rota and volunteers hanging off it, not a panel on an
+                event's detail page. It lives in the Service planning section
+                (`AdminServices`), which reads the same `servicePlans` documents
+                against the same `eventId` — the data did not move, only the door.
+                ⚠️ The plan is still keyed to THIS event; see `AdminServices`'s
+                header for why that is a contract and not a convenience. */}
 
-        {filteredRegs.length === 0 ? (
-          <div className="text-center py-12 text-faint">
-            <Users size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm font-display">{regSearch ? 'No attendees match' : 'No registrations yet'}</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredRegs.map(r => (
-              <div key={r.id} className="bg-surface-raised rounded-2xl px-4 py-3 border border-line shadow-xs flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                  style={{ backgroundColor: r.status === 'attended' ? '#6E8E52' : 'var(--brand-color, #d4a017)' }}>
-                  {r.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-strong truncate">{r.name}</p>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      r.status === 'attended' ? 'bg-field-100 text-field-700' :
-                      r.status === 'confirmed' ? 'bg-sky-100 text-sky-700' :
-                      r.status === 'waitlisted' ? 'bg-wheat-100 text-wheat-700' : 'bg-red-100 text-red-600'
-                    }`}>{registrationStatusLabel(r.status)}</span>
-                  </div>
-                  <p className="text-xs text-faint">
-                    {r.email} · #{r.ticketCode}{r.ticketTypeName ? ` · ${r.ticketTypeName}` : ''}
-                  </p>
-                  {/*
-                    🔴 THE-351 — WHAT THE VOLUNTEER ON THE DOOR SEES, AND IT
-                    CHANGES NOTHING ABOUT WHETHER THE PERSON COMES IN.
-
-                    ✅ THE FOUNDER'S DECISION: LET THEM IN, FLAGGED. The Check In
-                    control below is gated on `r.status === 'confirmed'` —
-                    REGISTRATION status, which has never meant money — and this
-                    flag is rendered BESIDE it, never in place of it. Somebody
-                    who paid on Friday and was not confirmed until Sunday walks
-                    in. Turning a paying guest away because an admin had not
-                    tapped a button is the worst outcome this ticket could
-                    produce, and the shape of this JSX is what makes it
-                    impossible: there is no branch here that reaches `checkIn`.
-
-                    ⚠️ THE WORDING IS SHORT AND NEUTRAL ON PURPOSE. It names the
-                    RECORD's state ("Payment not confirmed"), never the person's
-                    ("hasn't paid"), so it is enough for the volunteer to act on
-                    and not enough to embarrass the guest if they read it over a
-                    shoulder. The instruction — "Let them in" — is in the title
-                    attribute, where the volunteer looks and the queue does not.
-                  */}
-                  {(() => {
-                    const pay = paymentStateOf(r);
-                    if (pay === 'free') return null;
-                    return pay === 'confirmed' ? (
-                      <span data-door-payment="confirmed" className="text-[10px] font-semibold text-field-700">
-                        {DOOR_CONFIRMED_BADGE}
+            {/* THE-379 — a recurring event's next runs, each cancellable on its
+                own without touching the series or any other run. */}
+            {upcomingRuns.length > 0 && (
+              <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs mb-5" data-event-run-picker>
+                <h3 className="text-sm font-bold text-body mb-3 flex items-center gap-1.5 font-display"><Repeat size={14} /> Upcoming runs</h3>
+                <div className="space-y-1.5">
+                  {upcomingRuns.map(run => (
+                    <div key={run.runDate} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-line">
+                      <span className="text-sm text-body">
+                        {new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(run.start)}
                       </span>
-                    ) : (
-                      <span
-                        data-door-payment="unconfirmed"
-                        title={DOOR_UNCONFIRMED_HELP}
-                        className="text-[10px] font-semibold text-wheat-700"
+                      <button
+                        onClick={() => void cancelRun(run.runDate)}
+                        className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 flex-shrink-0"
+                        title="Cancel this run only — the rest of the series is unaffected"
                       >
-                        {DOOR_UNCONFIRMED_BADGE}
-                      </span>
-                    );
-                  })()}
-                  {confirmNote && confirmNote.id === r.id && (
-                    <span
-                      data-confirm-note={confirmNote.ok ? 'ok' : 'failed'}
-                      className={`block text-[10px] font-semibold ${confirmNote.ok ? 'text-muted' : 'text-destructive'}`}
-                    >
-                      {confirmNote.text}
-                    </span>
-                  )}
+                        <CalendarX size={13} /> Cancel this date
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                {/* 🔴 THE-351 — Confirm sits BESIDE Check In and never in place
-                    of it: the founder's decision is that an unconfirmed guest
-                    walks in, so the door control below is reached on exactly
-                    the same condition it always was. */}
-                {manualConfirmationMode() && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
-                  <button
-                    onClick={() => void confirmPayment(r)}
-                    disabled={confirming === r.id}
-                    data-row-confirm-payment
-                    title={CONFIRM_BUTTON_HELP}
-                    // 🔴 `bg-gold` IS `var(--brand-color)` (tailwind.config.ts:
-                    // "Tenant-overridable action gold"), so this mints no colour
-                    // literal at all — unlike the five pre-existing
-                    // `var(--brand-color, #d4a017)` fallbacks in this file,
-                    // which THE-346's registry pins by value and which a sixth
-                    // would have added to.
-                    className={`min-h-11 px-3 rounded-xl text-xs font-semibold text-white bg-gold disabled:opacity-50 ${CONTROL_DENSITY.action}`}
-                  >
-                    {confirming === r.id ? 'Recording…' : CONFIRM_BUTTON}
-                  </button>
-                )}
-                {r.status === 'confirmed' && (
-                  <button
-                    onClick={() => checkIn(r)}
-                    disabled={checkingIn === r.id}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-field-100 text-field-700 hover:bg-field-200 disabled:opacity-50"
-                  >
-                    <Check size={12} /> Check In
-                  </button>
+              </div>
+            )}
+
+            {/* Registration panel — only for registration-enabled events */}
+            {selected.registrationEnabled && (
+              <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs mb-5">
+                <h3 className="text-sm font-bold text-body mb-3 flex items-center gap-1.5 font-display"><Ticket size={14} /> Public Registration</h3>
+                <div className="grid sm:grid-cols-[auto_1fr] gap-4 items-start">
+                  <div className="text-center">
+                    {qrDataUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={qrDataUrl} alt="Registration QR code" className="w-36 h-36 mx-auto" />
+                    ) : (
+                      <div className="w-36 h-36 mx-auto flex items-center justify-center text-stone-300 border border-dashed border-line rounded-xl"><QrCode size={40} /></div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-muted mb-1">Registration link</p>
+                    <p className="text-xs text-muted break-all mb-2">{registrationUrl(selected.id)}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+                        {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy link'}
+                      </button>
+                      {qrDataUrl && (
+                        <a href={qrDataUrl} download={`${selected.title.replace(/[^a-z0-9]/gi, '_')}_qr.png`}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+                          <Download size={13} /> QR
+                        </a>
+                      )}
+                      <a href={registrationUrl(selected.id)} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+                        <Link2 size={13} /> Open
+                      </a>
+                    </div>
+
+                    {/* Ticket type breakdown */}
+                    {ticketTypes.length > 0 && (
+                      <div className="mt-4 space-y-1.5">
+                        {ticketTypes.map(t => {
+                          const count = registrations.filter(r => r.ticketTypeId === t.id && !r.waitlisted).length;
+                          return (
+                            <div key={t.id} className="flex items-center justify-between text-xs">
+                              <span className="text-body font-medium truncate">{t.name}</span>
+                              <span className="text-faint">{count} registered{t.capacity == null ? '' : ` / ${t.capacity} capacity`}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {selected.waitlistEnabled && (
+                      <p className="text-xs text-wheat-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="registrations">
+            {/* Attendee list */}
+            <div className="flex items-center gap-3 mb-3 mt-4">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+                <input value={regSearch} onChange={e => setRegSearch(e.target.value)}
+                  placeholder="Search attendees..." className={`w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+              </div>
+              {registrations.length > 0 && (
+                <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
+                  <Download size={13} /> Export CSV
+                </button>
+              )}
+            </div>
+
+            {filteredRegs.length === 0 ? (
+              <div className="text-center py-12 text-faint">
+                <Users size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-display">{regSearch ? 'No attendees match' : 'No registrations yet'}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredRegs.map(regRow)}
+              </div>
+            )}
+          </TabsContent>
+
+          {manualConfirmationMode() && (
+            <TabsContent value="pending">
+              <div className="mt-4">
+                {pendingRegs.length === 0 ? (
+                  <div className="text-center py-12 text-faint">
+                    <Check size={32} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm font-display">Nothing waiting on confirmation</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pendingRegs.map(regRow)}
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     );
   }
@@ -1576,7 +1786,8 @@ const AdminEvents: React.FC = () => {
   const listHeading = selectedDayLabel
     ?? (listFilter === 'drafts' ? 'Drafts' : listFilter === 'past' ? 'Past' : 'Upcoming');
   return (
-    <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
+    // `key` — see the identical note on the detail view's root above.
+    <div key="event-list" className={`w-full ${FORM_CONTAINER} space-y-6`}>
       <AdminPageHeader
         title="Events"
         subtitle={`${events.length} event${events.length === 1 ? '' : 's'}`}

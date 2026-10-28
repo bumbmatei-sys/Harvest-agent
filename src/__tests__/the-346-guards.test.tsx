@@ -502,7 +502,13 @@ describe('no colour hardcoded, no emoji, no raw Tailwind scale', () => {
     // Pre-existing: the shared header's own brand fallback.
     'src/components/AdminScreenHeader.tsx': ['#B8962E'],
     // Pre-existing: five brand/status fallbacks and one THE-345 green.
-    'src/components/AdminEvents.tsx': ['#d4a017', '#d4a017', '#d4a017', '#d4a017', '#d4a017', '#6E8E52', '#d4a017'],
+    // ⚠️ REORDERED, NOT ADDED TO, BY THE ADMIN EVENT DETAIL (BRIEF ITEM 3).
+    // Same seven literals — six `#d4a017` and one `#6E8E52` — in a different
+    // SOURCE-TEXT order because the detail view's single scroll became
+    // Overview/Registrations/Payments pending Tabs and the attendee avatar's
+    // `#6E8E52` (the Confirmed/Attended status colour) now sits earlier
+    // relative to one of the gold fallbacks than it did in the old layout.
+    'src/components/AdminEvents.tsx': ['#d4a017', '#d4a017', '#d4a017', '#d4a017', '#6E8E52', '#d4a017', '#d4a017'],
     // Pre-existing and #476's: the gold and blue divIcon marker templates and
     // the three shadow rgba()s inside them. Marker colour is a palette change,
     // not a zoom fix, so this ticket leaves them and reports them.

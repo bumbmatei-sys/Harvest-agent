@@ -176,6 +176,11 @@ async function detail(): Promise<HTMLElement> {
     .filter((d) => /Autumn Retreat/.test(d.textContent ?? ''));
   await click(rows[rows.length - 1] as HTMLElement);
   await settle();
+  // THE-379 (events remodel) — the attendee list and Export CSV moved behind
+  // the detail screen's own "Registrations" tab (Overview/Registrations/
+  // Payments pending); every caller of this helper wants the attendee list.
+  await click(buttonContaining(c, 'Registrations'));
+  await settle();
   return c;
 }
 

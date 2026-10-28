@@ -393,6 +393,11 @@ describe('THE-345 · a paid event cannot be created while no payment rail exists
         .filter((d) => /Test/.test(d.textContent ?? ''));
       await click(rows[rows.length - 1] as HTMLElement);
       await settle();
+      // THE-379 (events remodel) — Export CSV moved behind the detail
+      // screen's own "Registrations" tab (Overview/Registrations/Payments
+      // pending).
+      await click(buttonContaining(c, 'Registrations'));
+      await settle();
       await click(buttonContaining(c, 'Export CSV'));
       await settle();
 

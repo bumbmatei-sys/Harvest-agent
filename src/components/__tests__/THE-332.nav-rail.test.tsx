@@ -981,6 +981,15 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        an exact pixel figure. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE
        MOVED. */
     'ed8abe4c093daf9200157e4d1875ec13dd288335a01bfeb68093653c8b8befe0',
+    /* APPENDED BY the admin event detail (brief item 3), nothing above
+       removed or rewritten. The detail view's single scroll became Overview/
+       Registrations/Payments pending Tabs, plus a Cancel-event confirm
+       Dialog and a recurring event's own next-runs list — full accounting in
+       THE-379.json. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED,
+       which is what THE-332 pins this file for: `cancelEvent`/`cancelRun`
+       write the SAME tenants/{id}/events/{id} document this screen always
+       wrote. */
+    '752f34938fa0d7d1397441ea6be877def063067cf689767c349c44cf6fb8ade3',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */

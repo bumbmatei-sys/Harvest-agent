@@ -955,7 +955,14 @@ const SURFACES: Record<Screen, Record<string, Nav>> = {
       await click(buttonContaining(dialog, 'Add Discount Code'));
       return dialog;
     },
-    attendees: async (c) => { await click(clickRoleButton(c, 'Sunday Worship Gathering')); },
+    // THE-379 (events remodel) — the attendee list moved behind the detail
+    // screen's own "Registrations" tab (Overview/Registrations/Payments
+    // pending); clicking into it keeps this setup's name true to what it
+    // captures.
+    attendees: async (c) => {
+      await click(clickRoleButton(c, 'Sunday Worship Gathering'));
+      await click(buttonContaining(c, 'Registrations'));
+    },
   },
   AdminFundraising: {
     default: NOOP,
@@ -1281,7 +1288,16 @@ const THE_345_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, r
  * OFF in that view — so this is a per-view loss, not a per-screen one.
  */
 const THE_379_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
-  AdminEvents: { formExpanded: ['bg-surface-chip'] },
+  AdminEvents: {
+    formExpanded: ['bg-surface-chip'],
+    // The admin event detail (brief item 3) — the three-stat grid
+    // (Total/Registered/Attended, carrying `bg-surface-raised`, `shadow-xs`
+    // and `text-field-600`) moved into its own Overview tab; the `attendees`
+    // setup now clicks into the Registrations tab beside it, where the
+    // attendee list itself lives. Per-view, not per-screen: the Overview tab
+    // still spells all three, unchanged, and no other view lost anything.
+    attendees: ['bg-surface-raised', 'shadow-xs', 'text-field-600'],
+  },
 };
 
 /**
@@ -1711,6 +1727,57 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'THE-379 (events remodel) - the old Cancel/Save row spelled its own top padding (`<div className="flex gap-3 pt-2">`) to put a gap above itself inside the page. `DialogFooter` is the shared primitive\'s own footer slot, which carries its own spacing (`p-4`, recorded in THE_379_MOBILE_TOKENS) instead, so the hand-written gap has nothing left to do and goes with the div it was on.',
     'bg-surface-chip':
       "THE-379 (events remodel) - leaves formExpanded only, the same fact THE_379_REMOVED_COLOURS records for the colour sweep. \"Online Event\" was a bespoke toggle sharing `on ? 'bg-gold' : 'bg-surface-chip'` with the shared `Toggle` component; it is now the \"Where\" ToggleGroup, which spells neither string. The `form` view keeps this token unchanged (it still comes from \"Enable Registrations\" sitting OFF there), so this is a per-view loss, not a per-screen one.",
+    // APPENDED BY the admin event detail (brief item 3, events remodel), nothing above removed or rewritten.
+    'grid':
+      'The three-stat grid (Total/Registered/Attended) moved from the detail view\'s single scroll into its own Overview tab; the attendees setup now clicks into the Registrations tab beside it (the attendee list\'s own new home), so `grid` leaves what this suite\'s `attendees` view captures — not the screen. The Overview tab still spells it, unchanged, one tab over.',
+    'grid-cols-3':
+      'The same stat grid\'s column template, gone from the `attendees` view for the identical reason as `grid` directly above — it moved to the Overview tab, one tab over from Registrations.',
+    'bg-surface-raised':
+      'One of the same stat grid\'s own card classes, gone from `attendees` for the identical reason — the grid moved to the Overview tab. Also recorded in THE_379_REMOVED_COLOURS for section 8\'s colour sweep.',
+    'shadow-xs':
+      'The same stat grid card\'s shadow, gone from `attendees` for the identical reason. Also recorded in THE_379_REMOVED_COLOURS.',
+    // 'text-field-600' needs no new entry here — THE-345 already recorded it
+    // above (a different occurrence, on the lg card's price line), and this
+    // flat map is keyed by token name only, so that entry already covers the
+    // stat grid's own occurrence leaving the `attendees` view.
+    //
+    // The rest of this view's drop: the Overview tab (stats grid AND the
+    // Public Registration QR/share panel) is no longer part of what the
+    // `attendees` setup captures, since it now clicks into the Registrations
+    // tab beside it to reach the attendee list. All of it is still rendered,
+    // one tab over — none of it was deleted from the screen.
+    'max-w-3xl':
+      'The outer FORM_CONTAINER-equivalent cap on the stats/QR content, now ' +
+      'read on the Overview tab instead of `attendees`. Already sm:-gated; ' +
+      'see NON_BINDING_CAPS for why a cap leaving a view is phone-neutral.',
+    'p-4':
+      'The stat cards\' own padding, on the Overview tab.',
+    'p-5':
+      'The Public Registration panel\'s own padding, on the Overview tab.',
+    'rounded-2xl':
+      'The stat cards\' and the Public Registration panel\'s corner radius, on the Overview tab.',
+    'text-2xl':
+      'The stat figures\' font size, on the Overview tab.',
+    'mt-0.5':
+      'Spacing under a stat figure\'s label, on the Overview tab.',
+    'mb-1':
+      'Spacing above the registration link\'s URL text, on the Overview tab.',
+    'gap-4':
+      'The Public Registration panel\'s QR/text column gap, on the Overview tab.',
+    'h-36':
+      'The QR image\'s own fixed box height (144px, informational, not a tap target), on the Overview tab.',
+    'w-36':
+      'The same QR box\'s width, on the Overview tab.',
+    'break-all':
+      'Lets the registration URL wrap mid-word instead of overflowing, on the Overview tab.',
+    'py-1.5':
+      'The Copy link / QR / Open buttons\' own padding, on the Overview tab.',
+    'lucide-ticket':
+      'The Public Registration panel heading\'s Ticket icon identifier, on the Overview tab.',
+    'lucide-copy':
+      'The Copy link button\'s icon identifier, on the Overview tab.',
+    'lucide-download':
+      'The QR download link\'s icon identifier, on the Overview tab.',
   };
 
   /**
@@ -2160,6 +2227,46 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'Eden shell pass — the tabs primitive sets flex-1 on a trigger. flex-none ' +
       'lets the shared w-20 win, so the two words stay the same width. It does ' +
       'not set a height and cannot pull a target under 44px.',
+
+    /* ── The admin event detail (brief item 3, events remodel) — the
+     * header's date/time line and action row, on `AdminEvents/attendees`.
+     * Every token below is structural, a spacing value already on this
+     * screen's phone layer elsewhere, or a lucide glyph class; not one
+     * carries colour or shrinks a tap target. */
+    'gap-x-3':
+      'The header\'s date/time line lays its Clock icon beside its text and ' +
+      'wraps onto a second item (location) with the SAME horizontal gap the ' +
+      'row\'s vertical counterpart (gap-y-1, below) already pairs with ' +
+      'elsewhere on this screen. Spacing only; no colour or size.',
+    'gap-y-1':
+      'The same line\'s row gap when it wraps to two lines on a narrow phone. ' +
+      'An unprefixed spacing token this file already carries on other flex-wrap ' +
+      'rows; Rule 4 owns sm:-gated gaps, which this is not.',
+    'mt-1.5':
+      'Structural — the 6px gap between the title/status row and the date/time ' +
+      'line beneath it. An unprefixed spacing value, not a size or a colour.',
+    'mt-2':
+      'Structural — the gap between the detail header and the Overview/' +
+      'Registrations/Payments pending Tabs beneath it.',
+    'flex-shrink-0':
+      'The header\'s action buttons (Share link, Edit, Cancel event, Delete) ' +
+      'must not compress when the title beside them truncates instead. A flex ' +
+      'behaviour flag; it carries no colour and does not touch a tap target\'s ' +
+      'own size.',
+    'lucide-clock':
+      'The date/time line\'s Clock icon identifier. lucide names every icon in ' +
+      'its own class; Tailwind defines no rule for it, so it sets nothing on a ' +
+      'phone. This screen already renders Clock elsewhere (the list rows\' own ' +
+      'time range).',
+    'lucide-map-pin':
+      'The same line\'s MapPin icon identifier, for an in-person event\'s ' +
+      'location. This screen already renders MapPin on its list rows; this is ' +
+      'the same glyph reaching the detail header.',
+    'lucide-ban':
+      'The Cancel-event button\'s icon identifier (Ban). A new glyph this ' +
+      'screen did not carry before, but an IDENTIFIER CLASS, not a style: ' +
+      'Tailwind defines no rule for `lucide-ban` and it sets nothing on a ' +
+      'phone, the same reasoning every other lucide-* entry on this list rests on.',
   };
 
   const toTokens = (layer: string[]) =>
@@ -2787,8 +2894,34 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     // reads this screen already made (`useMonthEvents` and the event's own
     // stored fields); no new collection, read or write was added, and no
     // price, fee or checkout call moved.
-    strippedSha: '890474356cafce33b863e4e773bef038c962c31760d19fd4c896039bcd2f0a3c',
-    strippedLines: 1684,
+    //
+    // RE-RECORDED AGAIN by the admin event detail (brief item 3, events
+    // remodel). Previous value kept here:
+    //   strippedSha:   890474356cafce33b863e4e773bef038c962c31760d19fd4c896039bcd2f0a3c
+    //   strippedLines: 1684
+    // WHAT MOVED: the detail view's single scroll became Overview/
+    // Registrations/Payments pending Tabs (Overview carries the stats grid,
+    // a recurring event's own next-runs list with a per-run cancel, and the
+    // existing QR/registration panel; Registrations carries the search box,
+    // Export CSV and the attendee list with a per-row answers-expandable
+    // toggle; Payments pending narrows the SAME attendee row renderer to the
+    // rows that already drew an inline Confirm button); the header gained a
+    // Share link button (the existing `copyRegUrl`) and a Cancel-event
+    // control, a Dialog-based confirm — the same primitive
+    // `CancelPlanBlock.tsx` uses — that writes `status: 'cancelled'`, a soft
+    // write the public page and ICS calendar already exclude on. `key=
+    // "event-detail"`/`key="event-list"` on the two top-level view roots are
+    // load-bearing: both were a bare `<div className={FORM_CONTAINER}>`, so
+    // without a key React reconciled the new detail Tabs with the list
+    // view's OWN controlled `<Tabs value={listTab}>`, which Base UI warns on
+    // and which left the detail Tabs painting nothing. `firestorePathsOf`
+    // below gained two occurrences of a path shape already in the file
+    // (`'tenants', tenantId, 'events', selected.id`, from the new
+    // `cancelEvent`/`cancelRun` — see that entry's own note); no new
+    // collection, read or write shape was added, and no price, fee or
+    // checkout call moved.
+    strippedSha: '1094639a37514043de00977701b1de7546f8809c18ed33f4319e0b8ddea3ac03',
+    strippedLines: 1867,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
@@ -2797,13 +2930,35 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     expect(sha(now), DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedSha);
   });
 
-  it('🔴 adds no Firestore WRITE to AdminEvents — the month view only reads', () => {
-    // Pinned against the PRE-PR revision. The month grid reads
-    // `tenants/{id}/events`, a path this screen ALREADY reads for the list, so
-    // the set is unchanged — and a new collection, or a write, would appear
-    // here. THE-251 names this as the guard that protects the money;
-    // AdminEvents had none until this ticket.
-    expect(firestorePathsOf(read('AdminEvents.tsx'))).toEqual(PRE_PR.AdminEvents.firestorePaths);
+  /**
+   * 🔴 RE-AIMED BY THE ADMIN EVENT DETAIL (BRIEF ITEM 3), THE SAME SHAPE
+   * THE-331 GAVE ABOVE FOR ADMINCOMMUNITY — "the pin is KEPT and RE-AIMED,
+   * never loosened and never deleted." This used to be a bare
+   * `toEqual(PRE_PR.AdminEvents.firestorePaths)`, which was true until this
+   * ticket's `cancelEvent` and `cancelRun` each called
+   * `doc(db, 'tenants', tenantId, 'events', selected.id)` — the IDENTICAL
+   * string pattern `handleSave`'s own update branch already used ONCE
+   * (`PRE_PR.AdminEvents.firestorePaths` still carries that one occurrence,
+   * unedited, below). So the claim narrows from "the set is byte-identical"
+   * to "the set is the pre-PR set with this one already-existing path shape
+   * appearing twice more" — never a new collection, never a new KIND of
+   * write. `cancelEvent` writes one existing enum member
+   * (`status: 'cancelled'`) onto the event document this screen has always
+   * owned; `cancelRun` writes one existing optional array field
+   * (`recurrence.cancelledRuns`) onto the same document. THE-251 names this
+   * as the guard that protects the money; AdminEvents had none until THE-345.
+   */
+  it('🔴 adds no Firestore WRITE to AdminEvents beyond two more of a path shape it already had', () => {
+    const now = firestorePathsOf(read('AdminEvents.tsx'));
+    const pathShape = "'tenants', tenantId, 'events', selected.id";
+    expect(PRE_PR.AdminEvents.firestorePaths.filter((p) => p === pathShape)).toHaveLength(1);
+    expect(now.filter((p) => p === pathShape), 'cancelEvent/cancelRun did not both reach this path').toHaveLength(3);
+    // And nothing else about the set moved: the same multiset, with this one
+    // path shape appearing twice more than before.
+    const withoutNewOccurrences = [...now];
+    withoutNewOccurrences.splice(withoutNewOccurrences.indexOf(pathShape), 1);
+    withoutNewOccurrences.splice(withoutNewOccurrences.indexOf(pathShape), 1);
+    expect(withoutNewOccurrences.sort()).toEqual([...PRE_PR.AdminEvents.firestorePaths].sort());
   });
 
   /**

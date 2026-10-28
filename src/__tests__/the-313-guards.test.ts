@@ -953,8 +953,20 @@ describe('the existing events list, its write paths and paid-event creation are 
     // Tailwind classes, never `style={{`, so the ratio moves in the one
     // direction this guard has always been about. A count that is not
     // exactly 272 (classNames) or 7 (inline styles) means something else moved.
+    // ── AMENDED AGAIN, FOR THE ADMIN EVENT DETAIL (BRIEF ITEM 3): 272 -> 306 ──
+    //
+    // The detail view's single scroll became Overview/Registrations/Payments
+    // pending Tabs (TabsList, three TabsTrigger, three TabsContent), a Cancel
+    // event confirm Dialog (header/content/footer/two buttons), a recurring
+    // event's next-runs list and a per-row answers-expandable toggle — all of
+    // it spending Tailwind classes, never `style={{`.
+    //
+    // 🔴 THE INLINE-STYLE COUNT IS STILL EXACTLY 7 — none of this ticket's
+    // detail-view work adds or removes one, so the ratio moves in the one
+    // direction this guard has always been about. A count that is not exactly
+    // 306 (classNames) or 7 (inline styles) means something else moved.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(272);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(306);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 
