@@ -2,14 +2,34 @@
   "ticket": "THE-555",
   "entries": [
     {
-      "file": "src/components/community/CommunitySettingsEditor.tsx",
-      "digest": "547c08b5ef15a8e4e03008e5c2501c55087169f8ce85400861743eb7a10330e7",
-      "why": "PR 555 adds the public community cover, gallery, description and owner controls using the existing uploader and replaces the question type control with Select."
+      "file": "src/lib/community/review-aggregate.ts",
+      "digest": "e2b91b459cf8b52658dcd6ac3a97893e597c1a5a49ac4b21b05642c20082b8b6",
+      "why": "Defines the server-side arithmetic for adding, editing and deleting community reviews. It checks the existing sum, count and average before applying a delta so corrupt stored totals fail visibly rather than publishing an inaccurate rating. This helper is not yet connected to a write route."
     },
     {
-      "file": "src/app/discover/page.test.tsx",
-      "digest": "7f74dbfdb7379320c066cf46f7a643c9922b1122e7b478b2b2398ff4c6fda980",
-      "why": "PR 555 opens the public card About view before the tenant join link, so the server-rendered listing test checks the Free label while retaining its host and privacy checks."
+      "file": "src/lib/community/review-aggregate.test.ts",
+      "digest": "972a8f0776369d355051b3992d5b5ecc5b0b15779b50e9aea124428a214e6dc3",
+      "why": "Covers review creation, edits, deletion and invalid aggregate state. An edit mutation that failed to subtract the previous rating made this test fail, confirming that the test detects a double-counted rating."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "c080ec0563817cba1a08e2bc07fd9a589db9e344f6e30a614d1c0c8fdefa8686",
+      "why": "Adds a shadcn gallery carousel and displays and filters published community ratings."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "e5eaaf201160a67954f233dd976373f0aa3a899649bc5ce5d48061980a2a96f4",
+      "why": "Checks gallery rendering and rating filtering in community discovery. This preserves coverage for discovery behavior as the feature evolves."
+    },
+    {
+      "file": "src/lib/community/public-listing.ts",
+      "digest": "543108ba48d7889f32c3c70d2e2a7fa38850a3e1370d26643f401f226f1fd81e",
+      "why": "Validates and projects public rating summaries without exposing additional fields."
+    },
+    {
+      "file": "src/lib/community/public-listing.test.ts",
+      "digest": "43cc54d6480eeea77f516a72845c9e0ce42f812a2e728bfe96dd9bf4fa61bfca",
+      "why": "Checks valid, missing and malformed public rating summaries. This preserves coverage for discovery behavior as the feature evolves."
     }
   ]
 }

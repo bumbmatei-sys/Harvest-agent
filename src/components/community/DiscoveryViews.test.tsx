@@ -32,13 +32,18 @@ describe('community views', () => {
     expect(filterListings(items, '', 'paid')).toEqual([items[1]]);
     expect(filterListings(items, 'hope', 'free')).toEqual([]);
   });
-  it('shows public details and switches gallery images', async () => {
+  it('filters and sorts by published ratings', () => {
+    const items = [{ ...listings[0], ratingAvg: 4.5, ratingCount: 2 }, { ...listings[1], ratingAvg: 3, ratingCount: 1 }, { ...listings[1], tenantId: 'c' }];
+    expect(filterListings(items, '', 'all', 'four')).toEqual([items[0]]);
+    expect(filterListings(items, '', 'all', 'sort').map(item => item.tenantId)).toEqual(['a', 'b', 'c']);
+  });
+  it('shows public details and gallery images in a carousel', async () => {
     const listing = { ...listings[0], coverUrl: 'https://example.com/cover.jpg', galleryUrls: ['https://example.com/gallery.jpg'], longDescription: 'First line\nSecond line', ownerName: 'Alex', isPublic: true };
     await act(async () => root.render(<CommunityAbout listing={listing} onBack={() => {}} />));
     expect(host.textContent).toContain('By Alex');
     expect(host.textContent).toContain('First line\nSecond line');
-    await act(async () => (host.querySelector('[aria-label="Show image 2"]') as HTMLButtonElement).click());
-    expect(host.querySelector('img[alt="Grace cover"]')?.getAttribute('src')).toBe('https://example.com/gallery.jpg');
+    expect(host.querySelector('[aria-roledescription="carousel"]')).toBeTruthy();
+    expect(Array.from(host.querySelectorAll('img[alt="Grace cover"]')).map(image => image.getAttribute('src'))).toEqual(['https://example.com/cover.jpg', 'https://example.com/gallery.jpg']);
     expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
   });
   it('distinguishes loading, errors and empty listings', async () => {

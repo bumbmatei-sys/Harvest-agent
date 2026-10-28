@@ -25,6 +25,9 @@ export function readPublicListing(data: Record<string, unknown>): Listing {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; } catch { return false; }
   };
   if (!validImage(coverUrl) || !Array.isArray(galleryUrls) || galleryUrls.length > 8 || galleryUrls.some(url => !url || !validImage(url)) || typeof longDescription !== 'string' || longDescription.length > 10000 || typeof ownerName !== 'string' || ownerName.length > 120 || typeof isPublic !== 'boolean') throw new Error('Invalid public community details');
-  return { tenantId, slug, name, logoUrl, shortDescription, memberCount: memberCount as number, coverUrl: coverUrl as string, galleryUrls: galleryUrls as string[], longDescription, ownerName, isPublic };
+  const ratingCount = data.ratingCount === undefined && data.ratingAvg === undefined ? 0 : data.ratingCount;
+  const ratingAvg = data.ratingCount === undefined && data.ratingAvg === undefined ? 0 : data.ratingAvg;
+  if (!Number.isSafeInteger(ratingCount) || (ratingCount as number) < 0 || typeof ratingAvg !== 'number' || !Number.isFinite(ratingAvg) || (ratingCount === 0 ? ratingAvg !== 0 : ratingAvg < 1 || ratingAvg > 5)) throw new Error('Invalid public community rating');
+  return { tenantId, slug, name, logoUrl, shortDescription, memberCount: memberCount as number, coverUrl: coverUrl as string, galleryUrls: galleryUrls as string[], longDescription, ownerName, isPublic, ratingCount: ratingCount as number, ratingAvg };
 
 }
