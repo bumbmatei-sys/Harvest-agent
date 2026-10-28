@@ -2037,8 +2037,7 @@ describe('no community query or write path changed', () => {
     const expected = THE_331_COMMUNITY.firestorePaths();
     const channelList = expected.indexOf("'tenants', tenantId, 'channels'");
     expected.splice(channelList, 0, "'tenants', tenantId, 'channels', 'all-members'");
-    const directList = expected.indexOf("'tenants', tenantId, 'directMessages'", channelList);
-    expected.splice(directList + 1, 0, "'users'", "'users'");
+    // PR 554 routes both roster reads through the existing scoped loader.
     expect(firestorePathsOf(after)).toEqual(expected);
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
@@ -2059,8 +2058,11 @@ describe('no community query or write path changed', () => {
   it('pins AdminCommunity outside presentation after community step 1', () => {
     const now = stripPresentation(read('AdminCommunity.tsx'));
     // Community step 1 changes group creation and exposes onboarding answers.
-    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(1285);
-    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe('260913648f9e957b8bec6fbce8f9ade5e41bb6119907a0f005fef7d374c329ec');
+    // PR 554 bounds the group picker and uses the shared sender-name fallback.
+    expect([
+      [1285, '260913648f9e957b8bec6fbce8f9ade5e41bb6119907a0f005fef7d374c329ec'],
+      [1280, '76881812af03d7c3baaf7e5b212de85809436fdba90246e8a70431507a710c8a'],
+    ], DIFF_HINT('AdminCommunity')).toContainEqual([now.split('\n').length, sha(now)]);
   });
 
   it('writes nothing on render when the default group already exists', async () => {

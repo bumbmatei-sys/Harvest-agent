@@ -42,7 +42,7 @@ export function NewGroupDialog({ open, onOpenChange, people, loadingPeople, peop
           {([['all', 'Everyone'], ['selected', 'Selected people'], ['admins', 'Admins only']] as const).map(([id, label]) => <label className="flex min-h-11 items-center gap-3 rounded-lg px-2 hover:bg-surface-sunken" key={id}><RadioGroupItem value={id} />{label}</label>)}
         </RadioGroup>
       </fieldset>
-      {audience === 'selected' && <div className="space-y-2"><Input aria-label="Search people" placeholder="Search people" value={search} onChange={e => setSearch(e.target.value)} />
+      {audience === 'selected' && <div className="space-y-2"><p className="text-xs text-muted">Search covers up to 200 loaded accounts.</p><Input aria-label="Search people" placeholder="Search people" value={search} onChange={e => setSearch(e.target.value)} />
         {loadingPeople ? <p>Loading people…</p> : peopleError ? <p role="alert">Could not load people.</p> : <div className="max-h-48 overflow-y-auto">{people.filter(p => `${p.displayName || ''} ${p.email || ''}`.toLowerCase().includes(search.toLowerCase())).map(person => <label className="flex min-h-11 items-center gap-3" key={person.id}><Checkbox checked={members.includes(person.id)} onCheckedChange={checked => setMembers(current => checked ? [...current, person.id] : current.filter(id => id !== person.id))} /><Avatar><AvatarFallback>{(person.displayName || person.email || '?').charAt(0).toUpperCase()}</AvatarFallback></Avatar><span>{person.displayName || person.email || 'Unknown'}</span></label>)}</div>}
       </div>}
       {error && <p role="alert" className="text-destructive">{error}</p>}

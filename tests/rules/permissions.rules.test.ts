@@ -445,7 +445,7 @@ describe('community messaging [manageCommunity]', () => {
   it('channelMessages: channel members post; a manageCommunity admin moderates; others cannot', async () => {
     await seedDoc(sub('channels/chat-ch'), { name: 'c', members: [MEMBER_UID] });
     const db = (await member()).firestore();
-    await assertSucceeds(db.doc(sub('channelMessages/m1')).set({ channelId: 'chat-ch', senderId: MEMBER_UID, content: 'hi' }));
+    await assertSucceeds(db.doc(sub('channelMessages/m1')).set({ channelId: 'chat-ch', senderId: MEMBER_UID, senderName: 'Member', senderRole: 'user', content: 'hi' }));
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
     await assertSucceeds(holder.doc(sub('channelMessages/m1')).update({ content: 'moderated' }));
     const non = (await asUid(nonHolderUid('manageCommunity'))).firestore();

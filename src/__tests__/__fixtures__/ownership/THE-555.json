@@ -225,6 +225,36 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "46d05813562816f1aa4a035b3db7288e17875f3b8f4c031c171c56022e9e880d",
       "why": "Records the review rating toggle group adopter with the required explanation and preserves the carousel inventory and lockfile pins."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "8d1a0406d3923c3eea99965de80328ed5b49a7c2a87d3e52802ae559e56bb83e",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "65891617befadc19db40de581b99fd77a4634b367c238fc1927fa248863570f0",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "063841a792375c73e3d61e235080b392d035a41c1d68db99bba82401ba0580e2",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "45acf0162530c6145b6306c429b60e46a277dbaec9db63475fe5def73b655c5f",
+      "why": "Records the merged discovery shell and community post card guard inventories while preserving earlier pins."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7ace2e38fa7ea74c76bb53f13460bec86d0d02508dbc8c01f7d4f1534dcc2034",
+      "why": "Records the merged discovery shell and community post card guard inventories while preserving earlier pins."
     }
   ]
 }

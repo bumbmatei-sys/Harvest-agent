@@ -721,8 +721,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       const { getDoc } = await import('firebase/firestore');
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       const name = userDoc.exists()
-        ? (userDoc.data().displayName || auth.currentUser.displayName || 'You')
-        : (auth.currentUser.displayName || 'You');
+        ? (userDoc.data().displayName || auth.currentUser.displayName || 'Member')
+        : (auth.currentUser.displayName || 'Member');
       const role = userDoc.exists() ? (userDoc.data().role || 'user') : 'user';
       if (cancelled) return;
       setCurrentUser({ uid: auth.currentUser.uid, name });

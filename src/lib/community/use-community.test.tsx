@@ -34,7 +34,13 @@ describe('tenant community reads', () => {
     expect(result.loading).toBe(true); expect(result.settings.modules.news).toBe(true);
     await act(async () => firestore.listeners.get('tenants/b/settings/community')!.next(snapshot()));
     expect(result.loading).toBe(false); expect(result.settings.modules.news).toBe(true);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await act(async () => firestore.listeners.get('tenants/b/settings/community')!.next(snapshot({ modules: {} })));
+    expect(result.settings).toEqual(defaultCommunitySettings());
+    expect(log).toHaveBeenCalled();
     await act(async () => firestore.listeners.get('tenants/b/settings/community')!.error());
+    expect(result.settings).toEqual(defaultCommunitySettings());
+    log.mockRestore();
     expect(result.error).toContain('Could not load');
     await act(async () => root.unmount());
   });

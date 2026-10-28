@@ -807,9 +807,9 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
   it('the shell element inventory includes the community entry additions', () => {
     // Pin the inventory including the community entry additions.
     const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    // Include the mobile community shell and the gated Products view.
+    // The mobile shell and gated Products view coexist with the shared settings loading fallback.
     expect(shell()).toContain("effectiveTopTab === 'products' && <DigitalMemberProducts />");
-    expect(tags.length, 'the shell gained or lost an element').toBe(97);
+    expect(tags.length, 'the shell gained or lost an element').toBe(96);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

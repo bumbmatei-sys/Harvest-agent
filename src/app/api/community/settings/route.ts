@@ -36,13 +36,15 @@ export async function POST(request: NextRequest) {
     } catch { return NextResponse.json({ error: 'Invalid community settings.' }, { status: 400 }); }
     const tenantRef = adminDb.collection('tenants').doc(tenantId);
     const settingsRef = tenantRef.collection('settings').doc('community');
+    const groupRef = tenantRef.collection('channels').doc('all-members');
     const listingRef = adminDb.collection('discovery_listings').doc(tenantId);
     const count = next.isPublic ? (await adminDb.collection('users').where('tenantId', '==', tenantId).count().get()).data().count : 0;
     await adminDb.runTransaction(async tx => {
-      const [saved, tenant] = await Promise.all([tx.get(settingsRef), tx.get(tenantRef)]);
+      const [saved, tenant, group] = await Promise.all([tx.get(settingsRef), tx.get(tenantRef), tx.get(groupRef)]);
       const current = readCommunitySettings(saved.exists ? saved.data() : undefined);
       if (communitySettingsFingerprint(current) !== communitySettingsFingerprint(previous)) throw new Error('Community settings changed elsewhere. Reload this page before saving.');
       if (!tenant.exists) throw new Error('Ministry not found.');
+      if (!group.exists) tx.set(groupRef, { name: 'All members', description: '', audience: 'all', members: [], createdAt: new Date(), createdBy: admin.uid, type: 'announcement' });
       const aggregate = readReviewAggregate(saved.exists ? saved.data() : undefined);
       if (next.isPublic) tx.set(listingRef, { ...makeDiscoveryListing(tenantId, tenant.data()!, next, count, new Date()), ...aggregate });
       else tx.delete(listingRef);

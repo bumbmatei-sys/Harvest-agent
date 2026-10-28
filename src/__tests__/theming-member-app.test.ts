@@ -301,7 +301,7 @@ const MAP: Pair = {
 };
 
 const ALL_NEWS: Pair = {
-  target: 'All news — author avatar', state: 'initial letter (brought in line with Home)',
+  target: 'All news — comment composer avatar', state: 'initial letter',
   ink: TEXT_MUTED, bg: SURFACE_CHIP, ground: SURFACE,
 };
 
@@ -342,7 +342,7 @@ const ACCOUNT_SETTINGS_SCREENS: ScreenKey[] = ['personalInfo', 'saved'];
 // would otherwise pass on a stale assumption.
 const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   shell: ['bg-surface font-sans overflow-hidden', 'text-strong truncate'],
-  home: ['bg-surface-raised rounded-2xl shadow-xs border border-line p-4'],
+  home: ['border-line bg-surface-raised p-4 shadow-none', '<PostHeader name={post.authorName}'],
   blog: ['bg-surface-raised rounded-xl shadow-xs border border-line'],
   prayer: ["className=\"bg-surface-raised rounded-2xl border border-line p-4\""],
   /*
@@ -359,12 +359,15 @@ const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   bible: ['color: hlColor ? "var(--earth)" : undefined', 'HIGHLIGHT_COLORS'],
   aiChat: ['style.color = "rgb(var(--ink-danger-strong))"', 'style.background = "rgb(var(--c-danger-tint))"'],
   messages: ["'text-muted bg-surface-chip'"],
-  allNews: ['bg-surface-chip text-muted'],
+  allNews: ['bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted'],
   personalInfo: ['!bg-surface-sunken !border-transparent !text-strong'],
   saved: ["text-[14px] font-bold text-strong line-clamp-2", '12%, transparent'],
 };
 
 describe('every pair is anchored to real source (guards the guard)', () => {
+  it('Home post author ink is supplied by the shared post header', () => {
+    expect(read('components/community/PostPresentation.tsx')).toContain('font-bold text-strong text-sm');
+  });
   for (const [key, needles] of Object.entries(SOURCE_NEEDLES) as [ScreenKey, string[]][]) {
     it.each(needles.map((n) => [n] as const))(`${key}: source still contains %s`, (needle) => {
       expect(SOURCES[key], `${FILES[key]} no longer contains the code this pair describes`).toContain(needle);

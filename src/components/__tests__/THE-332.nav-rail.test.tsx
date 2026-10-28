@@ -872,6 +872,8 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
     // Community step 1 adds groups and onboarding answers to this screen.
     'eca86542f3f017f35dc9fca7da43e44a42b0afc4de33d9e9846dbb5551c2a055',
+    // PR 554 bounds group reads and binds sender identity.
+    '86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
@@ -1010,5 +1012,7 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150',
     // Community group selection and direct message layout.
     '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
+    // PR 554 bounds group reads and binds sender identity.
+    'ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f',
   ],
 };

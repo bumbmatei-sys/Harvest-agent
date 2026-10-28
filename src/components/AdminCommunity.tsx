@@ -819,8 +819,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       const { getDoc } = await import('firebase/firestore');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const name = userDoc.exists()
-        ? (userDoc.data().displayName || user.displayName || 'Admin')
-        : (user.displayName || 'Admin');
+        ? (userDoc.data().displayName || user.displayName || 'Member')
+        : (user.displayName || 'Member');
       setCurrentUser({ uid: user.uid, name });
     };
 
@@ -948,14 +948,9 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     setShowNewChannel(true);
     setPoolLoading(true);
     setPoolError(false);
-    const users = collection(db, 'users');
-    const peopleQuery = includeNullTenant ? query(users) : query(users, where('tenantId', '==', tenantId));
-    getDocs(peopleQuery)
-      .then(snapshot => setChannelPool(snapshot.docs.filter(d => {
-        if (!includeNullTenant) return true;
-        const tenant = d.data().tenantId;
-        return tenant == null || tenant === '' || tenant === tenantId;
-      }).map(d => ({ id: d.id, ...d.data() }) as AdminUser)))
+    if (!tenantId) { setPoolLoading(false); setPoolError(true); return; }
+    loadScopedUserDocs(tenantId, includeNullTenant, 200)
+      .then(docs => setChannelPool(docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser)))
       .catch(() => setPoolError(true))
       .finally(() => setPoolLoading(false));
   };
@@ -963,7 +958,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   const createChannel = async (draft: GroupDraft) => {
     if (!tenantId || !currentUser) throw new Error('No ministry selected');
     const adminMembers = draft.audience === 'admins'
-      ? (await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)))).docs
+      ? (await loadScopedUserDocs(tenantId, includeNullTenant, 200))
           .filter(d => ['admin', 'church_admin', 'super_admin'].includes(d.data().role)).map(d => d.id)
       : [];
     await addDoc(collection(db, 'tenants', tenantId, 'channels'), {

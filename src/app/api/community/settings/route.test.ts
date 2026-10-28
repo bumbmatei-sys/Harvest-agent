@@ -64,6 +64,11 @@ describe('community settings API', () => {
     expect(h.set).toHaveBeenCalledWith({ path: 'tenants/ministry/settings/community' }, expect.anything());
     expect(h.count).not.toHaveBeenCalled();
   });
+  it('creates the default group only when it is missing', async () => {
+    h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') || ref.path.includes('/channels/') ? { exists: false } : { exists: true, data: () => ({}) });
+    expect((await POST(request())).status).toBe(200);
+    expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'tenants/ministry/channels/all-members' }), expect.objectContaining({ audience: 'all', createdBy: 'admin', type: 'announcement' }));
+  });
   it('does not write when settings changed or the count fails', async () => {
     h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: true, data: () => ({ ...defaultCommunitySettings(), isPublic: true }) } : { exists: true, data: () => ({}) });
     expect((await POST(request())).status).toBe(400);

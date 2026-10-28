@@ -311,6 +311,8 @@ let BASELINE!: Baseline;
 let SURFACES!: Record<string, HTMLDivElement>;
 let COMMUNITY_BASELINE!: Baseline;
 let COMMUNITY_FIDELITY_BASELINE!: Baseline;
+let POST_CARD_BASELINE!: Baseline;
+const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
@@ -377,6 +379,8 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  // PR 554's post cards change the rendered feed on these three surfaces.
+  POST_CARD_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-post-cards-mobile.json'), 'utf8')) as Baseline;
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
   // Community Eden fidelity pass: retain the earlier fixture for historical checks.
   COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
@@ -410,7 +414,24 @@ describe('community step 1 pins', () => {
       'NewsTab.tsx': '89610dcc785f31ebac56f51f440aa64d3b5a765f11a1dfb3bdaec8d4d73aa73e',
       'community/MemberPostComposer.tsx': '0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34',
     };
-    expect([digest, fidelityDigests[file], laterDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 fixes community visibility, identity and member post edits.
+    const reviewDigests: Record<string, string> = {
+      "MainApp.tsx": "9a5f76091262e5e65cd82e7ce3f277ec75151d602ee8b8f5c2e415478641367a",
+      "NewsTab.tsx": "5e17ff5c6d11c903659f03f27ec6032e3467361df9526dc1086eee858868d0ea",
+      "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f"
+};
+    // PR 554 post card presentation, appended to the prior source pins.
+    const postCardDigests: Record<string, string> = {
+      'NewsTab.tsx': '654c6b0da1d8571dac7dd586f6c2f6bcfbf32035ee1a20680ba2ac82f155ef4f',
+    };
+    const buttonFloorDigests: Record<string, string> = {
+      'NewsTab.tsx': '1154c9c05888e1ae881d2dbfea7a8793dec0803c82acf5f8eaccf46529e1d32e',
+    };
+    const staticButtonDigests: Record<string, string> = {
+      'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
+    };
+    const mergedDigests: Record<string, string> = { 'MainApp.tsx': '4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19', 'NewsTab.tsx': '54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659' };
+    expect([mergedDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -556,6 +577,9 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 // older community fixture. The complete current source remains pinned above.
 function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
   const clone = root.cloneNode(true) as HTMLDivElement;
+  const branded = clone.querySelectorAll('.community-brand-scope');
+  expect(branded).toHaveLength(1);
+  branded[0].classList.remove('community-brand-scope');
   const byClass = (value: string) => [...clone.querySelectorAll<HTMLElement>('*')].filter((el) => el.getAttribute('class') === value);
   const one = (value: string) => {
     const matches = byClass(value);
@@ -574,6 +598,10 @@ function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
 
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(mobileLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].mobileLayer);
+      return;
+    }
     if (isCommunitySurface(name)) {
       const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
       if (name === 'NewsTab' || name === 'MainApp') {
@@ -699,6 +727,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].heights);
+      return;
+    }
     if (isCommunitySurface(name)) {
       expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
       return;
@@ -1303,26 +1335,13 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(strip(read('BiblePage.tsx'))).toBe(strip(at('BiblePage.tsx')));
   });
 
-  it('AllNews differs only by the mobile post detail sheet and class strings', () => {
-    // Undo each exact community change before comparing the complete source. A
-    // missing or modified change fails here rather than weakening the comparison.
-    let now = read('AllNews.tsx');
-    const changes: Array<[string, string]> = [
-      // These two layout-only JSX comments already exist on main. Removing their
-      // exact wrappers prevents the comment stripper leaving empty JSX braces.
-      ["{/* Rule 6 (form-layout.ts): the header tracks the feed's measure so the\n          back arrow stays flush with the first card's left edge. `lg:max-w-2xl`\n          was the same intent written in rem — and rem is why it rendered 609px\n          and not the 672px its name says (globals.css trims the base to 14.5px\n          above 1024px). Same gate, a named px value. */}", ''],
-      ["{/* Rule 6 — the feed itself. A news feed is read, so it takes the reading\n          measure rather than a page or form measure. 609px -> 680px. */}", ''],
-      ["import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';\n", ''],
-      ["  const [mobileCommunity, setMobileCommunity] = useState(false);\n  const [detailPost, setDetailPost] = useState<string | null>(null);\n  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);\n", ''],
-      ["posts.map((post, index) => {\n            const card = <div", "posts.map((post, index) => (\n            <div"],
-      ["onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}", "onClick={() => toggleComments(post.id)}"],
-      ["</div>;\n            return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side=\"bottom\" className=\"h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]\"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;\n          })", "</div>\n          ))"],
-    ];
-    for (const [added, original] of changes) {
-      expect(now.split(added), 'the recorded mobile change must occur exactly once').toHaveLength(2);
-      now = now.replace(added, original);
-    }
-    expect(strip(now)).toBe(strip(at('AllNews.tsx')));
+  it('AllNews retains the reviewed events switch and post card implementation', () => {
+    // PR 554 changes behavior and presentation, so pin the whole reviewed source.
+    expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
+      'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
+      '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
+      '92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac'])
+      .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 
   /**
@@ -1494,8 +1513,10 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(mainAppTags.slice(productsIndex - 1, productsIndex + 2)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
     mainAppTags.splice(productsIndex, 1);
     const entryIndex = mainAppTags.indexOf('CommunityEntryDialog');
-    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['p', 'p', 'CommunityEntryDialog']);
-    mainAppTags.splice(entryIndex - 2, 3);
+    // The settings fallback reuses renderLoading; only the alert and dialog
+    // remain as additions to the original shell tree.
+    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['div', 'p', 'CommunityEntryDialog']);
+    mainAppTags.splice(entryIndex - 1, 2);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
@@ -1549,6 +1570,10 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].colours);
+      return;
+    }
     if (isCommunitySurface(name)) {
       expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
       return;

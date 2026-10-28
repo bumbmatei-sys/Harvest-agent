@@ -582,6 +582,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // Local community previews are ignored and may be absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/community/page.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/page.tsx')) ? ['src/app/dev/community/page.tsx'] : []),
       // The social scheduler screenshot harness. The stand-in account button
       // uses min-h-11. It is not a product screen, and it 404s in production.
       // The local development harness is ignored and may be absent in CI.
@@ -636,6 +638,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminDocs.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
+      'src/components/AllNews.tsx', // Post actions and comment send control use the phone floor.
       /**
        * APPENDED for the campaign banner sheet. Nothing around it removed or
        * rewritten. Both files sit here because this list is the sweep's sorted
@@ -697,7 +700,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        */
       'src/components/MainApp.tsx', // Mobile community header touch targets.
       'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
-      'src/components/NewsTab.tsx', // Mobile composer trigger.
+      'src/components/NewsTab.tsx', // Mobile composer, post actions and comment send controls.
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order
@@ -806,12 +809,14 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
+      'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       'src/components/community/GroupList.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/MobileCommunityNav.tsx', // Mobile navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',
+      'src/components/community/PostPresentation.tsx', // The post text expansion control uses the phone floor.
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',
       'src/components/courses/CoursePlayer.tsx',
@@ -1118,7 +1123,10 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
     // The count is the assertion: a new runtime or dev dependency moves it, and
     // `alert` is an already-installed FILE in this repo, not a package.
     // Phase 1 is the approved exception: @tanstack/react-table, and nothing else.
-    expect(Object.keys(pkg.dependencies)).toHaveLength(70);
+    // The installed Base UI and carousel packages are recorded by the primitive inventory.
+    expect(Object.keys(pkg.dependencies)).toHaveLength(72);
+    expect(pkg.dependencies['@base-ui/react']).toBe('^1.5.0');
+    expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(Object.keys(pkg.devDependencies)).toHaveLength(20);
   });

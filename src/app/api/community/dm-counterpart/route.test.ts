@@ -11,7 +11,10 @@ describe('DM counterpart status', () => {
   it('returns only the admin status for a participant', async () => {
     const response = await GET(request('thread'));
     expect(await response.json()).toEqual({ isAdmin: true });
-    fx.docs['users/other'] = { tenantId: 'tenant', role: 'user' };
+    fx.docs['users/other'] = { tenantId: 'tenant', role: 'church_admin' };
+    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
+    fx.docs['tenant_private/tenant'] = { adminEmails: ['owner@example.com'] };
+    fx.docs['users/other'] = { tenantId: 'tenant', role: 'user', email: 'owner@example.com' };
     expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: false });
   });
   it('does not expose another thread or turn failed identity reads into a member classification', async () => {
