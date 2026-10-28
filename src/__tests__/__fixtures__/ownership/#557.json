@@ -1,0 +1,10 @@
+{
+  "ticket": "#557",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "41fc93227c4533db72aab58ef3e37f28e8f14acc35f4d82389d17467c4987c43",
+      "why": "Adds server-owned sign-up page, handle and submission rules with owner and tenant forms-permission reads."
+    }
+  ]
+}
