@@ -56,6 +56,25 @@ describe('signup page routes', () => {
     expect((await create(request('POST', { ...input, handle: 'hello' }))).status).toBe(409);
     expect((await create(request('POST', { ...input, handle: 'BAD' }))).status).toBe(400);
   });
+  it('T1 binds the write to the user record, not the token claim', async () => {
+    const input = { handle: 'fresh', title: 'Title', message: '', fields };
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
+    // Token claim says tenant A, the users/{uid} record says tenant B -> 403 and nothing written.
+    documents['users/owner'] = { tenantId: 'other' };
+    expect((await create(request('POST', input))).status).toBe(403);
+    expect(writes).toEqual([]);
+    // Token claim says tenant A, no user record at all -> 403 and nothing written.
+    delete documents['users/owner'];
+    expect((await create(request('POST', input))).status).toBe(403);
+    expect(writes).toEqual([]);
+    // Super admins are excepted from the record check.
+    mocks.requireAuth.mockResolvedValue({ uid: 'platform', tenantId: 'tenant', isSuperAdmin: true });
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'platform', isSuperAdmin: true });
+    expect((await create(request('POST', input))).status).toBe(201);
+    documents['users/platform'] = { tenantId: 'other' };
+    expect((await create(request('POST', input))).status).toBe(201);
+    expect(writes).toEqual(['create:signup_handles/fresh', 'create:signup_pages/new', 'create:signup_handles/fresh', 'create:signup_pages/new']);
+  });
   it('updates and moves a reservation atomically, refusing conflicts', async () => {
     const input = { pageId: 'page', active: false, handle: 'fresh', title: 'Title', message: '', fields };
     expect((await update(request('PATCH', input))).status).toBe(200);
