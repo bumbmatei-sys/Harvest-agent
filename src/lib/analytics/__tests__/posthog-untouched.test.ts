@@ -636,7 +636,8 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // next paid path, which is why this money-path file is in scope at all. No
   // price, fee, plan write, subscription branch or webhook path moved — `plan`
   // still has exactly one writer, and the money-path suites pass unedited.
-  ['src/lib/dodo/provisioning.ts', '348c6ffafc5d9c79fb0b7e03060e89f902dbc8af5b87936e4534d8a6b520eec5'],
+  // #557 activates a Free identity when it upgrades; prior pin retained.
+  ['src/lib/dodo/provisioning.ts', '348c6ffafc5d9c79fb0b7e03060e89f902dbc8af5b87936e4534d8a6b520eec5', '190bd2040b311439ea2ddb77cd4c65c63f0c941391c2c8bfb3e73dbcf1a804eb'],
   ['src/lib/dodo/renewal.ts', 'fe7fb940ac15edfafd53bca346526e3a43266ad57c29a791a049ef8c512fc6a9'],
   ['src/lib/dodo/subscription-convergence.ts', 'b047d54e588b939ffe5f35e138cf02771033fffb2644a202726098061c3376b4'],
   // THE-302 appended: the `unreserved` outcome and a bounded store timeout.

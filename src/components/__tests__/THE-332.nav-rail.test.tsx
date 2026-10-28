@@ -662,6 +662,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '7e69678e0050a76e47ca27d143afc0648b5d69c9900fe4a6d2ac103725ae1e5e',
       // #557 adds sign-up pages to both admin navigation groups.
       '6767295c665173c1d92e0f25d1bcda302e0f7514854d9d1989d288827a13690c',
+      // #557 merge keeps community setup and sign-up pages.
+      '6767295c665173c1d92e0f25d1bcda302e0f7514854d9d1989d288827a13690c',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {

@@ -819,6 +819,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
+      'src/components/community/FreeMemberShell.tsx', // #557 Free navigation touch targets.
       'src/components/community/GroupList.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
@@ -897,6 +898,12 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // spelled `min-h-[44px]`, this repo's absolute idiom, so the class reaches
       // no className here; the test below asserts exactly that.
       'src/components/settings/SmsSection.tsx',      // THE-330: names it in a comment, does not use it
+      // #557 sign-up page controls retain the mobile touch floor.
+      'src/components/signup-pages/PublicSignupForm.tsx',
+      'src/components/signup-pages/ShareCard.tsx',
+      'src/components/signup-pages/SignupPageBuilder.tsx',
+      'src/components/signup-pages/SignupPagesScreen.tsx',
+      'src/components/signup-pages/SubmissionsTable.tsx',
     ]);
   });
 

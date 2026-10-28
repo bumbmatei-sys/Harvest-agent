@@ -680,8 +680,11 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
   'src/components/AdminDashboard.tsx': [
     ['2910cbb6e895a1a636cb60710a74bcfd34bbdaf8f410ca8cbb540c6a42018d82', '#557: Initial sign-up pages navigation and shared screen.'],
     ['83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a', '#557: Add permission-gated sign-up pages navigation and shared screen.'],
+    ['22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566', '#557 merge: preserve community navigation and permission-gated sign-up pages.'],
     ['d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e', 'THE-555 round 4: Lucide nav icon swap; Newsletter uses Mailbox and Community uses ToolCase, with existing plan and permission gates retained.'],
     ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
+    ['7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1', 'THE-555 review F1: Community setup navigation and render gates now require hasFullAccess || perms.manageCommunity, matching the settings API permission. A manageSettings-only admin cannot reach the screen; a manageCommunity-only admin can.'],
+    ['fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d', 'THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained.'],
     ['8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
     ['1652123ee9029a5250645f5cb7725fa84b4c546102e5b7677d71369b86340a36', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 915d818 — the value THE-291 (#434) left and THE-294 accepts'],

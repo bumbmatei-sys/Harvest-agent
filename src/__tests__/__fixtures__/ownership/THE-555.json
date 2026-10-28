@@ -1080,6 +1080,126 @@
       "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
       "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
       "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1",
+      "why": "THE-555 review F1: Aligns Community setup tab visibility and direct screen access with hasFullAccess || perms.manageCommunity, matching the settings API instead of the unrelated manageSettings grant."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "6f13e57fdcd86ec7d4bc3a07012c94e8f17a0a953425b3aa6e568c1aadcd23fc",
+      "why": "THE-555 review B1: Replaces the mobile community composer trigger with the existing shadcn outline Button, preserving its click action, full width, wrapping and min-h-11 touch floor."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "44464d456ec338cbff6ec50f19ba856a618ef54aea129e701b53c5a15a4484ac",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "5efe68f682a97290c56c84aa41fcec74649d21f89848c9b56d4d23c58c0dd1e5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "e9be25bdf11e518c1d297c34ad2d35d68f119ce4e4dfef69e78ed8dc5fec34ce",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "490087ade6543e21dfda5d69a9bc02f2df15a5464e1850a3b0d98952ccd4305b",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "4c757b2b6f950eb14d5f9aae437a2ad84dd818f33488776a99e8fffe884aa1f5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "94da079652d996c2a87f9aedbc3ba13ad67501092f8f0da82a2c46ac3da89eb5",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "929a9ad9a5b2fd1328ef42719651abaae56190b038e411353dec8de144485972",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "9b5522d3042bf878d659596a876a6ac765dc8d381f83917222f4612918d19f6d",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "34b9a55e1170d30d7b437ca9a6680f876104c51a6d82a4d52350364fc71c82be",
+      "why": "THE-555 review F1: Appends the AdminDashboard digest and explicit manageCommunity permission correction under this guard's existing convention. Retains all earlier digests and reasons; THE-319 consumes the shared the-299 accepted set."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "b52b8042c7f02a5269ff77b2c23e68acf0a6c152ff92a4817093c583fdbd5509",
+      "why": "THE-555 review B1: Appends the NewsTab source digest for the shadcn outline composer trigger. Earlier digests and all rendered fixture records remain intact; seeded rendering does not exercise the mobile trigger."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "46d5a2a8cf7363a825d0d375f3f83d13bc47bc48c1c7435bf7729a10027dea7a",
+      "why": "THE-555 review F1: Renders the real admin shell for manageSettings-only and manageCommunity-only limited admins and checks both Community setup visibility and direct screen access. Separate nav and render gate reversions each fail both cases."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d",
+      "why": "THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "e2a6999d43ea58565158bfac5631cb4215d1690e59ec7a3a996b56d95725b1af",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "af536389cf93188e1b969c476de2e80fb3e2f70c1eb3a866da209c54fa75de4d",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "b7abb57df198b3ba1a86285f26a71040e49791dee6471b9896b97a58135d87f8",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "c26c38c4e9b78db97530f9d54caa0ceb5ecae02519226aeae0bdb1f1ff67ebaa",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "2dcb8c232660cd9c9988f2c5e7c21efc5f03016d487145b53568f457e4441898",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "b2aaaeb1afea8f775cc751b350c9fee07168112e0bedbe8d5a5be01a1c14df52",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "6ca167dfc3d912fb76b2179ac445fd0d1451b1d258e2d215b884e85947389907",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "b483ad07ac04c496ed0a40ae851ce4f9018f40626ea4b857803f33d4acb9b761",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "195dd16c34f6c1de904176945bfe6ee5cbdc8db5915ba5d3b03a5670af9e91b4",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "1b60c77c531d30abe73ef41f13f9b2a3a3e747c2ce213f1adb0e7648cfd382a0",
+      "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
     }
   ]
 }

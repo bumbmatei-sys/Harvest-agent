@@ -16,7 +16,7 @@ export function FreeMemberShell({ uid, tenantId, email, canCreateCommunity, init
       <h1 className="mb-6 font-display text-xl">Harvest</h1>
       {FREE_MEMBER_TABS.map(({ id, label, icon: Icon }) => <Button key={id} variant={tab === id ? 'secondary' : 'ghost'} className="min-h-11 justify-start gap-3" aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={20} />{label}</Button>)}
     </nav>
-    <main className="min-w-0 flex-1 overflow-auto pb-24">
+    <main className="min-w-0 flex-1 overflow-auto pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
       {tab === 'discover' ? <DiscoverData /> : tab === 'communities' ? <>
         <CommunitiesData uid={uid} accountTenantId={tenantId} currentTenantId={null} onEnter={() => setTab('discover')} onDiscover={() => setTab('discover')} />
         {!canCreateCommunity && <Card className="mx-4 mb-6 sm:mx-8"><CardContent className="flex flex-wrap items-center gap-4 py-6"><p>Creating a community needs the Church or Ministry plan.</p><Button className="min-h-11" onClick={() => setTab('upgrade')}>Upgrade plan</Button></CardContent></Card>}

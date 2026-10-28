@@ -565,6 +565,11 @@
       "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
       "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
       "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "620e6cf8b4cf2b33fd19c2f7b70e8c045a5c7261179a4cb19965105220acd250",
+      "why": "Reviewer B3 raw select -> shadcn Select, ported verbatim from #555, including the question Type control and its import."
     }
   ]
 }

@@ -248,7 +248,10 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
   'src/components/AdminDashboard.tsx': [
     ['2910cbb6e895a1a636cb60710a74bcfd34bbdaf8f410ca8cbb540c6a42018d82', '#557: Initial sign-up pages navigation and shared screen.'],
     ['83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a', '#557: Add permission-gated sign-up pages navigation and shared screen.'],
+    ['22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566', '#557 merge: preserve community navigation and permission-gated sign-up pages.'],
     ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
+    ['7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1', 'THE-555 review F1: Community setup navigation and render gates now require hasFullAccess || perms.manageCommunity, matching the settings API permission. A manageSettings-only admin cannot reach the screen; a manageCommunity-only admin can.'],
+    ['fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d', 'THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained.'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at 625e3eb, where this branch started'],
     // THE-291 removed the dead `onChangePlan` / `onCancelPlan` props from the
     // `<AdminSettings>` mount — a client-side `plan` write that no caller ever

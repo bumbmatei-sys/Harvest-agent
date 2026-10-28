@@ -626,7 +626,10 @@ describe('5 · the money path is byte-identical', () => {
     // THE-555 reviews update community ratings, never billing entitlements.
     const communityReviewRoutes = ['src/app/api/community/reviews/route.ts'];
     for (const route of communityReviewRoutes) expect(routes).toContain(route);
-    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
+    // #557 adds five sign-up page endpoints; none writes plan entitlements.
+    const signupRoutes = ['route.ts', 'submit/route.ts', 'public/[handle]/route.ts', '[pageId]/export/route.ts', '[pageId]/submissions/route.ts'].map(suffix => `src/app/api/signup-pages/${suffix}`);
+    for (const route of signupRoutes) expect(routes).toContain(route);
+    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -897,6 +900,8 @@ describe('6 · no plan cap or price changed', () => {
       // the plan copy. Nothing writes `plan` from the client; the webhook is still its only writer.
       // The hunks are recorded in __fixtures__/plan-copy-exemption-r6.ts.
       ['reprice-church-ministry', '7f2994c24baa44900f169cbe4e33b9948fe81e2e487cdaf6cef5b18cecbc56be'],
+      // #557 adds the Free shell capability flags without changing prices.
+      ['free-shell-entitlements', 'a41e58a79582091a0fe066b990171d52036af94508a91f31bef7c50d635d444a'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

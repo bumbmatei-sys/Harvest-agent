@@ -694,6 +694,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
   const canSettings = hasFullAccess || !!perms.manageSettings;
 
+  // Community setup shares the community settings API's permission, including
+  // on direct navigation. Settings access alone does not grant community access.
+  const canCommunity = hasFullAccess || !!perms.manageCommunity;
+
   // The desktop Settings popup owns Plan & billing and Campus & branding. On a
   // phone (no popup) the Billing & Payments overlay and the Branding tab remain.
   // The sidebar account menu drops its Billing row only while this popup is the
@@ -921,9 +925,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
     navAllows(features?.communityGroups) &&
-      (hasFullAccess || perms.manageCommunity) &&
+      canCommunity &&
       { id: 'community', label: 'Community', icon: NAV_ICONS.communities },
-    canSettings && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
+    canCommunity && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
     isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
@@ -1511,7 +1515,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : planAllows(features?.smsAutomation)
                 ? <div className="p-4 lg:p-0"><AdminSms /></div>
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'community-setup' && canSettings ? (
+          ) : activeTab === 'community-setup' && canCommunity ? (
             <CommunitySettingsScreen tenantId={tenantId} available={{
               news: planAllows(features?.newsFeed), blog: planAllows(features?.blog),
               courses: true, events: true, messages: planAllows(features?.communityGroups),

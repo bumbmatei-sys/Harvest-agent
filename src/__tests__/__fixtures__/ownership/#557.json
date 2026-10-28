@@ -255,6 +255,146 @@
       "file": "src/components/community/DiscoveryData.test.tsx",
       "digest": "232a63ea8b8cfde7f499b8dec1ebc9cfffef6afee7bb36c07da1a04026bfa991",
       "why": "#557 tests that a Free account identity is not presented as a community while preserving the existing read failure and paid community checks."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7791df37bdd1aafc2cbcd9cdafa15f9fe15f574ef3737c85f709bd41bf24652f",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "f49cec38187aa82d939d3a1b382a5692ee2cc4625feb2b558e9f705f6850d1c3",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "1f78655439057c7eca141bec71798605666f3de02659e1ced4205148e4510da7",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "57e06cdf1f4487a78b8e136ce71070d4f51b8763fe3c9cafdf4cc2c5487b35fa",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "aba44d3cff426161a49c2ddeed3643cc782554c0c2d73bfa3566df9d4f43264a",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "dd31c30c1d54dff636c9dbfcb7d3c2537f91e69c9a52f17db13b338e12309283",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "f443cb2fa3323728a8dac6eb3cfb9e7b9ca851245f6a565da609511921c4b41d",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "64e825b83efd921b3d5998a61ef4f00f9fa1848473a574a0ab3d0756e1a88f87",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "bbf33fed32b25062604abca3b15ced2ec2a63b670f5bc9bca8156889fd37d7ee",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "e07710c6088a44579796fa7e50156b9251b1b710983de91d01af2985b12bfcf6",
+      "why": "#557 merge retains community changes and the Free sign-up navigation, including both existing guard pins."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.tsx",
+      "digest": "ba72102b1a7d014ec746a25f2c57c6d647d3057363f7599ec7638b9f927ccbd9",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.plan-entitlement.test.tsx",
+      "digest": "bbd2da59b82ca975c34de0341ea91750617d084605e9ef27b8ef333aef9f5944",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "57c4c207f26e951b0ef59d4045cddadfdae5fe8e6726ba2fe50ded0068869a3e",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "d36b5e60b0f66c2d9d28ba5cbc359c92e8f549e2d979827a126828cef171f333",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "3334f077468a1f343f578d420a93d0c333f5bf67eaf956179b35487633013f23",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-334.nav-rail-coordination.test.tsx",
+      "digest": "982aa630983cd4fcde5748bd96807e15eeb289fc1efcb567648cda5c11660938",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "53b1f69d77dcde6840cf590245eca5fb9a5c8f7d68b9e633fccb31f230b15d43",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "c659db313f667cc1d162ce7c8c0d35c30e7bb95c6e76be8ff851380608da170f",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "8b658e3eeaa0981bc541c830e0ecf5209e67cad0ce477eeeea449a9d0ab964ea",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "d8b5ea43d2467bca8d634d6e4ce8f69aa630911b34b919935866b34645e414ed",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "46790c5d719c9b677e696e637bc7d857bafd0b3a0053fc57ec95fa4a5db96278",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/the-212-upgrade-keeps-members.test.ts",
+      "digest": "824c43de9d13498c756166d9fcc0dc4373070aa2ef02c8adcc6eee865efccc66",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/__tests__/__fixtures__/plan-copy-exemption.ts",
+      "digest": "6b340eb5c6be15ada09b0045ff28415a873498af83d7603deca3cc7d32abe406",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/__tests__/pr-540.plan-copy-exemption.test.ts",
+      "digest": "f69988630154dc269a40810aaa75fb82d714a4da4fde8132cbc037e1849cf2df",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "9b76ffc38b79f5e7c4ddca187f2a78a83df8cb7e99d4963b69cc1db60a299ab2",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "e22e47fb162c1a87b29e43eaed4b5103b8e2d5990a49a606cc43f948153482f5",
+      "why": "#557 records Free sign-up navigation, plan entitlements, upgrade activation and merge integration while retaining prior guards."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "2d938be2c31c70b483082f7e171ddfabc7f9d010d5b79471cfa6924b9faa5894",
+      "why": "#557 records the sign-up pages entry in each tier navigation inventory."
     }
   ]
 }
