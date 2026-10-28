@@ -95,7 +95,7 @@ function discover(rel: string, re: RegExp, what: string): string {
 const DOCS = 'src/components/AdminDocs.tsx';
 const DASH = 'src/components/AdminDashboard.tsx';
 const COMMUNITY = 'src/components/AdminCommunity.tsx';
-const NEWS = 'src/components/NewsTab.tsx';
+const NEWS = 'src/components/community/AdminPostComposer.tsx';
 const EVENTS = 'src/components/AdminEvents.tsx';
 
 /** 1+2 · the notes editor's header row and the two controls in its left group. */
@@ -241,12 +241,12 @@ const composerPill = discover(
 /** 4 · the news composer's avatar row and its action row. */
 const newsAvatarRow = discover(
   NEWS,
-  /<div className="(flex items-start gap-3)">\s*\n\s*<div className="w-9 h-9 rounded-full/,
+  /<div className="(flex items-start gap-3)">\s*\n\s*<Avatar className="size-9 shrink-0"/,
   'the news composer avatar row',
 );
 const newsAvatar = discover(
   NEWS,
-  /<div className="(w-9 h-9 rounded-full bg-surface-chip[^"]*)">/,
+  /<Avatar className="(size-9 shrink-0)"/,
   'the news composer avatar',
 );
 const newsActionRow = discover(
@@ -256,7 +256,7 @@ const newsActionRow = discover(
 );
 const newsClipBtn = discover(
   NEWS,
-  /className="(p-2 -ml-2 text-muted[^"]*)"/,
+  /<DropdownMenuTrigger[^>]*className="(p-2 -ml-2 text-muted[^"]*)"/,
   'the news composer paperclip',
 );
 

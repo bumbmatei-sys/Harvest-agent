@@ -60,6 +60,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { variantChain } from '../../test/support/class-inventory';
 
 import RichTextEditor, { commands, ALIGN_COMMANDS, COMMAND_ACTIVE } from '../RichTextEditor';
 import RichTextToolbar, {
@@ -1184,7 +1185,9 @@ describe('8 — no colour is hardcoded and all four palettes resolve', () => {
    * width utilities are excluded by name so the check keeps meaning what it says.
    */
   const NOT_A_COLOUR = /^(?:border-(?:[btlrxy]|[0-9]+|solid|dashed|dotted|none)|text-(?:xs|sm|base|lg|xl|\dxl|left|center|right|justify)|to-transparent)$/;
-  const COLOURED = /\b(?:bg|text|border|from|via|to|ring|fill|stroke|divide|placeholder|shadow|accent|caret|decoration|outline)-[a-z[]/;
+  // THE-555: lucide-react 0.577 adds lucide-text-align-* identity classes.
+  // A colour utility starts at the utility boundary, not inside an icon name.
+  const COLOURED = /^(?:bg|text|border|from|via|to|ring|fill|stroke|divide|placeholder|shadow|accent|caret|decoration|outline)-[a-z[]/;
 
   it('🔴 spells no raw colour literal — no hex, no rgb(), no hsl()', () => {
     // Comments stripped: the header explains WHY there is no raw colour here,
@@ -1218,7 +1221,7 @@ describe('8 — no colour is hardcoded and all four palettes resolve', () => {
      */
     const THEMED = /-(surface(-\w+)?|line(-\w+)?|strong|muted|faint|body|gold|danger|white|transparent|current|inherit)$/;
     const offenders = [...tokens]
-      .map((t) => ({ token: t, utility: t.replace(/^(?:hover|focus|active|disabled|group-hover|data-\[[^\]]+\]):/, '') }))
+      .map((t) => ({ token: t, utility: t.slice(variantChain(t).reduce((n, v) => n + v.length + 1, 0)) }))
       .filter(({ utility }) => COLOURED.test(utility) && !NOT_A_COLOUR.test(utility))
       .map(({ token, utility }) => {
         void token;

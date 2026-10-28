@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft, MessageSquare, Send } from 'lucide-react';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -14,6 +14,12 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { MemberAvatar, PostHeader, PostText, relativeCommentTime, CommentActivity } from './community/PostPresentation';
+import { Card } from './ui/card';
+import { usePostComments } from './community/usePostComments';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { READING_MEASURE } from './layout/form-layout';
 
 interface Comment {
@@ -42,12 +48,16 @@ interface EventDetails {
 
 interface CommunityPost {
   id: string;
+  tenantId?: string;
   type: 'post' | 'poll' | 'event';
   authorId: string;
   authorName: string;
   authorPhoto?: string;
   createdAt: string;
   content: string;
+  title?: string;
+  category?: string;
+  authorLevel?: number;
   /** Legacy single image — kept readable for back-compat with older posts. */
   imageUrl?: string;
   /** Up to 3 images on newer posts. Preferred over imageUrl when present. */
@@ -65,12 +75,13 @@ interface CommunityPost {
 }
 
 interface AllNewsProps {
+  eventsEnabled?: boolean;
   onBack: () => void;
   /** Navigates to the Messages top-tab; used by the comment menu's "Message privately". */
   onOpenMessages?: () => void;
 }
 
-const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
+const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled = true }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{country?: string, city?: string} | null>(null);
@@ -82,9 +93,11 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Comments state
+  const [mobileCommunity, setMobileCommunity] = useState(false);
+  const [detailPost, setDetailPost] = useState<string | null>(null);
+  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -140,24 +153,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
     return () => { cancelled = true; };
   }, []);
 
-  // Subscribe to comments for open posts
-  useEffect(() => {
-    const unsubs: (() => void)[] = [];
-    Object.entries(commentsOpen).forEach(([postId, isOpen]) => {
-      if (!isOpen) return;
-      const q = query(collection(db, 'community_posts', postId, 'comments'), orderBy('createdAt', 'asc'));
-      const unsub = onSnapshot(q, (snap) => {
-        setPostComments(prev => ({
-          ...prev,
-          [postId]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment))
-        }));
-      }, (error) => {
-        console.error('Failed to subscribe to comments:', error);
-      });
-      unsubs.push(unsub);
-    });
-    return () => { unsubs.forEach(u => u()); };
-  }, [commentsOpen]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -166,10 +162,11 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
       setScopeTenantId(tenantId);
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
+      // The tenantId + createdAt DESC index selects the newest slice before the cap.
+      // No matching pinned-post index exists; only pins in this slice move to the top.
       const q = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId))
-        : query(collection(db, 'community_posts'));
+        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+        : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
 
       unsubscribe = onSnapshot(q, (snapshot) => {
         const postsData = sortByTime(snapshot.docs.map(doc => ({
@@ -346,7 +343,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
     }
   };
 
-  const handleComment = async (postId: string) => {
+  const handleComment = async (post: CommunityPost) => {
+    const postId = post.id;
     const text = (commentInputs[postId] || '').trim();
     if (!text) return;
     if (text.length > 280) {
@@ -361,24 +359,20 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
       return;
     }
     try {
-      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
-      // resolver returns null for a super admin on the apex ("all tenants",
-      // right for a read), which stamped `tenantId: null` on the comment.
-      //
-      // Scope of the harm, stated precisely: NO rule reads a comment's own
-      // tenantId (the read scopes off the parent post's, create validates
-      // authorId/content/keys only, delete is authorId-only), so a null here
-      // does not orphan the comment. It is simply wrong denormalised data that
-      // any future tenant-filtered query or export would silently miss.
-      // `|| null` is kept — the field's `string | null` contract is unchanged.
-      const tenantId = await getWriteTenantScope();
+      // Comments belong to their parent ministry, including in the unscoped super admin feed.
+      const tenantId = post.tenantId;
+      if (typeof tenantId !== 'string' || !tenantId.trim()) throw new Error('A ministry is required to comment.');
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userData = userSnap.exists() ? userSnap.data() : null;
+      const authorName = userData?.displayName || user.displayName || 'Member';
+      const authorPhoto = userData?.photoURL || '';
       await addDoc(collection(db, 'community_posts', postId, 'comments'), {
         authorId: user.uid,
-        authorName: user.displayName || 'Member',
-        authorPhoto: user.photoURL || '',
+        authorName,
+        authorPhoto,
         content: text,
         createdAt: new Date().toISOString(),
-        tenantId: tenantId || null,
+        tenantId,
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
     } catch (error) {
@@ -455,18 +449,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
     setCommentsOpen(prev => ({ ...prev, [postId]: !prev[postId] }));
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  };
+
 
   const posts = allPosts.filter(post => {
+    if (!eventsEnabled && (post.type === 'event' || post.embed?.type === 'event')) return false;
     // Legacy support
     if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
       // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.
@@ -484,6 +470,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
     return true;
   });
+
+  const { comments: postComments, counts: commentCounts, latest: latestComments, errors: commentErrors } = usePostComments(posts.map(post => post.id), commentsOpen);
 
   return (
     <div className="flex flex-col h-screen bg-surface ">
@@ -510,6 +498,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
             {errorMessage}
           </div>
         )}
+        {!loading && allPosts.length === 50 && <p className="text-xs text-muted">Showing up to 50 posts.</p>}
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
@@ -517,40 +506,16 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
         ) : posts.length === 0 ? (
           <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
-          posts.map((post, index) => (
-            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-xs border border-line ">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-chip text-muted flex items-center justify-center font-bold overflow-hidden relative">
-                    {post.authorPhoto ? (
-                      <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      post.authorName.charAt(0)
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-bold text-strong text-sm">{post.authorName}</div>
-                      {post.isPinned && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] px-2 py-0.5 rounded-full">
-                          Pinned
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted">{formatDate(post.createdAt)}</div>
-                  </div>
-                </div>
-                <KebabMenu
+          posts.map((post, index) => {
+            const card =
+            <Card key={post.id} className="gap-0 rounded-none border-x-0 border-b border-line bg-surface-raised p-4 shadow-none ring-0 lg:rounded-[var(--ds-radius-card)] lg:border lg:shadow-[var(--ds-sh-sm)]">
+              <PostHeader name={post.authorName} photo={post.authorPhoto} level={post.authorLevel} createdAt={post.createdAt} category={post.category} pinned={post.isPinned} actions={<KebabMenu
                   ariaLabel="Post options"
                   items={(canManage || auth.currentUser?.uid === post.authorId) ? [
                     { label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) },
                   ] : []}
-                />
-              </div>
-
-              <div className="text-body text-sm whitespace-pre-wrap mb-3">
-                {post.content}
-              </div>
+                />} />
+              <PostText content={post.content} title={post.title} />
 
               {(() => {
                 const images = postImages(post);
@@ -649,46 +614,39 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 pt-3 border-t border-line ">
-                <button 
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-line ">
+                <Button type="button" variant="ghost" 
                   onClick={() => handleLike(post.id, post.likes)}
-                  className={`flex items-center gap-1.5 text-xs transition-colors ${
-                    auth.currentUser && post.likes.includes(auth.currentUser.uid)
-                      ? 'text-gold'
-                      : 'text-muted hover:text-gold'
-                  }`}
+                  style={{ color: auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
                   <span className="font-medium">{post.likes.length}</span>
-                </button>
-                <button
-                  onClick={() => toggleComments(post.id)}
-                  className={`flex items-center gap-1.5 text-xs transition-colors ${
-                    commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
-                  }`}
+                </Button>
+                <Button type="button" variant="ghost"
+                  onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}
+                  style={{ color: commentsOpen[post.id] ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
                   <MessageSquare size={16} />
-                  <span className="font-medium">{postComments[post.id]?.length ?? 0}</span>
-                </button>
+                  <span className="font-medium">{commentErrors[post.id] ? 'Unavailable' : commentCounts[post.id] ?? '…'}</span>
+                </Button>
+                {!commentErrors[post.id] && <CommentActivity comment={latestComments[post.id]} viewerId={auth.currentUser?.uid} />}
+                
               </div>
 
               {/* Comments Section */}
               {commentsOpen[post.id] && (
                 <div className="mt-3 pt-3 border-t border-line space-y-3">
-                  {postComments[post.id]?.map(comment => (
+                  {commentErrors[post.id] && <p role="alert" className="text-xs text-muted">Could not load comments.</p>}
+                {!commentErrors[post.id] && postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
-                        {comment.authorPhoto ? (
-                          <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          comment.authorName.charAt(0)
-                        )}
-                      </div>
+                      <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} small />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-strong">{comment.authorName}</span>
                           <span className="text-[10px] text-faint">
-                            {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {relativeCommentTime(comment.createdAt)}
                           </span>
                           <div className="ml-auto">
                             <KebabMenu
@@ -713,7 +671,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                       </div>
                     </div>
                   ))}
-                  {postComments[post.id]?.length === 0 && (
+                  {!commentErrors[post.id] && postComments[post.id]?.length === 0 && (
                     <p className="text-xs text-faint text-center py-1">No comments yet</p>
                   )}
                   {auth.currentUser && (
@@ -725,28 +683,29 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                           (auth.currentUser.displayName || 'Y').charAt(0)
                         )}
                       </div>
-                      <input
+                      <Input
                         type="text"
                         value={commentInputs[post.id] || ''}
                         onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value.slice(0, 280) }))}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post); } }}
                         placeholder="Write a comment..."
                         maxLength={280}
                         className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                       />
-                      <button
-                        onClick={() => handleComment(post.id)}
+                      <Button type="button" variant="ghost" size="icon" aria-label="Send comment"
+                        onClick={() => handleComment(post)}
                         disabled={!(commentInputs[post.id] || '').trim()}
-                        className="p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors"
+                        className="min-h-11 min-w-11 p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors sm:min-h-0 sm:min-w-0"
                       >
                         <Send size={16} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          ))
+            </Card>;
+            return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;
+          })
         )}
       </div>
 

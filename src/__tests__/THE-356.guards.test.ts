@@ -48,6 +48,9 @@ import { stripComments } from './__fixtures__/the-346-strip-comments';
  * #496 found twice more in its own guards.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const code = (rel: string): string => stripComments(read(rel));
 
@@ -259,7 +262,7 @@ describe('4 · house rules', () => {
     // must hold is that no PRODUCT file gained one.
     const primitives = readdirSync(path.join(REPO_ROOT, 'src/components/ui'))
       .filter((f) => f.endsWith('.tsx')).map((f) => f.replace(/\.tsx$/, ''));
-    expect(primitives.length, 'the primitive set changed size').toBe(43);
+    expect(primitives.length, 'the primitive set changed size').toBe(43 + THE_555_PRIMITIVES.length);
     expect(primitives, 'accordion appeared on disk').not.toContain('accordion');
     // 🔴 BOTH import spellings, per THE-272's own note.
     const importsUi = /from ['"](?:@\/components|\.{1,2}(?:\/[\w.-]+)*)\/ui\/[\w-]+['"]/;

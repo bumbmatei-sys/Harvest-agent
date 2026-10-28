@@ -871,7 +871,8 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     expect(touched.filter((f) => f !== 'package.json' && f !== 'package-lock.json'), 'a dependency was added').toEqual([]);
     const deps = Object.keys(JSON.parse(src('package.json')).dependencies);
     expect(deps).toContain('@tanstack/react-table');
-    expect(deps).toHaveLength(70);
+    expect(deps).toContain('embla-carousel-react'); // THE-555 gallery
+    expect(deps).toHaveLength(70 + 1);
   });
 
   it('no new ui component was installed — all of them predate this ticket', () => {
@@ -901,6 +902,8 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // THE-555: the new shadcn gallery primitive, recorded in ds-primitives.
+      'src/components/ui/carousel.tsx',
     ];
     expect(
       changedSince('src/components/ui/').filter((f) => !THE_295.includes(f) && !EDEN_SHELL_UI.includes(f)).sort(),

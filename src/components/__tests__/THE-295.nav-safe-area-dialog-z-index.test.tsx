@@ -18,6 +18,7 @@ import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -97,7 +98,7 @@ const NAV_Z = 100;
  * hand-typed copy of a nav that may since have moved.
  */
 function navClass(): string {
-  const shell = src('src/components/MainApp.tsx');
+  const shell = stripComments(src('src/components/MainApp.tsx'));
   /* ⚠️ THE-332 — WIDENED, NOT LOOSENED. This looked for `className={`…`}`
      exactly: a template literal, with nothing between `<div` and `className`.
      Both of those were implementation details of a nav that has since changed
@@ -120,6 +121,7 @@ function navClass(): string {
       'would be measuring a hand-typed copy of a nav that may have moved.',
     );
   }
+  // THE-555: mobile tabs and desktop items share this original shell again.
   return match[1];
 }
 
@@ -251,6 +253,8 @@ const key = (sel: string, vw: number) => `${sel}@${vw}`;
 
 setUpOrFail(async () => {
   appCss = await buildAppCss();
+  // Include the discovered shell markup explicitly in Tailwind's content.
+  appCss += await buildCssForMarkup(navMarkup('visible', 5, 'responsive-content'));
 
   const flat = await launch(appCss, 'flat');
   try {
@@ -796,23 +800,23 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     expect(shell()).toContain("(isMainSite || (isPlanReady && features?.map === true)) && { id: 'map'");
   });
 
-  it('and home, bible and profile are still unconditional', () => {
-    for (const id of ['home', 'bible', 'profile']) {
+  it('home and profile remain unconditional; Bible follows the community switch', () => {
+    expect(shell()).toContain("modules.bible && { id: 'bible'");
+    for (const id of ['home', 'profile']) {
       const line = new RegExp(`^\\s*\\{ id: '${id}',`, 'm');
       expect(shell(), `${id} gained a gate this ticket did not authorise`).toMatch(line);
     }
   });
 
-  it('the shell was not restructured — its element tree is unchanged from main', () => {
-    // 🔴 The non-negotiable. MainApp is 918 lines and holds the whole shell;
-    // this ticket changes clearance and layering, not layout. Element COUNT is
-    // pinned rather than a digest, so the claim survives a comment edit and
-    // still fails on a wrapper, a moved block or a dropped node. The
-    // tag-for-tag inventory is asserted in MemberScreens.desktop-layout.
-    const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    // DIGITAL-1 adds the gated Products view.
+  it('the shell element inventory includes the community entry additions', () => {
+    // Pin the inventory including the community entry additions.
+    const tags = [...stripComments(shell()).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
+    // The mobile shell and gated Products view coexist with the shared settings loading fallback.
     expect(shell()).toContain("effectiveTopTab === 'products' && <DigitalMemberProducts />");
-    expect(tags.length, 'the shell gained or lost an element').toBe(73 + 1);
+    // THE-555: the mobile tabs moved into the original navigation shell.
+    // Two obsolete visibility wrappers were removed; no second fixed bar remains.
+    // Count parser-stripped source so a tag quoted in a comment is not an element.
+    expect(tags.length, 'the shell gained or lost an element').toBe(86);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

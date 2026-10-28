@@ -312,6 +312,9 @@ function touchTargets(rootEl: ParentNode): Record<string, { heightPx: number | n
  * the previous fixture - `5583096` is no longer in this repository's history, so
  * the source digests were carried over rather than re-derived.
  */
+// THE-555: re-recorded only Lucide SVG class/child rows and their rendering hashes
+// for lucide-react 0.453.0 -> 0.577.0. Source digests, measurements, controls,
+// and every non-SVG row are unchanged; icons retain their sizes and currentColor.
 const PRE_PR_REVISION = '5583096';
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const FIXTURE = path.join(FIXTURES, 'preauth-funnel.json');

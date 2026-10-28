@@ -1,0 +1,12 @@
+/* Community accents are scoped to the current community or listing. */
+.community-brand-scope {
+  --brand-color: var(--community-brand-light);
+  --brand-foreground: var(--community-foreground-light);
+  --action: var(--brand-color);
+  --action-hover: var(--brand-color);
+  --action-foreground: var(--brand-foreground);
+}
+.dark .community-brand-scope, .dark.community-brand-scope {
+  --brand-color: var(--community-brand-dark);
+  --brand-foreground: var(--community-foreground-dark);
+}

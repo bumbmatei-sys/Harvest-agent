@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc,
-  serverTimestamp, getDocs, limit, Timestamp, arrayUnion, arrayRemove,
+  serverTimestamp, getDocs, limit, Timestamp, arrayUnion, arrayRemove, runTransaction,
   type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -16,6 +16,10 @@ import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
 import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
+import { loadScopedUserDocs } from './community/loadScopedUserDocs';
+import { NewGroupDialog, type GroupDraft } from './community/NewGroupDialog';
+import { Button } from './ui/button';
+import { OnboardingAnswers } from './community/OnboardingAnswers';
 
 /**
  * Fetch documents in a flat collection scoped by a `tenantId` field, using only
@@ -34,29 +38,6 @@ async function dualTenantDocs(
   const legacy = await getDocs(query(collection(db, collName), where('tenantId', '==', null), limit(max)));
   const seen = new Set(primary.docs.map(d => d.id));
   return [...primary.docs, ...legacy.docs.filter(d => !seen.has(d.id))];
-}
-
-/**
- * Load `users` docs for an admin scope. For the platform super admin (includeNull),
- * members created BEFORE the tenant existed may carry a null OR a *missing*
- * tenantId — which an equality query can't union (Firestore can't match a missing
- * field) — so fetch and keep the platform-owned rows (tenantId == tenant / null /
- * '' / missing). A super admin may read the whole `users` collection. Regular
- * tenant admins keep the cheap, precise equality query.
- */
-async function loadScopedUserDocs(
-  tenantId: string,
-  includeNull: boolean,
-  max: number,
-): Promise<QueryDocumentSnapshot[]> {
-  if (!includeNull) {
-    return (await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(max)))).docs;
-  }
-  const snap = await getDocs(query(collection(db, 'users'), limit(max)));
-  return snap.docs.filter(d => {
-    const t = (d.data() as { tenantId?: string | null }).tenantId;
-    return t == null || t === '' || t === tenantId;
-  });
 }
 
 /** Avatar initials from a display name: first letter of first + last word. */
@@ -121,6 +102,7 @@ interface Channel {
   createdAt: Timestamp | null;
   createdBy: string;
   type: 'announcement';
+  audience?: 'all' | 'selected' | 'admins';
   members?: string[];
   lastMessage?: string;
   lastMessageAt?: Timestamp | null;
@@ -747,12 +729,10 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
   const [showChannelMembers, setShowChannelMembers] = useState(false);
   const [showNewChannel, setShowNewChannel] = useState(false);
-  const [newChannelName, setNewChannelName] = useState('');
-  const [newChannelDesc, setNewChannelDesc] = useState('');
-  const [savingChannel, setSavingChannel] = useState(false);
   const [channelPool, setChannelPool] = useState<AdminUser[]>([]);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [channelMemberSearch, setChannelMemberSearch] = useState('');
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [poolError, setPoolError] = useState(false);
+  const [channelError, setChannelError] = useState('');
 
   // Admin DMs
   const [adminDms, setAdminDms] = useState<DirectMessage[]>([]);
@@ -764,6 +744,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   const [memberDms, setMemberDms] = useState<DirectMessage[]>([]);
   const [openMemberDm, setOpenMemberDm] = useState<DirectMessage | null>(null);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [answersMember, setAnswersMember] = useState<AdminUser | null>(null);
   const [members, setMembers] = useState<AdminUser[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -785,7 +766,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
         title: openChannel.name,
         titleIcon: <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />,
         onBack: () => { setShowChannelMembers(false); setOpenChannel(null); },
-        action: (
+        action: openChannel.audience === 'all' || openChannel.audience === 'admins' ? undefined : (
           <button
             onClick={() => setShowChannelMembers(true)}
             className="p-1.5 rounded-lg hover:bg-surface-sunken"
@@ -817,8 +798,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       const { getDoc } = await import('firebase/firestore');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const name = userDoc.exists()
-        ? (userDoc.data().displayName || user.displayName || 'Admin')
-        : (user.displayName || 'Admin');
+        ? (userDoc.data().displayName || user.displayName || 'Member')
+        : (user.displayName || 'Member');
       setCurrentUser({ uid: user.uid, name });
     };
 
@@ -847,6 +828,19 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     });
   }, []);
 
+  // A transaction prevents concurrent admin loads from overwriting an existing group.
+  useEffect(() => {
+    if (!tenantId || !currentUser) return;
+    const ref = doc(db, 'tenants', tenantId, 'channels', 'all-members');
+    runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) transaction.set(ref, {
+        name: 'All members', description: '', audience: 'all', members: [],
+        createdAt: serverTimestamp(), createdBy: currentUser.uid, type: 'announcement',
+      });
+    }).catch(() => setChannelError('Could not ensure the All members group exists.'));
+  }, [tenantId, currentUser]);
+
   // Load channels
   useEffect(() => {
     if (!tenantId) return;
@@ -857,7 +851,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     );
     return onSnapshot(q, snap => {
       setChannels(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel));
-    });
+    }, () => setChannelError('Could not load groups.'));
   }, [tenantId]);
 
   // Load all DMs. array-contains only (no orderBy) so no composite index is
@@ -910,16 +904,6 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     } catch (e) { notifyError('Failed to load members', e); }
   }, [tenantId, includeNullTenant]);
 
-  // Pool of tenant users for the create-channel member selector.
-  const loadChannelPool = useCallback(async () => {
-    if (!tenantId) return;
-    try {
-      console.log('[AdminCommunity] loadChannelPool currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
-      const snap = { docs: await loadScopedUserDocs(tenantId, includeNullTenant, 200) };
-      setChannelPool(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
-    } catch (e) { notifyError('Failed to load users', e); }
-  }, [tenantId, includeNullTenant]);
-
   // uid → channel names the user belongs to (for membership badges).
   const userChannels = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -940,32 +924,27 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   };
 
   const openNewChannel = () => {
-    setSelectedMembers([]);
-    setChannelMemberSearch('');
     setShowNewChannel(true);
-    loadChannelPool();
+    setPoolLoading(true);
+    setPoolError(false);
+    if (!tenantId) { setPoolLoading(false); setPoolError(true); return; }
+    loadScopedUserDocs(tenantId, includeNullTenant, 200)
+      .then(docs => setChannelPool(docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser)))
+      .catch(() => setPoolError(true))
+      .finally(() => setPoolLoading(false));
   };
 
-  const createChannel = async () => {
-    if (!newChannelName.trim() || !tenantId || !currentUser) return;
-    setSavingChannel(true);
-    try {
-      const members = Array.from(new Set([currentUser.uid, ...selectedMembers]));
-      await addDoc(collection(db, 'tenants', tenantId, 'channels'), {
-        name: newChannelName.trim(),
-        description: newChannelDesc.trim(),
-        members,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser.uid,
-        type: 'announcement',
-      });
-      setShowNewChannel(false);
-      setNewChannelName('');
-      setNewChannelDesc('');
-      setSelectedMembers([]);
-      setChannelMemberSearch('');
-    } catch (e) { notifyError('Failed to create channel', e); }
-    finally { setSavingChannel(false); }
+  const createChannel = async (draft: GroupDraft) => {
+    if (!tenantId || !currentUser) throw new Error('No ministry selected');
+    const adminMembers = draft.audience === 'admins'
+      ? (await loadScopedUserDocs(tenantId, includeNullTenant, 200))
+          .filter(d => ['admin', 'church_admin', 'super_admin'].includes(d.data().role)).map(d => d.id)
+      : [];
+    await addDoc(collection(db, 'tenants', tenantId, 'channels'), {
+      ...draft,
+      members: draft.audience === 'selected' ? Array.from(new Set([currentUser.uid, ...draft.members])) : draft.audience === 'admins' ? Array.from(new Set([currentUser.uid, ...adminMembers])) : [],
+      createdAt: serverTimestamp(), createdBy: currentUser.uid, type: 'announcement',
+    });
   };
 
   const startAdminDm = async (admin: AdminUser) => {
@@ -1077,16 +1056,17 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       {tab === 'channels' && (
         <div>
           <div className="flex justify-between items-center mb-3">
-            <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">Announcement Channels</p>
+            <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">Groups</p>
             <button
               onClick={openNewChannel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
               style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
             >
-              <Plus size={13} /> New Channel
+              <Plus size={13} /> New group
             </button>
           </div>
-          {channels.length === 0 ? (
+          {channelError && <p role="alert" className="text-destructive">{channelError}</p>}
+          {!channelError && channels.length === 0 ? (
             <div className="text-center py-12 text-faint">
               <Hash size={32} className="mx-auto mb-2 opacity-30" />
               <p className="font-medium text-sm">No channels yet</p>
@@ -1105,7 +1085,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                   <span className="w-9 h-9 rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0"><Hash size={16} /></span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13.5px] font-semibold text-strong truncate">#{ch.name}</span>
-                    <span className="block text-xs text-faint truncate">{ch.lastMessage || ch.description || `${ch.members?.length || 0} ${(ch.members?.length || 0) === 1 ? 'member' : 'members'}`}</span>
+                    <span className="block text-xs text-faint truncate">{ch.lastMessage || ch.description || (ch.audience === 'all' ? 'Everyone' : ch.audience === 'admins' ? 'Admins only' : `${ch.members?.length || 0} ${(ch.members?.length || 0) === 1 ? 'member' : 'members'}`)}</span>
                   </span>
                   {ch.lastMessageAt && <span className="text-[11px] text-faint shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
                 </button>
@@ -1131,7 +1111,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     <p className={`text-sm font-bold truncate ${active ? 'text-gold' : 'text-strong'}`}>#{ch.name}</p>
                     {ch.description && <p className="text-xs text-faint truncate">{ch.description}</p>}
                     <p className="text-[10px] text-faint mt-0.5">
-                      {(ch.members?.length || 0)} {(ch.members?.length || 0) === 1 ? 'member' : 'members'}{ch.lastMessageAt ? ` · ${fmtTime(ch.lastMessageAt)}` : ''}
+                      {ch.audience === 'all' ? 'Everyone' : ch.audience === 'admins' ? 'Admins only' : `${ch.members?.length || 0} ${(ch.members?.length || 0) === 1 ? 'member' : 'members'}`}{ch.lastMessageAt ? ` · ${fmtTime(ch.lastMessageAt)}` : ''}
                     </p>
                   </div>
                   <ChevronRight size={16} className={`flex-shrink-0 ${active ? 'text-gold' : 'text-stone-300'}`} />
@@ -1310,12 +1290,12 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0"><Hash size={16} className="text-gold" /></span>
                 <div className="min-w-0">
                   <p className="font-display text-base font-semibold text-strong truncate">{openChannel.name}</p>
-                  <p className="text-xs text-faint">{(openChannel.members?.length || 0).toLocaleString()} {(openChannel.members?.length || 0) === 1 ? 'member' : 'members'}</p>
+                  <p className="text-xs text-faint">{openChannel.audience === 'all' ? 'Everyone' : openChannel.audience === 'admins' ? 'Admins only' : `${(openChannel.members?.length || 0).toLocaleString()} ${(openChannel.members?.length || 0) === 1 ? 'member' : 'members'}`}</p>
                 </div>
               </div>
-              <button onClick={() => setShowChannelMembers(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-brand border border-line text-xs font-semibold text-strong hover:bg-surface-sunken transition-colors">
+              {openChannel.audience !== 'all' && openChannel.audience !== 'admins' && <Button variant="outline" onClick={() => setShowChannelMembers(true)} className="min-h-11 sm:min-h-0 flex items-center gap-1.5 px-3 py-1.5 rounded-brand border border-line text-xs font-semibold text-strong hover:bg-surface-sunken transition-colors">
                 <Users size={14} /> Members
-              </button>
+              </Button>}
             </div>
             <div className="flex-1 min-h-0">
               <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
@@ -1345,99 +1325,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
 
       </div>{/* /two-pane */}
 
-      {/* New Channel Modal */}
-      {showNewChannel && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface-raised rounded-3xl w-full max-w-md">
-            <div className="p-5 border-b border-line flex items-center justify-between">
-              <h3 className="font-display font-bold text-strong">New Channel</h3>
-              <button onClick={() => setShowNewChannel(false)}><X size={18} className="text-faint" /></button>
-            </div>
-            <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto">
-              <div>
-                <label className="text-xs font-semibold text-muted mb-1 block">Channel Name *</label>
-                <input
-                  value={newChannelName}
-                  onChange={e => setNewChannelName(e.target.value)}
-                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-hidden"
-                  placeholder="e.g. announcements"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted mb-1 block">Description</label>
-                <input
-                  value={newChannelDesc}
-                  onChange={e => setNewChannelDesc(e.target.value)}
-                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-hidden"
-                  placeholder="What is this channel about?"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted mb-1 block">
-                  Members {selectedMembers.length > 0 && <span className="text-faint font-normal">· {selectedMembers.length} selected</span>}
-                </label>
-                <p className="text-[11px] text-faint mb-2">You are added automatically as the channel creator.</p>
-                <div className="relative mb-2">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-                  <input
-                    value={channelMemberSearch}
-                    onChange={e => setChannelMemberSearch(e.target.value)}
-                    placeholder="Search users by name or email..."
-                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-line focus:border-gold focus:outline-hidden"
-                  />
-                </div>
-                <div className="max-h-44 overflow-y-auto border border-line rounded-xl divide-y divide-line">
-                  {(() => {
-                    const pool = channelPool
-                      .filter(u => u.id !== currentUser?.uid)
-                      .filter(u => !channelMemberSearch ||
-                        u.displayName?.toLowerCase().includes(channelMemberSearch.toLowerCase()) ||
-                        u.email?.toLowerCase().includes(channelMemberSearch.toLowerCase()));
-                    if (pool.length === 0) {
-                      return <p className="text-center py-6 text-xs text-faint">No users found in this tenant</p>;
-                    }
-                    return pool.map(u => {
-                      const checked = selectedMembers.includes(u.id);
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => setSelectedMembers(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-sunken"
-                        >
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                            style={{ backgroundColor: checked ? 'var(--brand-color, #B8962E)' : '#A89A87' }}>
-                            {u.displayName?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-strong truncate">{u.displayName || 'Unknown'}</p>
-                            <p className="text-xs text-faint truncate">{u.email}</p>
-                            {membershipBadge(u.id)}
-                          </div>
-                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${checked ? 'border-transparent' : 'border-line'}`}
-                            style={checked ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
-                            {checked && (
-                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </div>
-            <div className="p-5 border-t border-line flex gap-3">
-              <button onClick={() => setShowNewChannel(false)} className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted">Cancel</button>
-              <button onClick={createChannel} disabled={savingChannel || !newChannelName.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
-                {savingChannel ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <NewGroupDialog open={showNewChannel} onOpenChange={setShowNewChannel}
+        people={channelPool.filter(person => person.id !== currentUser?.uid)} loadingPeople={poolLoading} peopleError={poolError} onCreate={createChannel} />
 
       {/* Admin Picker Modal */}
       {showAdminPicker && (
@@ -1498,8 +1387,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <div className="text-center py-8 text-faint text-sm">No users found in this tenant</div>
               ) : (
                 filteredMembers.map(m => (
+                  <div key={m.id}>
                   <button
-                    key={m.id}
                     onClick={() => startMemberDm(m)}
                     className="w-full flex items-center gap-3 px-5 py-3 hover:bg-surface-sunken text-left"
                   >
@@ -1512,6 +1401,9 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                       {membershipBadge(m.id)}
                     </div>
                   </button>
+                  <Button variant="link" type="button" className="min-h-11 sm:min-h-0 px-5 pb-3 text-sm underline" onClick={() => setAnswersMember(answersMember?.id === m.id ? null : m)}>Onboarding answers</Button>
+                  {answersMember?.id === m.id && tenantId && <OnboardingAnswers tenantId={tenantId} uid={m.id} />}
+                  </div>
                 ))
               )}
             </div>

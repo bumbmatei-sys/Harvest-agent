@@ -619,11 +619,14 @@ describe('5 · the money path is byte-identical', () => {
      * Joining a mailing list is not an entitlement. The Dodo webhook remains the
      * single writer of `plan`.
      */
-    // DIGITAL-1: four digital catalogue, upload, claim and download routes; none is a billing route.
+    // The four digital product routes and community lookup do not grant entitlements.
     const digitalRoutes = ['route.ts', 'upload/route.ts', 'claim/route.ts', 'download/route.ts']
       .map((suffix) => `src/app/api/digital-products/${suffix}`);
     for (const route of digitalRoutes) expect(routes).toContain(route);
-    expect(routes.filter((route) => !digitalRoutes.includes(route)).length, 'an API route was added or removed').toBe(140);
+    // THE-555 reviews update community ratings, never billing entitlements.
+    const communityReviewRoutes = ['src/app/api/community/reviews/route.ts'];
+    for (const route of communityReviewRoutes) expect(routes).toContain(route);
+    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -663,6 +666,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/email/cron/route.ts',
       // APPENDED BY the newsletter launch-blockers follow-up — see the note on the count above.
       'app/api/email/webhook/route.ts',
+      'app/api/community/dm-counterpart/route.ts',
+      'app/api/community/settings/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -678,6 +683,8 @@ describe('5 · the money path is byte-identical', () => {
     // and say nothing about entitlement at all. What must not exist is a WRITE
     // to the tenant document, which is where `plan` and `addons` live and which
     // only the Dodo webhook may touch.
+    const counterpart = read('src/app/api/community/dm-counterpart/route.ts');
+    expect(counterpart).not.toMatch(/\.(set|update|delete|create)\s*\(/);
     const numbers = read('src/app/api/sms/numbers/route.ts');
     expect(numbers, 'the number purchase route writes to the tenant document')
       .not.toMatch(/collection\(['"]tenants['"]\)\s*\.doc\([^)]*\)\s*\.(set|update|delete)\(/);

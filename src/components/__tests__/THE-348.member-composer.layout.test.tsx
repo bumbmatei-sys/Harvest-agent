@@ -18,6 +18,7 @@ import react from '@vitejs/plugin-react';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * THE-348 · The member chat: a floating composer, the wrong attach menu, and
@@ -88,7 +89,7 @@ function extractTemplate(src: string, startsWith: string, endsAt: string): strin
   return src.slice(i, j);
 }
 
-const MAIN_APP = read('src/components/MainApp.tsx');
+const MAIN_APP = stripComments(read('src/components/MainApp.tsx'));
 
 /** The bottom nav / desktop rail. Anchored on `z-[100]`, which is its layer. */
 const NAV_TEMPLATE = (() => {
@@ -100,7 +101,7 @@ const NAV_TEMPLATE = (() => {
 /** The content wrapper — the element that reserved the nav's 65px band. */
 const WRAPPER_TEMPLATE = extractTemplate(
   MAIN_APP,
-  'flex-1 overflow-x-hidden relative',
+  'flex-1 min-h-0 overflow-x-hidden relative',
   // ⚠️ The BACKTICK is part of the terminator. This expression nests a second
   // template inside itself, so ending at the bare `}` would take the outer
   // template's own closing backtick along with the body and every evaluation
@@ -117,7 +118,7 @@ const WRAPPER_TEMPLATE = extractTemplate(
  * silently measuring a stale copy.
  */
 function evalTemplate(tpl: string, vars: Record<string, unknown>): string {
-  const names = ['isSidebarCollapsed', 'isNavVisible', 'activeBottomTab', 'effectiveTopTab', 'isChatOpen'];
+  const names = ['isSidebarCollapsed', 'isNavVisible', 'activeBottomTab', 'effectiveBottomTab', 'effectiveTopTab', 'isChatOpen'];
   const fn = new Function(...names, 'return `' + tpl + '`') as (...a: unknown[]) => string;
   return fn(...names.map((n) => vars[n]));
 }
@@ -126,6 +127,7 @@ const SHELL_VARS = {
   isSidebarCollapsed: false,
   isNavVisible: true,
   activeBottomTab: 'home',
+  effectiveBottomTab: 'home',
   effectiveTopTab: 'messages',
 };
 
@@ -247,7 +249,7 @@ export const Timestamp = { fromMillis: ts };
 `;
 
 const FIREBASE_STUB = `export const db = {} as unknown;
-export const auth = { currentUser: { uid: 'me', email: 'maria@example.org', displayName: 'Maria Bumb' } } as unknown;
+export const auth = { currentUser: { uid: 'me', email: 'maria@example.org', displayName: 'Maria Bumb', getIdToken: async () => 'fixture-token' } } as unknown;
 export const storage = {} as unknown;
 export default {};
 `;
@@ -262,7 +264,14 @@ function entrySource(): string {
   return `import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import UserMessages from '@/components/UserMessages';
+import { MobileCommunityTabs } from '@/components/community/MobileCommunityNav';
 import { AttachTypeIcon } from '@/components/attach/AttachMenu';
+
+// The fixture DM is with an admin, so the production counterpart check permits replies.
+const originalFetch = window.fetch.bind(window);
+window.fetch = (input, init) => String(input).startsWith('/api/community/dm-counterpart?')
+  ? Promise.resolve(new Response(JSON.stringify({ isAdmin: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+  : originalFetch(input, init);
 
 const NAV_SHOWN = ${JSON.stringify(NAV_SHOWN)};
 const NAV_HIDDEN = ${JSON.stringify(NAV_HIDDEN)};
@@ -291,7 +300,10 @@ function App() {
   };
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-surface overflow-hidden">
-      <div data-shell-bottom-nav className={chatOpen ? NAV_HIDDEN : NAV_SHOWN}><span>Nav</span></div>
+      <div data-shell-bottom-nav className={chatOpen ? NAV_HIDDEN : NAV_SHOWN}>
+        <span className="hidden lg:block">Nav</span>
+        <MobileCommunityTabs homeActive onHome={() => {}} onNotifications={() => {}} onProfile={() => {}} initial="M" />
+      </div>
       <div className="flex-1 flex flex-col min-w-0">
         <div data-content-wrapper className={chatOpen ? WRAPPER_HIDDEN : WRAPPER_SHOWN}>
           <div className="h-full">
@@ -921,10 +933,12 @@ describe('the bottom nav is hidden inside a conversation', () => {
     expect(r.navShown!.bottom, 'the shown nav is not on the viewport bottom').toBeCloseTo(r.viewportH, 0);
   });
 
-  it('and it is OFF THE VIEWPORT at 380px once a thread is open', () => {
+  it('and it occupies no viewport band at 380px once a thread is open', () => {
     const r = at(380);
-    expect(r.navHiddenInThread!.top, 'the nav is still on screen inside a conversation at 380px')
-      .toBeGreaterThanOrEqual(r.viewportH - 1);
+    // THE-555 restores the original shared shell's translate-on-scroll behavior.
+    expect(r.navHiddenInThread!.h).toBeGreaterThan(40);
+    expect(r.navHiddenInThread!.top,
+      'the nav still occupies a band inside a conversation at 380px').toBeGreaterThanOrEqual(r.viewportH - 1);
   });
 
   it('and the band is given BACK — a tap there lands on the composer, not the nav', () => {
@@ -938,6 +952,7 @@ describe('the bottom nav is hidden inside a conversation', () => {
 
   it('768px is still a phone for this purpose', () => {
     const r = at(768);
+    expect(r.navHiddenInThread!.h).toBeGreaterThan(40);
     expect(r.navHiddenInThread!.top).toBeGreaterThanOrEqual(r.viewportH - 1);
   });
 
@@ -975,8 +990,8 @@ describe('the nav returns on every exit', () => {
     // back for a frame here.
     for (const v of VIEWPORTS.filter((w) => w < LG)) {
       const r = at(v);
-      expect(r.navInSecondThread!.top, `the nav came back between two conversations at ${v}px`)
-        .toBeGreaterThanOrEqual(r.viewportH - 1);
+      expect(r.navInSecondThread!.h === 0 || r.navInSecondThread!.top >= r.viewportH - 1,
+        `the nav came back between two conversations at ${v}px`).toBe(true);
     }
   });
 
@@ -993,8 +1008,8 @@ describe('the nav returns on every exit', () => {
     for (const v of VIEWPORTS.filter((w) => w < LG)) {
       const r = at(v);
       // The control: it really was hidden immediately before the unmount.
-      expect(r.navWhileOpenAgain!.top, `the nav was already visible before the unmount at ${v}px`)
-        .toBeGreaterThanOrEqual(r.viewportH - 1);
+      expect(r.navWhileOpenAgain!.h === 0 || r.navWhileOpenAgain!.top >= r.viewportH - 1,
+        `the nav was already visible before the unmount at ${v}px`).toBe(true);
       expect(r.navAfterUnmount!.bottom, `the nav stayed hidden after the screen was left at ${v}px — a trap with no way out`)
         .toBeCloseTo(r.viewportH, 0);
     }

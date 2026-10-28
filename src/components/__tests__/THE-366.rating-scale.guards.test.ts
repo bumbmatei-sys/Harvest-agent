@@ -17,6 +17,9 @@ import { FIELD_TYPES_WITH_ANSWERS, TREATMENT, summariseField, type AnswerField }
  * drifts.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 const read = (rel: string) => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
@@ -198,10 +201,10 @@ describe('3 · rating and scale respect the Ministry-only gate', () => {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 describe('4 · wired end to end, and the primitive inventory is untouched', () => {
-  it('🔴 no 44th primitive — the control is a form field, not a ui/ primitive', () => {
+  it('the form field adds no primitive beyond the recorded Carousel arrival', () => {
     const ui = readdirSync(path.join(REPO_ROOT, 'src/components/ui')).filter((f) => /\.tsx?$/.test(f));
-    expect(ui, 'a primitive was installed — THE-319 pins this inventory at 43 with no append path')
-      .toHaveLength(43);
+    expect(ui, 'a primitive outside the historical inventory and THE-555 Carousel was installed')
+      .toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(ui.some((f) => /^(rating|scale|accordion)\./.test(f)), 'a rating primitive was installed')
       .toBe(false);
   });

@@ -30,6 +30,9 @@ import { ownershipFailure } from './__fixtures__/ownership-register';
  * subject this file must also name is ASSEMBLED FROM FRAGMENTS.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const code = (rel: string) => stripComments(read(rel));
@@ -338,7 +341,7 @@ describe('18 · primitives, colour and emoji', () => {
     // Enumerated rather than assumed: the ticket's own list has been wrong.
     const files = readdirSync(path.join(ROOT, 'src/components/ui'))
       .filter((f) => f.endsWith('.tsx'));
-    expect(files.length, `the primitive population moved: ${files.length}`).toBe(43);
+    expect(files.length, `the primitive population moved: ${files.length}`).toBe(43 + THE_555_PRIMITIVES.length);
     expect(files, 'accordion appeared — the ticket’s premise changed').not.toContain('accordion.tsx');
     for (const named of ['button.tsx', 'alert.tsx', 'badge.tsx', 'item.tsx', 'empty.tsx', 'card.tsx', 'separator.tsx']) {
       expect(files, `${named} is gone`).toContain(named);
@@ -552,7 +555,7 @@ describe('20 · firestore.rules, the indexes, functions/ and layout.tsx are byte
     }
     // No primitive was installed: the population is pinned above at 43.
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).filter((f) => f.endsWith('.tsx')).length)
-      .toBe(43);
+      .toBe(43 + THE_555_PRIMITIVES.length);
   });
 
   it('🔴 every shipped file this ticket writes is LF, never CRLF', () => {

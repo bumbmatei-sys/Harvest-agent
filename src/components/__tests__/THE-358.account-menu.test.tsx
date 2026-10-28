@@ -46,6 +46,9 @@ import { ownershipFailure } from '../../__tests__/__fixtures__/ownership-registe
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = path.resolve(__dirname, '../../..');
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const code = (rel: string) => stripComments(read(rel));
@@ -312,10 +315,11 @@ describe('17 · no colour hardcoded, no emoji, no new token, component or depend
     };
     // 89 was the tree before phase 1. The one addition is @tanstack/react-table.
     expect(Object.keys(pkg.dependencies).length + Object.keys(pkg.devDependencies).length,
-      'a dependency was added').toBe(90);
+      'a dependency was added').toBe(90 + 1); // THE-555: embla-carousel-react
+    expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).filter((f) => f.endsWith('.tsx')),
-      'a primitive was installed or removed').toHaveLength(43);
+      'a primitive was installed or removed').toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).includes('accordion.tsx'),
       'accordion appeared').toBe(false);
   });

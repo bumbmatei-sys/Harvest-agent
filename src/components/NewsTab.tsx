@@ -1,13 +1,12 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, getCountFromServer, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, Pin, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
-import { ImageUpload } from './ImageUpload';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import SaveButton from './SaveButton';
@@ -25,8 +24,16 @@ import { HeroBand } from './member/desktopKit';
 import { useLiveNow } from '../hooks/useLiveNow';
 import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 import EmbedPicker, { type PickerItem } from './EmbedPicker';
-import { FeedEmbedCard, EmbedComposerChip, type PostEmbed, type EmbedType } from './EmbedCard';
+import { FeedEmbedCard, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { MemberAvatar, PostHeader, PostText, relativeCommentTime, CommentActivity } from './community/PostPresentation';
+import { Card } from './ui/card';
+import { usePostComments } from './community/usePostComments';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { AdminPostComposer } from './community/AdminPostComposer';
+import { MemberPostComposer } from './community/MemberPostComposer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { eventPriceLabel } from '../lib/paid-events-feature';
 
 interface Comment {
@@ -55,12 +62,16 @@ interface EventDetails {
 
 interface CommunityPost {
   id: string;
+  tenantId?: string;
   type: 'post' | 'poll' | 'event';
   authorId: string;
   authorName: string;
   authorPhoto?: string;
   createdAt: string;
   content: string;
+  title?: string;
+  category?: string;
+  authorLevel?: number;
   /** Legacy single image — kept readable for back-compat with older posts. */
   imageUrl?: string;
   /** Up to 3 images on newer posts. Preferred over imageUrl when present. */
@@ -108,6 +119,7 @@ interface AdminEvent {
 }
 
 interface NewsTabProps {
+  eventsEnabled?: boolean;
   onOpenAllNews: () => void;
   onOpenArticle: (post: BlogPost) => void;
   /** Tenant scope for the desktop rail's "Live Now" card. Optional — the card is simply omitted without it. */
@@ -120,15 +132,7 @@ interface NewsTabProps {
   onOpenMessages?: () => void;
 }
 
-/**
- * Feed post composer is admin-only: posts are announcements — members read,
- * like, and comment but do not get a composer. The underlying create path and
- * firestore.rules already permit member posting; this flag only gates the UI.
- * Flip it to `true` to re-enable member posting — a one-line change.
- */
-const ALLOW_MEMBER_POSTS = false;
-
-const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
+const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages, eventsEnabled = true }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const shareBase = useShareBaseUrl();
   const [articles, setArticles] = useState<BlogPost[]>([]);
@@ -143,14 +147,12 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Comments state
+  const [mobileCommunity, setMobileCommunity] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [detailPost, setDetailPost] = useState<string | null>(null);
+  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
-  // Comment counts — fetched per post via a cheap aggregation query so the
-  // count is correct before a post is ever expanded (postComments is only
-  // populated for expanded posts). Kept in sync on add/delete below.
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
-  const fetchedCommentCountIds = useRef<Set<string>>(new Set());
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -165,7 +167,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const canUseCommunityGroups = usePlanGate('community_chat');
 
   // Admin announcement composer state (text + up to 3 images + embed + poll + pin).
-  // Gated to admins via `canCompose` below; members read/like/comment only.
+  // Rich controls are reserved for users with createPosts.
   const [composerText, setComposerText] = useState('');
   const [composerImages, setComposerImages] = useState<string[]>([]);
   const [showImageAttach, setShowImageAttach] = useState(false);
@@ -263,6 +265,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   };
 
   const beginEditPost = (post: CommunityPost) => {
+    if (mobileCommunity) { setDetailPost(null); setComposerOpen(true); }
     setEditingPostId(post.id);
     setComposerText(post.content || '');
     setComposerPinned(!!post.isPinned);
@@ -292,7 +295,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const handleSubmitPost = async () => {
     const text = composerText.trim();
-    const isPoll = composerMode === 'poll';
+    const isPoll = canManage && composerMode === 'poll';
+    if (!canManage && (!text || composerText.length > 500)) return;
     // Poll needs a question + at least two non-empty options (mirrors AdminPosts).
     const validPollOptions = pollOptions.filter(o => o.text.trim());
     if (isPoll) {
@@ -310,8 +314,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setIsPosting(true);
     try {
       // Poll posts carry no images/embeds; post-mode posts carry no poll.
-      const images = isPoll ? [] : composerImages.slice(0, MAX_IMAGES);
-      const embed = isPoll ? null : composerEmbed;
+      const images = isPoll || !canManage ? [] : composerImages.slice(0, MAX_IMAGES);
+      const embed = isPoll || !canManage ? null : composerEmbed;
       const pollDocOptions = validPollOptions.map(o => ({ id: o.id, text: o.text.trim(), votes: o.votes || [] }));
 
       if (editingPostId) {
@@ -328,7 +332,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         const update: Record<string, unknown> = {
           type: isPoll ? 'poll' : 'post',
           content: text,
-          isPinned: composerPinned,
+          ...(canManage ? { isPinned: composerPinned } : {}),
         };
         if (isPoll) {
           update.pollOptions = pollDocOptions;
@@ -350,8 +354,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         // displayName/photoURL are often blank; the real profile is on the doc).
         const userSnap = await getDoc(doc(db, 'users', user.uid));
         const userData = userSnap.exists() ? userSnap.data() : null;
-        const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
-        const authorPhoto = userData?.photoURL || user.photoURL || '';
+        // Match the member-create byline binding in firestore.rules.
+        const authorName = userData?.displayName || user.displayName || 'Member';
+        const authorPhoto = userData?.photoURL || '';
 
         const base: Record<string, unknown> = {
           type: isPoll ? 'poll' : 'post',
@@ -360,7 +365,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           authorPhoto,
           content: text,
           likes: [],
-          isPinned: composerPinned,
+          isPinned: canManage && composerPinned,
           createdAt: new Date().toISOString(),
           tenantId: await getWriteTenantScope(),
         };
@@ -378,6 +383,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         sendPushNotification('New Community Post', text.slice(0, 100));
       }
       resetComposer();
+      setComposerOpen(false);
     } catch (error) {
       try { handleFirestoreError(error, OperationType.WRITE, 'community_posts'); } catch (e) { console.error(e); }
       setErrorMessage("Couldn't post. Please try again.");
@@ -426,54 +432,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch each visible post's comment count via server-side aggregation
-  // (no schema change, no maintained counter field — mirrors the public
-  // /post page's adminDb `.collection('comments').count().get()` pattern).
-  // Only fetches ids not yet seen this session; add/delete keep counts in sync.
-  useEffect(() => {
-    const missing = allPosts.filter(p => !fetchedCommentCountIds.current.has(p.id));
-    if (missing.length === 0) return;
-    missing.forEach(p => fetchedCommentCountIds.current.add(p.id));
-    let cancelled = false;
-    (async () => {
-      const entries = await Promise.all(missing.map(async (post) => {
-        try {
-          const snap = await getCountFromServer(collection(db, 'community_posts', post.id, 'comments'));
-          return [post.id, snap.data().count] as const;
-        } catch (error) {
-          console.error('Failed to fetch comment count:', error);
-          return [post.id, 0] as const;
-        }
-      }));
-      if (!cancelled) {
-        setCommentCounts(prev => {
-          const next = { ...prev };
-          entries.forEach(([id, count]) => { next[id] = count; });
-          return next;
-        });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [allPosts]);
 
-  // Subscribe to comments for open posts
-  useEffect(() => {
-    const unsubs: (() => void)[] = [];
-    Object.entries(commentsOpen).forEach(([postId, isOpen]) => {
-      if (!isOpen) return;
-      const q = query(collection(db, 'community_posts', postId, 'comments'), orderBy('createdAt', 'asc'));
-      const unsub = onSnapshot(q, (snap) => {
-        setPostComments(prev => ({
-          ...prev,
-          [postId]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment))
-        }));
-      }, (error) => {
-        console.error('Failed to subscribe to comments:', error);
-      });
-      unsubs.push(unsub);
-    });
-    return () => { unsubs.forEach(u => u()); };
-  }, [commentsOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -527,7 +486,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       });
 
       // Fetch published events from AdminEvents system (tenant-scoped only)
-      if (tenantId) {
+      if (tenantId && eventsEnabled) {
         // Single-field filter only (status); sort client-side to avoid a composite index.
         const eventsQ = query(
           collection(db, 'tenants', tenantId, 'events'),
@@ -555,7 +514,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       if (unsubArticles) unsubArticles();
       if (unsubEvents) unsubEvents();
     };
-  }, []);
+  }, [eventsEnabled]);
 
   const handleLike = async (postId: string, likes: string[]) => {
     const user = auth.currentUser;
@@ -709,7 +668,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     }
   };
 
-  const handleComment = async (postId: string) => {
+  const handleComment = async (post: CommunityPost) => {
+    const postId = post.id;
     const text = (commentInputs[postId] || '').trim();
     if (!text) return;
     if (text.length > 280) {
@@ -724,33 +684,23 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       return;
     }
     try {
-      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
-      // resolver returns null for a super admin on the apex ("all tenants",
-      // right for a read), which stamped `tenantId: null` on the comment.
-      //
-      // Scope of the harm, stated precisely: NO rule reads a comment's own
-      // tenantId (the read scopes off the parent post's, create validates
-      // authorId/content/keys only, delete is authorId-only), so a null here
-      // does not orphan the comment. It is simply wrong denormalised data that
-      // any future tenant-filtered query or export would silently miss.
-      // `|| null` is kept — the field's `string | null` contract is unchanged.
-      const tenantId = await getWriteTenantScope();
-      // Resolve author from the user doc (mirrors the post path's #147 fix —
-      // Auth displayName/photoURL are often blank; the real profile is on the doc).
+      // Comments belong to their parent ministry, including in the unscoped super admin feed.
+      const tenantId = post.tenantId;
+      if (typeof tenantId !== 'string' || !tenantId.trim()) throw new Error('A ministry is required to comment.');
       const userSnap = await getDoc(doc(db, 'users', user.uid));
       const userData = userSnap.exists() ? userSnap.data() : null;
-      const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
-      const authorPhoto = userData?.photoURL || user.photoURL || '';
+      const authorName = userData?.displayName || user.displayName || 'Member';
+      const authorPhoto = userData?.photoURL || '';
       await addDoc(collection(db, 'community_posts', postId, 'comments'), {
         authorId: user.uid,
         authorName,
         authorPhoto,
         content: text,
         createdAt: new Date().toISOString(),
-        tenantId: tenantId || null,
+        tenantId,
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-      setCommentCounts(prev => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
+
     } catch (error) {
       // A rejected write is otherwise silent — Firestore's latency compensation
       // shows the comment locally, then rolls it back ("appears then disappears").
@@ -768,7 +718,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       if (comment.authorId === uid) {
         // Author deleting their own comment — firestore.rules allows this directly.
         await deleteDoc(doc(db, 'community_posts', postId, 'comments', comment.id));
-        setCommentCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] ?? 1) - 1) }));
+
         return;
       }
       if (!canManage) return;
@@ -782,7 +732,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         body: JSON.stringify({ postId, commentId: comment.id }),
       });
       if (!res.ok) throw new Error('Failed to delete comment');
-      setCommentCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] ?? 1) - 1) }));
+
     } catch (error) {
       try { handleFirestoreError(error, OperationType.DELETE, 'comments'); } catch (e) { console.error(e); }
     }
@@ -832,17 +782,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  };
+
 
   const formatArticleDate = (dateString?: string) => {
     if (!dateString) return '';
@@ -860,6 +800,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   
   const posts = allPosts.filter(post => {
+    if (!eventsEnabled && (post.type === 'event' || post.embed?.type === 'event')) return false;
     // Legacy support
     if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
       // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.
@@ -878,11 +819,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     return true;
   }).slice(0, 3);
 
+  const { comments: postComments, counts: commentCounts, latest: latestComments, errors: commentErrors } = usePostComments(posts.map(post => post.id), commentsOpen);
+
   // Desktop rail: same live state the top-of-feed LiveNowBanner uses.
   const { active: isLive, title: liveTitle } = useLiveNow(tenantId);
 
   // Desktop rail: compact companion to the "Upcoming Events" section below.
-  const upcomingRailEvents = adminEvents.filter(e => !e.pinned).slice(0, 4);
+  const visibleEvents = eventsEnabled ? adminEvents : [];
+  const upcomingRailEvents = visibleEvents.filter(e => !e.pinned).slice(0, 4);
 
   // Desktop greeting hero: real logged-in user only, time-of-day from the client clock.
   const greetingHour = new Date().getHours();
@@ -899,10 +843,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const canPostImages = composerImages.length < MAX_IMAGES;
 
-  // Composer is admin-only (posts are announcements). `canManage` starts false
-  // and only flips true after the async role check resolves, so a regular user
-  // never sees the composer flash. Flip ALLOW_MEMBER_POSTS to re-enable members.
-  const canCompose = canManage || ALLOW_MEMBER_POSTS;
   // Poll submit needs a question + two non-empty options; post submit needs text or an image.
   const composerCanSubmit = composerMode === 'poll'
     ? Boolean(composerText.trim()) && pollOptions.filter(o => o.text.trim()).length >= 2
@@ -942,256 +882,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     <div className="space-y-4 lg:space-y-3 w-full">
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
-      {canCompose && auth.currentUser && (
-        <div className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
-          {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
-              an existing post's type isn't accidentally flipped. */}
-          {!editingPostId && (
-            <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-3 w-fit">
-              <button
-                type="button"
-                onClick={() => setComposerMode('post')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Post
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Poll is mutually exclusive with images/embeds — clear them.
-                  setComposerMode('poll');
-                  setComposerImages([]);
-                  setShowImageAttach(false);
-                  setComposerEmbed(null);
-                  setAttachMenuOpen(false);
-                }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Poll
-              </button>
-            </div>
-          )}
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
-              {auth.currentUser.photoURL ? (
-                <Image src={auth.currentUser.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                (auth.currentUser.displayName || 'Y').charAt(0)
-              )}
-            </div>
-            <textarea
-              value={composerText}
-              onChange={(e) => setComposerText(e.target.value)}
-              placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
-              rows={2}
-              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-hidden"
-            />
-          </div>
-
-          {/* Poll options — add/remove; needs at least two non-empty to post. */}
-          {composerMode === 'poll' && (
-            <div className="space-y-2 mt-3 pl-12">
-              {pollOptions.map((option, index) => (
-                <div key={option.id} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={option.text}
-                    onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
-                    placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
-                  />
-                  {pollOptions.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
-                      aria-label={`Remove option ${index + 1}`}
-                      className="p-2 text-faint hover:text-red-500 transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {pollOptions.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => setPollOptions(prev => [...prev, { id: Date.now().toString(), text: '' }])}
-                  className="text-sm text-gold font-medium hover:underline"
-                >
-                  + Add option
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Attached image thumbnails + remove-each (post mode only) */}
-          {composerMode === 'post' && composerImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3 pl-12">
-              {composerImages.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-surface-sunken border border-line">
-                  <Image src={url} alt={`Attachment ${i + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
-                  <button
-                    type="button"
-                    onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
-                    aria-label={`Remove image ${i + 1}`}
-                    className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Image attach zone — reveals the uploader (reuses ImageUpload); appends to the array, capped at 3 */}
-          {composerMode === 'post' && showImageAttach && canPostImages && (
-            <div className="mt-3 pl-12">
-              <ImageUpload
-                value=""
-                onChange={(url) => {
-                  if (!url) return;
-                  setComposerImages(prev => prev.length < MAX_IMAGES ? [...prev, url] : prev);
-                }}
-                label={`Add image (${composerImages.length}/${MAX_IMAGES})`}
-              />
-            </div>
-          )}
-
-          {/* Attached embed preview — one per post, removable, replaced when a new one is picked */}
-          {composerMode === 'post' && composerEmbed && (
-            <div className="mt-3 pl-12">
-              <EmbedComposerChip embed={composerEmbed} tenantId={scopeTenantId} onRemove={() => setComposerEmbed(null)} />
-            </div>
-          )}
-
-          {/*
-             THE-346 · `pl-12` IS GONE, and that ONE class was the whole bug.
-
-            The founder: *"In news user app when creating a post put that
-            paperclip and pin button in the left to be in parallel with the user
-            profile picture."*
-
-            The composer's text row is `flex items-start gap-3` with a `w-9`
-            (36px) avatar, so the textarea beside it starts at 36 + 12 = 48px.
-            `pl-12` is exactly that 48px, and it is CORRECT on the four rows
-            above — poll options, the attachment chips, the image strip and the
-            embed card all continue the SENTENCE the textarea started, so they
-            line up with the text.
-
-             THIS ROW IS NOT ONE OF THOSE. It is the composer's action bar —
-            paperclip, Pin, Post — and it belongs to the whole composer, not to
-            the text column, which is what the founder is seeing when he says it
-            should be in parallel with the picture. Measured at 380px, before:
-            the paperclip's icon sat at x=64 against an avatar at x=16.
-
-             THE `-ml-2` ON THE PAPERCLIP STAYS, and it is why this is `pl-0`
-            rather than `pl-2`. That negative margin exists so the ICON, not the
-            44px hit area around it, is what aligns — the same optical trick the
-            row's right-hand `Post` button gets from its own padding. With the
-            indent gone the button's box starts 8px into the card's own padding
-            and the GLYPH lands at exactly the avatar's left edge, which is the
-            edge the founder is pointing at. Measured after: both at x=16.
-          */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
-            <div className="flex items-center gap-1">
-              {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
-              {composerMode === 'post' && (
-                <div className="relative" ref={attachMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setAttachMenuOpen(o => !o)}
-                    aria-label="Add attachment"
-                    aria-haspopup="menu"
-                    aria-expanded={attachMenuOpen}
-                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors"
-                  >
-                    <Paperclip size={18} />
-                  </button>
-                  {attachMenuOpen && (
-                    <div
-                      role="menu"
-                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={!canPostImages}
-                        onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {canPostImages ? 'Add image' : 'Max 3 images'}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add blog article
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add fundraising
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add event
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Pin-to-top toggle (admin). Writes `isPinned` — the field the feed sorts on. */}
-              <button
-                type="button"
-                onClick={() => setComposerPinned(p => !p)}
-                aria-pressed={composerPinned}
-                aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
-              >
-                <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
-                {composerPinned ? 'Pinned' : 'Pin'}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {editingPostId && (
-                <button
-                  type="button"
-                  onClick={resetComposer}
-                  className="px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleSubmitPost}
-                disabled={isPosting || !composerCanSubmit}
-                className="flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send size={16} />
-                {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {mobileCommunity && auth.currentUser ? <><Button variant="outline" onClick={() => setComposerOpen(true)} className="h-auto min-h-11 w-full justify-start whitespace-normal rounded-2xl bg-surface-raised p-4 text-left font-normal text-muted">Share an update with the community…</Button><Sheet open={composerOpen} onOpenChange={setComposerOpen}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>{editingPostId ? 'Edit post' : 'Create post'}</SheetTitle></SheetHeader>      {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
+      {canManage && auth.currentUser && <AdminPostComposer user={auth.currentUser} editingPostId={editingPostId} composerMode={composerMode} setComposerMode={setComposerMode} composerText={composerText} setComposerText={setComposerText} composerImages={composerImages} setComposerImages={setComposerImages} composerEmbed={composerEmbed} setComposerEmbed={setComposerEmbed} showImageAttach={showImageAttach} setShowImageAttach={setShowImageAttach} attachMenuOpen={attachMenuOpen} setAttachMenuOpen={setAttachMenuOpen} attachMenuRef={attachMenuRef} pollOptions={pollOptions} setPollOptions={setPollOptions} scopeTenantId={scopeTenantId} setEmbedPicker={setEmbedPicker} composerPinned={composerPinned} setComposerPinned={setComposerPinned} resetComposer={resetComposer} handleSubmitPost={handleSubmitPost} isPosting={isPosting} composerCanSubmit={composerCanSubmit} canPostImages={canPostImages} />}</SheetContent></Sheet></> : <>
+      {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
+      {canManage && auth.currentUser && <AdminPostComposer user={auth.currentUser} editingPostId={editingPostId} composerMode={composerMode} setComposerMode={setComposerMode} composerText={composerText} setComposerText={setComposerText} composerImages={composerImages} setComposerImages={setComposerImages} composerEmbed={composerEmbed} setComposerEmbed={setComposerEmbed} showImageAttach={showImageAttach} setShowImageAttach={setShowImageAttach} attachMenuOpen={attachMenuOpen} setAttachMenuOpen={setAttachMenuOpen} attachMenuRef={attachMenuRef} pollOptions={pollOptions} setPollOptions={setPollOptions} scopeTenantId={scopeTenantId} setEmbedPicker={setEmbedPicker} composerPinned={composerPinned} setComposerPinned={setComposerPinned} resetComposer={resetComposer} handleSubmitPost={handleSubmitPost} isPosting={isPosting} composerCanSubmit={composerCanSubmit} canPostImages={canPostImages} />}
+      </>}
 
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
 
       {/* Pinned events from AdminEvents system */}
-      {adminEvents.filter(e => e.pinned).map(event => (
+      {visibleEvents.filter(e => e.pinned).map(event => (
         <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid (mobile + desktop) */}
           <div className="relative h-36 lg:h-[150px]">
@@ -1242,46 +943,22 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {posts.length === 0 ? (
         <div className="text-center py-12 text-muted">No news yet.</div>
       ) : (
-        posts.map((post, index) => (
-          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center font-bold text-muted relative">
-                  {post.authorPhoto ? (
-                    <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    post.authorName.charAt(0)
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-strong text-sm">{post.authorName}</h4>
-                    {post.isPinned && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] px-2 py-0.5 rounded-full">
-                        Pinned
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted">{formatDate(post.createdAt)}</p>
-                </div>
-              </div>
-              <KebabMenu
+        posts.map((post, index) => {
+            const card =
+          <Card key={post.id} className="gap-0 rounded-none border-x-0 border-b border-line bg-surface-raised p-4 shadow-none ring-0 lg:rounded-[var(--ds-radius-card)] lg:border lg:shadow-[var(--ds-sh-sm)]">
+            <PostHeader name={post.authorName} photo={post.authorPhoto} level={post.authorLevel} createdAt={post.createdAt} category={post.category} pinned={post.isPinned} actions={<KebabMenu
                 ariaLabel="Post options"
                 items={[
                   // Author can edit their own post or poll (legacy events aren't editable here).
-                  ...(auth.currentUser?.uid === post.authorId && (post.type === 'post' || post.type === 'poll')
+                  ...(auth.currentUser?.uid === post.authorId && (post.type === 'post' || (canManage && post.type === 'poll'))
                     ? [{ label: post.type === 'poll' ? 'Edit poll' : 'Edit post', onClick: () => beginEditPost(post) }]
                     : []),
                   ...(canManage || auth.currentUser?.uid === post.authorId
                     ? [{ label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) }]
                     : []),
                 ]}
-              />
-            </div>
-
-            <p className="text-body text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
-              {post.content}
-            </p>
+              />} />
+            <PostText content={post.content} title={post.title} />
 
             {(() => {
               const images = postImages(post);
@@ -1377,28 +1054,25 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-3 border-t border-line ">
-              <button 
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-line ">
+              <Button type="button" variant="ghost" 
                 onClick={() => handleLike(post.id, post.likes)}
-                className={`flex items-center gap-1.5 text-xs transition-colors ${
-                  auth.currentUser && post.likes.includes(auth.currentUser.uid)
-                    ? 'text-gold'
-                    : 'text-muted hover:text-gold'
-                }`}
+                style={{ color: auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
               >
                 <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
-                <span>{post.likes.length} Likes</span>
-              </button>
-              <button
-                onClick={() => toggleComments(post.id)}
-                className={`flex items-center gap-1.5 text-xs transition-colors ${
-                  commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
-                }`}
+                <span>{post.likes.length}</span>
+              </Button>
+              <Button type="button" variant="ghost"
+                onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}
+                style={{ color: commentsOpen[post.id] ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
               >
                 <MessageSquare size={16} />
-                <span>{commentCounts[post.id] ?? postComments[post.id]?.length ?? 0} Comments</span>
-              </button>
-              <div className="ml-auto flex items-center gap-2">
+                <span>{commentErrors[post.id] ? 'Unavailable' : commentCounts[post.id] ?? '…'}</span>
+              </Button>
+              {!commentErrors[post.id] && <CommentActivity comment={latestComments[post.id]} viewerId={auth.currentUser?.uid} />}
+                <div className="ml-auto flex items-center gap-2">
                 <SaveButton
                   entry={{
                     type: 'post',
@@ -1419,20 +1093,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             {/* Comments Section */}
             {commentsOpen[post.id] && (
               <div className="mt-3 pt-3 border-t border-line space-y-3">
-                {postComments[post.id]?.map(comment => (
+                {commentErrors[post.id] && <p role="alert" className="text-xs text-muted">Could not load comments.</p>}
+                {!commentErrors[post.id] && postComments[post.id]?.map(comment => (
                   <div key={comment.id} className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
-                      {comment.authorPhoto ? (
-                        <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        comment.authorName.charAt(0)
-                      )}
-                    </div>
+                    <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} small />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-strong">{comment.authorName}</span>
                         <span className="text-[10px] text-faint">
-                          {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {relativeCommentTime(comment.createdAt)}
                         </span>
                         <div className="ml-auto">
                           <KebabMenu
@@ -1457,7 +1126,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     </div>
                   </div>
                 ))}
-                {postComments[post.id]?.length === 0 && (
+                {!commentErrors[post.id] && postComments[post.id]?.length === 0 && (
                   <p className="text-xs text-faint text-center py-1">No comments yet</p>
                 )}
                 {auth.currentUser && (
@@ -1469,39 +1138,40 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                         (auth.currentUser.displayName || 'Y').charAt(0)
                       )}
                     </div>
-                    <input
+                    <Input
                       type="text"
                       value={commentInputs[post.id] || ''}
                       onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value.slice(0, 280) }))}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post); } }}
                       placeholder="Write a comment..."
                       maxLength={280}
                       className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                     />
-                    <button
-                      onClick={() => handleComment(post.id)}
+                    <Button type="button" variant="ghost" size="icon" aria-label="Send comment"
+                      onClick={() => handleComment(post)}
                       disabled={!(commentInputs[post.id] || '').trim()}
-                      className="p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors"
+                      className="min-h-11 min-w-11 p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors sm:min-h-0 sm:min-w-0"
                     >
                       <Send size={16} />
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             )}
-          </div>
-        ))
+          </Card>;
+          return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;
+        })
       )}
 
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
-      {adminEvents.filter(e => !e.pinned).length > 0 && (
+      {visibleEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4 lg:hidden">
           <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-strong px-1 mb-3 font-display">
             <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
             Upcoming Events
           </h2>
           <div className="space-y-3">
-            {adminEvents.filter(e => !e.pinned).map(event => (
+            {visibleEvents.filter(e => !e.pinned).map(event => (
               <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
                   <div className="relative h-32 bg-surface-sunken">
@@ -1606,7 +1276,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const rail = (
     <div className="hidden lg:flex lg:flex-col lg:gap-3 lg:sticky lg:top-4">
-      {isLive && (
+      {isLive && onOpenLivestream && (
         <DesktopCard elevation="sm" className="p-4">
           <button onClick={onOpenLivestream} className="w-full flex items-center gap-3 text-left">
             <span className="relative flex h-3 w-3 shrink-0">

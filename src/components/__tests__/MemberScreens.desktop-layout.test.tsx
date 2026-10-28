@@ -3,7 +3,9 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { stripComments as parseStripped } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * THE-190 batch H — the seven member-app screens, and the reading measure.
@@ -53,7 +55,7 @@ const LOREM = 'The Lord is my shepherd; I shall not want. He maketh me to lie do
 const fx = vi.hoisted(() => ({ lorem: 'The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul.' }));
 
 vi.mock('../../firebase', () => ({
-  db: {}, auth: { currentUser: { uid: 'me', email: 'me@t.com', displayName: 'Maria Bumb' } },
+  db: {}, auth: { currentUser: { uid: 'me', email: 'me@t.com', displayName: 'Maria Bumb', getIdToken: async () => 'token' } },
 }));
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => 'tenant-1',
@@ -82,7 +84,7 @@ vi.mock('firebase/firestore', () => {
     collection: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
     doc: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
     query: (c: any, ...a: unknown[]) => ({ __path: c?.__path, a }),
-    where: () => ({}), orderBy: () => ({}), limit: () => ({}),
+    where: () => ({}), orderBy: () => ({}), limit: () => ({}), documentId: () => '__name__',
     getDoc: async () => ({ exists: () => true, data: () => ({ displayName: 'Maria Bumb', role: 'user', tenantId: 'tenant-1' }) }),
     getDocs: async (q: any) => snapOf(String(q?.__path).includes('community_posts') ? posts : []),
     getCountFromServer: async () => ({ data: () => ({ count: 3 }) }),
@@ -90,6 +92,8 @@ vi.mock('firebase/firestore', () => {
       const p = String(q?.__path ?? '');
       queueMicrotask(() => {
         if (typeof cb !== 'function') return;
+        // Community settings and the DM counterpart check are separate reads.
+        if (p.endsWith('/settings/community')) return cb({ exists: () => false });
         if (p.includes('comments')) return cb(snapOf(Array.from({ length: 3 }, (_, i) => ({ id: `k${i}`, name: 'Grace Miller', text: fx.lorem.slice(0, 70) }))));
         if (p.includes('livestream')) return cb({ exists: () => true, data: () => ({ active: true, sessionId: 's1', youtubeVideoId: 'abc123', title: 'Sunday Morning Service', viewerCount: 42, sermonNote: { title: 'The Good Shepherd', contentHtml: `<p>${fx.lorem}</p>` } }) });
         if (p.includes('community_posts')) return cb(snapOf(posts));
@@ -134,6 +138,9 @@ const VERSES = [
   'And God saw the light, that it was good: and God divided the light from the darkness.',
 ];
 globalThis.fetch = (async (url: any) => {
+  if (String(url).includes('/api/community/dm-counterpart')) {
+    return { ok: true, json: async () => ({ isAdmin: true }) };
+  }
   if (String(url).includes('available_translations')) {
     return { ok: true, json: async () => ({ translations: [{ id: 'BSB', name: 'Berean Standard Bible', englishName: 'Berean Standard Bible', shortName: 'BSB', language: 'eng', licenseUrl: 'https://x' }] }) };
   }
@@ -216,6 +223,17 @@ const at = (rel: string) => {
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 const FIXTURE = path.join(FIXTURES, 'member-screens-mobile.json');
+const COMMUNITY_FIXTURE = path.join(FIXTURES, 'member-screens-community-mobile.json');
+// THE-555 intentionally changes the shell and shared controls; retain all prior fixtures.
+const POLISH_FIXTURE = path.join(FIXTURES, 'member-screens-THE-555-mobile.json');
+let POLISH_BASELINE: Baseline;
+const POLISH_SURFACES = ['NewsTab', 'MainApp', 'UserMessages', 'UserMessagesThread'] as const;
+const isPolishSurface = (name: string) => (POLISH_SURFACES as readonly string[]).includes(name);
+const COMMUNITY_SURFACES = ['NewsTab', 'MainApp', 'UserMessages', 'UserMessagesThread'] as const;
+const isCommunitySurface = (name: string) => (COMMUNITY_SURFACES as readonly string[]).includes(name);
+// The last tree before community step 1. Keep the original pre-PR revision above.
+const COMMUNITY_BEFORE = 'fc50e456';
+const beforeCommunity = (rel: string) => execSync(`git show ${COMMUNITY_BEFORE}:src/components/${rel}`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 
 interface Baseline { [surface: string]: { mobileLayer: string[]; colours: string[]; heights: string[] } }
 
@@ -296,6 +314,11 @@ const heightLayer = (root: ParentNode): string[] =>
 
 let BASELINE!: Baseline;
 let SURFACES!: Record<string, HTMLDivElement>;
+let COMMUNITY_BASELINE!: Baseline;
+let COMMUNITY_FIDELITY_BASELINE!: Baseline;
+let POST_CARD_BASELINE!: Baseline;
+let SHADCN_MESSAGES_BASELINE!: Baseline;
+const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
@@ -362,6 +385,167 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  POLISH_BASELINE = JSON.parse(readFileSync(POLISH_FIXTURE, 'utf8')) as Baseline;
+  // PR 554's post cards change the rendered feed on these three surfaces.
+  POST_CARD_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-post-cards-mobile.json'), 'utf8')) as Baseline;
+  COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
+  // Community Eden fidelity pass: retain the earlier fixture for historical checks.
+  COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
+  // PR 554: reviewer-requested shadcn Input/Button swaps add intrinsic state,
+  // file-input and height classes. Keep the old fixture; append only Messages.
+  SHADCN_MESSAGES_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-shadcn-messages-mobile.json'), 'utf8')).surfaces as Baseline;
+});
+
+/**
+ * Community step 1 intentionally adds the member composer, group search and
+ * entry gate. Preserve the original fixture and compare the four affected
+ * renderings to their own recorded fixture. The source digests pin the complete
+ * change, including paths the seeded render does not exercise. The historical
+ * source comparisons below still run against the last pre-community tree.
+ */
+describe('community step 1 pins', () => {
+  it('THE-555 records exactly the four reviewed member surfaces without rewriting prior fixtures', () => {
+    expect(Object.keys(POLISH_BASELINE)).toEqual([...POLISH_SURFACES]);
+    expect([
+      'b1ec3b075df28c95302245fb786bf41bea56150f34d93c6e78fc0ded5e7b73ea',
+      // THE-555 round 5: r4 restores the shared fixed shell and removes duplicate
+      // mobile nav wrappers; records Skool tabs, Lucide/state classes and the
+      // profile's 44px floor. The other three surfaces are byte-identical.
+      '2c6aa1daf07baa1387a6d260e08d0f24eaa0d110afb63f9e0ba58fc520328b93',
+      // Merge PR 554's shadcn search with THE-555's left-aligned group rows.
+      '61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b',
+    ]).toContain(createHash('sha256').update(readFileSync(POLISH_FIXTURE)).digest('hex'));
+  });
+
+  it.each([
+    ['NewsTab.tsx', '12f1ab6a48623eda537aff4f7de3d268be70200b4c62900f38ef2489fe43ab81'],
+    ['MainApp.tsx', '7bdd8d894bae432a07abdc08867b1a08c18c542e869b854c8b203f09e369fe1f'],
+    ['UserMessages.tsx', '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150'],
+    ['community/GroupList.tsx', '8d60461ab80b7ceee6a7ee960b0f535c56468f7eab5b3c3f874b2d62557d3239'],
+    ['community/MemberPostComposer.tsx', '189fecc2625d8086636484e294d0a10b0e493f44f8f51dc47e3b84ee8fd4545d'],
+    ['community/AdminPostComposer.tsx', '308c589ce29d21222c2d36b21d708322feef8019f0f478ffa36d0b50bcb3ba14'],
+  ])('%s retains the reviewed community implementation', (file, digest) => {
+    // Community Eden fidelity pass changes only these three reviewed sources.
+    const fidelityDigests: Record<string, string> = {
+      'MainApp.tsx': '8b7df32fa2a9ca21833fa384362352f3c07d76b3c1cd0d3c9f1eb736b1331e76',
+      'UserMessages.tsx': '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
+      'community/GroupList.tsx': '880da3cd505f35774d632031af481d32cd7b0875136fed565d313e2ae9967fc2',
+    };
+    // Keep the earlier pins while accepting the touch-floor and digital products merge.
+    const laterDigests: Record<string, string> = {
+      'MainApp.tsx': '3a3d20bbd8169d08e573eaf1958e162eae524dbe97e1f60097150b5a54cef6a7',
+      'NewsTab.tsx': '89610dcc785f31ebac56f51f440aa64d3b5a765f11a1dfb3bdaec8d4d73aa73e',
+      'community/MemberPostComposer.tsx': '0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34',
+    };
+    // PR 554 fixes community visibility, identity and member post edits.
+    const reviewDigests: Record<string, string> = {
+      "MainApp.tsx": "9a5f76091262e5e65cd82e7ce3f277ec75151d602ee8b8f5c2e415478641367a",
+      "NewsTab.tsx": "5e17ff5c6d11c903659f03f27ec6032e3467361df9526dc1086eee858868d0ea",
+      "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f"
+};
+    // PR 554 post card presentation, appended to the prior source pins.
+    const postCardDigests: Record<string, string> = {
+      'NewsTab.tsx': '654c6b0da1d8571dac7dd586f6c2f6bcfbf32035ee1a20680ba2ac82f155ef4f',
+    };
+    const buttonFloorDigests: Record<string, string> = {
+      'NewsTab.tsx': '1154c9c05888e1ae881d2dbfea7a8793dec0803c82acf5f8eaccf46529e1d32e',
+    };
+    const staticButtonDigests: Record<string, string> = {
+      'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
+    };
+    const mergedDigests: Record<string, string> = { 'MainApp.tsx': '4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19', 'NewsTab.tsx': '54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659' };
+    // PR 554 review round two bounds comment reads.
+    const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
+    // PR 554 security review aligns the member composer with the rules' byline binding.
+    const bylineBinding: Record<string, string> = { 'NewsTab.tsx': '43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb' };
+    // PR 555 merge retains the mobile shell and PR 554 bounded comment activity.
+    const discoveryMergeDigests: Record<string, string> = {"MainApp.tsx": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d", "NewsTab.tsx": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1"};
+    // THE-555 polish: fixed phone tabs, sticky header and safe-area content clearance.
+    const polishDigests: Record<string, string> = { 'MainApp.tsx': 'c64d985698d594ff80fbf8370b407940b442ffd41995ab3eeb67cca7707aa78a' };
+    // THE-555 completes the phone feed's document flow so the final card can scroll above the tabs.
+    const polishCompletionDigests: Record<string, string> = { 'MainApp.tsx': '312fbad342f1befa5768f2e2667303c8d467efb2cef60e72595a329f09d57b61' };
+    // THE-555 merge and founder polish: shadcn controls, standard icons and below-lg shell.
+    const finalPolishDigests: Record<string, string> = {"MainApp.tsx": "95a12d53c29cbd7e4307086048e695e56b2e244b2a30a794e3088628a45fc9de", "NewsTab.tsx": "ede1abc8df1cbe194bd79e7944eaa090d56d9c79161d39933c4ea69771ebeced", "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f", "community/GroupList.tsx": "4a6ec24fd4d00ac805cade5d40facd2940c8effd84164730327eb9b516beaa9d", "community/AdminPostComposer.tsx": "5e93bf3111994d11d57b9392502179d75836d3a9938ed3a671baf7e9e33a5516"};
+    // THE-555 gives image-removal controls a full touch target and uses surface tokens.
+    const composerControlsDigests: Record<string, string> = { 'community/AdminPostComposer.tsx': 'f66298b13d0fc200d16904080e8bf89f38bfc7d3ee37043c0e36c08ff56b16d4' };
+    // THE-555 shares the standard Lucide mapping with admin and mobile navigation.
+    const navigationIconDigests: Record<string, string> = { 'MainApp.tsx': 'a5dea2f868411cdb8e2ce733e28be7ebf1702bab6941a4e70ea084c82ec9d550' };
+    // THE-555 round 4: restores the shared safe-area nav shell.
+    const sharedNavShellDigests: Record<string, string> = { 'MainApp.tsx': '686af637a57e383b2c9f4c65730b2ee30b486e6bc705fc2d78db0aef4934240a' };
+    // THE-555 round 5: r4 shared nav shell, Lucide/state classes, composer alignment and profile touch floor.
+    const roundFiveDigests: Record<string, string> = {"MainApp.tsx": "b1c0b69372231837e9a920c6d9b3e99b31fecc507c93314aecfcd37bfbd31120", "community/AdminPostComposer.tsx": "e9285dda8170782879cd0423c6fe30603b70821340dc553dd32063e24e7ccf98"};
+    // PR 554 final review binds comments and adopts shadcn controls with phone touch floors.
+    const finalReview: Record<string, string> = {
+      "NewsTab.tsx": "b6ee8784f381206a2f4ff4894b4ea59a1994835c539faf8f77bf3b767739b1b1",
+      "UserMessages.tsx": "5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3",
+      "community/GroupList.tsx": "af984b8150e09ed4462651e8232dbd860f82676900a85b9ac02e538dd89fd8b8",
+      "community/AdminPostComposer.tsx": "55e2e910ad61b8e76c2f52ace0323eac01422fb58e9d2cf0bdccfc289cbadd0f"
+};
+    // Keep selected states in static aria-pressed classes so the button floor guard measures them.
+    const staticControls: Record<string, string> = { 'community/AdminPostComposer.tsx': 'd81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41' };
+    // PR 554 follow-up: intrinsic shadcn sizing and THE-346 discovery anchor.
+    const shadcnLayoutFixes: Record<string, string> = {
+      "UserMessages.tsx": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
+      "community/AdminPostComposer.tsx": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2"
+    };
+    // PR 554 Bugbot: comment writes inherit the parent ministry in the apex feed.
+    const commentTenant: Record<string, string> = { 'NewsTab.tsx': 'acc2b8bfe18f7f6a7169bd4df9335f6e5f74b1b4da3374c44668b30516ae2a9b' };
+    // Merge PR 554 comment security and controls with THE-555 discovery and touch targets.
+    const reconciledDigests: Record<string, string> = {
+      "NewsTab.tsx": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "community/GroupList.tsx": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "community/AdminPostComposer.tsx": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8"
+};
+    // THE-555 review B1: the mobile composer trigger uses the outline Button with its touch floor.
+    const composerTriggerDigests: Record<string, string> = { 'NewsTab.tsx': '6f13e57fdcd86ec7d4bc3a07012c94e8f17a0a953425b3aa6e568c1aadcd23fc' };
+    expect([composerTriggerDigests[file], reconciledDigests[file], commentTenant[file], shadcnLayoutFixes[file], staticControls[file], finalReview[file], roundFiveDigests[file], sharedNavShellDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+  });
+
+  it('the shadcn record changes only the group search and group button rows', () => {
+    for (const name of THE_348_SURFACES) {
+      const before = COMMUNITY_FIDELITY_BASELINE[name].mobileLayer;
+      const after = SHADCN_MESSAGES_BASELINE[name].mobileLayer;
+      expect(after).toHaveLength(before.length);
+      const moved = after.filter((row, i) => row !== before[i]);
+      expect(moved).toHaveLength(2);
+      expect(moved.filter((row) => row.split('\t')[1] === 'input')).toHaveLength(1);
+      expect(moved.filter((row) => row.includes('aria-pressed:bg-surface-sunken'))).toHaveLength(1);
+      // Neither the composer, its reserved band nor its send control can hide
+      // behind this new record. All other rows still equal the earlier pin.
+      const movedIndices = new Set(moved.map((row) => row.split('\t')[0]));
+      expect(SHADCN_MESSAGES_BASELINE[name].heights.filter((row) => !movedIndices.has(row.split('\t')[0])))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].heights);
+      expect(SHADCN_MESSAGES_BASELINE[name].colours.filter(isResponsive))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].colours.filter(isResponsive));
+    }
+  });
+
+  it('retains the earlier height inventory alongside the added composer avatar', () => {
+    for (const name of ['NewsTab', 'MainApp'] as const) {
+      const tokens = (rows: string[]) => rows.map((row) => row.split('\t')[1]);
+      const now = tokens(COMMUNITY_BASELINE[name].heights);
+      const old = tokens(BASELINE[name].heights);
+      const addedAvatar = now.indexOf('h-8');
+      expect(addedAvatar).toBeGreaterThan(-1);
+      now.splice(addedAvatar, 1);
+      expect(now).toEqual(old);
+    }
+    for (const name of THE_348_SURFACES) {
+      const [now, old] = undoTHE348(COMMUNITY_BASELINE[name].heights, BASELINE[name].heights);
+      expect(now).toEqual(old);
+    }
+  });
+
+  it('keeps both member channel constraints and the existing message paths', () => {
+    const src = parseStripped(read('UserMessages.tsx'));
+    expect(src).toContain("where('audience', '==', 'all')");
+    expect(src).toContain("where('members', 'array-contains', currentUser.uid)");
+    expect(src).toMatch(/'directMessages'\),\s*where\('participants', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
+    expect(src).toMatch(/'dmMessages'\),\s*where\('dmId', '==', dm\.id\),\s*limit\(300\)/);
+    expect(src).toMatch(/'channelMessages'\),\s*where\('channelId', '==', channel\.id\),\s*limit\(300\)/);
+    expect(src).toMatch(/updateDoc\(doc\(db, 'tenants', tenantId, 'dmMessages', d\.id\), \{ read: true \}\)/);
+    expect(src).toMatch(/addDoc\(collection\(db, 'tenants', tenantId, 'dmMessages'\), payload\)/);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -475,8 +659,65 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
   return [now, trimmed];
 }
 
+// Remove only the discovery shell additions from a clone before comparing the
+// older community fixture. The complete current source remains pinned above.
+function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
+  const clone = root.cloneNode(true) as HTMLDivElement;
+  const branded = clone.querySelectorAll('.community-brand-scope');
+  expect(branded).toHaveLength(1);
+  branded[0].classList.remove('community-brand-scope');
+  const byClass = (value: string) => [...clone.querySelectorAll<HTMLElement>('*')].filter((el) => el.getAttribute('class') === value);
+  const one = (value: string) => {
+    const matches = byClass(value);
+    expect(matches, `discovery shell element ${value}`).toHaveLength(1);
+    return matches[0];
+  };
+  const oldNav = one('contents max-[768px]:hidden');
+  oldNav.replaceWith(...Array.from(oldNav.childNodes));
+  one("hidden max-[768px]:block " ).remove();
+  one('hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4').remove();
+  one('sticky top-0 z-20 hidden shrink-0 max-[768px]:block').remove();
+  // Undo only the reviewed phone layout changes for the older fixture. The
+  // current complete source remains pinned above; real MainApp rendering is
+  // asserted separately by MainApp.community-settings.test.tsx.
+  for (const element of clone.querySelectorAll<HTMLElement>('[class]')) {
+    const classes = element.getAttribute('class')!;
+    element.setAttribute('class', classes
+      .replaceAll('h-dvh', 'h-screen')
+      .replace(' max-[768px]:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))]', '')
+      .replace(' max-[768px]:hidden transition-all', ' transition-all')
+      .replace('flex-1 min-h-0 overflow-x-hidden', 'flex-1 overflow-x-hidden')
+      .replaceAll(' max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]', '')
+      .replace(' max-[768px]:relative max-[768px]:h-auto max-[768px]:min-h-full', ''));
+  }
+  const topNav = one('bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-[768px]:hidden');
+  topNav.classList.remove('max-[768px]:hidden');
+  return clone;
+}
+
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if (isPolishSurface(name)) {
+      expect(mobileLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].mobileLayer);
+      return;
+    }
+    if (isPostCardSurface(name)) {
+      expect(mobileLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].mobileLayer);
+      return;
+    }
+    if (isCommunitySurface(name)) {
+      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
+      if (name === 'NewsTab' || name === 'MainApp') {
+        // The seeded composer has one submit button; only its touch floor changed.
+        const rows = mobileLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name]);
+        const candidates = rows.filter((row, i) => row.includes('\tbutton\t') && row.includes(' min-h-11 ') && rows[i - 1]?.endsWith('\tflex gap-2') && rows[i - 4]?.includes('\ttextarea\t'));
+        expect(candidates).toHaveLength(1);
+        expect(rows.map((row) => row === candidates[0] ? row.replace(' min-h-11 ', ' ') : row)).toEqual(expected);
+      } else {
+        expect(mobileLayer(SURFACES[name])).toEqual(expected);
+      }
+      return;
+    }
     const now0 = undoTHE295(mobileLayer(SURFACES[name]));
     // THE-362 folds ONE class out of LivestreamView's rendered layer — see the
     // register above. The source-level fold cannot reach this comparison
@@ -534,7 +775,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       expect(band, `${name}: the composer band is not on exactly one element`).toHaveLength(1);
       expect(band[0], `${name}: the band is not on the message scroller`).toContain('overflow-y-auto');
       const floored = rows.filter((r) => r.includes('min-h-11'));
-      expect(floored, `${name}: the 44px floor spread beyond the send button`).toHaveLength(1);
+      // Community Eden fidelity pass adds a 44px group-list row as well.
+      expect(floored).toHaveLength(2);
+      expect(floored.filter((r) => r.includes('aria-pressed:bg-surface-sunken'))).toHaveLength(1);
+      expect(floored.filter((r) => r.includes('min-w-11'))).toHaveLength(1);
       // 2 · The paperclip really is gone for a member, and stayed gone.
       expect(rows.filter((r) => r.includes(THE_348_PAPERCLIP)),
         `${name}: a member can still see the paperclip`).toHaveLength(0);
@@ -542,8 +786,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
         .filter((t) => t && !wasTokens.has(t));
-      expect(added.sort(), `${name} gained a class nobody recorded`)
-        .toEqual([...THE_348_ADDED].sort());
+      const communityTokens = new Set(undoTHE295(POLISH_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const communityAdded = [...communityTokens].filter((t) => t && !wasTokens.has(t));
+      expect(added.sort(), `${name} gained a class beyond the community pin`).toEqual(communityAdded.sort());
+      for (const token of THE_348_ADDED) expect(added).toContain(token);
     }
   });
 
@@ -584,6 +830,18 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if (isPolishSurface(name)) {
+      expect(heightLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].heights);
+      return;
+    }
+    if (isPostCardSurface(name)) {
+      expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].heights);
+      return;
+    }
+    if (isCommunitySurface(name)) {
+      expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
+      return;
+    }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
       // 🔴 NOTHING SHRANK — and one thing GREW, which is the point. THE-348's
       // only height change is the send button gaining `min-h-11 min-w-11`
@@ -1135,7 +1393,7 @@ describe('the Messages gate is unchanged', () => {
    */
   it('UserMessages’ queries and gates survive — the call inventory lost exactly the picker', () => {
     const calls = (s: string) => (s.match(/(?:collection|doc|query|where|orderBy|limit|onSnapshot|getDocs|getDoc|addDoc|updateDoc|deleteDoc|setDoc)\(/g) ?? []).sort();
-    const now = calls(read('UserMessages.tsx'));
+    const now = calls(beforeCommunity('UserMessages.tsx'));
     const before = calls(at('UserMessages.tsx'));
 
     // 🔴 THE DELETED `FormPicker` HELD EXACTLY FIVE FIRESTORE CALLS — one
@@ -1153,7 +1411,7 @@ describe('the Messages gate is unchanged', () => {
 
   it('and every listener, filter and write path it had is still spelled the same way', () => {
     // The queries this test was standing for, named rather than proxied.
-    const src = stripComments(read('UserMessages.tsx'));
+    const src = stripComments(beforeCommunity('UserMessages.tsx'));
     expect(src, 'the DM list query moved').toMatch(/'directMessages'\),\s*where\('participants', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
     expect(src, 'the channel list query moved').toMatch(/'channels'\),\s*where\('members', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
     expect(src, 'the DM message listener moved').toMatch(/'dmMessages'\),\s*where\('dmId', '==', dm\.id\),\s*limit\(300\)/);
@@ -1180,10 +1438,32 @@ describe('no behaviour changed on any screen in scope', () => {
     .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER)[^}]*\}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
-  it.each(['AllNews', 'BiblePage'] as const)(
-    '%s differs from the pre-PR revision only in class strings', (n) => {
-      expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
-    });
+  it('BiblePage differs from the pre-PR revision only in class strings', () => {
+    expect(strip(read('BiblePage.tsx'))).toBe(strip(at('BiblePage.tsx')));
+  });
+
+  it('AllNews retains the reviewed events switch and post card implementation', () => {
+    // PR 554 changes behavior and presentation, so pin the whole reviewed source.
+    expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
+      'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
+      '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
+      '92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac',
+      'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495',
+      // PR 555 merge keeps the mobile post sheet and PR 554 comment activity.
+      'f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640',
+      // PR 554 round three selects the newest 50 posts before promoting pins.
+      'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644',
+      // THE-555 merge keeps the mobile post sheet and PR 554's ordered query.
+      '4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca',
+
+      // PR 554 final review binds comment bylines and omits untrusted comment levels.
+      'f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066',
+      // PR 554 Bugbot: preserve the parent ministry on every comment create.
+      '257b9a094466c2bc1e5c774469d1c483630d1bddcd7de36e24aaff663c969af4',
+      // Merge comment tenant/byline protection with THE-555's mobile post sheet.
+      '4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861'])
+      .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
+  });
 
   /**
    * 🔴 `UserMessages` IS NO LONGER ON THAT LIST, and this is the entry that
@@ -1273,7 +1553,7 @@ describe('no behaviour changed on any screen in scope', () => {
         .replace(/\.filter\(b => isBlogPostPublic\(b, Date\.now\(\)\)\)/g, '.filter(b => BLOG_PUBLIC)')
         .replace(/\.filter\(a => \(a as any\)\.status === 'published'\)/g, '.filter(a => BLOG_PUBLIC)')
         .replace(/\.filter\(a => isBlogPostPublic\(a, Date\.now\(\)\)\)/g, '.filter(a => BLOG_PUBLIC)');
-    expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
+    expect(norm(beforeCommunity('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 
   it('AIChat differs only in class strings, the two inline properties it retired, THE-333\'s two rail controls, and THE-356\'s CSS scoping', () => {
@@ -1338,12 +1618,32 @@ describe('no behaviour changed on any screen in scope', () => {
     //     here.
     const tags = (src: string) =>
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    const mainAppTags = tags(read('MainApp.tsx'));
+    expect(tags(beforeCommunity('MainApp.tsx')), 'MainApp changed its element tree before community').toEqual(tags(at('MainApp.tsx')));
+    // The later discovery shell is pinned above; compare the preceding community
+    // implementation to the historical inventory, preserving that check.
+    let mainAppSource = execSync('git show d25f7b69:src/components/MainApp.tsx', { cwd: ROOT, encoding: 'utf8' });
+    // Only the new map annotation needs folding out: the baseline also has
+    // Record<string, any>, whose `string` token must remain on both sides.
+    const annotation = 'Record<string, CommunityModule>';
+    expect(mainAppSource.split(annotation)).toHaveLength(2);
+    mainAppSource = mainAppSource.replace(annotation, 'Record');
+    const mainAppTags = tags(mainAppSource);
     const productsIndex = mainAppTags.indexOf('DigitalMemberProducts');
     // DIGITAL-1 inserts the Products view between BlogTab and CourseExperience.
     expect(mainAppTags.filter((tag) => tag === 'DigitalMemberProducts')).toHaveLength(1);
     expect(mainAppTags.slice(productsIndex - 1, productsIndex + 2)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
     mainAppTags.splice(productsIndex, 1);
+    const entryIndex = mainAppTags.indexOf('CommunityEntryDialog');
+    // The reviewed community settings fallback ends with the existing paragraph,
+    // then the error paragraph and entry dialog. THE-555 records that exact
+    // tree; the remaining tags must still equal the original shell inventory.
+    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['p', 'p', 'CommunityEntryDialog']);
+    mainAppTags.splice(entryIndex - 1, 2);
+    const allNewsIndex = mainAppTags.indexOf('AllNews');
+    // The settings-error alert precedes the full-screen feed, after the two
+    // loading wrappers. Record only that paragraph; every other tag stays pinned.
+    expect(mainAppTags.slice(allNewsIndex - 3, allNewsIndex + 1)).toEqual(['div', 'div', 'p', 'AllNews']);
+    mainAppTags.splice(allNewsIndex - 1, 1);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
@@ -1391,12 +1691,24 @@ describe('no behaviour changed on any screen in scope', () => {
         .map((m) => (m[1] ?? m[2])
           .replace(/\beffectiveTopTab\b/g, 'activeTopTab')
           .replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
-    expect(classes(read('MainApp.tsx')), 'MainApp changed a class literal').toEqual(classes(at('MainApp.tsx')));
+    expect(classes(beforeCommunity('MainApp.tsx')), 'MainApp changed a class literal before community').toEqual(classes(at('MainApp.tsx')));
   });
 });
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if (isPolishSurface(name)) {
+      expect(colourTokens(SURFACES[name])).toEqual(POLISH_BASELINE[name].colours);
+      return;
+    }
+    if (isPostCardSurface(name)) {
+      expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].colours);
+      return;
+    }
+    if (isCommunitySurface(name)) {
+      expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
+      return;
+    }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
       // 🔴 THE-348 ADDS NO COLOUR AND REMOVES ONE: the paperclip button's
       // `hover:bg-[var(--border-hairline)]` leaves with the button. Asserted as

@@ -1,3 +1,5 @@
+
+import { NAV_ICONS } from '@/components/layout/nav-icons';
 import {
   BrainCircuit,
   Building2,
@@ -13,9 +15,7 @@ import {
   Library,
   Link2,
   ListChecks,
-  Mail,
   MessageSquare,
-  MessagesSquare,
   Newspaper,
   Package,
   QrCode,
@@ -116,6 +116,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'signups', label: 'Signups', icon: UserPlus },
       { id: 'churches', label: 'Campuses', icon: Church },
       { id: 'services', label: 'Services', icon: ListChecks },
+      { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
     ],
   },
   {
@@ -148,7 +149,7 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     icon: Radio,
     items: [
       { id: 'social', label: 'Social', icon: Share2 },
-      { id: 'newsletter', label: 'Newsletter', icon: Mail },
+      { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
       { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'blog', label: 'Blog', icon: Newspaper },
       { id: 'sms', label: 'SMS', icon: MessageSquare },
