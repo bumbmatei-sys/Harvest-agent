@@ -53,6 +53,14 @@ describe('ProductWizard shell', () => {
     expect(text()).toContain('1 of 4 steps done');
   });
 
+  it('constrains the mobile grid and scrolls the step rail within it', async () => {
+    await mount(<Harness />);
+    const nav = need(document.querySelector<HTMLElement>('nav[aria-label="Course steps"]'), 'nav');
+    expect(nav.className.split(/\s+/)).toContain('min-w-0');
+    expect(nav.querySelector('ol')?.className.split(/\s+/)).toContain('overflow-x-auto');
+    expect(nav.parentElement?.className.split(/\s+/)).toContain('grid-cols-[minmax(0,1fr)]');
+  });
+
   it('moves between steps from the rail, and Continue walks forward then offers Publish on the last', async () => {
     const onPublish = vi.fn();
     await mount(<Harness onPublish={onPublish} />);

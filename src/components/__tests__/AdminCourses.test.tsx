@@ -49,7 +49,7 @@ const calls = vi.hoisted(() => ({ paths: [] as string[], wheres: [] as string[],
 
 // Adoption is server-only now: adoptedCourses is `allow write: if false`, so the
 // screen calls /api/courses/adopt instead of writing Firestore directly.
-const mockAuthFetch = vi.hoisted(() => vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) })));
+const mockAuthFetch = vi.hoisted(() => vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, products: [] }) })));
 vi.mock('../../utils/auth-fetch', () => ({
   authFetch: (url: string, options: any) => {
     calls.fetches.push({ url, method: options?.method, body: JSON.parse(options?.body || '{}') });
@@ -143,6 +143,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   tenantCtx.tenantPlan = undefined;
+  mockAuthFetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) });
   mockCourses = [];
   mockLibrary = [];
   mockLibraryAuthors = [];
@@ -185,13 +186,63 @@ describe('AdminCourses as the Products page', () => {
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
   });
 
-  it('keeps the plan cap: at the limit New product is disabled and says why', async () => {
+  it('keeps the course cap while allowing other product types', async () => {
     tenantCtx.tenantPlan = 'church';
     mockCourses = makeCourses(5);
     await mount({ productsPage: true });
-    const button = newCourseButton('New product');
-    expect(button.disabled).toBe(true);
-    expect(button.title).toMatch(/plan includes up to 5 course/i);
+    await act(async () => { newCourseButton('New product').click(); });
+    const course = document.body.querySelector<HTMLButtonElement>('[data-product-type="course"]')!;
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(course.disabled).toBe(true);
+    expect(course.title).toMatch(/plan includes up to 5 course/i);
+    expect(digital.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+  });
+
+  it('keeps the digital option disabled while its count or plan is loading', async () => {
+    mockAuthFetch.mockImplementation(() => new Promise(() => {}));
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(true);
+    expect(digital.textContent).toContain('Checking your plan');
+    expect(document.body.textContent).not.toContain('Could not check the digital product limit.');
+    await act(async () => digital.click());
+    expect(container.textContent).not.toContain('Back to products');
+  });
+
+  it('keeps the last count while refreshing after closing the editor', async () => {
+    tenantCtx.tenantPlan = 'church';
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    await act(async () => document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!.click());
+    expect(container.textContent).toContain('Back to products');
+    mockAuthFetch.mockImplementation(() => new Promise(() => {}));
+    await act(async () => [...container.querySelectorAll('button')].find(b => b.textContent === 'Back to products')!.click());
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(false);
+    await act(async () => digital.click());
+    expect(container.textContent).toContain('Back to products');
+  });
+
+  it('blocks creation at the digital cap', async () => {
+    tenantCtx.tenantPlan = 'free';
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    await act(async () => document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!.click());
+    expect(container.textContent).toContain('Your plan has reached its digital product limit.');
+    expect(container.textContent).not.toContain('Back to products');
+  });
+
+  it('shows a failed count read in the picker', async () => {
+    tenantCtx.tenantPlan = 'church';
+    mockAuthFetch.mockRejectedValue(new Error('offline'));
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(true);
+    expect(digital.textContent).toContain('Could not check the digital product limit.');
   });
 
   it('links to the Courses page, where the library and adoptions live', async () => {
@@ -343,7 +394,7 @@ describe('AdminCourses — library adoption', () => {
     calls.fetches = [];
     scope.read = 'tenant-1';
     scope.write = 'tenant-1';
-    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) } as any);
   });
 
   afterEach(() => {
@@ -586,7 +637,7 @@ describe('AdminCourses — adoption on the apex domain', () => {
     calls.fetches = [];
     scope.read = 'tenant-1';
     scope.write = 'tenant-1';
-    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) } as any);
   });
 
   afterEach(() => {
@@ -750,7 +801,7 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
     calls.fetches = [];
     scope.read = 'tenant-1';
     scope.write = 'tenant-1';
-    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) } as any);
   });
 
   afterEach(() => {
@@ -899,7 +950,7 @@ describe('AdminCourses — previewing a catalogue course', () => {
     calls.fetches = [];
     scope.read = 'tenant-1';
     scope.write = 'tenant-1';
-    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) } as any);
   });
 
   afterEach(() => {
