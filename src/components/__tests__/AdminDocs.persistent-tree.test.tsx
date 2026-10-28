@@ -718,10 +718,10 @@ describe('a note is not rendered at reading size', () => {
   it('hands the editor a flat prose measure, not the shared responsive ramp', async () => {
     await mountDocs();
     await clickLeaf('d-mid');
-    // RichTextEditor's default ramp is capped at `lg:prose-lg` — the 18px body
-    // the published article renders at. A note is not an article: it opts out
-    // to the flat compact measure; the other editors (blog, newsletter,
-    // courses) keep the ramp.
+    // RichTextEditor's default ramp is capped at `lg:prose-lg` and pinned to
+    // 18px at `lg` — the body the published article renders at. A note is not
+    // an article: it opts out to the flat compact measure; the other editors
+    // (blog, newsletter, courses) keep the ramp.
     expect(editorProps.last?.proseClass, 'the notes editor is back on the shared ramp')
       .toBe('prose prose-sm');
   });
@@ -731,7 +731,7 @@ describe('a note is not rendered at reading size', () => {
     // The prop is optional and defaults to the exact string every caller had,
     // so opting one screen out cannot move any of the others.
     expect(rte).toMatch(/proseClass = DEFAULT_PROSE_CLASS/);
-    expect(rte).toContain("'prose prose-sm sm:prose lg:prose-lg'");
+    expect(rte).toContain("'prose prose-sm sm:prose lg:prose-lg lg:text-[18px]'");
     for (const f of ['components/AdminBlog.tsx', 'components/NewsletterEditor.tsx']) {
       const src = readFileSync(path.join(SRC, f), 'utf8');
       if (!src.includes('<RichTextEditor')) continue;

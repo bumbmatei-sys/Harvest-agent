@@ -46,8 +46,8 @@ vi.mock('../RichTextEditor', () => ({
     harness.onContentChange = props.onChange;
     return null;
   },
-  // AdminDocs passes its own prose measure now (the shared default caps at
-  // `lg:prose-lg`, the published article's 18px body; a note is not an article).
+  // AdminDocs passes its own prose measure now (the shared default is pinned
+  // to the published article's 18px body at lg; a note is not an article).
   // The mock has to carry the named export or the import throws before a single
   // save assertion below gets to run.
   COMPACT_PROSE_CLASS: 'prose prose-sm',
