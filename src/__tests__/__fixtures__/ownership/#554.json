@@ -405,6 +405,31 @@
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
       "digest": "a64f8072c54b92eceb5205233891a103568461e394c83a9ae0df1f956d508c1e",
       "why": "PR 554 appends the reviewed UserMessages shadcn Input digest with its h-auto phone touch floor, preserving every earlier accepted value and all navigation, permission and byte-identity assertions."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "acc2b8bfe18f7f6a7169bd4df9335f6e5f74b1b4da3374c44668b30516ae2a9b",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "257b9a094466c2bc1e5c774469d1c483630d1bddcd7de36e24aaff663c969af4",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "457dd4c95c25139abae707329da0b880240d056a76b2e10b4a1f8e3b285693fe",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/__tests__/write-tenant-scope.test.tsx",
+      "digest": "b1c732960bedce386722744023599c961fc59c2bdb1a17e400cfa0c6578a66b0",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7fe277c49816bb3b232a8ade1f5a45054ca9a3930d65f5570cfac18e125d86f8",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
     }
   ]
 }

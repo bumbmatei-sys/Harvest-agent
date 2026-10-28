@@ -451,7 +451,9 @@ describe('community step 1 pins', () => {
       "UserMessages.tsx": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
       "community/AdminPostComposer.tsx": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2"
     };
-    expect([shadcnLayoutFixes[file], staticControls[file], finalReview[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 Bugbot: comment writes inherit the parent ministry in the apex feed.
+    const commentTenant: Record<string, string> = { 'NewsTab.tsx': 'acc2b8bfe18f7f6a7169bd4df9335f6e5f74b1b4da3374c44668b30516ae2a9b' };
+    expect([commentTenant[file], shadcnLayoutFixes[file], staticControls[file], finalReview[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('the shadcn record changes only the group search and group button rows', () => {
@@ -1352,7 +1354,9 @@ describe('no behaviour changed on any screen in scope', () => {
       // PR 554 round three selects the newest 50 posts before promoting pins.
       'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644',
       // PR 554 final review binds comment bylines and omits untrusted comment levels.
-      'f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066'])
+      'f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066',
+      // PR 554 Bugbot: preserve the parent ministry on every comment create.
+      '257b9a094466c2bc1e5c774469d1c483630d1bddcd7de36e24aaff663c969af4'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 

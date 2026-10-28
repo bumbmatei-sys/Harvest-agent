@@ -52,7 +52,7 @@ describe('member feed composer', () => {
     { surface: 'AllNews', profileName: '', profilePhoto: '' },
   ])('$surface writes the rule-bound comment byline ($profileName) and ignores legacy claimed levels', async ({ surface, profileName, profilePhoto }) => {
     fx.profile = { role: 'user', displayName: profileName, photoURL: profilePhoto, name: 'Unbound legacy name' };
-    fx.posts = [{ id: 'post', type: 'post', content: 'Community update', authorName: 'Member', authorId: 'member', likes: [], createdAt: '2040-01-01' }];
+    fx.posts = [{ id: 'post', type: 'post', content: 'Community update', tenantId: 'parent-ministry', authorName: 'Member', authorId: 'member', likes: [], createdAt: '2040-01-01' }];
     fx.comments = [{ id: 'legacy-comment', authorId: 'other', authorName: 'Commenter', authorLevel: 99, content: 'Legacy comment', createdAt: '2040-01-01' }];
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
@@ -65,7 +65,7 @@ describe('member feed composer', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="Send comment"]')!.click(); await Promise.resolve(); await Promise.resolve(); });
     expect(fx.writes).toHaveLength(1);
     expect(fx.writes[0][0].path).toBe('community_posts/post/comments');
-    expect(fx.writes[0][1]).toEqual({ authorId: 'member', authorName: profileName || 'Member', authorPhoto: profilePhoto, content: 'Hello', createdAt: expect.any(String), tenantId: 'tenant' });
+    expect(fx.writes[0][1]).toEqual({ authorId: 'member', authorName: profileName || 'Member', authorPhoto: profilePhoto, content: 'Hello', createdAt: expect.any(String), tenantId: 'parent-ministry' });
   });
   it('hides event posts, embeds and event cards when events are disabled', async () => {
     fx.posts = [
