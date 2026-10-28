@@ -430,6 +430,11 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "7fe277c49816bb3b232a8ade1f5a45054ca9a3930d65f5570cfac18e125d86f8",
       "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "620e6cf8b4cf2b33fd19c2f7b70e8c045a5c7261179a4cb19965105220acd250",
+      "why": "Reviewer B3 raw select -> shadcn Select, ported verbatim from #555, including the question Type control and its import."
     }
   ]
 }
