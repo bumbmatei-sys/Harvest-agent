@@ -24,13 +24,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('../../utils/tenant-scope', () => ({
-  getTenantScope: async () => 'tenant-1',
+  getTenantScope: async () => fx.tenantId,
   getWriteTenantScope: async () => 'tenant-1',
   hasPlatformOverride: () => false,
   PLATFORM_TENANT_ID: 'harvest',
 }));
 
 const fx = vi.hoisted(() => ({
+  tenantId: 'tenant-1' as string | null,
+  subscriptions: [] as { __path: string; constraints: unknown[] }[],
   snapshots: {} as Record<string, any[]>,
   dmCalls: [] as any[],
 }));
@@ -42,11 +44,11 @@ vi.mock('../../firebase', () => ({
 
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
-  query: (col: any) => col,
-  where: () => ({}),
-  orderBy: () => ({}),
+  query: (col: any, ...constraints: unknown[]) => ({ ...col, constraints }),
+  where: (field: string, op: string, value: unknown) => ({ where: [field, op, value] }),
+  orderBy: (field: string, direction?: string) => ({ orderBy: [field, direction] }),
   documentId: () => "__name__",
-  limit: () => ({}),
+  limit: (count: number) => ({ limit: count }),
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   addDoc: async () => ({ id: 'new-doc' }),
   updateDoc: async () => {},
@@ -66,6 +68,7 @@ vi.mock('firebase/firestore', () => ({
   arrayUnion: (v: unknown) => v,
   arrayRemove: (v: unknown) => v,
   onSnapshot: (q: any, onNext: any) => {
+    fx.subscriptions.push(q);
     const docs = fx.snapshots[q?.__path] ?? [];
     if (typeof onNext === 'function') onNext({ docs, forEach: (f: any) => docs.forEach(f) });
     return () => {};
@@ -109,6 +112,8 @@ const COMMENT = {
 beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
+  fx.tenantId = 'tenant-1';
+  fx.subscriptions = [];
   fx.snapshots = {};
   fx.dmCalls = [];
   tenant.tenantPlan = 'church';
@@ -117,6 +122,28 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => { root?.unmount(); });
   container.remove();
+});
+
+describe('AllNews newest-post query — PR 554 round three', () => {
+  it.each(['tenant-1', 'tenant-2', null])('orders the %s feed by creation time before limiting it', async (tenantId) => {
+    fx.tenantId = tenantId;
+    const AllNews = (await import('../AllNews')).default;
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<QueryClientProvider client={qc}><AllNews onBack={() => {}} /></QueryClientProvider>);
+    });
+
+    // No matching pinned-post index exists: use pins from this newest slice only.
+    expect(fx.subscriptions).toEqual([{
+      __path: 'community_posts',
+      constraints: [
+        ...(tenantId ? [{ where: ['tenantId', '==', tenantId] }] : []),
+        { orderBy: ['createdAt', 'desc'] },
+        { limit: 50 },
+      ],
+    }]);
+  });
 });
 
 for (const [label, importer] of [

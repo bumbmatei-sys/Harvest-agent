@@ -175,6 +175,16 @@
       "file": "src/components/AdminCommunity.tsx",
       "digest": "10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d",
       "why": "Round two extracts the scoped user query for a regression test; explicit tenant values are filtered before each ordered limit."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644",
+      "why": "Round three selects the newest tenant posts using the existing tenantId and createdAt index, retaining pins only from that slice and preserving all prior guard digests."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "a46c1752dc5e270f6571c03b57285c3556d86511a0806ae135b9f9945bdbb9ff",
+      "why": "Round three appends the reviewed AllNews query correction to the existing source pins, preserving every previously accepted digest and layout comparison."
     }
   ]
 }

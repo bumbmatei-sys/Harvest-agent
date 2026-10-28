@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc, limit, documentId } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft, MessageSquare, Send } from 'lucide-react';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -158,9 +158,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
       const tenantId = await getTenantScope();
       if (cancelled) return;
       setScopeTenantId(tenantId);
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
+      // The tenantId + createdAt DESC index selects the newest slice before the cap.
+      // No matching pinned-post index exists; only pins in this slice move to the top.
       const q = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy(documentId()), limit(50))
+        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
         : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
 
       unsubscribe = onSnapshot(q, (snapshot) => {

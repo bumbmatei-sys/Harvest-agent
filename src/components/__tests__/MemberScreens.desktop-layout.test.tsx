@@ -1309,7 +1309,9 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
       'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
       '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
-      'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495'])
+      'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495',
+      // PR 554 round three selects the newest 50 posts before promoting pins.
+      'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 
