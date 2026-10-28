@@ -74,8 +74,9 @@ describe('community views', () => {
     await act(async () => root.render(<CommunityAbout listing={listings[0]} onBack={() => {}} />));
     const joins = [...host.querySelectorAll<HTMLAnchorElement>('a')].filter(link => link.textContent === 'Join Grace');
     expect(joins).toHaveLength(2);
-    const desktop = joins.find(link => link.classList.contains('sm:inline-flex'))!;
-    expect(desktop.parentElement?.querySelector('h2')?.textContent).toBe('Grace');
+    const desktop = joins.find(link => link.parentElement?.classList.contains('sm:block'))!;
+    expect(desktop.parentElement?.classList.contains('hidden')).toBe(true);
+    expect(desktop.parentElement?.parentElement?.querySelector('h2')?.textContent).toBe('Grace');
     const bar = joins.find(link => link.parentElement?.classList.contains('fixed'))!.parentElement!;
     expect(bar.classList.contains('sm:hidden')).toBe(true);
     expect(bar.classList.contains('bottom-[var(--community-bottom-nav-height,0px)]')).toBe(true);

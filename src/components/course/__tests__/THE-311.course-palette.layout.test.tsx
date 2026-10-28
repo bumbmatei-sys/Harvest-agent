@@ -207,8 +207,14 @@ setUpOrFail(async () => {
    * few px with nothing having changed. A geometry guard that is not
    * deterministic is not a guard.
    */
+  // THE-555: this static harness never mounts next/font. The original fixture
+  // used Linux's DejaVu Sans fallback before Inter was installed on the runner.
+  // Pin that family here: resolving the globals.css token to a newly installed
+  // local Inter changes every text width without any course CSS changing.
+  // Keep every original geometry value; do not regenerate the fixture.
+  const BASELINE_FONT = 'html{--font-sans:"DejaVu Sans";}';
   const FREEZE = '*,*::before,*::after{transition:none!important;animation:none!important;}';
-  writeFileSync(file, `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${body}</body></html>`);
+  writeFileSync(file, `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${BASELINE_FONT}${FREEZE}</style></head><body>${body}</body></html>`);
 
   browser = new MeasuringBrowser();
   await browser.open(`file://${file}`);

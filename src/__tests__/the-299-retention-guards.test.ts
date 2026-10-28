@@ -28,6 +28,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * — it just describes whatever it was handed.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
 const read = (rel: string) => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
@@ -635,10 +638,12 @@ describe('no npm dependency was added', () => {
     expect([
       '1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2',
       '50d490d35bf3a2dbb72efce29dbf954ee53d913b906e932c130dc8bcf33f8c7a',
+      'a05233586eb8cdcc2b7356ee29dd0041b51167b39136ee221a05990c9390ce40', // THE-555: embla-carousel-react, no cn artefact
     ]).toContain(sha256(read('package.json')));
     expect([
       'da626030b980aab1bcbe9ec608c563ca92ceda7970f416ea4f4ed6eeb86b8b84',
       'fd0a9097e9f397d9a76d446c37acb68800f249e1e6d0497c099a337d4bf2ecc0',
+      '39ba0d4cf0d6017641e94616af6a7f562930e203ac09506355e67471369a5fbf', // THE-555: the three Embla packages
     ]).toContain(sha256(read('package-lock.json')));
   });
 
@@ -859,7 +864,7 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
       .filter((f) => f.endsWith('.tsx') || f.endsWith('.ts'))
       .sort()
       .map((f) => `src/components/ui/${f}`);
-    expect(files).toHaveLength(43);
+    expect(files).toHaveLength(43 + THE_555_PRIMITIVES.length);
     const tree = sha256(files.map((f) => `${f}:${sha256(readFileSync(path.join(REPO_ROOT, f)))}`).join('\n'));
     // Eden shell pass restyled button.tsx and sidebar.tsx. The previous tree was
     // f02a80fe809b4ff8a1cb4eaceb2deb4e28ad090f85d6682c1e862fd674a50aa7.
@@ -867,7 +872,10 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
     // data-selected: variant and highlighted every row; it now matches the
     // value. The tree before that edit was
     // 43e9d40e48b09a5336f8d7272e3eb510dce900bf3bd74b18d2ceaf0eb3ac3610.
-    expect(tree).toBe('7cf19b39bbf6b7fc6d6247b06819ac24fb9aa080b1ccac9b8092d42d0081ab38');
+    expect([
+      '7cf19b39bbf6b7fc6d6247b06819ac24fb9aa080b1ccac9b8092d42d0081ab38',
+      'cff4e0d7b5e0877a8a2775dea19827e6f92087c0855392ec49e0f154df0b6aa0', // THE-555: Carousel with the shared cn utility
+    ]).toContain(tree);
   });
 
   it('nothing in this slice imports the shell it may not open, or a parallel ticket\'s files', () => {

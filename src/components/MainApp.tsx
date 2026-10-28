@@ -759,6 +759,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     );
   }
 
+  const logoSrc = community.settings.logoUrl || displayLogo;
+
   return (
     <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-dvh max-[768px]:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
@@ -769,7 +771,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
             <img
-              src={community.settings.logoUrl || displayLogo}
+              src={logoSrc}
               alt={displayName}
               className="logo-plate w-9 h-9 object-contain shrink-0"
             />

@@ -45,6 +45,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * that goes green because it looked at nothing is the specific thing ruled out.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
 
 const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
@@ -319,6 +322,7 @@ describe('the CLI rewrote nothing it should not have', () => {
         ...BATCH_B,
         'sidebar.tsx',
         ...BATCH_CDE,
+        ...THE_555_PRIMITIVES,
       ].sort(),
     );
   });
@@ -574,7 +578,7 @@ describe('the four new files exist and the guard actually read them', () => {
     // 13 + THE-266's 4 + THE-272's 4 + THE-270's sidebar + THE-274's 21. The
     // point of the assertion is unchanged: a guard that opened nothing would
     // report nothing and look thorough.
-    expect(audit.classesByFile.size).toBe(43);
+    expect(audit.classesByFile.size).toBe(43 + THE_555_PRIMITIVES.length);
   });
 
   it('and pulled real classes out of the three that carry any', () => {
@@ -805,8 +809,9 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseProductList.tsx',
       'src/components/courses/builder/AccessSection.tsx',
-      // THE-999999: discovery and community lists show known card shapes while loading; errors remain visible.
+      // THE-555: discovery and review lists show known shapes while loading; errors remain visible.
       'src/components/community/DiscoveryViews.tsx',
+      'src/components/community/CommunityReviews.tsx',
     ],
     breadcrumb: [
       'src/components/docs/DocsBreadcrumb.tsx',

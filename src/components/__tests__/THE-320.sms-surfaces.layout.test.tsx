@@ -148,10 +148,14 @@ setUpOrFail(async () => {
 
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the320-'));
   const file = path.join(dir, 'sms.html');
+  // THE-555: these native-control measurements predate local Inter installs.
+  // No next/font runs in this static page; preserve the recorded Linux font
+  // metrics so a newly installed font cannot change the select's intrinsic height.
+  const BASELINE_FONT = 'html{--font-sans:"DejaVu Sans";}';
   writeFileSync(
     file,
     '<!doctype html><html><head><meta charset="utf-8">'
-      + `<style>${css}</style>`
+      + `<style>${css}</style><style>${BASELINE_FONT}</style>`
       /* \u{1F534} AMENDED BY THE-357 — TRANSITIONS AND ANIMATIONS SUPPRESSED, and
          this is a TIGHTENING of the measurement rather than a relaxation of any
          claim below. `buttonVariants`' base string carries `transition-all`,

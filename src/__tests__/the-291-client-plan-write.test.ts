@@ -623,7 +623,10 @@ describe('5 · the money path is byte-identical', () => {
     const digitalRoutes = ['route.ts', 'upload/route.ts', 'claim/route.ts', 'download/route.ts']
       .map((suffix) => `src/app/api/digital-products/${suffix}`);
     for (const route of digitalRoutes) expect(routes).toContain(route);
-    expect(routes.filter((route) => !digitalRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
+    // THE-555 reviews update community ratings, never billing entitlements.
+    const communityReviewRoutes = ['src/app/api/community/reviews/route.ts'];
+    for (const route of communityReviewRoutes) expect(routes).toContain(route);
+    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',

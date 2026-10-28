@@ -37,6 +37,9 @@ import path from 'node:path';
 import { REPO_ROOT, loadOwnership, ownershipFailure } from './__fixtures__/ownership-register';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
@@ -410,7 +413,7 @@ describe('15 · every element that has a primitive uses it; inline styles stay a
     const ui = readdirSync(path.join(REPO_ROOT, 'src/components/ui'))
       .filter((f) => f.endsWith('.tsx')).sort();
     // 43 primitives is what THE-274 recorded and every ticket since has kept.
-    expect(ui.length, 'a ui primitive was added or removed').toBe(43);
+    expect(ui.length, 'a ui primitive was added or removed').toBe(43 + THE_555_PRIMITIVES.length);
     const pkg = JSON.parse(read('package.json')) as { dependencies: Record<string, string> };
     expect(Object.keys(pkg.dependencies), 'a dependency was added')
       .not.toContain('react-datepicker');

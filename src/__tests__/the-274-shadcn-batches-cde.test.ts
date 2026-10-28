@@ -1709,8 +1709,6 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
     'embla-carousel',
     'embla-carousel-react',
     'embla-carousel-reactive-utils',
-    // Existing dependency recorded alongside the carousel tree.
-    'cn',
   ].map((k) => `node_modules/${k}`);
 
   it('the lockfile gained exactly the recorded entries', () => {

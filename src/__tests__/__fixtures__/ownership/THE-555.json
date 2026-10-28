@@ -227,11 +227,6 @@
       "why": "Records the review rating toggle group adopter with the required explanation and preserves the carousel inventory and lockfile pins."
     },
     {
-      "file": "firestore.rules",
-      "digest": "8d1a0406d3923c3eea99965de80328ed5b49a7c2a87d3e52802ae559e56bb83e",
-      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
-    },
-    {
       "file": "src/app/api/community/settings/route.ts",
       "digest": "65891617befadc19db40de581b99fd77a4634b367c238fc1927fa248863570f0",
       "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
@@ -280,11 +275,6 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "26449e63f402e050caeb5699d754f4474fb27eee88b34f1db58dd567cb0fc0f2",
       "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
-    },
-    {
-      "file": "firestore.rules",
-      "digest": "0bfc431a0dd40f4122a5b060f20e52de70d1005d2c60297d8a91af1f4dac5bb8",
-      "why": "Records the automatic merge of PR 554 admin and channel authorization with PR 555 public discovery and server-owned reviews; no additional rule edits were made during conflict resolution."
     },
     {
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
@@ -400,6 +390,186 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "50b63d34807bfca5775c87b639718d848f48427d7ae6ca24386381ef85ddad69",
       "why": "Records the intended historical community settings-error alert immediately before AllNews after the entry-error paragraph and dialog are folded out; preserves the remaining element tree and class literal comparisons. Missing alerts, additional wrappers and unrelated class changes were each rejected by mutation checks."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "cd2af731227407bdebbd70f1520b3d021fb42fd1fb9aed1fb20b222ee0f795eb",
+      "why": "THE-555 preserves the community-first logo fallback in a named binding so tenant-logo discovery continues checking the real plated image."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "27f827150849f0d8c5c54c2948631785040ca310dff6243f000cf80d139f868e",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "1fe0718db69aee4825cf2ec505dc998def7f4fdd50d99c1f1f8a1a5b0b96aa1c",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-329-guards.test.ts",
+      "digest": "742ba43f29ecd3aaf1ee0ab33704c812b1e4942f14516ea7c8f7c9e61a9394be",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-355.public-payment.guards.test.ts",
+      "digest": "7d053bfe7be38e666cafba5446e6486462e9d890eeb9110ad41391061accc804",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "4f950caea8d8b1ef7c74c7e1c15f50b7950f7a699e6e52b734b5189d6d6c783e",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "36b0faf92c4162c6267db5a425d98e6b8ad8d994187ba733ba616286d3696e4f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-350.manual-donation-invoice.test.ts",
+      "digest": "68251964a8279b6a495c0155f27013ea577f72e63bfedfa14d38f7e775f5e8ea",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-347.date-formatter-guards.test.ts",
+      "digest": "4198fb90ebf33f8cd38f142a504100aeb76782060e50ca2bb34399290416c5f3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-273-toast-dark-mode.test.tsx",
+      "digest": "7d2e6e091faa4ce8d7ee01620c862722468c2db17a286f3354b6d77389a35d89",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "53b057a854d9ad67f020fb10794574333289b54647c9b2664178446b46751240",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "a6d91df9efbb3241308bf8e6ddb99747cf908e34a4ad787da023a882472f73da",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-272-shadcn-batch-b.test.ts",
+      "digest": "a43c0123f0cbbd4341ab388d0506e3610ed2c9860a35fc912ad88493e9b49d88",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-357.guards.test.ts",
+      "digest": "a3df053c00498202bbd948cce83857595817d8fa4e781ca661c4940e16f848d5",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-362.guards.test.ts",
+      "digest": "3d36ed2ef19b7d4934e8b71d8eb06ccbed08a642adcdf6610a4f1e2d8e934155",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-356.guards.test.ts",
+      "digest": "8aa95889cc511e642ef99d2a51e54e6ef8afb6d8a3e724941efc60e8bcf2c3b1",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/THE-319.composition-guards.test.ts",
+      "digest": "d83aa47d2257a7cc3c65d34dc1b742f6adc247297ea958bc278317c5b57ead80",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-270-sidebar-install.test.ts",
+      "digest": "d0cfddc9f4bb72a9e07356428fc63e86d78e4f157164d455f6f1bfe1ff579012",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "328ef98337e49469a8f31484b2b67328124393ecb67999a559c54b3332789bc2",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/ui/carousel.tsx",
+      "digest": "bb2fb1ec0e14eb2e8ca17f429d8e2631bf15298b46aea139a1c2a4f9e1ff2521",
+      "why": "THE-555 repairs the registry cn import to use the shared utility; the Carousel keeps its vendored structure and the bogus npm artefact is removed."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "427319f030e634a2cecea675562f1cd8232027ed5b602b29979f5fbc1b29b68f",
+      "why": "THE-555 gives the discovery card button a mobile touch floor and moves responsive join visibility onto its wrapper so button sizing remains measurable."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "614a042cc224cabeca6a26be7415d65ec73a87dae8b34220c9f347f9ece3e135",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "f576a1efefea0b58fc9eb2d015c559a00545ce709630ad648a4d305c246e5fa5",
+      "why": "THE-555 reanchors composer measurements to the min-height shell and mounts the shipped mobile navigation behind its real visibility expression; hit tests and exit checks remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-363.ticket-guards.test.ts",
+      "digest": "5fbbd3e39796a98eb7d9d918ddf24e18f1d580717fd132330e9113a1863d4664",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-366.rating-scale.guards.test.ts",
+      "digest": "ec5b6dca8f35aa0bac9f2316587c2c8cd29cd4c8e46bf4858830f951ca44295a",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-331.untouched.test.ts",
+      "digest": "6513a7f240cdeab97b230f811d400613b33400370ba33a288d44b9d10e8590ab",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-358.account-menu.test.tsx",
+      "digest": "68e19cb865e554a4cc278b87425d7fb806b59db717bed9c9a54dd0496eab652f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.orphan-signup.guards.test.ts",
+      "digest": "106866eca4f41abe6aa7d3fb0958f70a4dbc90378a78a0503515a733cf02416f",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "2b29ee688a8bbb8b2278f764a067c774cdb5e3cf0059cccdd09134479e4052c3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-331.attach-picker.test.tsx",
+      "digest": "44d2f5ab47c64df89f81bd754eb6d4a7a8ff1b192b6c3e6990b39e14a51014a3",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-320.sms-surfaces.layout.test.tsx",
+      "digest": "d508f6ba88f00aab55f2a560fbd86d905f7a7470a2457e03bfe0c313bb61d92d",
+      "why": "THE-555 fixes the static harness font to its original DejaVu Sans fallback, retaining every recorded dimension instead of depending on locally installed Inter."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-status.test.tsx",
+      "digest": "5ef506e7b1b5bbb762b10e80faa3800157724f0c8f44c79491d9918341b51f05",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "81ad2fb55fba510624c73daa527390170004c9702c3761ce02718901153babee",
+      "why": "THE-555 measures the shipped mobile navigation at phone widths and the original bar above them, preserving viewport anchoring, safe-area and card-clearance assertions."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.layout.test.tsx",
+      "digest": "ff67965a52c5e7bf96f62d498a6aa72b6ed5833f9a3f03d52f8e2acb34cd04d6",
+      "why": "THE-555 fixes the static harness font to its original DejaVu Sans fallback, retaining every recorded dimension instead of depending on locally installed Inter."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.test.ts",
+      "digest": "a2b1865482a0daf8f059b2f5c1c305c2f685ed98fe22e07a855c98012819206d",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-digests.json",
+      "digest": "dab5330952911ac6e6fa13d2cf952896edd447fee70cfaed7d9a2205082b1cb8",
+      "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
     }
   ]
 }

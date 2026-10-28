@@ -919,7 +919,8 @@ describe('the files this ticket must not open are byte-identical', () => {
     expect(touched.filter((f) => f !== 'package.json' && f !== 'package-lock.json'), 'a dependency was added').toEqual([]);
     const deps = Object.keys(JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).dependencies);
     expect(deps).toContain('@tanstack/react-table');
-    expect(deps).toHaveLength(70);
+    expect(deps).toContain('embla-carousel-react'); // THE-555 gallery
+    expect(deps).toHaveLength(70 + 1);
     // Eden shell pass restyles button.tsx and sidebar.tsx and re-records the
     // ledgers. Those six are allowed. An exact list is true only while this
     // branch is unmerged: after it lands, the diff against main is empty and
@@ -935,6 +936,8 @@ describe('the files this ticket must not open are byte-identical', () => {
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // THE-555: the new shadcn gallery primitive, recorded in ds-primitives.
+      'src/components/ui/carousel.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changedSince('src/components/ui/')), 'a ui primitive was added or edited').toEqual([]);
