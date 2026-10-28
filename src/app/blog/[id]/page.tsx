@@ -152,7 +152,11 @@ export default async function BlogPostPage({
           </div>
         )}
 
-        <h1 className="font-display text-3xl font-black text-[#0b1121] dark:text-strong mb-3 leading-tight">
+        {/* Title scale: 30px on mobile (16px root), 36px on desktop. The lg
+            value is pinned in px because the desktop rem trim (:root 14.5px at
+            1024px in globals.css) makes every rem-based text token render ~10%
+            under its name above the breakpoint. */}
+        <h1 className="font-display text-3xl lg:text-[36px] font-black text-[#0b1121] dark:text-strong mb-3 leading-tight">
           {post.title}
         </h1>
 
@@ -169,8 +173,14 @@ export default async function BlogPostPage({
           </time>
         )}
 
+        {/* Article type scale. The rich-text editor can emit h1 tags inside the
+            body, and globals.css clamps .prose h1/h2 with unlayered !important
+            rem sizes — so h1/h2 are pinned with Tailwind's important modifier
+            (which wins that cascade) and an in-body h1 renders at the h2 size.
+            Body is 16px on mobile and 18px on desktop; px values sidestep the
+            14.5px desktop rem trim noted above. */}
         <article
-          className="prose prose-slate prose-headings:font-bold prose-a:text-[var(--brand-color)] prose-a:no-underline hover:prose-a:underline max-w-none"
+          className="prose prose-slate lg:text-[18px] prose-h1:text-[24px]! prose-h2:text-[24px]! prose-h3:text-[20px] prose-h4:text-[18px] prose-headings:font-bold prose-a:text-[var(--brand-color)] prose-a:no-underline hover:prose-a:underline max-w-none"
           dangerouslySetInnerHTML={{ __html: safeContent }}
         />
 
