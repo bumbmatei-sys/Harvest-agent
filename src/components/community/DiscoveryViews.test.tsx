@@ -46,8 +46,15 @@ describe('community views', () => {
     expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(svg.getAttribute('width')).toBe('20');
     expect(svg.getAttribute('stroke')).toBe('currentColor');
+    expect(svg.getAttribute('stroke-width')).toBe('2');
+    expect(svg.getAttribute('aria-hidden')).toBe('true');
+    expect(svg.getAttribute('class')).toBe('example');
     expect(svg.querySelector('[fill-opacity]')).toBeNull();
     await act(async () => root.render(<Icon active />));
     expect(svg.querySelector('[fill-opacity="0.15"]')).toBeTruthy();
+  });
+  it('uses the tenant accent for the compass needle', async () => {
+    await act(async () => root.render(<DiscoverIcon />));
+    expect(host.querySelector('path[fill="var(--brand-color)"]')).toBeTruthy();
   });
 });
