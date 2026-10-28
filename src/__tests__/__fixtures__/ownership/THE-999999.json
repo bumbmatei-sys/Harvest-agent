@@ -210,32 +210,32 @@
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "ba30cde12ae7fef224065a3401c520a759aefcf90a2acf4840e616a173aba7e0",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community and digital products primitive adopter changes after merging main, retaining both sets of existing adopters."
     },
     {
       "file": "src/components/MainApp.tsx",
       "digest": "5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community navigation and digital products member view after merging main, preserving both features in the shell."
     },
     {
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "222efce52690bdd8b5b379f1a12f60317ec6773657f4477b7938b1cae52b55e0",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community touch-floor and digital products assertions after merging main, preserving both sets of checks."
     },
     {
       "file": "src/components/MainApp.tsx",
       "digest": "3a3d20bbd8169d08e573eaf1958e162eae524dbe97e1f60097150b5a54cef6a7",
-      "why": "Record the combined community, discovery and digital products merge."
+      "why": "Record the combined community navigation, discovery shell and digital products changes while retaining both features."
     },
     {
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "7f8f2daa34515178f94f97e5fa062465496b2c2a1621947394727b4d87303027",
-      "why": "Record the combined community, discovery and digital products merge."
+      "why": "Record the touch-target inventory after merging the community discovery shell and digital products controls."
     },
     {
       "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
       "digest": "e911777ef302dc0a4e42f1e17634eb65b0792cf841c911c52301cfaf61311dc8",
-      "why": "Record the combined community, discovery and digital products merge."
+      "why": "Record the navigation and safe-area inventory after merging the community discovery shell and digital products changes."
     }
   ]
 }
