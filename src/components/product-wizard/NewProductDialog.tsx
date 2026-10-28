@@ -19,6 +19,8 @@ export interface ProductTypeOption {
   placeholder?: boolean;
   /** Types that are not built yet are listed so the roadmap is visible, and cannot be picked. */
   available: boolean;
+  /** Explains a temporary plan or loading restriction on an otherwise available type. */
+  blockedReason?: string;
 }
 
 /**
@@ -46,7 +48,8 @@ export function NewProductDialog({ open, onOpenChange, types, onSelect, title = 
               <Button
                 type="button"
                 variant="outline"
-                disabled={!t.available}
+                disabled={!t.available || !!t.blockedReason}
+                title={t.blockedReason}
                 data-product-type={t.id}
                 onClick={() => onSelect(t.id)}
                 className="h-auto min-h-11 w-full flex-col items-start gap-3 whitespace-normal rounded-brand-lg p-4 text-left font-normal"
@@ -61,6 +64,7 @@ export function NewProductDialog({ open, onOpenChange, types, onSelect, title = 
                     : t.placeholder ? null : <Badge variant="outline">Coming soon</Badge>}
                 </span>
                 <span className="text-sm text-muted">{t.description}</span>
+                {t.blockedReason && <span className="text-sm text-muted">{t.blockedReason}</span>}
                 {t.membersGet ? <span className="text-sm text-strong"><span className="text-muted">Members get: </span>{t.membersGet}</span> : null}
               </Button>
             </li>

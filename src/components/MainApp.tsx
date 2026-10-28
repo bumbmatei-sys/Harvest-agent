@@ -1,6 +1,7 @@
 "use client";
+import { authFetch } from '@/utils/auth-fetch';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays, Bell, ChevronDown } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays, Bell, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { doc, getDoc } from 'firebase/firestore';
@@ -14,6 +15,7 @@ import NewsTab from './NewsTab';
 import PrayerWall from './PrayerWall';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
+import { DigitalMemberProducts } from './digital-products/DigitalProducts';
 import AIChat from './AIChat';
 import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
@@ -58,6 +60,7 @@ const TOP_TAB_ICONS: Record<string, any> = {
   news: Newspaper,
   blog: FileText,
   courses: GraduationCap,
+  products: FileDown,
   messages: MessageSquare,
   prayer: HandHeart,
   partner: HeartHandshake,
@@ -77,7 +80,7 @@ const DESKTOP_SIDEBAR_GROUPS: readonly {
   topTabIds: readonly string[];
   bottomTabIds: readonly string[];
 }[] = [
-  { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses'], bottomTabIds: ['bible'] },
+  { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses', 'products'], bottomTabIds: ['bible'] },
   { label: 'COMMUNITY', topTabIds: ['messages', 'prayer'], bottomTabIds: ['map'] },
   { label: 'SUPPORT US', topTabIds: ['partner'], bottomTabIds: ['chat'] },
 ];
@@ -307,6 +310,24 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     return () => { cancelled = true; };
   }, []);
 
+  const [productsStatus, setProductsStatus] = useState<'loading' | 'empty' | 'present'>('loading');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await authFetch('/api/digital-products?presence=1');
+        if (!response.ok) throw new Error('Could not load products');
+        const result = await response.json();
+        if (typeof result.present !== 'boolean') throw new Error('Invalid product response');
+        if (!cancelled) setProductsStatus(result.present ? 'present' : 'empty');
+      } catch {
+        // Hide the tab on error so it cannot open a broken products screen.
+        if (!cancelled) setProductsStatus('empty');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const topTabs = [
     // 🔴 WAS AN UNCONDITIONAL LITERAL, exactly as `messages` was before THE-162.
     // The feed is every tier's Home, so this is the entry whose absence moves
@@ -315,6 +336,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     modules.blog && (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     modules.courses && coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    productsStatus === 'present' && { id: 'products', label: 'Products' },
     modules.messages && hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
     modules.prayer && { id: 'prayer', label: 'Prayer' },        // all plans, all users
     // Give — plan-gated. A free tenant has `fundraising: false` and the donate
@@ -957,6 +979,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   {effectiveTopTab === 'blog' && (
                     <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                   )}
+                  {effectiveTopTab === 'products' && <DigitalMemberProducts />}
                   {effectiveTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
@@ -983,7 +1006,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   {effectiveTopTab === 'prayer' && (
                     <PrayerWall />
                   )}
-                  {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
+                  {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'products' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-faint">
                       <p>{effectiveTopTab === 'home-empty' ? 'No community modules are available.' : `${topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.`}</p>
                     </div>

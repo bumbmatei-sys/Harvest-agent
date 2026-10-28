@@ -907,6 +907,7 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
   { file: 'src/components/community/NewGroupDialog.tsx', ticket: 'THE-999999', why: 'The new group dialog uses the shared checkbox primitive for selecting members of an explicit group roster.' },
   { file: 'src/components/community/CommunitySettingsEditor.tsx', ticket: 'THE-999999', why: 'The community setup editor uses switches for module visibility, rules and questions so each setting is presented using the shared accessible primitive.' },
   { file: 'src/components/community/CommunityEntryDialog.tsx', ticket: 'THE-999999', why: 'The community entry dialog uses the shared checkbox to record a member’s explicit acceptance of the ministry’s community rules.' },
+  { file: 'src/components/digital-products/DigitalProducts.tsx', ticket: 'DIGITAL-1', why: 'DIGITAL-1 uses the existing dialog and other primitives for digital product editing and member catalogue actions; the primitives themselves are unchanged.' },
   {
     file: 'src/components/AdminEvents.tsx',
     ticket: 'THE-345',

@@ -828,6 +828,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
       // the same phone floor the event picker had before that markup moved here.
+      // DIGITAL-1: digital product controls use the phone touch-target floor.
+      'src/components/digital-products/DigitalProducts.tsx',
       'src/components/donations/PaymentLinkPicker.tsx',
       // APPENDED BY #538, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN. Every Button
       // in the email workspace carries a literal `min-h-11` (44px below `sm`):
