@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { Bell, ChevronDown, Home, MessageCircle, Search } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,16 +14,35 @@ const tabModules: Record<string, CommunityModule> = { news: 'news', blog: 'blog'
 export function enabledMobileTabs<T extends { id: string }>(tabs: T[], modules: Record<CommunityModule, boolean>): T[] {
   return tabs.filter(tab => !tabModules[tab.id] || modules[tabModules[tab.id]]);
 }
-export function splitMobileTabs<T>(tabs: T[]): { primary: T[]; overflow: T[] } {
-  return tabs.length > 5 ? { primary: tabs.slice(0, 4), overflow: tabs.slice(4) } : { primary: tabs, overflow: [] };
+export function MobileCommunitySections({ tabs, active }: { tabs: MobileTab[]; active: string }) {
+  return <Tabs value={active} onValueChange={value => tabs.find(tab => tab.id === value)?.onClick()} className="w-full overflow-x-auto border-b border-line bg-surface-raised">
+    <TabsList variant="line" className="h-auto min-w-max justify-start px-4">
+      {tabs.map(tab => <TabsTrigger key={tab.id} value={tab.id} className="min-h-11 px-3">{tab.label}</TabsTrigger>)}
+    </TabsList>
+  </Tabs>;
 }
-export function MobileCommunityTabs({ tabs }: { tabs: MobileTab[] }) {
-  const [open, setOpen] = useState(false);
-  const { primary, overflow } = splitMobileTabs(tabs);
+
+export function MobileCommunityHeader({ name, logo, onSwitch, onSearch }: { name: string; logo: string; onSwitch: () => void; onSearch: () => void }) {
+  return <div className="flex items-center justify-between border-b border-line bg-surface-raised px-4 pt-[env(safe-area-inset-top)]">
+    <Button variant="ghost" className="min-h-11 min-w-0 justify-start gap-2" onClick={onSwitch} aria-label="Switch community"><Avatar className="size-8"><AvatarImage src={logo} alt="" /><AvatarFallback>{name.slice(0, 1)}</AvatarFallback></Avatar><span className="truncate font-display font-semibold">{name}</span><ChevronDown size={16} /></Button>
+    <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label="Search communities" onClick={onSearch}><Search size={20} /></Button>
+  </div>;
+}
+
+export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive }: { onHome: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
   return <>
-    {primary.map(({ id, label, icon: Icon, onClick, active }) => <Button variant="ghost" key={id} type="button" onClick={onClick} aria-current={active ? 'page' : undefined} className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-[var(--brand-color)]"><Icon size={20} /><span className="truncate">{label}</span></Button>)}
-    {overflow.length > 0 && <><Button variant="ghost" type="button" onClick={() => setOpen(true)} className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 text-xs text-muted"><MoreHorizontal size={20} />More</Button><Sheet open={open} onOpenChange={setOpen}><SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))]"><SheetHeader><SheetTitle>More</SheetTitle></SheetHeader>{overflow.map(({ id, label, icon: Icon, onClick }) => <Button key={id} variant="ghost" className="min-h-11 justify-start" onClick={() => { setOpen(false); onClick(); }}><Icon size={20} />{label}</Button>)}</SheetContent></Sheet></>}
+    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
+    {onChat && <Button variant="ghost" className="min-h-11 flex-1" aria-label="Messages" onClick={onChat}><MessageCircle size={20} /></Button>}
+    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Notification settings" onClick={onNotifications}><Bell size={20} /></Button>
+    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Profile menu" onClick={onProfile}><Avatar className="size-8"><AvatarImage src={photo || undefined} alt="" /><AvatarFallback>{initial}</AvatarFallback></Avatar></Button>
   </>;
+}
+
+export function MobileProfileSheet({ open, onOpenChange, isAdmin, onProfile, onAdmin }: { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean; onProfile: () => void; onAdmin: () => void }) {
+  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="bottom" className="pb-[calc(1rem+env(safe-area-inset-bottom))]"><SheetHeader><SheetTitle>Profile and settings</SheetTitle></SheetHeader>
+    <Button variant="ghost" className="min-h-11 justify-start" onClick={() => { onOpenChange(false); onProfile(); }}>My profile and settings</Button>
+    {isAdmin && <Button className="min-h-11" onClick={() => { onOpenChange(false); onAdmin(); }}>Admin dashboard</Button>}
+  </SheetContent></Sheet>;
 }
 export function CommunitySwitcher({ open, onOpenChange, state, onEnter, onDiscover }: { open: boolean; onOpenChange: (open: boolean) => void; state: LoadState<MemberCommunity[]>; onEnter: () => void; onDiscover: () => void }) {
   return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))]"><SheetHeader><SheetTitle>Your communities</SheetTitle></SheetHeader>

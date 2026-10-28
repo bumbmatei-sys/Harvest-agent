@@ -255,6 +255,31 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "7ace2e38fa7ea74c76bb53f13460bec86d0d02508dbc8c01f7d4f1534dcc2034",
       "why": "Records the merged discovery shell and community post card guard inventories while preserving earlier pins."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "2630f44eaa8424a32343839a74de1b84cd09b69d4ca0af702925cf4a8f66a3a3",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "61f5092c7589d1028f07a78be82b94eb905fdb87838d8fb14d739c7ae72d075a",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "291db3b2b7eeaec912a55beef350d15e48623b8cdb622f114fe7554723a7747d",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "26449e63f402e050caeb5699d754f4474fb27eee88b34f1db58dd567cb0fc0f2",
+      "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
     }
   ]
 }

@@ -3,7 +3,7 @@ import { communityBrandStyle } from '@/lib/community/branding';
 import './community/branding.css';
 import { authFetch } from '@/utils/auth-fetch';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays, Bell, ChevronDown } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { doc, getDoc } from 'firebase/firestore';
@@ -40,7 +40,7 @@ import { useCommunitySettings, useCommunityMember } from '../lib/community/use-c
 import { needsCommunityEntry, type CommunityModule } from '../lib/community/settings';
 import { CommunityEntryDialog } from './community/CommunityEntryDialog';
 import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
-import { MobileCommunityTabs, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
+import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
 import UserEvents from './UserEvents';
 import { CommunityIcon } from './icons/CommunityIcon';
 import { DiscoverIcon } from './icons/DiscoverIcon';
@@ -125,6 +125,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   })();
   const askLabel = `Ask ${askBrandName}`;
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -793,7 +794,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               'mobile'
             )
           )}</div>
-          <div className="hidden w-full max-[768px]:flex"><MobileCommunityTabs tabs={mobileTabs} /></div>
+          <div className="hidden w-full max-[768px]:flex"><MobileCommunityTabs homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
 
           <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
             {renderNavButton('desktop-communities', 'Communities', CommunityIcon, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
@@ -840,10 +841,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
-        <div className="hidden max-[768px]:flex items-center justify-between gap-2 border-b border-line bg-surface-raised px-4 pt-[env(safe-area-inset-top)]">
-          <button className="flex min-h-11 min-w-0 items-center gap-2" onClick={() => setSwitcherOpen(true)} aria-label="Switch community"><img src={community.settings.logoUrl || displayLogo} alt="" className="logo-plate size-8 object-contain" /><span className="truncate font-display font-semibold">{displayName}</span><ChevronDown size={16} /></button>
-          <div className="flex items-center"><button className="flex size-11 items-center justify-center" aria-label="Notification settings" onClick={() => setActiveBottomTab('profile')}><Bell size={20} /></button><button className="flex size-11 items-center justify-center" aria-label="My Profile" onClick={() => setActiveBottomTab('profile')}>{memberPhotoURL ? <img src={memberPhotoURL} alt="" className="size-8 rounded-full object-cover" /> : <span className="flex size-8 items-center justify-center rounded-full bg-surface-sunken">{memberInitial(currentUser?.displayName)}</span>}</button></div>
-        </div>
+        <div className="hidden max-[768px]:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
+        <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
         {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's

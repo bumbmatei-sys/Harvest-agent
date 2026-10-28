@@ -431,7 +431,7 @@ describe('community step 1 pins', () => {
       'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
     };
     const mergedDigests: Record<string, string> = { 'MainApp.tsx': '4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19', 'NewsTab.tsx': '54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659' };
-    expect([mergedDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    expect([file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -590,7 +590,7 @@ function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
   oldNav.replaceWith(...Array.from(oldNav.childNodes));
   one('hidden w-full max-[768px]:flex').remove();
   one('hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4').remove();
-  one('hidden max-[768px]:flex items-center justify-between gap-2 border-b border-line bg-surface-raised px-4 pt-[env(safe-area-inset-top)]').remove();
+  one('hidden max-[768px]:block').remove();
   const topNav = one('bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-[768px]:hidden');
   topNav.classList.remove('max-[768px]:hidden');
   return clone;

@@ -809,7 +809,8 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     // The mobile shell and gated Products view coexist with the shared settings loading fallback.
     expect(shell()).toContain("effectiveTopTab === 'products' && <DigitalMemberProducts />");
-    expect(tags.length, 'the shell gained or lost an element').toBe(96);
+    // THE-555 replaces the inline mobile header with shared navigation components.
+    expect(tags.length, 'the shell gained or lost an element').toBe(89);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {
