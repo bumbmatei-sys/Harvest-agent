@@ -50,6 +50,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
   // guard unchanged.
   'src/components/AdminDashboard.tsx': [
     ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
+    ['7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1', 'THE-555 review F1: Community setup navigation and render gates now require hasFullAccess || perms.manageCommunity, matching the settings API permission. A manageSettings-only admin cannot reach the screen; a manageCommunity-only admin can.'],
     ['0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7', 'main at 5e06c67'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at d13c7d4 — THE-277 (#422) added the Signups nav entry'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 915d818 — THE-291 (#434) removed the client-side plan write'],

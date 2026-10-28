@@ -148,6 +148,9 @@ vi.mock('../AdminCheckin', screenStub('AdminCheckin'));
 vi.mock('../AdminLivestream', screenStub('AdminLivestream'));
 vi.mock('../AdminSms', screenStub('AdminSms'));
 vi.mock('../AdminCommunity', screenStub('AdminCommunity'));
+vi.mock('../community/CommunitySettingsScreen', () => ({
+  CommunitySettingsScreen: () => <div data-screen="CommunitySettingsScreen" />,
+}));
 vi.mock('../AdminChurches', screenStub('AdminChurches'));
 vi.mock('../AdminBranding', screenStub('AdminBranding'));
 vi.mock('../AdminDashboardHome', screenStub('AdminDashboardHome'));
@@ -641,6 +644,19 @@ describe('5 — a super admin still sees everything through platformOverride', (
 
 // ── 6 ────────────────────────────────────────────────────────────────────────
 describe("6 — a limited admin's permission gates still apply on top of the plan gate", () => {
+  it.each([
+    { permission: 'manageSettings', visible: false },
+    { permission: 'manageCommunity', visible: true },
+  ])('Community setup matches the server permission for a $permission-only admin', async ({ permission, visible }) => {
+    store.current = { ...store.current, tenantPlan: 'ministry' };
+    ctx.current = { ...ctx.current, tenantPlan: 'ministry' };
+    await mount({ role: 'admin', permissions: { [permission]: true } }, 'community-setup');
+    const labels = Array.from(container.querySelectorAll('[data-nav-group-labels]'))
+      .flatMap(group => group.getAttribute('data-nav-group-labels')!.split('|'));
+    expect(labels.includes('Community setup')).toBe(visible);
+    expect(container.querySelector('[data-screen="CommunitySettingsScreen"]') !== null).toBe(visible);
+  });
+
   it("a limited admin's permission gates still apply on top of the plan gate", async () => {
     // ⚠️ BOTH conditions must hold. Ministry buys every feature, so anything
     // missing here is the permission clause doing its job — the plan clause

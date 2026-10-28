@@ -919,7 +919,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.communityGroups) &&
       (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: NAV_ICONS.communities },
-    canSettings && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
+    (hasFullAccess || perms.manageCommunity) && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
     isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
@@ -1503,7 +1503,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : planAllows(features?.smsAutomation)
                 ? <div className="p-4 lg:p-0"><AdminSms /></div>
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'community-setup' && canSettings ? (
+          ) : activeTab === 'community-setup' && (hasFullAccess || perms.manageCommunity) ? (
             <CommunitySettingsScreen tenantId={tenantId} available={{
               news: planAllows(features?.newsFeed), blog: planAllows(features?.blog),
               courses: true, events: true, messages: planAllows(features?.communityGroups),
