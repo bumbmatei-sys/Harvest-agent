@@ -312,6 +312,7 @@ let SURFACES!: Record<string, HTMLDivElement>;
 let COMMUNITY_BASELINE!: Baseline;
 let COMMUNITY_FIDELITY_BASELINE!: Baseline;
 let POST_CARD_BASELINE!: Baseline;
+let SHADCN_MESSAGES_BASELINE!: Baseline;
 const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
@@ -384,6 +385,9 @@ beforeAll(async () => {
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
   // Community Eden fidelity pass: retain the earlier fixture for historical checks.
   COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
+  // PR 554: reviewer-requested shadcn Input/Button swaps add intrinsic state,
+  // file-input and height classes. Keep the old fixture; append only Messages.
+  SHADCN_MESSAGES_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-shadcn-messages-mobile.json'), 'utf8')).surfaces as Baseline;
 });
 
 /**
@@ -442,7 +446,31 @@ describe('community step 1 pins', () => {
 };
     // Keep selected states in static aria-pressed classes so the button floor guard measures them.
     const staticControls: Record<string, string> = { 'community/AdminPostComposer.tsx': 'd81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41' };
-    expect([staticControls[file], finalReview[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 follow-up: intrinsic shadcn sizing and THE-346 discovery anchor.
+    const shadcnLayoutFixes: Record<string, string> = {
+      "UserMessages.tsx": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
+      "community/AdminPostComposer.tsx": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2"
+    };
+    expect([shadcnLayoutFixes[file], staticControls[file], finalReview[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+  });
+
+  it('the shadcn record changes only the group search and group button rows', () => {
+    for (const name of THE_348_SURFACES) {
+      const before = COMMUNITY_FIDELITY_BASELINE[name].mobileLayer;
+      const after = SHADCN_MESSAGES_BASELINE[name].mobileLayer;
+      expect(after).toHaveLength(before.length);
+      const moved = after.filter((row, i) => row !== before[i]);
+      expect(moved).toHaveLength(2);
+      expect(moved.filter((row) => row.split('\t')[1] === 'input')).toHaveLength(1);
+      expect(moved.filter((row) => row.includes('aria-pressed:bg-surface-sunken'))).toHaveLength(1);
+      // Neither the composer, its reserved band nor its send control can hide
+      // behind this new record. All other rows still equal the earlier pin.
+      const movedIndices = new Set(moved.map((row) => row.split('\t')[0]));
+      expect(SHADCN_MESSAGES_BASELINE[name].heights.filter((row) => !movedIndices.has(row.split('\t')[0])))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].heights);
+      expect(SHADCN_MESSAGES_BASELINE[name].colours.filter(isResponsive))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].colours.filter(isResponsive));
+    }
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -591,7 +619,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
+      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
       expect(mobileLayer(SURFACES[name])).toEqual(expected);
       return;
     }
@@ -663,7 +691,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
         .filter((t) => t && !wasTokens.has(t));
-      const communityTokens = new Set(undoTHE295(COMMUNITY_FIDELITY_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const communityTokens = new Set(undoTHE295(SHADCN_MESSAGES_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const communityAdded = [...communityTokens].filter((t) => t && !wasTokens.has(t));
       expect(added.sort(), `${name} gained a class beyond the community pin`).toEqual(communityAdded.sort());
       for (const token of THE_348_ADDED) expect(added).toContain(token);
@@ -712,7 +740,7 @@ describe('no touch target got smaller', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      expect(heightLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
+      expect(heightLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
@@ -1557,7 +1585,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      expect(colourTokens(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
+      expect(colourTokens(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {

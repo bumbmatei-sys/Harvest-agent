@@ -365,6 +365,41 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "4487dc411c2a13becbfcbc70a92cdd17bf5aaac6b5a8265706a3b06cf7187146",
       "why": "PR 554 final review records static selected-state classes for the shadcn composer, retaining phone touch floors and all previous source pins so the button guard can resolve every control."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "19db28671b1fc9926ed8c57672da475d27520dc1f8c16e84ce660a17d3539ecf",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "c58ede871e367c6703b4ec71b54f9d8ce34ec6b4b7aefafedbc6b884d08102a0",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.news-feed.test.ts",
+      "digest": "d5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-shadcn-messages-mobile.json",
+      "digest": "44719d8ad5a43153436db1d06e672167ec07c0533789cb7bbc6ff877bdf0eb06",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "53b93c496558ed1c901d14fea419c09bc037b447ebed015d747b2785f4132ef3",
+      "why": "PR 554 keeps the shadcn fixture guard focused on the two deliberately changed rows and retains the earlier heights and responsive colours on all other elements, alongside exact rendered inventory checks."
     }
   ]
 }

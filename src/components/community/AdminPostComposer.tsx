@@ -185,7 +185,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                     aria-label="Add attachment"
                     aria-haspopup="menu"
                     aria-expanded={attachMenuOpen}
-                    className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors"
+                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
                   >
                     <Paperclip size={18} />
                   </Button>
