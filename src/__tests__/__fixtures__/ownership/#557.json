@@ -652,11 +652,6 @@
       "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
     },
     {
-      "file": "src/components/__tests__/THE-277.signups-split.test.tsx",
-      "digest": "47a006ece0c741915f160f849eaee859c41192506c9dbaa5c794583ce4ffbc0c",
-      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
-    },
-    {
       "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
       "digest": "68aaba1da83cfbbb32b8dc9e4181469d294762c62fd6ec20f5a6135f8d6740d3",
       "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
