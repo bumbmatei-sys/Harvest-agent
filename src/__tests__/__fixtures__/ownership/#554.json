@@ -400,6 +400,11 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "53b93c496558ed1c901d14fea419c09bc037b447ebed015d747b2785f4132ef3",
       "why": "PR 554 keeps the shadcn fixture guard focused on the two deliberately changed rows and retains the earlier heights and responsive colours on all other elements, alongside exact rendered inventory checks."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "a64f8072c54b92eceb5205233891a103568461e394c83a9ae0df1f956d508c1e",
+      "why": "PR 554 appends the reviewed UserMessages shadcn Input digest with its h-auto phone touch floor, preserving every earlier accepted value and all navigation, permission and byte-identity assertions."
     }
   ]
 }

@@ -1020,5 +1020,8 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f',
     // PR 554 final review uses the shared Input for group search with its phone touch floor.
     '5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3',
+    // APPENDED BY PR 554 review: the group search uses shadcn Input with h-auto
+    // so its 44px phone touch floor applies; no nav rail or permission gate moved.
+    '12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d',
   ],
 };
