@@ -78,10 +78,10 @@ export function ThemeWarning({ tokens, className }: {
   const report = themeContrastReport(tokens);
   if (report.low.length === 0) return null;
   return (
-    <Alert role="status" className={cn('border-line bg-surface-gold text-strong', className)}>
-      <Contrast aria-hidden />
-      <AlertTitle>Some colours may be hard to read</AlertTitle>
-      <AlertDescription className="text-strong">
+    <Alert role="status" className={cn('rounded-xl border-line bg-surface-gold px-3.5 py-3 text-strong', className)}>
+      <Contrast className="size-4 text-brand" aria-hidden />
+      <AlertTitle className="text-xs font-semibold leading-5">Some colours may be hard to read</AlertTitle>
+      <AlertDescription className="gap-2 text-xs leading-relaxed text-body">
         <p>
           {joinLabels(report.low)} {report.low.length === 1 ? 'sits' : 'sit'} too close to the background colour in this theme. Pick darker or lighter colours so the words stay clear in every inbox.
         </p>

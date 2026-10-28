@@ -16,7 +16,7 @@ import {
   type CustomTheme,
   type EmailThemeTokens,
 } from '@/lib/email/themes';
-import { Segmented, TAP, ErrorNote } from '@/components/email/kit';
+import { Segmented, TAP, ErrorNote, EmailDialogClose } from '@/components/email/kit';
 import { ThemePicker } from '@/components/email/ThemePicker';
 import { ThemeSettingsPanels } from '@/components/email/ThemeSettingsPanels';
 import { cn } from '@/lib/utils';
@@ -35,7 +35,7 @@ const FIXED_SWATCH = { navy: BRAND_PALETTE.navy900, gold: BRAND_PALETTE.gold500 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <Label className="text-xs font-medium uppercase tracking-wide text-faint">{label}</Label>
+      <Label className="text-xs font-medium text-muted">{label}</Label>
       {children}
     </div>
   );
@@ -122,12 +122,13 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('max-h-[90vh] overflow-y-auto', onThemeChange ? 'sm:max-w-xl' : 'sm:max-w-lg')}>
-        <DialogHeader>
-          <DialogTitle>Design</DialogTitle>
-          <DialogDescription>Colors, fonts, header, buttons and footer for this email.</DialogDescription>
+      <DialogContent showCloseButton={false} className={cn('flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0', onThemeChange ? 'sm:max-w-[480px]' : 'sm:max-w-lg')}>
+        <EmailDialogClose />
+        <DialogHeader className="shrink-0 gap-1 border-b border-line px-5 py-4 pr-14">
+          <DialogTitle className="font-sans text-sm font-semibold leading-6">Design this email</DialogTitle>
+          <DialogDescription className="text-xs leading-5">Choose a look and make it your own.</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-5">
+        <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-5 py-5">
           {onThemeChange && (
             <Row label="Theme presets">
               <ThemePicker
@@ -154,7 +155,7 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
               >
                 Use the classic look instead
               </Button>
-              <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-raised p-3">
                 {onSaveTheme && (
                   <Button type="button" className="min-h-11" onClick={() => { setSaveError(null); setSaveOpen(true); }}>
                     Save as my theme
@@ -256,16 +257,17 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
             <p className="text-xs text-faint">The unsubscribe link and your mailing address are always added below this.</p>
           </Row>
         </div>
-        <DialogFooter className="border-line">
+        <DialogFooter className="mx-0 mb-0 shrink-0 border-line bg-card px-5 py-3">
           <Button className="min-h-11" onClick={() => onOpenChange(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Save as my theme</DialogTitle>
+      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+        <EmailDialogClose />
+        <DialogHeader className="pr-10">
+          <DialogTitle className="font-sans text-base font-semibold">Save as my theme</DialogTitle>
           <DialogDescription>
             Keeps the current colours, fonts and layout as your own theme. The built-in themes stay as they are.
           </DialogDescription>

@@ -108,7 +108,7 @@ export const IssueHeaderNode = Node.create({
   },
 });
 
-const SIZE_PREVIEW_PX: Record<IssueSize, number> = { s: 18, m: 23, l: 28 };
+const SIZE_PREVIEW_PX: Record<IssueSize, number> = { s: 20, m: 28, l: 36 };
 const SIZE_OPTIONS: readonly Option<IssueSize>[] = [
   { value: 's', label: 'Small' },
   { value: 'm', label: 'Medium' },
@@ -136,22 +136,22 @@ function IssueHeaderView({ node, updateAttributes, selected }: NodeViewProps) {
   const urlOk = attrs.readOnline === '' || safeBlockUrl(attrs.readOnline) !== '';
 
   return (
-    <NodeViewWrapper className={cn('my-3', selected && 'ring-2 ring-brand rounded-lg')} data-testid="issue-header-block">
-      <div className="rounded-lg border border-line bg-surface-raised px-5 py-4" style={{ textAlign: attrs.align }}>
+    <NodeViewWrapper className={cn('group relative my-5 rounded-xl border border-transparent hover:border-line', selected && 'ring-2 ring-brand')} data-testid="issue-header-block">
+      <div className="relative rounded-xl px-12 py-6 sm:py-8" style={{ textAlign: attrs.align }}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div
-              className="font-display font-semibold text-strong"
+              className="font-display font-semibold tracking-tight text-strong"
               style={{ fontSize: SIZE_PREVIEW_PX[attrs.size], lineHeight: 1.2 }}
             >
               {attrs.title || 'Issue title'}
             </div>
             {(attrs.subtitle || !attrs.title) && (
-              <div className="mt-1 text-sm text-body">{attrs.subtitle || 'One line about this issue'}</div>
+              <div className="mt-2 text-sm leading-relaxed text-muted">{attrs.subtitle || 'One line about this issue'}</div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ justifyContent: attrs.align === 'center' ? 'center' : 'flex-start' }}>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ justifyContent: attrs.align === 'center' ? 'center' : 'flex-start' }}>
               {attrs.readingTime && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-faint">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-widest text-faint">
                   <Clock className="size-3" aria-hidden /> 1 min read
                 </span>
               )}
@@ -161,10 +161,10 @@ function IssueHeaderView({ node, updateAttributes, selected }: NodeViewProps) {
             </div>
           </div>
           <Popover>
-            <PopoverTrigger className={cn('shrink-0 rounded-md border border-line bg-surface p-2 text-muted hover:bg-surface-gold', TAP)} aria-label="Issue header options">
+            <PopoverTrigger className={cn('absolute right-1 top-1 flex min-w-11 items-center justify-center rounded-lg text-faint hover:bg-surface-sunken hover:text-strong', TAP)} aria-label="Issue header options">
               <Settings2 className="size-4" aria-hidden />
             </PopoverTrigger>
-            <PopoverContent align="end" className="flex w-80 flex-col gap-3">
+            <PopoverContent align="end" className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-xl p-4">
               <IssueHeaderFields attrs={attrs} commit={commit} urlOk={urlOk} />
             </PopoverContent>
           </Popover>
@@ -189,7 +189,7 @@ function IssueHeaderFields({ attrs, commit, urlOk }: {
         <Label htmlFor="issue-subtitle">Subtitle</Label>
         <Input id="issue-subtitle" value={attrs.subtitle} onChange={(e) => commit({ subtitle: blockText(e.target.value, 600) })} placeholder="Why we gather" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <Label>Size</Label>
           <Segmented value={attrs.size} onChange={(size) => commit({ size })} options={SIZE_OPTIONS} label="Title size" />

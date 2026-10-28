@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 import { BroadcastEditor } from '@/components/email/BroadcastEditor';
 import { DesignDialog } from '@/components/email/DesignDialog';
@@ -155,20 +155,6 @@ function ExpandAll({ children }: { children: ReactNode }) {
   return <div ref={ref}>{children}</div>;
 }
 
-const MODE_LABEL: Record<string, string> = { computer: 'Computer', phone: 'Phone', dark: 'Dark' };
-
-/** Drives the preview dialog's own segmented control to the requested mode. */
-function StartAtMode({ mode }: { mode: string }) {
-  useEffect(() => {
-    const label = MODE_LABEL[mode];
-    if (!label || mode === 'computer') return; // computer is where the dialog starts
-    const group = document.querySelector('[aria-label="Preview as"]');
-    const target = [...(group?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.trim() === label);
-    if (target && target.getAttribute('aria-pressed') !== 'true') target.click();
-  }, [mode]);
-  return null;
-}
-
 export function EmailThemesPreview({ view, mode }: { view?: string; mode?: string }) {
   const which = ['picker', 'panels', 'brand', 'editor', 'preview'].includes(view || '') ? view! : 'picker';
   return (
@@ -220,8 +206,9 @@ export function EmailThemesPreview({ view, mode }: { view?: string; mode?: strin
       )}
       {which === 'preview' && (
         <>
-          <StartAtMode mode={mode ?? 'computer'} />
           <PreviewDialog
+            key={mode}
+            initialMode={mode === 'phone' || mode === 'dark' ? mode : 'computer'}
             open
             onOpenChange={() => {}}
             api={fakeApi}

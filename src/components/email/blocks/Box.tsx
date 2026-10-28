@@ -159,15 +159,15 @@ function BoxView({ node, updateAttributes, selected }: NodeViewProps) {
   const box = filled ? boxFillColors(tint, EDITOR_TOKENS.card, EDITOR_BUTTON, true) : null;
 
   return (
-    <NodeViewWrapper className={cn('my-3', selected && 'ring-2 ring-brand rounded-lg')} data-testid="box-block">
+    <NodeViewWrapper className={cn('my-5 rounded-xl', selected && 'ring-2 ring-brand')} data-testid="box-block">
       <div
-        className="rounded-lg px-5 py-4"
+        className="relative rounded-xl px-5 py-5 sm:px-6 sm:py-6"
         style={box
           ? { background: box.fill, border: `1px solid ${box.border}` }
           : { background: 'transparent', border: `1px solid ${tint}` }}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pr-8">
             {attrs.label && (
               <div
                 className={cn('text-[11px] font-semibold uppercase tracking-widest', !box && 'text-faint')}
@@ -177,19 +177,19 @@ function BoxView({ node, updateAttributes, selected }: NodeViewProps) {
               </div>
             )}
             <div
-              className={cn('mt-1 font-display text-lg font-semibold', !box && 'text-strong')}
+              className={cn('mt-2 font-display text-2xl font-semibold leading-tight tracking-tight', !box && 'text-strong')}
               style={box ? { color: box.title } : undefined}
             >
               {attrs.title || 'Box title'}
             </div>
             {(attrs.blurb || !attrs.title) && (
-              <div className={cn('mt-1 text-sm', !box && 'text-body')} style={box ? { color: box.blurb } : undefined}>
+              <div className={cn('mt-2 text-sm leading-relaxed', !box && 'text-body')} style={box ? { color: box.blurb } : undefined}>
                 {attrs.blurb || 'A short line about this.'}
               </div>
             )}
             {attrs.buttonText && (
               <span
-                className={cn('mt-3 inline-block rounded-md px-3 py-1.5 text-sm font-semibold', !box && 'bg-brand text-white')}
+                className={cn('mt-4 inline-block rounded-lg px-4 py-2.5 text-xs font-semibold', !box && 'bg-brand text-white')}
                 style={box ? { backgroundColor: box.buttonBg, color: box.buttonInk } : undefined}
               >
                 {attrs.buttonText}
@@ -198,10 +198,10 @@ function BoxView({ node, updateAttributes, selected }: NodeViewProps) {
             {attrs.buttonText && !urlOk && <span className="mt-3 ml-2 text-xs text-danger">Button link needs an https address</span>}
           </div>
           <Popover>
-            <PopoverTrigger className={cn('shrink-0 rounded-md border border-line bg-surface p-2 text-muted hover:bg-surface-gold', TAP)} aria-label="Box options">
+            <PopoverTrigger className={cn('absolute right-2 top-2 flex min-w-11 items-center justify-center rounded-lg border border-line bg-card text-muted hover:bg-surface-gold', TAP)} aria-label="Box options">
               <Settings2 className="size-4" aria-hidden />
             </PopoverTrigger>
-            <PopoverContent align="end" className="flex w-80 flex-col gap-3">
+            <PopoverContent align="end" className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-xl p-4">
               <BoxFields attrs={attrs} commit={commit} urlOk={urlOk} />
             </PopoverContent>
           </Popover>

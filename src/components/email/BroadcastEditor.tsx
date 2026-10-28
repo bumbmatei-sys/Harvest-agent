@@ -376,7 +376,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               )}
             </div>
             <div className="mt-3 border-t border-line">
-              <div className="flex items-center gap-3 px-5 py-2">
+              <div className="flex flex-wrap items-center gap-2 bg-surface-raised px-4 py-3 sm:gap-3 sm:px-5 [&_[data-slot=toggle-group-item]]:px-2.5 [&_[data-slot=toggle-group-item]]:text-xs">
                 <span className="text-xs text-faint">Preview</span>
                 <Segmented label="Inline preview as" value={inlinePreview} onChange={setInlinePreview} options={INLINE_PREVIEW} />
                 {inlinePreview !== '' && (
@@ -386,19 +386,19 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
                 )}
               </div>
               {inlinePreview !== '' && (
-                <div className="flex flex-col gap-3 px-5 pb-4">
+                <div className="flex flex-col gap-3 px-3 pb-4 sm:px-5">
                   <ThemeWarning tokens={previewTokens} />
                   {inlineError ? (
                     <ErrorNote>{inlineError}</ErrorNote>
                   ) : inlineHtml === null ? (
                     <p role="status" className="text-sm text-muted">Building the preview…</p>
                   ) : (
-                    <div className="flex justify-center overflow-auto rounded-lg bg-surface-sunken p-3">
+                    <div className={cn('flex justify-center overflow-auto rounded-xl border border-line p-2 sm:p-4', inlinePreview === 'dark' ? 'bg-surface-night' : 'bg-surface-sunken')}>
                       <iframe
                         title="Inline email preview"
                         sandbox=""
                         srcDoc={inlineHtml}
-                        className={cn('h-72 rounded-md border border-line bg-white', inlinePreview === 'phone' ? 'w-[320px]' : 'w-full')}
+                        className={cn('h-96 max-w-full shrink-0 bg-card shadow-xs', inlinePreview === 'phone' ? 'w-[375px] rounded-[24px] border-[6px] border-surface-night shadow-lg' : 'w-full rounded-lg border border-line')}
                       />
                     </div>
                   )}
@@ -414,7 +414,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
                 <span className="ml-auto flex items-center gap-1 text-faint">{plural(plainWords(bodyHtml), 'word', 'words')}{tipsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <ul className="flex flex-col gap-3 px-5 pb-4">
+                <ul className="flex flex-col gap-3 px-3 pb-4 sm:px-5">
                   {tips.map((t) => (
                     <li key={t.id} className="flex gap-2.5 text-sm">
                       <span aria-hidden className={cn('mt-1.5 size-2 shrink-0 rounded-full', t.kind === 'fix' ? 'bg-gold' : 'bg-muted-foreground')} />

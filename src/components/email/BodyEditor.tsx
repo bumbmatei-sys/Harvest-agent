@@ -329,9 +329,9 @@ function SlashMenu({ state, onPick, onHover }: {
   const top = state.rect ? state.rect.bottom + 6 : 0;
   const left = state.rect ? state.rect.left : 0;
   return (
-    <div className="fixed z-50" style={{ left, top }} role="listbox" aria-label="Insert block">
-      <Command className="w-64 rounded-lg border border-line bg-surface-raised p-1 shadow-lg" shouldFilter={false}>
-        <CommandList>
+    <div className="fixed z-50 max-w-[calc(100vw-2rem)]" style={{ left, top }} role="listbox" aria-label="Insert block">
+      <Command className="w-64 max-w-full rounded-xl border border-line bg-card p-1.5 shadow-lg" shouldFilter={false}>
+        <CommandList className="max-h-72 scroll-py-1">
           {state.items.map((item, index) => {
             const Icon = item.icon;
             return (
@@ -341,10 +341,10 @@ function SlashMenu({ state, onPick, onHover }: {
                 aria-selected={index === state.index}
                 onMouseMove={() => onHover(index)}
                 onSelect={() => onPick(item)}
-                className={cn('flex items-center gap-2', index === state.index && 'bg-accent')}
+                className={cn('min-h-11 gap-3 rounded-lg px-2.5 py-2 text-xs text-body sm:min-h-[38px]', index === state.index && 'bg-surface-sunken text-strong')}
               >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                <span>{item.title}</span>
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-line bg-card text-muted"><Icon className="size-3.5" aria-hidden /></span>
+                <span className="font-medium">{item.title}</span>
               </CommandItem>
             );
           })}

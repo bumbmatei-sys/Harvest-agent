@@ -1,15 +1,26 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
 /** Below `sm` a control is at least 44px tall; the 38px floor above it is a global rule. */
 export const TAP = 'min-h-11';
+
+/** Base UI passes a ref to its render element; a native button supports it on React 18. */
+export function EmailDialogClose() {
+  return (
+    <DialogClose render={<button type="button" className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'absolute right-2 top-2 min-h-11 min-w-11 text-muted')} />}>
+      <X className="size-4" aria-hidden />
+      <span className="sr-only">Close</span>
+    </DialogClose>
+  );
+}
 
 /** The soft gold strip Eden uses for "finish setup" nudges. */
 export function SetupBanner({ children, actionLabel, onAction }: { children: ReactNode; actionLabel: string; onAction: () => void }) {

@@ -2,7 +2,6 @@
 
 import { Check, Trash2 } from 'lucide-react';
 
-import { TAP } from '@/components/email/kit';
 import {
   THEME_PRESETS,
   type CustomTheme,
@@ -29,8 +28,8 @@ function ThemeThumb({ tokens }: { tokens: EmailThemeTokens }) {
   const chipRadius = tokens.buttons.shape === 'square' ? 0 : tokens.buttons.shape === 'pill' ? 999 : 3;
   const outline = tokens.buttons.fill === 'outline';
   return (
-    <span aria-hidden className="flex h-20 w-full flex-col p-2" style={{ backgroundColor: tokens.page }}>
-      <span className="flex flex-1 flex-col gap-1.5 p-2" style={{ backgroundColor: tokens.card, borderRadius: radius }}>
+    <span aria-hidden className="flex h-[88px] w-full flex-col p-2" style={{ backgroundColor: tokens.page }}>
+      <span className="flex flex-1 flex-col gap-1 p-2" style={{ backgroundColor: tokens.card, borderRadius: radius }}>
         {tokens.header !== 'none' && (
           <span
             className="h-1 rounded-full"
@@ -42,7 +41,7 @@ function ThemeThumb({ tokens }: { tokens: EmailThemeTokens }) {
             }}
           />
         )}
-        <span className="leading-none" style={{ color: tokens.heading, fontSize: 13, fontWeight: 700 }}>Aa</span>
+        <span className="leading-none" style={{ color: tokens.heading, fontSize: 14, fontWeight: 700, fontFamily: tokens.headingFont === 'fraunces' || tokens.headingFont === 'georgia' ? 'Georgia, serif' : 'Arial, sans-serif' }}>Aa</span>
         <span className="h-1 w-full rounded-full" style={{ backgroundColor: tokens.text, opacity: 0.35 }} />
         <span className="h-1 w-4/5 rounded-full" style={{ backgroundColor: tokens.text, opacity: 0.35 }} />
         <span
@@ -67,26 +66,26 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
   onDelete?: () => void;
 }) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <button
         type="button"
         role="radio"
         aria-label={name}
         aria-checked={selected}
         onClick={() => onSelect(choice)}
-        className={cn(TAP, 'flex w-full flex-col gap-1.5 rounded-lg border p-1.5 text-left', selected ? 'border-primary ring-1 ring-primary' : 'border-line')}
+        className={cn('flex min-h-11 w-full flex-col gap-2 rounded-xl border p-1.5 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring', selected ? 'border-primary bg-surface-raised ring-1 ring-primary' : 'border-line bg-card hover:border-primary hover:bg-surface-raised')}
       >
-        <span aria-hidden className="relative block overflow-hidden rounded-md border border-line">
+        <span aria-hidden className="relative block w-full overflow-hidden rounded-lg border border-line">
           <ThemeThumb tokens={choice.tokens} />
           {selected && (
-            <span className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Check className="size-3" />
             </span>
           )}
         </span>
-        <span className="flex items-baseline gap-1.5 px-1 pb-0.5">
-          <span className="text-xs font-medium text-strong">{name}</span>
-          {defaultTheme && <span className="text-[10px] uppercase tracking-wide text-faint">Default</span>}
+        <span className={cn("flex min-h-11 w-full flex-col justify-center gap-0.5 px-1 sm:min-h-[38px]", onDelete && "pr-11")}>
+          <span className="block w-full truncate text-xs font-medium leading-4 text-strong">{name}</span>
+          {defaultTheme && <span className="text-[10px] leading-3 text-faint">Default</span>}
         </span>
       </button>
       {onDelete && (
@@ -94,12 +93,11 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
           type="button"
           aria-label={`Delete ${name}`}
           onClick={onDelete}
-          // Top-right, so the thumbnail's "Aa" stays visible. Below sm the
-          // THE-356 touch floor governs (literal min-h-11 min-w-11); above it
-          // the chip returns to icon size.
-          className={cn(TAP, 'absolute right-1.5 top-1.5 flex size-6 min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-card/90 text-muted hover:text-danger sm:min-h-0 sm:min-w-0')}
+          // A dedicated label-row slot keeps the 44px mobile target clear of
+          // the thumbnail and the theme's selection badge.
+          className="absolute bottom-1.5 right-1.5 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-sunken hover:text-danger focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[38px] sm:min-w-[38px]"
         >
-          <Trash2 className="size-3" />
+          <Trash2 className="size-3.5" />
         </button>
       )}
     </div>
@@ -126,8 +124,8 @@ export function ThemePicker({ selectedId, onSelect, customThemes = [], defaultId
   help?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div role="radiogroup" aria-label={label} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="flex flex-col gap-3">
+      <div role="radiogroup" aria-label={label} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {THEME_PRESETS.map((preset) => (
           <ThemeTile
             key={preset.id}
@@ -150,7 +148,7 @@ export function ThemePicker({ selectedId, onSelect, customThemes = [], defaultId
           />
         ))}
       </div>
-      <p className="text-xs leading-relaxed text-faint">
+      <p className="text-[11px] leading-relaxed text-faint">
         {help ?? 'Start from a look you like, then fine-tune anything below. Built-in themes stay as they are; your changes save as your own theme.'}
       </p>
     </div>

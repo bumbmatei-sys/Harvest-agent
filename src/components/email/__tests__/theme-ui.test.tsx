@@ -4,6 +4,7 @@ import { BroadcastEditor } from '@/components/email/BroadcastEditor';
 import { ThemePicker } from '@/components/email/ThemePicker';
 import { ThemeSettingsPanels } from '@/components/email/ThemeSettingsPanels';
 import { ThemeWarning } from '@/components/email/ThemeWarning';
+import { PreviewDialog } from '@/components/email/PreviewDialog';
 import { EmailApiError } from '@/components/email/email-api';
 import { AdminHeaderContext } from '@/components/AdminScreenHeader';
 import {
@@ -29,6 +30,30 @@ afterEach(async () => {
 
 const letter = getThemePreset('letter')!.tokens;
 const checkBadge = (tile: HTMLElement) => tile.querySelector('.lucide-check');
+
+describe('PreviewDialog starting mode and React 18 close composition', () => {
+  it.each(['computer', 'phone', 'dark'] as const)('starts in %s without clicking a mode control', async (mode) => {
+    const preview = vi.fn(async () => '<p>Sample email</p>');
+    await mount(<PreviewDialog open onOpenChange={() => {}} api={{ preview }} draft={{ subject: 'Sunday' }} initialMode={mode} />);
+    await flush();
+
+    const label = { computer: 'Computer', phone: 'Phone', dark: 'Dark' }[mode];
+    expect(need(byName('button', label), 'initial mode').getAttribute('aria-pressed')).toBe('true');
+    expect(preview).toHaveBeenCalledWith({ subject: 'Sunday', dark: mode === 'dark' });
+    expect(document.querySelector('iframe')?.getAttribute('srcdoc')).toBe('<p>Sample email</p>');
+  });
+
+  it('closes through a native render button without a function-component ref warning', async () => {
+    const errors = vi.spyOn(console, 'error');
+    const onOpenChange = vi.fn();
+    await mount(<PreviewDialog open onOpenChange={onOpenChange} api={{ preview: async () => '<p>Preview</p>' }} draft={{}} />);
+    await flush();
+    await click(need(byName('button', 'Close'), 'close preview'));
+
+    expect(onOpenChange.mock.calls[0]?.[0]).toBe(false);
+    expect(errors.mock.calls.filter((args) => args.some((arg) => String(arg).includes('Function components cannot be given refs')))).toEqual([]);
+  });
+});
 
 describe('ThemePicker', () => {
   it('draws the five presets and marks the selected one with a check on that tile alone', async () => {

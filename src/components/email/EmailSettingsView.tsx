@@ -33,14 +33,14 @@ const PLATFORM_ICONS: Readonly<Record<SocialPlatform, React.ComponentType<{ clas
   website: Globe,
 };
 
-function Section({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
+function Section({ id, title, description, children, className }: { id?: string; title: string; description?: string; children: React.ReactNode; className?: string }) {
   return (
     <section id={id} className="flex scroll-mt-6 flex-col gap-3">
       <div>
         <h2 className="text-base font-semibold text-strong">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
       </div>
-      <Card className="gap-5 p-6">{children}</Card>
+      <Card className={cn("gap-5 p-6", className)}>{children}</Card>
     </section>
   );
 }
@@ -136,20 +136,20 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
         </div>
       </Section>
 
-      <Section title="Logo and footer" description="Set these once. Every email theme shows them.">
-        <div className="flex flex-col gap-1.5">
+      <Section title="Logo and footer" description="Set these once. Every email theme shows them." className="gap-6 rounded-xl p-4 shadow-none sm:p-6">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email-logo-url">Logo web address</Label>
           <Input
             id="email-logo-url"
             type="url"
-            className={TAP}
+            className="min-h-11 text-sm"
             value={logoUrl}
             onChange={(e) => { setLogoUrl(e.target.value); setBrandSaved(false); }}
-            placeholder="https://yourchurch.org/logo.png"
+            placeholder="https://yourministry.org/logo.png"
           />
-          <p className="text-xs text-faint">A full https:// link to your logo image. It shows at the top of every email, beside your ministry name.</p>
+          <p className="text-xs leading-relaxed text-faint">A full https:// link to your logo image. It shows at the top of every email, beside your ministry name.</p>
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email-footer-note">Footer note</Label>
           <Textarea
             id="email-footer-note"
@@ -159,23 +159,23 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
             onChange={(e) => { setFooterNote(e.target.value); setBrandSaved(false); }}
             placeholder="A sign-off or a line about your ministry."
           />
-          <p className="text-xs text-faint">Shows at the bottom of every email, above the unsubscribe link and your mailing address (those are always there).</p>
+          <p className="text-xs leading-relaxed text-faint">Shows at the bottom of every email, above the unsubscribe link and your mailing address (those are always there).</p>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 border-t border-line pt-5">
           <div>
-            <Label className="text-xs font-medium uppercase tracking-wide text-faint">Social links</Label>
-            <p className="mt-0.5 text-xs text-faint">Shown as a row of names in the footer of every email.</p>
+            <Label className="text-sm font-medium text-strong">Social links</Label>
+            <p className="mt-1 text-xs leading-relaxed text-faint">Shown as a row of names in the footer of every email.</p>
           </div>
           {socialLinks.map((link, index) => {
             const Icon = PLATFORM_ICONS[link.platform];
             return (
-              <div key={index} className="flex flex-wrap items-center gap-2">
-                <span aria-hidden className="flex size-9 items-center justify-center rounded-md border border-line bg-surface-raised text-muted">
+              <div key={index} className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 rounded-xl border border-line bg-surface-raised p-3 sm:grid-cols-[28px_132px_minmax(0,1fr)_44px] sm:border-0 sm:bg-transparent sm:p-0">
+                <span aria-hidden className="hidden size-7 items-center justify-center text-muted sm:flex">
                   <Icon className="size-4" />
                 </span>
                 <Select value={link.platform} onValueChange={(v) => setLink(index, { platform: v as SocialPlatform })}>
-                  <SelectTrigger className={cn(TAP, 'w-36')} aria-label="Platform">
-                    <SelectValue />
+                  <SelectTrigger className="col-start-1 row-start-1 min-h-11 w-full text-xs sm:col-start-auto sm:row-start-auto" aria-label="Platform">
+                    <SelectValue>{() => SOCIAL_PLATFORM_LABELS[link.platform]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {SOCIAL_PLATFORMS.map((p) => (
@@ -185,7 +185,7 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
                 </Select>
                 <Input
                   aria-label={`${SOCIAL_PLATFORM_LABELS[link.platform]} address`}
-                  className={cn(TAP, 'min-w-[12rem] flex-1')}
+                  className="col-start-1 row-start-2 min-h-11 min-w-0 text-xs sm:col-start-auto sm:row-start-auto"
                   value={link.url}
                   onChange={(e) => setLink(index, { url: e.target.value })}
                   placeholder="https://"
@@ -196,7 +196,7 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
                   // A literal, not {TAP}: THE-356 measures every Button call
                   // site and its resolver reads literals and form-layout
                   // constants only — an imported token would throw there.
-                  className="min-h-11"
+                  className="col-start-2 row-span-2 row-start-1 min-h-11 min-w-11 text-muted hover:text-danger sm:col-start-auto sm:row-span-1 sm:row-start-auto"
                   aria-label={`Remove the ${SOCIAL_PLATFORM_LABELS[link.platform]} link`}
                   onClick={() => { setSocialLinks((list) => list.filter((_, i) => i !== index)); setBrandSaved(false); }}
                 >
@@ -218,7 +218,7 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
           )}
         </div>
         {brandError && <ErrorNote>{brandError}</ErrorNote>}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 border-t border-line pt-4">
           <Button className="min-h-11" disabled={brandBusy} onClick={() => void saveBrand()}>{brandBusy ? 'Saving…' : 'Save'}</Button>
           {brandSaved && <span role="status" className="text-sm text-muted">Saved.</span>}
         </div>
