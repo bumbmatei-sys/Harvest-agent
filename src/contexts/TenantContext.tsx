@@ -1,4 +1,5 @@
 'use client';
+import { tenantMatchesSubdomain } from '@/utils/tenant-host-validation';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -413,7 +414,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         }
 
         const data = tenantDoc.data();
-        if (isTenantSubdomain && (data.plan === 'free' || ((data.plan != null || data.subdomain != null) && data.subdomain !== hostLabel))) {
+        if (isTenantSubdomain && !tenantMatchesSubdomain(data, hostLabel)) {
           setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
           return;
         }

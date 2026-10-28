@@ -513,3 +513,23 @@ describe('11 · an iPhone home-screen app is told why Google cannot open', () =>
       'loading was never cleared — the screen still looks like it is working').toBe(false);
   });
 });
+
+
+describe('#557 rejected tenant hosts', () => {
+  it.each([
+    ['missing', false, {}],
+    ['free', true, { plan: 'free', subdomain: 'kingdom-living' }],
+    ['hostless', true, { plan: 'church' }],
+    ['mismatched', true, { plan: 'church', subdomain: 'other' }],
+  ])('blocks password and Google signup on a %s host', async (_label, exists, data) => {
+    getDocMock.mockImplementation(async (ref) => ref?.__path === 'tenants/kingdom-living'
+      ? { exists: () => exists, data: () => data }
+      : { exists: () => false, data: () => ({}) });
+    setURL(`${TENANT_HOST}?signup=1`);
+    await renderPage();
+    await submitSignupForm();
+    await pressGoogle();
+    expect(createUser).not.toHaveBeenCalled();
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+});

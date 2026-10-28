@@ -93,6 +93,14 @@ describe('signup page routes', () => {
     expect((await (await list(request('GET'))).json()).pages).toEqual([]);
     expect((await submissions(request('GET'), params)).status).toBe(403);
   });
+  it('allows a super admin without live tenant membership to manage a tenant page', async () => {
+    mocks.requireAuth.mockResolvedValue({ uid: 'platform', tenantId: null, isSuperAdmin: true });
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'platform', isSuperAdmin: true });
+    expect((await list(new NextRequest('http://localhost/api/signup-pages?tenantId=tenant'))).status).toBe(200);
+    expect((await update(request('PATCH', { pageId: 'page', active: true, handle: 'hello', title: 'Title', message: '', fields }))).status).toBe(200);
+    expect((await submissions(request('GET'), params)).status).toBe(200);
+    expect((await exportCsv(request('GET'), params)).status).toBe(200);
+  });
   it('restricts submissions and exports and escapes spreadsheet formulas', async () => {
     expect((await submissions(request('GET'), params)).status).toBe(200);
     const csv = await exportCsv(request('GET'), params);

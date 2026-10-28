@@ -41,7 +41,7 @@ const { auth, createUser, signIn, signInWithPopupMock, setDoc, tenantCtx, tenant
   signIn: vi.fn(),
   signInWithPopupMock: vi.fn(),
   setDoc: vi.fn(async () => {}),
-  tenantRead: vi.fn(async (): Promise<{ exists: () => boolean; data: () => { plan: string } }> => ({ exists: () => true, data: () => ({ plan: 'church' }) })),
+  tenantRead: vi.fn(async (): Promise<{ exists: () => boolean; data: () => { plan: string; subdomain?: string } }> => ({ exists: () => true, data: () => ({ plan: 'church', subdomain: 'over-cap-church' }) })),
   // A church WAY past Individual's 150 accounts — the tenant the gate refuses.
   tenantCtx: {
     branding: {}, tenantId: 'over-cap-church', tenantName: 'Over Cap Church',
@@ -160,7 +160,7 @@ const submitSignupForm = async () => {
 const screenText = () => (container.textContent ?? '').replace(/\s+/g, ' ');
 
 beforeEach(() => {
-  tenantRead.mockResolvedValue({ exists: () => true, data: () => ({ plan: 'church' }) });
+  tenantRead.mockResolvedValue({ exists: () => true, data: () => ({ plan: 'church', subdomain: 'over-cap-church' }) });
   vi.clearAllMocks();
   sessionStorage.clear();
   setURL('https://over-cap-church.theharvest.app/auth?signup=1');

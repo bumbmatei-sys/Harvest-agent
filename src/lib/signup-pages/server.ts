@@ -35,7 +35,7 @@ export async function authorizePage(request: NextRequest, pageId: string) {
     adminDb.collection('users').doc(user.uid).get(),
     adminDb.collection('tenants').doc(page.tenantId).get(),
   ]);
-  if (!currentUser.exists || currentUser.data()?.tenantId !== page.tenantId) {
+  if (!user.isSuperAdmin && (!currentUser.exists || currentUser.data()?.tenantId !== page.tenantId)) {
     return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
   }
   if (!tenant.exists || tenant.data()?.ownerId !== user.uid) {

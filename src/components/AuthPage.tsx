@@ -1,4 +1,5 @@
 "use client";
+import { tenantMatchesSubdomain } from '@/utils/tenant-host-validation';
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
@@ -245,7 +246,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const hostTenantAllowsSignup = async (scope: AuthTenantResolution) => {
     if (scope.kind !== 'tenant') return scope.kind === 'platform';
     const snapshot = await getDoc(doc(db, 'tenants', scope.tenantId));
-    return snapshot.exists() && snapshot.data().plan !== 'free';
+    if (!snapshot.exists()) return false;
+    const data = snapshot.data();
+    return scope.reason === 'tenant-subdomain'
+      ? tenantMatchesSubdomain(data, scope.tenantId)
+      : data.plan !== 'free';
   };
   const [isChurchSignup, setIsChurchSignup] = useState(false);
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();

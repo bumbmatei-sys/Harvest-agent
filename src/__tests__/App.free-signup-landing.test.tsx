@@ -482,6 +482,20 @@ describe('#557 Free account routing', () => {
     expect(hops).toEqual([]);
     tenantCtx.tenantPlan = null;
   });
+  it.each([
+    ['another tenant', 'other', 'free', '/'],
+    ['own tenant', TENANT, 'church', '/admin'],
+  ])('routes an admin on a paid host for %s', async (_label, userTenant, userPlan, destination) => {
+    startAt('https://paid.theharvest.app/auth');
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ tenantId: userTenant, plan: userPlan });
+    mount();
+    await flush();
+    expect(window.location.pathname).toBe(destination);
+    tenantCtx.tenantPlan = null;
+  });
   it('keeps the tenant plan on a custom domain when the user has a different plan', async () => {
     startAt('https://ministry.example/');
     tenantCtx.tenantId = 'tenant';

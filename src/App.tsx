@@ -335,7 +335,8 @@ const AppInner: React.FC = () => {
               // stays on the page they were on.
               const hasAdminRole = isTenantAdminRole(role) || isSuperAdminEmail(user?.email);
               const isFreeAccount = (resolvedTenantId ? resolvedTenantPlan : canonicalPlanId(data.plan)) === 'free';
-              const homeBase = !isFreeAccount && (isAdminDomain || hasAdminRole) ? '/admin' : '/';
+              const isHostAdmin = !resolvedTenantId || isSuperAdminEmail(user?.email) || (hasAdminRole && data.tenantId === resolvedTenantId);
+              const homeBase = !isFreeAccount && isHostAdmin && (isAdminDomain || hasAdminRole) ? '/admin' : '/';
 
               // One-shot intent flag: when an admin taps "Go to User App", the admin
               // dashboard sets sessionStorage.intentionalUserView before navigating to
