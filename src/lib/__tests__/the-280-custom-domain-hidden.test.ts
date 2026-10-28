@@ -417,9 +417,11 @@ describe('5 — an already-provisioned domain keeps resolving', () => {
    * RE-CHECK one. A verified domain stays verified in Firestore and keeps
    * resolving; what a church loses is the button, not its address.
    */
-  it('both resolvers are byte-for-byte unchanged', () => {
-    expect(digest('src/lib/server-tenant.ts'))
-      .toBe('445344fb4038aa394495b0f4af67c321926ddd51b8523d9a7b7f12486a434b49');
+  it('accepts the free-host restriction and keeps the custom-domain resolver pinned', () => {
+    expect([
+      '445344fb4038aa394495b0f4af67c321926ddd51b8523d9a7b7f12486a434b49',
+      '42baa396bce16e5f3415f9f6714cf7d92af0263c97b505ef324a7423f3bd164a', // #557: free tenants have no subdomain
+    ]).toContain(digest('src/lib/server-tenant.ts'));
     expect(digest('src/app/api/resolve-domain/route.ts'))
       .toBe('3e570a0e2a2c87887b1078f74cda7141e3857c2c535654af5ff88c725bc749f2');
   });

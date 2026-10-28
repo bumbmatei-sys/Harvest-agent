@@ -130,7 +130,7 @@ describe('attaching a first subscription to a free tenant', () => {
     expect(r).toMatchObject({ outcome: 'attached', tenantId: 't1', plan: 'plus' });
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ plan: 'plus' }),
+      expect.objectContaining({ plan: 'plus', subdomain: 't1' }),
     );
   });
 

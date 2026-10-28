@@ -15,7 +15,7 @@ import {
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
 import { reactivateTenantForDodoSubscription } from './lifecycle';
-import { handleFirstSubscriptionAttach } from './first-subscription';
+import { attachFirstSubscriptionToTenant, handleFirstSubscriptionAttach } from './first-subscription';
 
 /**
  * Build-on-payment, on Dodo: turn a paid Dodo subscription into a tenant.
@@ -281,6 +281,19 @@ export async function provisionTenantFromDodoSubscription(
   const existingUserSnap = await adminDb.collection('users').doc(meta.userId).get();
   const existingTenantId = existingUserSnap.exists ? existingUserSnap.data()?.tenantId : null;
   if (existingTenantId) {
+    const tenantSnap = await adminDb.collection('tenants').doc(existingTenantId).get();
+    if (!tenantSnap.exists) {
+      throw new DodoProvisioningError('tenant-not-found', `Existing tenant ${existingTenantId} does not exist.`);
+    }
+    if (tenantSnap.data()?.plan === 'free') {
+      const result = await attachFirstSubscriptionToTenant({
+        ...sub,
+        metadata: { ...readDodoMetadata(sub.metadata), newTenant: 'false', firstSubscription: 'true', tenantId: existingTenantId },
+      });
+      if (result.outcome === 'attached') return { outcome: 'created', tenantId: existingTenantId, plan, period };
+      if (result.outcome === 'already-attached') return { outcome: 'already-provisioned', tenantId: existingTenantId };
+      throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: ${result.outcome === 'refused' ? result.reason : result.outcome}`);
+    }
     console.log(`⏭️ [dodo] User ${meta.userId} already has tenant ${existingTenantId}; skipping new-tenant build`);
     return { outcome: 'already-provisioned', tenantId: existingTenantId };
   }

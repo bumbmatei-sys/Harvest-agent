@@ -100,6 +100,66 @@
       "file": "src/components/signup-pages/SubmissionsTable.tsx",
       "digest": "1ccfc40784a7567dea2b836d204b6601f621e5c0333d41bcc58d0238cc522945",
       "why": "#557 permits a fixture request in the excluded local sign-up preview while retaining authenticated requests by default."
+    },
+    {
+      "file": "src/lib/free-provisioning.ts",
+      "digest": "98561e2bab3b41fb8b23cccefbbac41474630a5d6f9ea4910c5118df465c1ae2",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/dodo/provisioning.ts",
+      "digest": "190bd2040b311439ea2ddb77cd4c65c63f0c941391c2c8bfb3e73dbcf1a804eb",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/dodo/first-subscription.ts",
+      "digest": "a8fea6e36a1a35e95bba7f507355c97cc119a4c33ad89378713a200704dfb524",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/server-tenant.ts",
+      "digest": "42baa396bce16e5f3415f9f6714cf7d92af0263c97b505ef324a7423f3bd164a",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "1283f025705f431925e8aaa3c50f10216401592f844107f00d558a81560ba9dc",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/app/api/tenants/finish-setup/route.ts",
+      "digest": "b1d9de452b61e1a6a45da8efc70af1da34577bee0f90416463abdacc126f58f3",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/__tests__/free-provisioning.test.ts",
+      "digest": "f60d5537c01d5f747f975706c43ff15bf29684a0d60bea808fce9f31c9e9facd",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/__tests__/server-tenant-free.test.ts",
+      "digest": "ec306e2479c684a329a43bf587a274f67d74becb7e796e93e53154e7c1134c96",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "9723d2ad51363b9eb6960e9e289f2bf6e5efc356fa3eb566c903062e8fb9ee58",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/first-subscription.test.ts",
+      "digest": "decc2678e3646fe43db87545da927af9530a1968ecf2c5ab203e37a36a62fceb",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/components/__tests__/free-signup-funnel.test.tsx",
+      "digest": "db742b6d977fb79ea9231f7fba427cdb1f436ee447dfda462ee79933adaa4f04",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
+      "digest": "5ea5a93b4b54318895543d680945367f1e53bb170646e1887845adcc39cf447f",
+      "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
     }
   ]
 }

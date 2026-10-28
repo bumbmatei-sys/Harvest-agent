@@ -339,6 +339,12 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
       if (tenantDoc.exists()) {
         const data = tenantDoc.data();
+        // A Free tenant has an internal ID, but no tenant host.
+        if (data.plan === 'free' && window.location.hostname.endsWith('.theharvest.app')) {
+          setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
+          setIsLoading(false);
+          return;
+        }
         if (data.config) {
           applyBranding(data.config as TenantConfig);
         }

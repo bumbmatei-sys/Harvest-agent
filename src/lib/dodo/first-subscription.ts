@@ -142,7 +142,7 @@ export async function attachFirstSubscriptionToTenant(
 
   const now = new Date().toISOString();
   const batch = adminDb.batch();
-  batch.update(tenantRef, { plan, addons, updatedAt: now });
+  batch.update(tenantRef, { plan, addons, subdomain: meta.tenantId, setupCompleted: true, updatedAt: now });
   batch.set(
     privateRef,
     {

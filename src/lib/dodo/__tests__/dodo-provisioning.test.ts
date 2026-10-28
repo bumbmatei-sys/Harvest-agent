@@ -69,7 +69,8 @@ function makeDb() {
     batch() {
       const writes: [{ __coll: string; __id: string }, Record<string, any>][] = [];
       return {
-        set(ref: any, data: Record<string, any>) { writes.push([ref, data]); },
+        set(ref: any, data: Record<string, any>, options?: { merge?: boolean }) { writes.push([ref, options?.merge ? { ...store.get(key(ref.__coll, ref.__id)), ...data } : data]); },
+        update(ref: any, data: Record<string, any>) { writes.push([ref, { ...store.get(key(ref.__coll, ref.__id)), ...data }]); },
         async commit() {
           for (const [ref, data] of writes) store.set(key(ref.__coll, ref.__id), { ...data });
         },
@@ -648,5 +649,26 @@ describe('the handler reads the subscription out of the webhook envelope', () =>
     const result = await handleDodoSubscriptionActive(activeEvent());
     expect(result.outcome).toBe('created');
     expect(tenantDoc()).toBeDefined();
+  });
+});
+
+
+describe('existing tenant signup provisioning', () => {
+  it('upgrades a free tenant in place and activates its subdomain', async () => {
+    db.current.store.set(`users/${OWNER_UID}`, { tenantId: 'free-123' });
+    db.current.store.set('tenants/free-123', { plan: 'free', name: 'Original', config: { retained: true } });
+    db.current.store.set('tenant_private/free-123', { adminEmails: [OWNER_EMAIL] });
+    const result = await provisionTenantFromDodoSubscription(subscription());
+    expect(result).toMatchObject({ outcome: 'created', tenantId: 'free-123', plan: 'ministry' });
+    expect(db.current.store.get('tenants/free-123')).toMatchObject({ plan: 'ministry', subdomain: 'free-123', config: { retained: true } });
+    expect(db.current.store.get('tenant_private/free-123')).toMatchObject({ adminEmails: [OWNER_EMAIL], dodoSubscriptionId: 'sub_dodo_1' });
+    expect([...db.current.store.keys()].filter((key: string) => key.startsWith('tenants/'))).toEqual(['tenants/free-123']);
+  });
+
+  it('keeps an existing paid tenant already provisioned', async () => {
+    db.current.store.set(`users/${OWNER_UID}`, { tenantId: 'paid-tenant' });
+    db.current.store.set('tenants/paid-tenant', { plan: 'church' });
+    expect(await provisionTenantFromDodoSubscription(subscription())).toEqual({ outcome: 'already-provisioned', tenantId: 'paid-tenant' });
+    expect(db.current.store.get('tenants/paid-tenant')).toEqual({ plan: 'church' });
   });
 });
