@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DEFAULT_EMAIL_DESIGN, THEME_LABELS, type EmailDesign } from '@/lib/email/design';
-import { getThemePreset, type EmailThemeTokens } from '@/lib/email/themes';
+import { DEFAULT_THEME_TOKENS, getCustomTheme, getThemePreset, type CustomTheme, type EmailThemeTokens } from '@/lib/email/themes';
 import { BodyEditor } from '@/components/email/BodyEditor';
 import { DesignDialog } from '@/components/email/DesignDialog';
 import { PreviewDialog } from '@/components/email/PreviewDialog';
@@ -26,6 +26,19 @@ type Step = 'write' | 'send';
 type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
 
 const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved', error: 'Not saved' };
+
+/**
+ * A brand-new email starts on the default theme when the ministry has set one;
+ * an email being reopened keeps exactly the look it was saved with.
+ */
+function defaultThemeFrom(overview: Overview): { id: string | null; tokens: EmailThemeTokens | null } {
+  const id = overview.settings.defaultThemeId ?? null;
+  if (!id) return { id: null, tokens: null };
+  const preset = getThemePreset(id);
+  if (preset) return { id, tokens: preset.tokens };
+  const custom = getCustomTheme(overview.customThemes ?? [], id);
+  return custom ? { id: custom.id, tokens: custom.tokens } : { id: null, tokens: null };
+}
 
 /** What would be saved, without the id: two drafts with the same snapshot are the same email. */
 const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters, d.themeId ?? null, d.themeTokens ?? null]);
@@ -61,8 +74,11 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [preheader, setPreheader] = useState(initial?.preheader ?? '');
   const [bodyHtml, setBodyHtml] = useState(initial?.bodyHtml ?? '<p>Hi {{first_name}},</p><p></p><p>{{sender_name}}</p>');
   const [design, setDesign] = useState<EmailDesign>(initial?.design ?? DEFAULT_EMAIL_DESIGN);
-  const [themeId, setThemeId] = useState<string | null>(initial?.themeId ?? null);
-  const [themeTokens, setThemeTokens] = useState<EmailThemeTokens | null>(initial?.themeTokens ?? null);
+  const auto = defaultThemeFrom(data);
+  const [themeId, setThemeId] = useState<string | null>(initial ? (initial.themeId ?? null) : auto.id);
+  const [themeTokens, setThemeTokens] = useState<EmailThemeTokens | null>(initial ? (initial.themeTokens ?? null) : auto.tokens);
+  const [customThemes, setCustomThemes] = useState<readonly CustomTheme[]>(data.customThemes ?? []);
+  const [defaultThemeId, setDefaultThemeId] = useState<string | null>(data.settings.defaultThemeId ?? null);
   const [filters, setFilters] = useState<AudienceFilter[]>([...(initial?.filters ?? [])]);
   const [step, setStep] = useState<Step>('write');
   const [saving, setSaving] = useState<Saving>(initial ? 'saved' : 'unsaved');
@@ -130,6 +146,25 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
     setThemeId(nextId);
     setThemeTokens(nextId ? nextTokens : null);
   };
+
+  /** Saves the current look as a named theme and puts this email in it. */
+  async function saveAsTheme(name: string) {
+    const theme = await api.saveTheme({ name, tokens: themeTokens ?? DEFAULT_THEME_TOKENS });
+    setCustomThemes((list) => [...list.filter((t) => t.id !== theme.id), theme]);
+    applyTheme(theme.id, theme.tokens);
+  }
+
+  async function deleteTheme(id: string) {
+    await api.deleteTheme(id);
+    setCustomThemes((list) => list.filter((t) => t.id !== id));
+    // The service clears a default pointing at this theme; mirror that here.
+    if (defaultThemeId === id) setDefaultThemeId(null);
+  }
+
+  async function setDefault(themeIdToSet: string | null) {
+    const next = await api.setDefaultTheme(themeIdToSet);
+    setDefaultThemeId(next.defaultThemeId);
+  }
 
   const tips = inboxCheck({ subject, preheader, bodyHtml });
   const ready = Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
@@ -337,7 +372,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
             <h2 className="px-2 pb-1 text-xs text-faint">Design</h2>
             <Button type="button" variant="ghost" onClick={() => setDesignOpen(true)} className="h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl border-line bg-card p-3 text-left font-normal hover:bg-muted">
               <span aria-hidden className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Palette className="size-4" /></span>
-              <span className="flex-1"><span className="block font-medium text-strong">{themeId ? getThemePreset(themeId)?.name ?? 'Custom theme' : THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">{themeId ? 'Colours, fonts, layout and more' : 'Colors, fonts, header, buttons'}</span></span>
+              <span className="flex-1"><span className="block font-medium text-strong">{themeId ? getThemePreset(themeId)?.name ?? customThemes.find((t) => t.id === themeId)?.name ?? 'Custom theme' : THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">{themeId ? 'Colours, fonts, layout and more' : 'Colors, fonts, header, buttons'}</span></span>
             </Button>
             <Separator />
             <h2 className="px-2 pb-1 pt-3 text-xs text-faint">Check it</h2>
@@ -379,7 +414,12 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         brandColor={brandColor}
         themeId={themeId}
         themeTokens={themeTokens}
+        customThemes={customThemes}
+        defaultThemeId={defaultThemeId}
         onThemeChange={applyTheme}
+        onSaveTheme={saveAsTheme}
+        onDeleteTheme={deleteTheme}
+        onSetDefaultTheme={setDefault}
       />
       <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design, themeId, themeTokens }} />
       <TemplatesDialog

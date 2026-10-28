@@ -1,6 +1,6 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 
 import { TAP } from '@/components/email/kit';
 import {
@@ -56,45 +56,69 @@ function ThemeThumb({ tokens }: { tokens: EmailThemeTokens }) {
   );
 }
 
-function ThemeTile({ choice, name, selected, onSelect }: {
+function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }: {
   choice: ThemeChoice;
   name: string;
   selected: boolean;
+  /** True when this is the theme new emails start with. */
+  defaultTheme?: boolean;
   onSelect: (choice: ThemeChoice) => void;
+  /** Present on custom themes only: presets cannot be deleted. */
+  onDelete?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-label={name}
-      aria-checked={selected}
-      onClick={() => onSelect(choice)}
-      className={cn(TAP, 'relative flex flex-col gap-1.5 rounded-lg border p-1.5 text-left', selected ? 'border-primary ring-1 ring-primary' : 'border-line')}
-    >
-      <span aria-hidden className="relative block overflow-hidden rounded-md border border-line">
-        <ThemeThumb tokens={choice.tokens} />
-        {selected && (
-          <span className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Check className="size-3" />
-          </span>
-        )}
-      </span>
-      <span className="px-1 pb-0.5 text-xs font-medium text-strong">{name}</span>
-    </button>
+    <div className="relative">
+      <button
+        type="button"
+        role="radio"
+        aria-label={name}
+        aria-checked={selected}
+        onClick={() => onSelect(choice)}
+        className={cn(TAP, 'flex w-full flex-col gap-1.5 rounded-lg border p-1.5 text-left', selected ? 'border-primary ring-1 ring-primary' : 'border-line')}
+      >
+        <span aria-hidden className="relative block overflow-hidden rounded-md border border-line">
+          <ThemeThumb tokens={choice.tokens} />
+          {selected && (
+            <span className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="size-3" />
+            </span>
+          )}
+        </span>
+        <span className="flex items-baseline gap-1.5 px-1 pb-0.5">
+          <span className="text-xs font-medium text-strong">{name}</span>
+          {defaultTheme && <span className="text-[10px] uppercase tracking-wide text-faint">Default</span>}
+        </span>
+      </button>
+      {onDelete && (
+        <button
+          type="button"
+          aria-label={`Delete ${name}`}
+          onClick={onDelete}
+          className={cn(TAP, 'absolute left-2.5 top-2.5 flex size-6 items-center justify-center rounded-full border border-line bg-card/90 text-muted hover:text-danger')}
+        >
+          <Trash2 className="size-3" />
+        </button>
+      )}
+    </div>
   );
 }
 
 /**
- * The grid of looks a writer picks from: the five shipped presets and, when a
- * ministry has saved any, its own themes after them. Controlled — a click hands
- * the id and the tokens back through `onSelect`, and the caller decides what to
- * snapshot. Presets are immutable here: a tile always shows its own tokens.
+ * The grid of looks a writer picks from: the five shipped presets and a
+ * ministry's own saved themes after them. Controlled — a click hands the id and
+ * the tokens back through `onSelect`, and the caller decides what to snapshot.
+ * Presets are immutable here: a tile always shows its own tokens. Custom tiles
+ * carry a delete control; the tile for `defaultId` is labelled Default.
  */
-export function ThemePicker({ selectedId, onSelect, customThemes = [], label = 'Email theme', help }: {
+export function ThemePicker({ selectedId, onSelect, customThemes = [], defaultId = null, onDelete, label = 'Email theme', help }: {
   selectedId: string | null;
   onSelect: (choice: ThemeChoice) => void;
-  /** A ministry's saved themes. Chunk 4 fills this; the slot is empty until then. */
+  /** A ministry's saved themes. */
   customThemes?: readonly CustomTheme[];
+  /** The theme new emails start with. Its tile is labelled Default. */
+  defaultId?: string | null;
+  /** Deleting a saved theme. No handler: nothing to delete from. */
+  onDelete?: (id: string) => void;
   label?: string;
   help?: React.ReactNode;
 }) {
@@ -107,6 +131,7 @@ export function ThemePicker({ selectedId, onSelect, customThemes = [], label = '
             choice={{ id: preset.id, tokens: preset.tokens }}
             name={preset.name}
             selected={selectedId === preset.id}
+            defaultTheme={defaultId === preset.id}
             onSelect={onSelect}
           />
         ))}
@@ -116,12 +141,14 @@ export function ThemePicker({ selectedId, onSelect, customThemes = [], label = '
             choice={{ id: theme.id, tokens: theme.tokens }}
             name={theme.name}
             selected={selectedId === theme.id}
+            defaultTheme={defaultId === theme.id}
             onSelect={onSelect}
+            onDelete={onDelete ? () => onDelete(theme.id) : undefined}
           />
         ))}
       </div>
       <p className="text-xs leading-relaxed text-faint">
-        {help ?? 'Start from a look you like, then fine-tune anything below. An email keeps the look it was sent with.'}
+        {help ?? 'Start from a look you like, then fine-tune anything below. Built-in themes stay as they are; your changes save as your own theme.'}
       </p>
     </div>
   );

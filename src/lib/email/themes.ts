@@ -476,3 +476,74 @@ export function resolveTheme(input: ResolveThemeInput): ThemeResolution {
     themeId: null,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Shared brand settings — the ministry's identity, set once in Email
+ * settings and drawn by every theme: the logo (header) and these social
+ * links (footer). The footer note lives on EmailSettings beside them.
+ * ------------------------------------------------------------------ */
+
+export type SocialPlatform = 'facebook' | 'instagram' | 'youtube' | 'x' | 'tiktok' | 'linkedin' | 'website';
+
+export interface SocialLink {
+  readonly platform: SocialPlatform;
+  /** A full https:// address. Nothing else is ever rendered into an href. */
+  readonly url: string;
+}
+
+export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = Object.freeze([
+  'facebook', 'instagram', 'youtube', 'x', 'tiktok', 'linkedin', 'website',
+]);
+
+export const SOCIAL_PLATFORM_LABELS: Readonly<Record<SocialPlatform, string>> = Object.freeze({
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  x: 'X',
+  tiktok: 'TikTok',
+  linkedin: 'LinkedIn',
+  website: 'Website',
+});
+
+/** The email footer keeps the row short. The settings screen enforces the same number. */
+export const MAX_SOCIAL_LINKS = 6;
+
+/**
+ * Read social links out of untrusted storage. Entries without a known
+ * platform or a full https:// address are dropped — the caller compares
+ * lengths when it needs to reject a save loudly (service.saveSettings).
+ */
+export function readSocialLinks(value: unknown): readonly SocialLink[] {
+  if (!Array.isArray(value)) return [];
+  const out: SocialLink[] = [];
+  for (const raw of value) {
+    const v = (raw ?? {}) as Record<string, unknown>;
+    const platform = isOneOf(v.platform, SOCIAL_PLATFORMS) ? v.platform : null;
+    const url = typeof v.url === 'string' ? v.url.trim() : '';
+    if (!platform || !/^https:\/\//i.test(url)) continue;
+    if (out.length >= MAX_SOCIAL_LINKS) continue;
+    out.push(Object.freeze({ platform, url }));
+  }
+  return out;
+}
+
+/** The most saved themes a ministry may keep. Enforced in `service.saveTheme`. */
+export const MAX_CUSTOM_THEMES = 10;
+
+/**
+ * Read one CustomTheme out of untrusted storage. Returns null rather than a
+ * half-built theme: the service layer is where a save is rejected loudly, and
+ * a document that cannot produce name + tokens has no business rendering.
+ */
+export function readCustomTheme(value: unknown): CustomTheme | null {
+  const v = (value ?? {}) as Record<string, unknown>;
+  const id = typeof v.id === 'string' ? v.id.trim() : '';
+  const name = typeof v.name === 'string' ? v.name.trim() : '';
+  if (!id || !name || typeof v.tokens !== 'object' || v.tokens === null) return null;
+  return Object.freeze({
+    id,
+    name,
+    tokens: readThemeTokens(v.tokens, DEFAULT_THEME_TOKENS),
+    createdAt: typeof v.createdAt === 'string' ? v.createdAt : '',
+  });
+}

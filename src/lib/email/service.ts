@@ -20,7 +20,18 @@ import {
 import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
 import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
 import type { EmailDesign } from '@/lib/email/design';
-import type { EmailThemeTokens } from '@/lib/email/themes';
+import {
+  DEFAULT_THEME_TOKENS,
+  MAX_CUSTOM_THEMES,
+  MAX_SOCIAL_LINKS,
+  getCustomTheme,
+  getThemePreset,
+  readSocialLinks,
+  readThemeTokens,
+  type CustomTheme,
+  type EmailThemeTokens,
+  type SocialLink,
+} from '@/lib/email/themes';
 import { assertUnsubscribeConfigured, listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
 import { contentHash, type ClaimRequest, type ClaimResult, type Settlement } from '@/lib/email/claim';
 import { resolveLimits, validateLimits, type EmailLimits } from '@/lib/email/limits';
@@ -88,6 +99,14 @@ export interface EmailSettings {
   readonly fromLocal: string;
   readonly replyTo: string;
   readonly mailingAddress: string;
+  /** Shared brand logo (URL). Every theme's header draws it when set. */
+  readonly logoUrl: string;
+  /** A sign-off or line about the ministry, at the bottom of every email. */
+  readonly footerNote: string;
+  /** The ministry's social profiles, shown as a row of platform names in every footer. */
+  readonly socialLinks: readonly SocialLink[];
+  /** The theme new emails start with. Null: new emails start on the classic look. */
+  readonly defaultThemeId: string | null;
   readonly domain: string;
   readonly domainState: 'none' | 'pending' | 'verified' | 'failed';
   readonly domainRecords: readonly { type: string; name: string; value: string }[];
@@ -98,6 +117,10 @@ export const EMPTY_SETTINGS: EmailSettings = Object.freeze({
   fromLocal: 'hello',
   replyTo: '',
   mailingAddress: '',
+  logoUrl: '',
+  footerNote: '',
+  socialLinks: Object.freeze([]) as readonly SocialLink[],
+  defaultThemeId: null,
   domain: '',
   domainState: 'none',
   domainRecords: [],
@@ -185,6 +208,11 @@ export interface EmailStore {
   listDue(nowIso: string): Promise<readonly { tenantId: string; broadcastId: string }[]>;
   /** The opt-out record: marks every CRM person with this address unsubscribed AND keeps a suppression record. Idempotent. */
   recordOptOut(tenantId: string, email: string, broadcastId: string, at: string): Promise<void>;
+  /** The ministry's saved themes (server-only `emailConfig/themes`), oldest first. */
+  listThemes(tenantId: string): Promise<readonly CustomTheme[]>;
+  /** Saves one theme by id, replacing it if it exists. The 10-theme cap is enforced in the service. */
+  saveTheme(tenantId: string, theme: CustomTheme): Promise<void>;
+  deleteTheme(tenantId: string, id: string): Promise<void>;
 }
 
 export type DomainClaim = 'fresh' | 'own' | 'taken' | 'released';
@@ -199,7 +227,8 @@ export interface SendingState {
 export type EmailErrorCode =
   | 'not_authorized' | 'cross_tenant' | 'not_found' | 'invalid' | 'plan_required' | 'publishing_closed'
   | 'sender_not_ready' | 'no_recipients' | 'volume_cap' | 'daily_cap' | 'domain_required' | 'sending_paused' | 'time_not_future' | 'already_sent'
-  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable' | 'domain_taken' | 'domain_reserved';
+  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable' | 'domain_taken' | 'domain_reserved'
+  | 'theme_limit';
 
 export interface EmailFailure {
   readonly ok: false;
@@ -504,6 +533,9 @@ export function createEmailService(deps: {
             firstName,
             mailingAddress: settings.mailingAddress,
             unsubscribeUrl: url,
+            logoUrl: settings.logoUrl,
+            footerNote: settings.footerNote,
+            socialLinks: settings.socialLinks,
           });
           const result = await provider.send({
             to: person.email,
@@ -601,10 +633,11 @@ export function createEmailService(deps: {
       await recoverQuietly();
       const at = now();
       const limits = await loadLimits();
-      const [broadcasts, subscribers, settings, usedMonth, usedToday, sending] = await Promise.all([
+      const [broadcasts, subscribers, settings, customThemes, usedMonth, usedToday, sending] = await Promise.all([
         store.listBroadcasts(g.tenantId),
         store.listContacts(g.tenantId),
         store.getSettings(g.tenantId),
+        store.listThemes(g.tenantId),
         store.usage(g.tenantId, monthKey(at)),
         store.usage(g.tenantId, dayKey(at)),
         store.getSendingState(g.tenantId),
@@ -617,6 +650,7 @@ export function createEmailService(deps: {
         broadcasts,
         subscribers,
         settings,
+        customThemes,
         usage: {
           used: usedMonth,
           cap,
@@ -790,6 +824,9 @@ export function createEmailService(deps: {
         mailingAddress: settings.mailingAddress,
         unsubscribeUrl: `${deps.appOrigin.replace(/\/$/, '')}/api/email/unsubscribe`,
         dark: input.dark === true,
+        logoUrl: settings.logoUrl,
+        footerNote: settings.footerNote,
+        socialLinks: settings.socialLinks,
       });
       return { ok: true as const, html };
     },
@@ -813,6 +850,7 @@ export function createEmailService(deps: {
         design: broadcast.design, themeId: broadcast.themeId, themeTokens: broadcast.themeTokens,
         bodyHtml: broadcast.bodyHtml, preheader: broadcast.preheader, churchName: g.tenant.name,
         senderName: settings.fromName, firstName: 'Alex', mailingAddress: settings.mailingAddress, unsubscribeUrl: url,
+        logoUrl: settings.logoUrl, footerNote: settings.footerNote, socialLinks: settings.socialLinks,
       });
       const result = await provider.send({
         to, subject: `[Test] ${fillMergeTags(broadcast.subject, { firstName: 'Alex', senderName: settings.fromName })}`, html, text, fromName: settings.fromName,
@@ -889,13 +927,97 @@ export function createEmailService(deps: {
       if (replyTo && !EMAIL_SHAPE.test(replyTo)) return fail('invalid', 'Enter a valid reply-to email.');
       const fromLocal = input.fromLocal !== undefined ? clean(input.fromLocal).toLowerCase() : current.fromLocal;
       if (!/^[a-z0-9._-]{1,40}$/.test(fromLocal)) return fail('invalid', 'The address before @ can use letters, numbers, dots, dashes and underscores.');
+      const logoUrl = input.logoUrl !== undefined ? clean(input.logoUrl) : current.logoUrl;
+      if (logoUrl && !/^https:\/\//i.test(logoUrl)) return fail('invalid', 'The logo needs a full web address starting with https://.');
+      const footerNote = input.footerNote !== undefined ? clean(input.footerNote) : current.footerNote;
+      if (footerNote.length > 300) return fail('invalid', 'Keep the footer note under 300 characters.');
+      let socialLinks = current.socialLinks;
+      if (input.socialLinks !== undefined) {
+        if (input.socialLinks.length > MAX_SOCIAL_LINKS) return fail('invalid', `Keep it to ${MAX_SOCIAL_LINKS} social links.`);
+        socialLinks = readSocialLinks(input.socialLinks);
+        // readSocialLinks drops anything malformed; a silent drop is a lie about
+        // what was saved, so reject the whole save instead.
+        if (socialLinks.length !== input.socialLinks.length) return fail('invalid', 'Each social link needs a platform and a full web address starting with https://.');
+      }
+      let defaultThemeId = current.defaultThemeId;
+      if (input.defaultThemeId !== undefined) {
+        const wanted = clean(input.defaultThemeId) || null;
+        if (wanted && !getThemePreset(wanted) && !getCustomTheme(await store.listThemes(g.tenantId), wanted)) {
+          return fail('not_found', 'That theme does not exist. Pick one from the list.');
+        }
+        defaultThemeId = wanted;
+      }
       const next: EmailSettings = {
         ...current,
         fromName: input.fromName !== undefined ? clean(input.fromName) : current.fromName,
         fromLocal,
         replyTo,
         mailingAddress: input.mailingAddress !== undefined ? clean(input.mailingAddress) : current.mailingAddress,
+        logoUrl,
+        footerNote,
+        socialLinks,
+        defaultThemeId,
       };
+      await store.saveSettings(g.tenantId, next);
+      return { ok: true as const, settings: next };
+    },
+
+    /**
+     * Saves a named copy of a token set as the ministry's own theme. Presets
+     * are immutable — a preset id is rejected — and the cap is 10 saved themes,
+     * enforced here with a clear error at 11, never silent truncation.
+     */
+    async saveTheme(actor: EmailActor, tenantId: string | null | undefined, input: { id?: string | null; name: string; tokens: unknown }) {
+      const g = await gate(actor, tenantId, { needPlan: true });
+      if (!g.ok) return g;
+      const name = clean(input.name);
+      if (!name) return fail('invalid', 'Give this theme a name first.');
+      if (name.length > 60) return fail('invalid', 'Theme names can be up to 60 characters.');
+      const id = clean(input.id);
+      if (id) {
+        if (getThemePreset(id)) return fail('invalid', 'The built-in themes cannot be changed. Save your own copy instead.');
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return fail('invalid', 'That theme id is not valid.');
+      }
+      const existing = await store.listThemes(g.tenantId);
+      const previous = id ? existing.find((t) => t.id === id) ?? null : null;
+      if (!previous && existing.length >= MAX_CUSTOM_THEMES) {
+        return fail('theme_limit', `You can save up to ${MAX_CUSTOM_THEMES} themes. Delete one you do not use to make room for another.`);
+      }
+      const theme: CustomTheme = {
+        id: id || newId(),
+        name,
+        tokens: readThemeTokens(input.tokens, DEFAULT_THEME_TOKENS),
+        createdAt: previous?.createdAt ?? now().toISOString(),
+      };
+      await store.saveTheme(g.tenantId, theme);
+      return { ok: true as const, theme };
+    },
+
+    /** Deletes a saved theme. A default pointing at it is cleared, so nothing renders from a missing id. */
+    async deleteTheme(actor: EmailActor, tenantId: string | null | undefined, id: string) {
+      const g = await gate(actor, tenantId, { needPlan: true });
+      if (!g.ok) return g;
+      const target = clean(id);
+      const existing = await store.listThemes(g.tenantId);
+      if (!existing.some((t) => t.id === target)) return fail('not_found', 'That theme does not exist.');
+      await store.deleteTheme(g.tenantId, target);
+      const settings = await store.getSettings(g.tenantId);
+      if (settings.defaultThemeId === target) {
+        await store.saveSettings(g.tenantId, { ...settings, defaultThemeId: null });
+      }
+      return { ok: true as const };
+    },
+
+    /** The theme new emails start with when they carry no pick of their own. */
+    async setDefaultTheme(actor: EmailActor, tenantId: string | null | undefined, themeId: string | null) {
+      const g = await gate(actor, tenantId, { needPlan: true });
+      if (!g.ok) return g;
+      const wanted = clean(themeId) || null;
+      if (wanted && !getThemePreset(wanted) && !getCustomTheme(await store.listThemes(g.tenantId), wanted)) {
+        return fail('not_found', 'That theme does not exist. Pick one from the list.');
+      }
+      const settings = await store.getSettings(g.tenantId);
+      const next: EmailSettings = { ...settings, defaultThemeId: wanted };
       await store.saveSettings(g.tenantId, next);
       return { ok: true as const, settings: next };
     },

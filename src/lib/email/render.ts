@@ -31,9 +31,11 @@ import {
   spacingScale,
   textScale,
   widthPx,
+  SOCIAL_PLATFORM_LABELS,
   type CustomTheme,
   type EmailThemeTokens,
   type LegacyPalette,
+  type SocialLink,
   type ThemeContrastAdjustment,
   NAVY,
   GOLD,
@@ -112,6 +114,10 @@ export interface RenderInput {
   readonly customThemes?: readonly CustomTheme[];
   /** Shared brand logo, drawn beside the name in the logo-name header modes. */
   readonly logoUrl?: string | null;
+  /** Shared brand footer note — a sign-off or line about the ministry, in every theme's footer. */
+  readonly footerNote?: string | null;
+  /** Shared social links, drawn as a row of platform names in every theme's footer. */
+  readonly socialLinks?: readonly SocialLink[] | null;
 }
 
 function esc(text: string): string {
@@ -258,7 +264,16 @@ export function renderEmail(input: RenderInput): { html: string; text: string; a
   const pre = input.preheader.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(fillMergeTags(input.preheader, input))}</div>`
     : '';
-  const footerLines = [input.design.footerText.trim(), input.mailingAddress.trim()].filter(Boolean).map(esc).join('<br>');
+  // Brand footer note and social links ride every theme (and legacy output):
+  // set once in Email settings, drawn in the footer below the per-email note.
+  const brandNote = (input.footerNote ?? '').trim();
+  const social = (input.socialLinks ?? []).filter((l) => l && l.url.trim());
+  const socialHtml = social
+    .map((l) => `<a href="${esc(l.url.trim())}" style="color:${palette.quiet};text-decoration:underline">${SOCIAL_PLATFORM_LABELS[l.platform]}</a>`)
+    .join('&nbsp;&middot;&nbsp;');
+  const footerLines = [input.design.footerText.trim(), brandNote].filter(Boolean).map(esc)
+    .concat(socialHtml ? [socialHtml] : [], input.mailingAddress.trim() ? [esc(input.mailingAddress.trim())] : [])
+    .join('<br>');
   const hairline = mixHex(palette.ink, palette.card, 0.8);
   const footerExtra = tokens.footer === 'boxed' ? `;border-top:1px solid ${hairline};background:${mixHex(palette.card, palette.accent, 0.05)}` : '';
 
@@ -273,6 +288,8 @@ export function renderEmail(input: RenderInput): { html: string; text: string; a
     htmlToText(fillMergeTags(input.bodyHtml, input)),
     '',
     input.design.footerText.trim(),
+    brandNote,
+    ...social.map((l) => `${SOCIAL_PLATFORM_LABELS[l.platform]}: ${l.url.trim()}`),
     input.mailingAddress.trim(),
     `Unsubscribe: ${input.unsubscribeUrl}`,
   ].filter((line, i, all) => line !== '' || all[i - 1] !== '').join('\n');

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Check } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
   type CustomTheme,
   type EmailThemeTokens,
 } from '@/lib/email/themes';
-import { Segmented, TAP } from '@/components/email/kit';
+import { Segmented, TAP, ErrorNote } from '@/components/email/kit';
 import { ThemePicker } from '@/components/email/ThemePicker';
 import { ThemeSettingsPanels } from '@/components/email/ThemeSettingsPanels';
 import { cn } from '@/lib/utils';
@@ -40,7 +41,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function DesignDialog({ open, onOpenChange, design, onChange, brandColor, themeId, themeTokens, customThemes, onThemeChange }: {
+export function DesignDialog({ open, onOpenChange, design, onChange, brandColor, themeId, themeTokens, customThemes, defaultThemeId, onThemeChange, onSaveTheme, onDeleteTheme, onSetDefaultTheme }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   design: EmailDesign;
@@ -52,14 +53,62 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
   themeTokens?: EmailThemeTokens | null;
   /** A ministry's saved themes. Empty until custom themes land. */
   customThemes?: readonly CustomTheme[];
+  /** The theme new emails start with. Its picker tile is labelled Default. */
+  defaultThemeId?: string | null;
   /**
    * Hands back a look: a theme id and a snapshot of its tokens, or `null, null`
    * for the classic look this email renders from `design`. Without this prop the
    * dialog is the classic dialog and nothing about themes is shown.
    */
   onThemeChange?: (id: string | null, tokens: EmailThemeTokens | null) => void;
+  /** Saves the current tokens under a name as the ministry's own theme. */
+  onSaveTheme?: (name: string) => Promise<void>;
+  /** Removes one of the ministry's saved themes. */
+  onDeleteTheme?: (id: string) => Promise<void> | void;
+  /** Sets (or clears, with null) the theme new emails start with. */
+  onSetDefaultTheme?: (themeId: string | null) => Promise<void>;
 }) {
   const brand = readHexColor(brandColor);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function runSave() {
+    if (!onSaveTheme) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSaveTheme(saveName.trim());
+      setSaveOpen(false);
+      setSaveName('');
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'That theme could not be saved.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function runDefault(themeIdToSet: string | null) {
+    if (!onSetDefaultTheme) return;
+    setActionError(null);
+    try {
+      await onSetDefaultTheme(themeIdToSet);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'That could not be saved.');
+    }
+  }
+
+  async function runDelete(id: string) {
+    if (!onDeleteTheme) return;
+    setActionError(null);
+    try {
+      await onDeleteTheme(id);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'That theme could not be deleted.');
+    }
+  }
   const pickAccent = (accent: EmailAccent) => {
     const { customColor: _drop, ...rest } = design;
     onChange(accent === 'custom' && brand ? { ...rest, accent, customColor: brand } : { ...rest, accent });
@@ -71,6 +120,7 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
     ?? getCustomTheme(customThemes ?? [], themeId)?.tokens
     ?? DEFAULT_THEME_TOKENS;
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn('max-h-[90vh] overflow-y-auto', onThemeChange ? 'sm:max-w-xl' : 'sm:max-w-lg')}>
         <DialogHeader>
@@ -84,6 +134,8 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
                 selectedId={themeId ?? null}
                 onSelect={(choice) => onThemeChange(choice.id, choice.tokens)}
                 customThemes={customThemes}
+                defaultId={defaultThemeId ?? null}
+                onDelete={onDeleteTheme ? (id) => { void runDelete(id); } : undefined}
               />
             </Row>
           )}
@@ -102,6 +154,29 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
               >
                 Use the classic look instead
               </Button>
+              <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+                {onSaveTheme && (
+                  <Button type="button" className="min-h-11" onClick={() => { setSaveError(null); setSaveOpen(true); }}>
+                    Save as my theme
+                  </Button>
+                )}
+                {defaultThemeId && themeId === defaultThemeId ? (
+                  <>
+                    <span className="text-xs text-muted">This is your default.</span>
+                    {onSetDefaultTheme && (
+                      <Button type="button" variant="ghost" className="min-h-11" onClick={() => void runDefault(null)}>Undo</Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" className="min-h-11" disabled={!onSetDefaultTheme} onClick={() => void runDefault(themeId ?? null)}>
+                      Make it my default
+                    </Button>
+                    <span className="text-xs text-faint">For every new email without its own pick.</span>
+                  </>
+                )}
+              </div>
+              {actionError && <ErrorNote>{actionError}</ErrorNote>}
             </>
           ) : (
             <>
@@ -186,5 +261,34 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Save as my theme</DialogTitle>
+          <DialogDescription>
+            Keeps the current colours, fonts and layout as your own theme. The built-in themes stay as they are.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="saved-theme-name">Theme name</Label>
+          <Input
+            id="saved-theme-name"
+            value={saveName}
+            maxLength={60}
+            onChange={(e) => setSaveName(e.target.value)}
+            placeholder="Sunday letter"
+          />
+        </div>
+        {saveError && <ErrorNote>{saveError}</ErrorNote>}
+        <DialogFooter className="border-line">
+          <Button variant="outline" className="min-h-11" onClick={() => setSaveOpen(false)}>Cancel</Button>
+          <Button className="min-h-11" disabled={saving || !saveName.trim()} onClick={() => void runSave()}>
+            {saving ? 'Saving…' : 'Save theme'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
