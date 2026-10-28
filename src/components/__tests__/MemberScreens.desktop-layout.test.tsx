@@ -1438,11 +1438,11 @@ describe('no behaviour changed on any screen in scope', () => {
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     expect(tags(beforeCommunity('MainApp.tsx')), 'MainApp changed its element tree before community').toEqual(tags(at('MainApp.tsx')));
     let mainAppSource = read('MainApp.tsx');
-    // These two map annotations are TypeScript generics, not JSX elements.
-    for (const annotation of ['Record<string, CommunityModule>', 'Record<string, any>']) {
-      expect(mainAppSource.split(annotation)).toHaveLength(2);
-      mainAppSource = mainAppSource.replace(annotation, 'Record');
-    }
+    // Only the new map annotation needs folding out: the baseline also has
+    // Record<string, any>, whose `string` token must remain on both sides.
+    const annotation = 'Record<string, CommunityModule>';
+    expect(mainAppSource.split(annotation)).toHaveLength(2);
+    mainAppSource = mainAppSource.replace(annotation, 'Record');
     const mainAppTags = tags(mainAppSource);
     const productsIndex = mainAppTags.indexOf('DigitalMemberProducts');
     // DIGITAL-1 inserts the Products view between BlogTab and CourseExperience.
