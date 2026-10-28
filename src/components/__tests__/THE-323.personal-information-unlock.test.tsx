@@ -582,6 +582,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // Local community previews are ignored and may be absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/community/page.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/page.tsx')) ? ['src/app/dev/community/page.tsx'] : []),
       // The social scheduler screenshot harness. The stand-in account button
       // uses min-h-11. It is not a product screen, and it 404s in production.
       // The local development harness is ignored and may be absent in CI.
@@ -636,6 +638,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminDocs.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
+      'src/components/AllNews.tsx', // Post actions and comment send control use the phone floor.
       /**
        * APPENDED for the campaign banner sheet. Nothing around it removed or
        * rewritten. Both files sit here because this list is the sweep's sorted
@@ -696,6 +699,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        * which asserts BOTH floors, so this divergence cannot rot silently.
        */
       'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
+      'src/components/NewsTab.tsx', // Post actions and comment send control use the phone floor.
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order
@@ -808,6 +812,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/community/GroupList.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/NewGroupDialog.tsx',
+      'src/components/community/PostPresentation.tsx', // The post text expansion control uses the phone floor.
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',
       'src/components/courses/CoursePlayer.tsx',

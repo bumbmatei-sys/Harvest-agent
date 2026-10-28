@@ -423,7 +423,13 @@ describe('community step 1 pins', () => {
     const postCardDigests: Record<string, string> = {
       'NewsTab.tsx': '654c6b0da1d8571dac7dd586f6c2f6bcfbf32035ee1a20680ba2ac82f155ef4f',
     };
-    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    const buttonFloorDigests: Record<string, string> = {
+      'NewsTab.tsx': '1154c9c05888e1ae881d2dbfea7a8793dec0803c82acf5f8eaccf46529e1d32e',
+    };
+    const staticButtonDigests: Record<string, string> = {
+      'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
+    };
+    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -1298,8 +1304,10 @@ describe('no behaviour changed on any screen in scope', () => {
 
   it('AllNews retains the reviewed events switch and post card implementation', () => {
     // PR 554 changes behavior and presentation, so pin the whole reviewed source.
-    expect(createHash('sha256').update(read('AllNews.tsx')).digest('hex'))
-      .toBe('ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4');
+    expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
+      'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
+      '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f'])
+      .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 
   /**

@@ -105,6 +105,41 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "a3687d404ac5ca60cf0c2e9d60ee4b9f055fbf5c45d6355f6c9af96975631efa",
       "why": "PR 554 records the reviewed AllNews source, post card rendering and the settings fallback's exact shell element change while retaining the other layout comparisons."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004",
+      "why": "PR 554 records static post action classes for the button floor guard and preserves earlier reviewed source pins."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "1154c9c05888e1ae881d2dbfea7a8793dec0803c82acf5f8eaccf46529e1d32e",
+      "why": "PR 554 records static post action classes for the button floor guard and preserves earlier reviewed source pins."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "ae62e42a42500d8df7715421eeea5a9fd2cfdd2ddf711a7fe89790824c1d6fd4",
+      "why": "PR 554 records static post action classes for the button floor guard and preserves earlier reviewed source pins."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f",
+      "why": "PR 554 records the post action touch floors and their static classes while preserving prior source pins."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3",
+      "why": "PR 554 records the post action touch floors and their static classes while preserving prior source pins."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "df3275844e817dce4d04825c1868040a15793f45886357867ddc5bb6f2e42ca7",
+      "why": "PR 554 records the post action touch floors and their static classes while preserving prior source pins."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "948de2d4021d6d2aea61ba01785d9b03ccd5067039f219fe4685de1d21a443eb",
+      "why": "PR 554 records the post action touch floors and their static classes while preserving prior source pins."
     }
   ]
 }

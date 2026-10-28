@@ -623,20 +623,16 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-line ">
                 <Button type="button" variant="ghost" 
                   onClick={() => handleLike(post.id, post.likes)}
-                  className={`min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 ${
-                    auth.currentUser && post.likes.includes(auth.currentUser.uid)
-                      ? 'text-gold'
-                      : 'text-muted hover:text-gold'
-                  }`}
+                  style={{ color: auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
                   <span className="font-medium">{post.likes.length}</span>
                 </Button>
                 <Button type="button" variant="ghost"
                   onClick={() => toggleComments(post.id)}
-                  className={`min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 ${
-                    commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
-                  }`}
+                  style={{ color: commentsOpen[post.id] ? 'var(--brand-color)' : undefined }}
+                  className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
                   <MessageSquare size={16} />
                   <span className="font-medium">{commentErrors[post.id] ? 'Unavailable' : postComments[post.id]?.length ?? '…'}</span>
