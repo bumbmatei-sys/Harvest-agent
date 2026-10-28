@@ -51,8 +51,13 @@ interface Ticket {
   event: {
     title: string;
     startMillis: number | null;
+    /** THE-379 (events remodel) — "Add to calendar" needs an end instant; absent falls back to startMillis + 1h client-side. */
+    endMillis: number | null;
     location: string | null;
     isOnline: boolean;
+    /** THE-379 — the online event's own join link, shown from 10 minutes before start. */
+    onlineLink: string | null;
+    description: string;
     status: string | null;
   } | null;
 }
@@ -116,12 +121,16 @@ export async function GET(request: NextRequest) {
           if (es.exists) {
             const e = es.data() || {};
             const start = e.startDate;
+            const end = e.endDate;
             eventProviders[eid] = e.paymentProviders;
             eventMap[eid] = {
               title: e.title || 'Event',
               startMillis: start && typeof start.toMillis === 'function' ? start.toMillis() : null,
+              endMillis: end && typeof end.toMillis === 'function' ? end.toMillis() : null,
               location: e.location || null,
               isOnline: !!e.isOnline,
+              onlineLink: e.onlineLink || null,
+              description: e.description || '',
               status: e.status || null,
             };
           }

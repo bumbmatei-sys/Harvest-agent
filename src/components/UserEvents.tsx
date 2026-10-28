@@ -40,8 +40,13 @@ interface ApiTicket {
   event: {
     title: string;
     startMillis: number | null;
+    /** THE-379 (events remodel) — for "Add to calendar"; falls back to startMillis + 1h when absent. */
+    endMillis: number | null;
     location: string | null;
     isOnline: boolean;
+    /** THE-379 — the online event's own join link. */
+    onlineLink: string | null;
+    description: string;
     status: string | null;
   } | null;
 }
@@ -554,6 +559,43 @@ const TicketModal: React.FC<{
 
   const status = statusLabel(t);
 
+  /**
+   * THE-379 (events remodel) — "Join link shown from 10 minutes before for
+   * online events." Independent of `awaitingPayment`: the structural decision
+   * THE-351 made for the door (an unconfirmed guest is still let in) extends
+   * the same way here — joining a call is not money changing hands.
+   */
+  const ev = t.event;
+  const canJoin = !!ev?.isOnline && !!ev?.onlineLink && ev.startMillis != null
+    && Date.now() >= ev.startMillis - 10 * 60 * 1000
+    && (ev.endMillis == null || Date.now() <= ev.endMillis);
+
+  /** "Add to calendar" — a confirmed, non-waitlisted ticket only, same gate PublicEventRegistration uses. */
+  const canAddToCalendar = t.status !== 'waitlisted' && ev?.startMillis != null;
+  const addToCalendar = () => {
+    if (!ev || ev.startMillis == null) return;
+    const start = new Date(ev.startMillis);
+    const end = new Date(ev.endMillis ?? ev.startMillis + 60 * 60 * 1000);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Harvest//Event//EN', 'BEGIN:VEVENT',
+      `UID:${ev.title.replace(/\s+/g, '-')}-${start.getTime()}@theharvest.app`,
+      `DTSTAMP:${fmt(new Date())}`, `DTSTART:${fmt(start)}`, `DTEND:${fmt(end)}`,
+      `SUMMARY:${escape(ev.title)}`,
+      ev.description ? `DESCRIPTION:${escape(ev.description)}` : '',
+      ev.location ? `LOCATION:${escape(ev.location)}` : '',
+      'END:VEVENT', 'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ev.title.replace(/[^a-z0-9]/gi, '_') || 'event'}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-[400] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
@@ -623,6 +665,32 @@ const TicketModal: React.FC<{
               that promise is what section 1 of this ticket deleted. */}
           {!awaitingPayment && (
             <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
+          )}
+
+          {(canJoin || canAddToCalendar) && (
+            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+              {canJoin && (
+                <a
+                  href={ev!.onlineLink!}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-ticket-join-link
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white ${CONTROL_DENSITY.action}`}
+                  style={{ backgroundColor: BRAND }}
+                >
+                  <Globe size={13} /> Join
+                </a>
+              )}
+              {canAddToCalendar && (
+                <button
+                  onClick={addToCalendar}
+                  data-ticket-add-to-calendar
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}
+                >
+                  <CalendarCheck size={13} /> Add to calendar
+                </button>
+              )}
+            </div>
           )}
 
           <TicketPaymentPanel ticket={t} tenantName={tenantName} onChanged={onChanged} />
