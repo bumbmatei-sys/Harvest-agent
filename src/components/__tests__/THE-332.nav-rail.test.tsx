@@ -974,6 +974,13 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        marked days and the row's capacity figure both come from reads this
        screen already made. */
     '9216849e598ab4ca252d77d49e1debde5330867f89f24f48718335c17f673d5b',
+    /* APPENDED BY a raw-pixel-height fix (THE-345's own guard caught it),
+       nothing above removed or rewritten. The mini calendar's lazy-mount
+       Skeleton fallback spelled `h-[260px]`; respelled `h-64` (256px, off
+       the spacing scale) since a loading placeholder has no reason to hold
+       an exact pixel figure. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE
+       MOVED. */
+    'ed8abe4c093daf9200157e4d1875ec13dd288335a01bfeb68093653c8b8befe0',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */
