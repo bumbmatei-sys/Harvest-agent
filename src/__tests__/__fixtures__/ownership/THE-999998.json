@@ -1,0 +1,101 @@
+{
+  "ticket": "THE-999998",
+  "note": "Provisional identifier for feat/community-join-crm chunk (a), separate from prior community work and #557; replace filename and ticket when an actual ticket is assigned.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "d6da17272ef0eede381135ec2c05be843f25cc56d0d93dccba8c43454d747f08",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "78dfb7eae59652538ece3eebb793c79064fdb4b5eac274548871eb96a40d8de3",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "c7e7bb295bfdb1b5796cde40f9cbc41e4682377d1c10328dd9629d7c3846a9f2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "4f771c4680f433e05540806d7e3e941b0094a166a9264b5de9563147e930d6a9",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "fbcb5b253c442ca3996db6c90ed1ae8a435eaa2c1771c5fbddbe367911abbc9b",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "1cb556cf248e3f1b3a33b1371dc2090b0d5d3e7fc91c1ed015a188d5f7d5494d",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership.test.ts",
+      "digest": "e7c01f48165fa7094bc48dc361c21e8e3e2810ad1d5c5ee9c99525b249515a5c",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/join/route.ts",
+      "digest": "9501fe429f70bc78d6484b3a881bf25d9029c8a084410cf11e652c6abaa7f1f7",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "585abda0a3b4690cdc27831f9641abd040d1995567dbd1f385630424a6fe99cb",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/leave/route.ts",
+      "digest": "c0f70412a4b6caad0b5d7bf81a41af1a609733dd75fd78808a7bea7213cc56a2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "367bd5ac15a94d99d19a8237ccc558a2369300136c0626393c598e860c1ac4f2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "cb79411583cbae782dfb10cb96f1d3f30d4cb2e40934110de76094cdc354a355",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "abd970a1f4bac9c9019c7277a290b6ad903f88afb79c2eb264c87d772a338300",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "d71619d92af287bab8d5d36f0a3b92631fcd30948138e65294213070e11620f1",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "73542541e1a91523238ce19dde8d1291f3f6af2c3b1dc4d14fd57b505dbf25b5",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "a014bce9d206b07f07d33fdb070c1821a712edaeb4ff144184ab47809690f7cb",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "a014becad280147e51475f4ce2a3cd6e8f465b64c4dbaa5b0a29db9af26fb675",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "72c6cad5e3fc4dc310885daee692e938c6a334abf08aafc4a5e2a2eb2b68aa02",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "02643d21e9833d29659a49a7a1cab264a5b242c63a99d64f63c78b13bf2d3619",
+      "why": "The join route fixture now models Firestore recursive map merging; mutation proves the rejoin regression test rejects retaining the pending marker after answers are submitted."
+    }
+  ]
+}

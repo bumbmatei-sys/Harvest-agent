@@ -51,7 +51,7 @@ describe('tenant community reads', () => {
     const settings = defaultCommunitySettings(); settings.rules = { enabled: true, items: ['Rule'], version: 2 };
     expect(needsCommunityEntry(settings, member.member)).toBe(true);
     await act(async () => member.save(settings, {}));
-    expect(firestore.set).toHaveBeenCalledWith('tenants/a/communityMembers/u', { rulesAcceptedVersion: 2, answers: { q: 'yes' }, answeredAt: 'timestamp' });
+    expect(firestore.set).toHaveBeenCalledWith('tenants/a/communityMembers/u', { rulesAcceptedVersion: 2, answers: { q: 'yes' }, answeredAt: 'timestamp' }, { mergeFields: ['rulesAcceptedVersion', 'answers', 'answeredAt'] });
     settings.questions.enabled = true;
     await act(async () => member.save(settings, { q: 'new', __community_questions_pending__: 'true' }));
     expect(firestore.set.mock.lastCall![1].answers).toEqual({ q: 'new' });

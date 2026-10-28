@@ -45,7 +45,7 @@ export function useCommunityMember(tenantId: string | null, uid: string | undefi
       rulesAcceptedVersion: settings.rules.enabled ? settings.rules.version : (current.member?.rulesAcceptedVersion ?? 0),
       answers: settings.questions.enabled ? submittedAnswers : (current.member?.answers ?? { __community_questions_pending__: 'true' }),
       answeredAt: serverTimestamp(),
-    });
+    }, { mergeFields: ['rulesAcceptedVersion', 'answers', 'answeredAt'] });
   };
   return { ...current, save };
 }

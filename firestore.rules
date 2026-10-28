@@ -75,6 +75,17 @@ service cloud.firestore {
       );
     }
 
+    // Chunk (a): opt in collection by collection in chunk (b). Explicit status
+    // overrides the legacy user-doc tenant, so leaving cannot resurrect access.
+    function isActiveCommunityMember(tenantId) {
+      let memberPath = /databases/$(database)/documents/tenants/$(tenantId)/communityMembers/$(request.auth.uid);
+      return isAuthenticated() && (
+        exists(memberPath) && get(memberPath).data.keys().hasAny(['status'])
+          ? get(memberPath).data.status == 'active'
+          : userDocExists() && userData().get('tenantId', null) == tenantId
+      );
+    }
+
     // The tenant owner is the buyer: tenants/{id}.ownerId, set by the Stripe
     // webhook at tenant creation and immutable thereafter.
     function isTenantOwner(uid, tenantId) {
@@ -244,6 +255,12 @@ service cloud.firestore {
       );
 
       allow delete: if isSuperAdmin();
+
+      // Server-maintained reverse index: no client, including admins, writes it.
+      match /memberships/{tenantId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
     // ─── AI RAG chat usage (server-only) ─────────────────────────────
@@ -686,13 +703,27 @@ service cloud.firestore {
       }
 
       match /communityMembers/{uid} {
-        allow read: if belongsToTenant(tenantId) && (request.auth.uid == uid || isTenantAdmin(tenantId));
-        allow create, update: if belongsToTenant(tenantId) && request.auth.uid == uid &&
+        allow read: if isAuthenticated() && (request.auth.uid == uid ||
+          isTenantAdmin(tenantId) || isTenantOwner(request.auth.uid, tenantId));
+        // Legacy onboarding may create only the original three fields, and only
+        // for an existing user-doc member. It cannot establish a new membership.
+        allow create: if isActiveCommunityMember(tenantId) && request.auth.uid == uid &&
           request.resource.data.keys().hasOnly(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          validEntry();
+        // Merge onboarding edits while freezing every server-owned field,
+        // including deletions via an attempted full-document replacement.
+        allow update: if isActiveCommunityMember(tenantId) && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          validEntry();
+        allow delete: if false;
+
+        function validEntry() {
+          return
           request.resource.data.keys().hasAll(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
           request.resource.data.rulesAcceptedVersion is int && request.resource.data.rulesAcceptedVersion >= 0 &&
           request.resource.data.answers is map && request.resource.data.answers.size() <= 100 &&
           request.resource.data.answeredAt is timestamp;
+        }
       }
 
       // NOTE: a tenants/{t}/members subcollection block used to live here, but
