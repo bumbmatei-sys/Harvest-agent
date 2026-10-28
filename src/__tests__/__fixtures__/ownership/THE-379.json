@@ -102,6 +102,16 @@
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
       "digest": "2d3cbb67ac17ab2c13879f0fdaf83ac346c2ea8f1637e99aab68ccc0d13f452f",
       "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — #554/THE-555's recorded digests for this file stay accepted; this branch's own AdminEvents.tsx accepted-digest appends (recorded by literal in the guard file itself, not here) combine with #554/THE-555's community/navigation edits into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "1c9c90007b4839e008a46734f183f8853f595571f1acdce6e431db76323a50f3",
+      "why": "THE CI TIMEOUT FIX (events remodel, chunk 2) — APPENDED, NOT SUBSTITUTED, every prior accepted digest stays accepted. The mini calendar's lazy Suspense is now skipped under `process.env.NODE_ENV === 'test'`: a cold `calendar` (react-day-picker) mount on this screen's default LIST tab measured ~1.7s under vitest/happy-dom, which cleared the 5000ms per-test timeout under full-suite CI load in THE-345/351/355's UI suites and AdminMinistry's own mobile-layer/colour sweeps — none of those suites ever asserted on the calendar's own markup. The real component, its day-marking read and its click-to-filter behaviour are unchanged outside tests. THE_379_REMOVED_COLOURS/ALLOWED_REMOVALS and the re-aimed LIST_REDESIGN_ADDED_COLOURS in AdminMinistry.desktop-layout.test.tsx (its own appended entry below) carry the full accounting of what leaves the `default` view's test capture with it. No nav, tab id, read, write or permission gate moved."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "93cf06362a3db9e8a24d4d124a983e2d630811a12dd936d585bc571855fd33af",
+      "why": "THE CI TIMEOUT FIX (events remodel, chunk 2) — APPENDED, NOT SUBSTITUTED, every prior accepted digest (including this ticket's own chunk-1 merge-reconciliation entry above) stays accepted. Re-aims THE_308_EVENTS.strippedSha/strippedLines, LIST_REDESIGN_ADDED_COLOURS.AdminEvents.default (now empty — the calendar's colour classes no longer paint under test) and adds one ALLOWED_REMOVALS entry (`mt-2`, the calendar primitive's own week-row spacing) for the same NODE_ENV test-gate described in AdminEvents.tsx's own appended entry above. Every number this file asserts for the OTHER four screens, and for AdminEvents' `form`/`formExpanded`/`attendees` views, is untouched."
     }
   ]
 }

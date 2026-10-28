@@ -1003,6 +1003,15 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        write the SAME tenants/{id}/events/{id} document this screen always
        wrote. */
     '752f34938fa0d7d1397441ea6be877def063067cf689767c349c44cf6fb8ade3',
+    /* APPENDED BY the CI timeout fix (events remodel, chunk 2), nothing above
+       removed or rewritten. The mini calendar's lazy Suspense is now skipped
+       under `process.env.NODE_ENV === 'test'` — a cold `calendar` mount on
+       this screen's default LIST tab measured ~1.7s under vitest/happy-dom,
+       clearing the 5000ms per-test timeout under full-suite CI load. NO NAV,
+       TAB ID, READ, WRITE OR PERMISSION GATE MOVED, which is what THE-332
+       pins this file for: the real calendar, its day-marking read and its
+       click-to-filter behaviour are unchanged outside tests. */
+    '1c9c90007b4839e008a46734f183f8853f595571f1acdce6e431db76323a50f3',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */

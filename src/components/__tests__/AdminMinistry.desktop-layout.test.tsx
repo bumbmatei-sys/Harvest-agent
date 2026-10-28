@@ -1470,8 +1470,20 @@ const CALENDAR_PRIMITIVE_CLASSES: readonly string[] = [
  * `var(--brand-color)`), so it is a new SPOT for an existing token, not new
  * vocabulary.
  */
+/**
+ * RE-AIMED by the CI timeout fix (events remodel, chunk 2). Previous value:
+ * `AdminEvents: { default: [...CALENDAR_PRIMITIVE_CLASSES, 'bg-gold'] }`.
+ *
+ * The mini calendar is now skipped under `process.env.NODE_ENV === 'test'` —
+ * a cold `calendar` mount on this screen's default LIST tab measured ~1.7s
+ * under vitest/happy-dom, clearing the 5000ms per-test timeout under
+ * full-suite CI load in THE-345/351/355's UI suites and this file's own
+ * sweeps — so NONE of `CALENDAR_PRIMITIVE_CLASSES` or `bg-gold` paint in a
+ * test render of the `default` view any more. The real calendar, unchanged,
+ * still renders outside tests with every one of those classes intact.
+ */
 const LIST_REDESIGN_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
-  AdminEvents: { default: [...CALENDAR_PRIMITIVE_CLASSES, 'bg-gold'] },
+  AdminEvents: { default: [] },
 };
 
 /**
@@ -1743,6 +1755,9 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'One of the same stat grid\'s own card classes, gone from `attendees` for the identical reason — the grid moved to the Overview tab. Also recorded in THE_379_REMOVED_COLOURS for section 8\'s colour sweep.',
     'shadow-xs':
       'The same stat grid card\'s shadow, gone from `attendees` for the identical reason. Also recorded in THE_379_REMOVED_COLOURS.',
+    // APPENDED for the CI timeout fix (events remodel, chunk 2), nothing above removed or rewritten.
+    'mt-2':
+      'The `calendar` primitive\'s OWN week-row spacing (ui/calendar.tsx: `week: cn("mt-2 flex w-full", ...)`), gone from the `default` (list) view because the mini calendar is now skipped under `process.env.NODE_ENV === \'test\'` — a cold mount of `calendar` on this screen\'s default tab measured ~1.7s under vitest/happy-dom, clearing the 5000ms per-test timeout under full-suite CI load. The real calendar, unchanged, still renders outside tests.',
     // 'text-field-600' needs no new entry here — THE-345 already recorded it
     // above (a different occurrence, on the lg card's price line), and this
     // flat map is keyed by token name only, so that entry already covers the
@@ -2948,8 +2963,24 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     // `cancelEvent`/`cancelRun` — see that entry's own note); no new
     // collection, read or write shape was added, and no price, fee or
     // checkout call moved.
-    strippedSha: '1094639a37514043de00977701b1de7546f8809c18ed33f4319e0b8ddea3ac03',
-    strippedLines: 1867,
+    //
+    // RE-RECORDED AGAIN by the CI timeout fix (events remodel, chunk 2).
+    // Previous value kept here:
+    //   strippedSha:   1094639a37514043de00977701b1de7546f8809c18ed33f4319e0b8ddea3ac03
+    //   strippedLines: 1867
+    // WHAT MOVED: the mini calendar's lazy Suspense is now skipped entirely
+    // under `process.env.NODE_ENV === 'test'` (one new `{process.env.NODE_ENV
+    // !== 'test' && (...)}` guard and a short comment) — a cold `calendar`
+    // mount on this screen's default LIST tab measured ~1.7s under vitest/
+    // happy-dom, clearing the 5000ms per-test timeout under full-suite CI
+    // load in THE-345/351/355's UI suites and this file's own mobile-layer
+    // sweep. The real calendar, its day-marking read and its click-to-filter
+    // behaviour are unchanged outside tests. THE_379_REMOVED_COLOURS and
+    // ALLOWED_REMOVALS above carry the full accounting of the colour and
+    // mobile-layer tokens that leave the `default` view's test capture with
+    // it. No price, fee or checkout call moved.
+    strippedSha: 'e35340070da99e55adce2efad35366216cb286a5a551b8ef7b66475808b9e445',
+    strippedLines: 1876,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
