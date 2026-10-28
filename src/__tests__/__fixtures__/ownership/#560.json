@@ -12,6 +12,11 @@
       "why": "PR #560 (newsletter email themes) appended ThemeSettingsPanels.tsx to the min-h-11 sweep inventory in the sweep's own sorted order, since its Reset buttons USE the flat min-h-11 floor THE-356 reads and measures."
     },
     {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "9c3a58fd64caa22e3220be6c9d53169baf351baa8b64f291f97c85355dd9d1a2",
+      "why": "PR #560 (newsletter email themes) appended ThemePicker.tsx to the min-h-11 sweep inventory in the sweep's own sorted order, because the theme tile's delete control USES the class as min-h-11 min-w-11 ... sm:min-h-0 sm:min-w-0, and dropped the now-false parenthetical claiming the file needed no entry. Appended beside the digest above and not in place of it; the previous digest stays accepted."
+    },
+    {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "c732b36f84ebaf685c373ad125858ef3e9fb49fedfd21ef1fd5857c49426bf51",
       "why": "PR #560's fix pass recorded the three newsletter-theme adopters of the batch C/D/E primitives (ThemeWarning, blocks/Box, blocks/IssueHeader) in the adopter register, each with its ticket and reason; no recorded row was removed."

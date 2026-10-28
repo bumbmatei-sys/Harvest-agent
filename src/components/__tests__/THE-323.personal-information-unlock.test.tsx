@@ -867,13 +867,20 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // OR REWRITTEN. The template picker's cards were raw <button>s using the TAP token; they
       // are shadcn Buttons now, so each carries the literal `min-h-11` THE-356 reads.
       'src/components/email/TemplatesDialog.tsx',
+      // APPENDED BY the newsletter email-themes work (#560), NOTHING ABOVE OR
+      // BELOW REMOVED OR REWRITTEN. It sits here because this list is the
+      // sweep's own sorted order. The theme tiles themselves are radios on the
+      // kit's shared TAP token and spell no class of their own, but the tile's
+      // delete control USES `min-h-11 min-w-11 ... sm:min-h-0 sm:min-w-0` — the
+      // Rule-4 phone floor with the `sm` hand-back — so the file is in the
+      // sweep THE-356 reads and needs its own entry now.
+      'src/components/email/ThemePicker.tsx',
       // APPENDED BY the newsletter email-themes work, NOTHING ABOVE OR BELOW
       // REMOVED OR REWRITTEN. It sits here because this list is the sweep's own
       // sorted order. The theme settings panels USE the class as a flat
       // `min-h-11` on every Reset button — the form THE-356 reads and measures.
       // There is no density token on these controls, so the flat floor is what
-      // carries them. (ThemePicker.tsx beside it spells no class at all: its
-      // tiles are radios on the kit's shared TAP token, so it needs no entry.)
+      // carries them.
       'src/components/email/ThemeSettingsPanels.tsx',
       'src/components/email/UsageMeter.tsx',
       'src/components/email/kit.tsx',
