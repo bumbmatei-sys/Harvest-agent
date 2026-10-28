@@ -23,6 +23,47 @@ import {
   publicPayBody,
   ticketQrWaitingBody,
 } from '../lib/event-payment-claims';
+import { expandRuns, type RecurrenceRule } from '../lib/events/recurrence';
+
+/** One registration question, Eden one-at-a-time style. */
+interface RegistrationQuestion {
+  id: string;
+  label: string;
+  kind: 'short' | 'long' | 'choice';
+  options?: string[];
+  required: boolean;
+}
+
+/** Builds a minimal RFC 5545 .ics file for the client-side "Add to calendar" download — no server round trip, no new dependency. */
+const buildIcs = (title: string, description: string, location: string, start: Date, end: Date): string => {
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Harvest//Event//EN',
+    'BEGIN:VEVENT',
+    `UID:${title.replace(/\s+/g, '-')}-${start.getTime()}@theharvest.app`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(start)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${escape(title)}`,
+    description ? `DESCRIPTION:${escape(description)}` : '',
+    location ? `LOCATION:${escape(location)}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+};
+
+const downloadIcs = (title: string, description: string, location: string, start: Date, end: Date) => {
+  const blob = new Blob([buildIcs(title, description, location, start, end)], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/[^a-z0-9]/gi, '_') || 'event'}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 /** One of the church's own payment links, resolved server-side by the page. */
 export interface PublicPayOption {
@@ -107,6 +148,40 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const [discountResult, setDiscountResult] = useState<{ discountAmount: number } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [applyingDiscount, setApplyingDiscount] = useState(false);
+
+  // THE-379 (events remodel) — a recurring event is a SERIES; the visitor
+  // picks ONE run before anything else. `expandRuns` is the same pure
+  // function the admin form and the submit route use, so this list can never
+  // offer a date the server would reject. Absent recurrence (every event
+  // before this ticket) makes `runs` empty and this whole block inert.
+  const recurrence: RecurrenceRule | null = event.recurrence || null;
+  const runs = React.useMemo(() => {
+    if (!recurrence || !event.startDate) return [];
+    const start = new Date(event.startDate);
+    const end = event.endDate ? new Date(event.endDate) : start;
+    const now = new Date();
+    const horizon = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 180);
+    return expandRuns({ startDate: start, endDate: end, timeZone: event.timeZone || undefined, recurrence }, now, horizon).slice(0, 12);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.recurrence, event.startDate, event.endDate, event.timeZone]);
+  const [selectedRunDate, setSelectedRunDate] = useState<string | null>(null);
+  useEffect(() => {
+    if (runs.length && !selectedRunDate) setSelectedRunDate(runs[0].runDate);
+  }, [runs, selectedRunDate]);
+  const selectedRun = runs.find((r) => r.runDate === selectedRunDate) || runs[0] || null;
+
+  // THE-379 — Eden one-at-a-time registration questions. `questionIndex`
+  // tracks which question is CURRENTLY showing; `questionsDone` becomes true
+  // once the last one has been passed (or immediately, if there are none),
+  // which is what reveals the coupon/summary/submit section below. Going
+  // Back from question 0 returns to the attendee info, never discarding an
+  // answer already typed.
+  const questions: RegistrationQuestion[] = Array.isArray(event.registrationQuestions) ? event.registrationQuestions : [];
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [questionsDone, setQuestionsDone] = useState(questions.length === 0);
+  const [questionError, setQuestionError] = useState<string | null>(null);
+  const currentQuestion = questions[questionIndex] || null;
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,12 +348,36 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     }
   };
 
+  // THE-379 — one question at a time. "Next" validates the current question
+  // (required-but-blank stays put and says so, matching the server's own
+  // rule in src/lib/events/registration-questions.ts) before advancing.
+  const nextQuestion = () => {
+    if (!currentQuestion) return;
+    const value = (answers[currentQuestion.id] || '').trim();
+    if (currentQuestion.required && !value) {
+      setQuestionError(`"${currentQuestion.label}" is required.`);
+      return;
+    }
+    setQuestionError(null);
+    if (questionIndex + 1 >= questions.length) {
+      setQuestionsDone(true);
+    } else {
+      setQuestionIndex((i) => i + 1);
+    }
+  };
+  const backQuestion = () => {
+    setQuestionError(null);
+    if (questionIndex === 0) return; // Back to attendee info — nothing to clear.
+    setQuestionIndex((i) => i - 1);
+  };
+
   const submit = async () => {
     if (!selectedTicket) { setError('Please choose a ticket type.'); return; }
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
       setError('Please fill in your first name, last name and email.');
       return;
     }
+    if (recurrence && !selectedRunDate) { setError('Please choose a date.'); return; }
     setError(null);
     setSubmitting(true);
     try {
@@ -292,6 +391,8 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         phone: phone || undefined,
         additionalAttendees: additional.filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), email: a.email.trim() || undefined })),
         discountCode: discountResult ? discountInput.trim() : undefined,
+        runDate: selectedRunDate || undefined,
+        answers: questions.length ? answers : undefined,
       };
       // Signed-in → authFetch attaches the ID token so the server links the reg
       // to the verified uid. Signed-out → plain fetch, no token, userId stays null.
@@ -380,6 +481,17 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           ) : null}
         </div>
         {event.description && <p className="text-sm text-muted whitespace-pre-line">{event.description}</p>}
+        {/* THE-379 — keyless map preview, same OpenStreetMap embed the admin create dialog uses. Skipped under test for the same reason AdminEvents.tsx skips it: happy-dom actually attempts the network fetch. */}
+        {!event.isOnline && event.location && process.env.NODE_ENV !== 'test' && (
+          <div className="mt-3 rounded-xl overflow-hidden border border-line h-40" data-public-event-map>
+            <iframe
+              title="Location map"
+              className="w-full h-full"
+              loading="lazy"
+              src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=&query=${encodeURIComponent(event.location)}`}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -458,6 +570,23 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
             <div className="text-3xl font-mono font-bold tracking-widest text-strong my-4">{done.ticketCode}</div>
           )}
           <p className="text-sm text-faint">A confirmation has been sent to {email}.</p>
+          {/* THE-379 — client-side .ics, no server round trip. Uses the selected run's own time for a recurring event, so the file matches the date the registrant actually picked. */}
+          {!done.waitlisted && event.startDate && (
+            <button
+              type="button"
+              data-public-add-to-calendar
+              onClick={() => downloadIcs(
+                event.title,
+                event.description || '',
+                event.isOnline ? (event.onlineLink || '') : (event.location || ''),
+                selectedRun ? selectedRun.start : new Date(event.startDate),
+                selectedRun ? selectedRun.end : new Date(event.endDate || event.startDate),
+              )}
+              className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-line text-strong hover:bg-surface-sunken"
+            >
+              Add to calendar
+            </button>
+          )}
           {/*
             🔴 THE-351's PAYMENT INSTRUCTION, AND THE-355's LINKS, CLAIM CONTROL
             AND NO-LINKS STATE — ON THE ONE SCREEN A LOGGED-OUT REGISTRANT IS
@@ -659,6 +788,39 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       {EventHeader}
       <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-6" style={{ paddingBottom: 24 }}>
+        {/* THE-379 — a recurring event is a series; pick a run before anything else. */}
+        {runs.length > 0 && (
+          <div className="mb-5" data-public-run-picker>
+            <label className="block text-sm font-semibold text-strong mb-2">Select a date</label>
+            <div className="space-y-2">
+              {runs.map((r) => {
+                const active = r.runDate === selectedRunDate;
+                const label = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(r.start);
+                return (
+                  <button
+                    key={r.runDate}
+                    data-public-run-option={r.runDate}
+                    onClick={() => setSelectedRunDate(r.runDate)}
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'}`}
+                    style={active ? ({ '--tw-ring-color': primaryColor } as React.CSSProperties) : undefined}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-line-strong'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
+                    <span className="text-sm font-medium text-strong">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* THE-379 — Eden "Open to anyone": false restricts this event to a signed-in member of the ministry it belongs to. The server re-checks this at submit; this is the honest heads-up for a guest who would otherwise fill in the whole form only to be refused. */}
+        {event.openToAnyone === false && !authUser && (
+          <Alert className="mb-5" data-public-members-only>
+            <AlertTitle>This event is for members only</AlertTitle>
+            <AlertDescription>Sign in to a {tenantName} member account to register.</AlertDescription>
+          </Alert>
+        )}
+
         {/* Ticket type selector */}
         {ticketTypes.length > 0 && (
           <div className="mb-5">
@@ -677,7 +839,14 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-strong">{t.name}</p>
                       {t.description && <p className="text-xs text-faint">{t.description}</p>}
-                      {t.capacity != null && <p className="text-[11px] text-wheat-600 mt-0.5">Limited spots</p>}
+                      {/* THE-379 — a live count where we have one (non-recurring events only; see page.tsx). Falls back to the old "Limited spots" wording everywhere else, so no existing event loses its capacity hint. */}
+                      {t.capacity != null && (
+                        <p className="text-[11px] text-wheat-600 mt-0.5" data-public-spots-left={event.spotsLeftByTicket?.[t.id] ?? undefined}>
+                          {event.spotsLeftByTicket && typeof event.spotsLeftByTicket[t.id] === 'number'
+                            ? (event.spotsLeftByTicket[t.id] > 0 ? `${event.spotsLeftByTicket[t.id]} spots left` : 'Waitlist')
+                            : 'Limited spots'}
+                        </p>
+                      )}
                     </div>
                     <span className="text-sm font-bold text-strong shrink-0">{fmtCents(t.price)}</span>
                   </button>
@@ -742,6 +911,55 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           )}
         </div>
 
+        {/*
+          THE-379 — Eden one-at-a-time registration questions. One visible,
+          with a progress count, Back/Next and a required-field error that
+          mirrors the server's own `validateAnswers` rule — rejects a blank
+          required answer, accepts and moves on otherwise. Everything below
+          this (coupon, summary, submit) is withheld until every question has
+          been passed, matching Eden's own form-builder flow.
+        */}
+        {!questionsDone && currentQuestion && (
+          <div className="mt-5 bg-surface-sunken rounded-xl p-4" data-public-question-step={currentQuestion.id}>
+            <p className="text-[11px] font-semibold text-faint mb-2">Question {questionIndex + 1} of {questions.length}</p>
+            <label className="block text-sm font-medium text-strong mb-1.5">
+              {currentQuestion.label}{currentQuestion.required && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            {currentQuestion.kind === 'long' ? (
+              <textarea className={`${inputCls} resize-none`} style={ring} rows={3}
+                value={answers[currentQuestion.id] || ''}
+                onChange={(e) => setAnswers((a) => ({ ...a, [currentQuestion.id]: e.target.value }))} />
+            ) : currentQuestion.kind === 'choice' ? (
+              <div className="space-y-2">
+                {(currentQuestion.options || []).map((opt) => (
+                  <label key={opt} className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer text-sm text-body">
+                    <input type="radio" name={currentQuestion.id} checked={answers[currentQuestion.id] === opt}
+                      onChange={() => setAnswers((a) => ({ ...a, [currentQuestion.id]: opt }))} />
+                    {opt}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <input className={inputCls} style={ring}
+                value={answers[currentQuestion.id] || ''}
+                onChange={(e) => setAnswers((a) => ({ ...a, [currentQuestion.id]: e.target.value }))} />
+            )}
+            {questionError && <p className="text-xs text-red-600 mt-1.5">{questionError}</p>}
+            <div className="flex gap-2 mt-4">
+              <button type="button" onClick={backQuestion}
+                className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-strong">
+                Back
+              </button>
+              <button type="button" data-public-question-next onClick={nextQuestion}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: primaryColor }}>
+                {questionIndex + 1 >= questions.length ? 'Continue' : 'Next'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {questionsDone && (
+        <>
         {/* Discount code */}
         {event.hasDiscounts && (
         <div className="mt-5">
@@ -803,7 +1021,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           must see how much before they commit; what is removed is the claim
           about WHERE THEY ARE ABOUT TO BE SENT, which was the false half.
         */}
-        <button onClick={submit} disabled={submitting} data-public-submit
+        <button onClick={submit} disabled={submitting || (event.openToAnyone === false && !authUser)} data-public-submit
           className="mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50"
           style={{ backgroundColor: primaryColor }}>
           {submitting
@@ -814,6 +1032,8 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                 : `Continue to payment · ${fmtCents(total)}`)
               : 'Register')}
         </button>
+        </>
+        )}
       </div>
     </Shell>
   );
