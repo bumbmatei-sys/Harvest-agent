@@ -286,6 +286,9 @@ export async function provisionTenantFromDodoSubscription(
       throw new DodoProvisioningError('tenant-not-found', `Existing tenant ${existingTenantId} does not exist.`);
     }
     if (tenantSnap.data()?.plan === 'free') {
+      if (tenantSnap.data()?.ownerId !== meta.userId) {
+        throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: buyer is not the owner`);
+      }
       const result = await attachFirstSubscriptionToTenant({
         ...sub,
         metadata: { ...readDodoMetadata(sub.metadata), newTenant: 'false', firstSubscription: 'true', tenantId: existingTenantId },

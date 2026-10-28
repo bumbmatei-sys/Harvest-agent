@@ -656,7 +656,7 @@ describe('the handler reads the subscription out of the webhook envelope', () =>
 describe('existing tenant signup provisioning', () => {
   it('upgrades a free tenant in place without assigning a subdomain', async () => {
     db.current.store.set(`users/${OWNER_UID}`, { tenantId: 'free-123' });
-    db.current.store.set('tenants/free-123', { plan: 'free', name: 'Original', config: { retained: true } });
+    db.current.store.set('tenants/free-123', { plan: 'free', ownerId: OWNER_UID, name: 'Original', config: { retained: true } });
     db.current.store.set('tenant_private/free-123', { adminEmails: [OWNER_EMAIL] });
     const result = await provisionTenantFromDodoSubscription(subscription());
     expect(result).toMatchObject({ outcome: 'created', tenantId: 'free-123', plan: 'ministry' });
@@ -664,6 +664,18 @@ describe('existing tenant signup provisioning', () => {
     expect(db.current.store.get('tenants/free-123')).not.toHaveProperty('subdomain');
     expect(db.current.store.get('tenant_private/free-123')).toMatchObject({ adminEmails: [OWNER_EMAIL], dodoSubscriptionId: 'sub_dodo_1' });
     expect([...db.current.store.keys()].filter((key: string) => key.startsWith('tenants/'))).toEqual(['tenants/free-123']);
+  });
+
+  it('refuses a forged user tenantId without changing the foreign tenant', async () => {
+    const foreignTenant = { plan: 'free', ownerId: 'another-owner', name: 'Original' };
+    const privateDoc = { adminEmails: ['other@example.com'] };
+    db.current.store.set(`users/${OWNER_UID}`, { tenantId: 'foreign' });
+    db.current.store.set('tenants/foreign', foreignTenant);
+    db.current.store.set('tenant_private/foreign', privateDoc);
+    await expect(provisionTenantFromDodoSubscription(subscription())).rejects.toMatchObject({ name: 'DodoProvisioningError', reason: 'upgrade-refused' });
+    expect(db.current.store.get('tenants/foreign')).toEqual(foreignTenant);
+    expect(db.current.store.get('tenant_private/foreign')).toEqual(privateDoc);
+    expect([...db.current.store.keys()].filter((key: string) => key.startsWith('tenants/'))).toEqual(['tenants/foreign']);
   });
 
   it('keeps an existing paid tenant already provisioned', async () => {

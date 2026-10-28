@@ -705,6 +705,31 @@
       "file": "src/__tests__/App.free-signup-landing.test.tsx",
       "digest": "1487d233479cb64b899c462e49df711221617aeb58e5e8ed710536eea7bd71e1",
       "why": "#557 also asserts the Free member view has no Admin control while preserving paid owner and super-admin coverage."
+    },
+    {
+      "file": "src/lib/dodo/provisioning.ts",
+      "digest": "21bab7832439f1e5e251c56ad6d28bd5b0b8b8f563f6c67a639fedc2184bfaa8",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/first-subscription.ts",
+      "digest": "0c2da97752f236fd92940a781d499d099ce83188259b4ca835d242b7e0aee917",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "66566ad8dafe5dc28c6d9d214cd963cd45ebb1c0129a10d6f3fd5d2715885251",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/first-subscription.test.ts",
+      "digest": "231c6068d1c69d8b50fe6db82c3b21c6454f3ae2fc0903312e8299c49afa2197",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/the-212-upgrade-keeps-members.test.ts",
+      "digest": "9729a80fbe3b7b43e5951698e0c1ce51b3b6f22af5351d4bff955005620665f2",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
     }
   ]
 }
