@@ -14,6 +14,10 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { MemberAvatar, PostHeader, PostText, relativeCommentTime } from './community/PostPresentation';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { READING_MEASURE } from './layout/form-layout';
 
 interface Comment {
@@ -21,6 +25,7 @@ interface Comment {
   authorId: string;
   authorName: string;
   authorPhoto?: string;
+  authorLevel?: number;
   content: string;
   createdAt: string;
 }
@@ -48,6 +53,9 @@ interface CommunityPost {
   authorPhoto?: string;
   createdAt: string;
   content: string;
+  title?: string;
+  category?: string;
+  authorLevel?: number;
   /** Legacy single image — kept readable for back-compat with older posts. */
   imageUrl?: string;
   /** Up to 3 images on newer posts. Preferred over imageUrl when present. */
@@ -86,6 +94,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
+  const [commentErrors, setCommentErrors] = useState<Record<string, boolean>>({});
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -141,24 +150,18 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
     return () => { cancelled = true; };
   }, []);
 
-  // Subscribe to comments for open posts
+  // Listen to existing comments for exact counts and latest activity.
   useEffect(() => {
-    const unsubs: (() => void)[] = [];
-    Object.entries(commentsOpen).forEach(([postId, isOpen]) => {
-      if (!isOpen) return;
-      const q = query(collection(db, 'community_posts', postId, 'comments'), orderBy('createdAt', 'asc'));
-      const unsub = onSnapshot(q, (snap) => {
-        setPostComments(prev => ({
-          ...prev,
-          [postId]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment))
-        }));
-      }, (error) => {
-        console.error('Failed to subscribe to comments:', error);
-      });
-      unsubs.push(unsub);
-    });
-    return () => { unsubs.forEach(u => u()); };
-  }, [commentsOpen]);
+    const unsubs = allPosts.map(post => onSnapshot(
+      query(collection(db, 'community_posts', post.id, 'comments'), orderBy('createdAt', 'asc')),
+      snap => {
+        setPostComments(prev => ({ ...prev, [post.id]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment)) }));
+        setCommentErrors(prev => ({ ...prev, [post.id]: false }));
+      },
+      () => setCommentErrors(prev => ({ ...prev, [post.id]: true }))
+    ));
+    return () => { unsubs.forEach(unsub => unsub()); };
+  }, [allPosts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -456,16 +459,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
     setCommentsOpen(prev => ({ ...prev, [postId]: !prev[postId] }));
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  };
+
 
   const posts = allPosts.filter(post => {
     if (!eventsEnabled && (post.type === 'event' || post.embed?.type === 'event')) return false;
@@ -520,39 +514,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
           <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
           posts.map((post, index) => (
-            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-xs border border-line ">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-chip text-muted flex items-center justify-center font-bold overflow-hidden relative">
-                    {post.authorPhoto ? (
-                      <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      post.authorName.charAt(0)
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-bold text-strong text-sm">{post.authorName}</div>
-                      {post.isPinned && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] px-2 py-0.5 rounded-full">
-                          Pinned
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted">{formatDate(post.createdAt)}</div>
-                  </div>
-                </div>
-                <KebabMenu
+            <Card key={post.id} className="gap-0 rounded-none border-x-0 border-b border-line bg-surface-raised p-4 shadow-none ring-0 lg:rounded-[var(--ds-radius-card)] lg:border lg:shadow-[var(--ds-sh-sm)]">
+              <PostHeader name={post.authorName} photo={post.authorPhoto} level={post.authorLevel} createdAt={post.createdAt} category={post.category} pinned={post.isPinned} actions={<KebabMenu
                   ariaLabel="Post options"
                   items={(canManage || auth.currentUser?.uid === post.authorId) ? [
                     { label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) },
                   ] : []}
-                />
-              </div>
-
-              <div className="text-body text-sm whitespace-pre-wrap mb-3">
-                {post.content}
-              </div>
+                />} />
+              <PostText content={post.content} title={post.title} />
 
               {(() => {
                 const images = postImages(post);
@@ -651,10 +620,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                 </div>
               )}
 
-              <div className="flex items-center gap-4 pt-3 border-t border-line ">
-                <button 
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-line ">
+                <Button type="button" variant="ghost" 
                   onClick={() => handleLike(post.id, post.likes)}
-                  className={`flex items-center gap-1.5 text-xs transition-colors ${
+                  className={`min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 ${
                     auth.currentUser && post.likes.includes(auth.currentUser.uid)
                       ? 'text-gold'
                       : 'text-muted hover:text-gold'
@@ -662,35 +631,34 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
                   <span className="font-medium">{post.likes.length}</span>
-                </button>
-                <button
+                </Button>
+                <Button type="button" variant="ghost"
                   onClick={() => toggleComments(post.id)}
-                  className={`flex items-center gap-1.5 text-xs transition-colors ${
+                  className={`min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 ${
                     commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
                   }`}
                 >
                   <MessageSquare size={16} />
-                  <span className="font-medium">{postComments[post.id]?.length ?? 0}</span>
-                </button>
+                  <span className="font-medium">{commentErrors[post.id] ? 'Unavailable' : postComments[post.id]?.length ?? '…'}</span>
+                </Button>
+                {!commentErrors[post.id] && postComments[post.id]?.length > 0 && relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt) && (
+                  <span className="text-xs font-semibold text-gold">New comment {relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt)}</span>
+                )}
+                
               </div>
 
               {/* Comments Section */}
               {commentsOpen[post.id] && (
                 <div className="mt-3 pt-3 border-t border-line space-y-3">
-                  {postComments[post.id]?.map(comment => (
+                  {commentErrors[post.id] && <p role="alert" className="text-xs text-muted">Could not load comments.</p>}
+                {!commentErrors[post.id] && postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
-                        {comment.authorPhoto ? (
-                          <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          comment.authorName.charAt(0)
-                        )}
-                      </div>
+                      <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} level={comment.authorLevel} small />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-strong">{comment.authorName}</span>
                           <span className="text-[10px] text-faint">
-                            {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {relativeCommentTime(comment.createdAt)}
                           </span>
                           <div className="ml-auto">
                             <KebabMenu
@@ -715,7 +683,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                       </div>
                     </div>
                   ))}
-                  {postComments[post.id]?.length === 0 && (
+                  {!commentErrors[post.id] && postComments[post.id]?.length === 0 && (
                     <p className="text-xs text-faint text-center py-1">No comments yet</p>
                   )}
                   {auth.currentUser && (
@@ -727,7 +695,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                           (auth.currentUser.displayName || 'Y').charAt(0)
                         )}
                       </div>
-                      <input
+                      <Input
                         type="text"
                         value={commentInputs[post.id] || ''}
                         onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value.slice(0, 280) }))}
@@ -736,18 +704,18 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                         maxLength={280}
                         className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                       />
-                      <button
+                      <Button type="button" variant="ghost" size="icon" aria-label="Send comment"
                         onClick={() => handleComment(post.id)}
                         disabled={!(commentInputs[post.id] || '').trim()}
-                        className="p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors"
+                        className="min-h-11 min-w-11 p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors sm:min-h-0 sm:min-w-0"
                       >
                         <Send size={16} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </Card>
           ))
         )}
       </div>

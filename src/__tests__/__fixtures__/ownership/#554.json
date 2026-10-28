@@ -70,6 +70,36 @@
       "file": "src/components/community/NewGroupDialog.tsx",
       "digest": "620e901f9a386ca725773cead81d2d43b768e3e00873896af267c55f51671538",
       "why": "The group picker discloses that its scoped account search is capped, so its visible list is not presented as complete."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "4928e272bb64527a8d6d7baadddcb8d9986555262a07285b55219e79cc9b49dd",
+      "why": "PR 554 updates the existing community post cards and comment presentation, preserving earlier accepted digests."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "9c7f633e67f548c6f9fcd921bf2d1eadd9cdc7e6b8465b503ec57f6cea79d5ff",
+      "why": "PR 554 updates the existing community post cards and comment presentation, preserving earlier accepted digests."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "211c8f593d5749e4592b0515f001448d2216b68e6aae8f47a7e1fb77b21e8e25",
+      "why": "PR 554 updates the existing community post cards and comment presentation, preserving earlier accepted digests."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "654c6b0da1d8571dac7dd586f6c2f6bcfbf32035ee1a20680ba2ac82f155ef4f",
+      "why": "PR 554 finalises comment touch targets and card presentation; earlier accepted digests remain intact."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4",
+      "why": "PR 554 finalises comment touch targets and card presentation; earlier accepted digests remain intact."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "906d33f9819d142bbb7459b705e9372acc4a65ffc2decb3e980b0e2d8628d4d1",
+      "why": "PR 554 finalises comment touch targets and card presentation; earlier accepted digests remain intact."
     }
   ]
 }

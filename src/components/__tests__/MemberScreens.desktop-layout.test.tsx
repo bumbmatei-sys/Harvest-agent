@@ -415,7 +415,11 @@ describe('community step 1 pins', () => {
       "NewsTab.tsx": "5e17ff5c6d11c903659f03f27ec6032e3467361df9526dc1086eee858868d0ea",
       "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f"
 };
-    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 post card presentation, appended to the prior source pins.
+    const postCardDigests: Record<string, string> = {
+      'NewsTab.tsx': '654c6b0da1d8571dac7dd586f6c2f6bcfbf32035ee1a20680ba2ac82f155ef4f',
+    };
+    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
