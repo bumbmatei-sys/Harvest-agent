@@ -3,7 +3,7 @@ import { tenantPrivateRef } from '@/lib/tenant-private';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { readTenantAddons } from '@/utils/plan-features';
 import type { TenantAddons } from '@/types/tenant.types';
-import { DodoProvisioningError, requirePlanForProduct, readDodoMetadata, type DodoSubscriptionPayload } from './provisioning';
+import { requirePlanForProduct, readDodoMetadata, type DodoSubscriptionPayload } from './provisioning';
 import { readDodoAddonEntitlements, reportUnrecognisedDodoAddons } from './addons';
 import type { BillingPeriod } from './provider';
 
@@ -101,7 +101,8 @@ export async function attachFirstSubscriptionToTenant(
     return { outcome: 'refused', tenantId: meta.tenantId, reason: 'tenant-not-found' };
   }
   if (tenantSnap.data()?.plan === 'free' && tenantSnap.data()?.ownerId !== meta.userId) {
-    throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${meta.tenantId}: buyer is not the owner`);
+    console.warn(`[dodo] First subscription refused for tenant ${meta.tenantId}: buyer is not the owner`);
+    return { outcome: 'refused', tenantId: meta.tenantId, reason: 'buyer-is-not-owner' };
   }
   const priv = privateSnap.exists ? (privateSnap.data() ?? {}) : {};
   const existingSub = str(priv.dodoSubscriptionId);

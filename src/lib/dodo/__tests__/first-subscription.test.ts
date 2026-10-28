@@ -137,7 +137,7 @@ describe('attaching a first subscription to a free tenant', () => {
 
   it('refuses a non-owner before writing anything', async () => {
     mockTenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', ownerId: 'other' }) });
-    await expect(attachFirstSubscriptionToTenant(payload() as any)).rejects.toMatchObject({ name: 'DodoProvisioningError', reason: 'upgrade-refused' });
+    await expect(attachFirstSubscriptionToTenant(payload() as any)).resolves.toEqual({ outcome: 'refused', tenantId: 't1', reason: 'buyer-is-not-owner' });
     expect(mockBatchCommit).not.toHaveBeenCalled();
     expect(mockUserUpdate).not.toHaveBeenCalled();
   });

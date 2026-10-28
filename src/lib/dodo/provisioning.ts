@@ -15,7 +15,7 @@ import {
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
 import { reactivateTenantForDodoSubscription } from './lifecycle';
-import { attachFirstSubscriptionToTenant, handleFirstSubscriptionAttach } from './first-subscription';
+import { handleFirstSubscriptionAttach } from './first-subscription';
 
 /**
  * Build-on-payment, on Dodo: turn a paid Dodo subscription into a tenant.
@@ -158,6 +158,7 @@ export type DodoProvisioningOutcome =
   | { readonly outcome: 'created'; readonly tenantId: string; readonly plan: TenantPlan; readonly period: BillingPeriod }
   /** Not a new-ministry signup. Correct and complete: do nothing. */
   | { readonly outcome: 'not-a-signup' }
+  | { readonly outcome: 'refused'; readonly tenantId: string; readonly reason: string }
   /** This subscription, or this user, already has a tenant. */
   | { readonly outcome: 'already-provisioned'; readonly tenantId: string };
 
@@ -286,16 +287,14 @@ export async function provisionTenantFromDodoSubscription(
       throw new DodoProvisioningError('tenant-not-found', `Existing tenant ${existingTenantId} does not exist.`);
     }
     if (tenantSnap.data()?.plan === 'free') {
-      if (tenantSnap.data()?.ownerId !== meta.userId) {
-        throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: buyer is not the owner`);
-      }
-      const result = await attachFirstSubscriptionToTenant({
+      const result = await handleFirstSubscriptionAttach({
         ...sub,
         metadata: { ...readDodoMetadata(sub.metadata), newTenant: 'false', firstSubscription: 'true', tenantId: existingTenantId },
       });
       if (result.outcome === 'attached') return { outcome: 'created', tenantId: existingTenantId, plan, period };
       if (result.outcome === 'already-attached') return { outcome: 'already-provisioned', tenantId: existingTenantId };
-      throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: ${result.outcome === 'refused' ? result.reason : result.outcome}`);
+      if (result.outcome === 'refused') return result;
+      throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: ${result.outcome}`);
     }
     console.log(`⏭️ [dodo] User ${meta.userId} already has tenant ${existingTenantId}; skipping new-tenant build`);
     return { outcome: 'already-provisioned', tenantId: existingTenantId };
@@ -476,6 +475,11 @@ export async function handleDodoSubscriptionActive(
   }
 
   const result = await provisionTenantFromDodoSubscription(payload);
+
+  if (result.outcome === 'refused') {
+    // Reported by the first-subscription handler; do not sync or retry.
+    return { outcome: 'already-provisioned', tenantId: result.tenantId };
+  }
 
   if (result.outcome === 'already-provisioned') {
     // Failure to restore must NOT turn a successful provisioning outcome into a
