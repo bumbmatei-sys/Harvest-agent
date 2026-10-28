@@ -31,16 +31,20 @@ vi.mock('next/dynamic', () => ({ default: () => () => <div data-testid="map" /> 
 vi.mock('framer-motion', () => ({ motion: new Proxy({}, { get: () => ({ children, className }: any) => <div className={className}>{children}</div> }), AnimatePresence: ({ children }: any) => children }));
 
 describe('community settings in member navigation', () => {
-  it('anchors the real mobile navigation outside the translated legacy rail and reserves its space', async () => {
+  it('anchors the real mobile navigation in the shared shell and reserves its space', async () => {
     fx.settings = defaultCommunitySettings(); fx.member = null; fx.user = null; fx.error = null;
     const host = document.createElement('div'); const root = createRoot(host);
     await act(async () => root.render(<MainApp onNavigate={() => {}} />));
     const nav = host.querySelector<HTMLElement>('nav[aria-label="Mobile navigation"]')!;
     expect(nav).toBeTruthy();
-    expect(nav.classList.contains('fixed')).toBe(true);
-    expect(nav.classList.contains('bottom-0')).toBe(true);
-    expect(nav.classList.contains('pb-[calc(0.5rem+env(safe-area-inset-bottom))]')).toBe(true);
-    expect(nav.closest('[class*="translate-y-"]')).toBeNull();
+    // THE-555: one original shell owns fixed positioning, inset and translation.
+    const navShell = nav.closest<HTMLElement>('.fixed')!;
+    expect(navShell).toBeTruthy();
+    expect(navShell.classList.contains('bottom-0')).toBe(true);
+    expect(navShell.classList.contains('py-2')).toBe(true);
+    expect(navShell.classList.contains('pb-[calc(8px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(navShell.classList.contains('max-lg:translate-y-0')).toBe(true);
+    expect(nav.closest('[class*="translate-y-"]')).toBe(navShell);
     const header = host.querySelector('[aria-label="Switch community"]')!.parentElement!.parentElement!;
     expect(header.classList.contains('sticky')).toBe(true);
     expect(header.classList.contains('top-0')).toBe(true);

@@ -1,6 +1,9 @@
 'use client';
 
 import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const ADMIN_MOBILE_NAV_TAB = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative data-[active=false]:text-faint';
 import { Button } from '@/components/ui/button';
 
 import { useEffect, useState, type CSSProperties } from 'react';
@@ -85,7 +88,7 @@ function MobileBar({ className }: { className: string }) {
               <Button variant="ghost"
                 key={tab.id}
                 type="button"
-                className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl ${active ? '' : 'text-faint'}`}
+                data-active={active} className={ADMIN_MOBILE_NAV_TAB}
                 style={active ? { color: 'var(--brand-color, #C9963A)' } : undefined}
               >
                 <Icon size={22} strokeWidth={active ? 2.5 : 2} />
@@ -120,7 +123,7 @@ function BeforeChrome() {
                   <Button variant="ghost"
                     key={tab.id}
                     type="button"
-                    className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl ${active ? '' : 'text-faint'}`}
+                    data-active={active} className={ADMIN_MOBILE_NAV_TAB}
                     style={active ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                   >
                     <Icon size={22} />

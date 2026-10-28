@@ -125,10 +125,7 @@ function navClass(): { desktop: string; mobile: string } {
   const mobileSource = stripComments(src('src/components/community/MobileCommunityNav.tsx'));
   const mobile = /<nav aria-label="Mobile navigation" className="([^"]+)"/.exec(mobileSource);
   if (!mobile) throw new Error('MobileCommunityTabs no longer exposes its shipped nav classes');
-  for (const required of ['fixed', 'bottom-0', 'z-[100]', 'env(safe-area-inset-bottom)']) {
-    expect(mobile[1], `the mobile community nav no longer carries ${required}`).toContain(required);
-  }
-  // Each branch carries its own responsive visibility, as MainApp mounts it.
+  // THE-555: MainApp owns positioning, safe area and translation for both layouts.
   return { desktop: cls, mobile: mobile[1] };
 }
 
@@ -165,9 +162,7 @@ setUpOrFail(async () => {
       </div>
 
       <div data-desktop-nav className={nav.desktop}>
-        <span style={{ display: 'inline-block', height: '44px' }} />
-      </div>
-      <div className="hidden max-lg:block">
+        <span className="hidden lg:inline-block" style={{ height: '44px' }} />
         <nav data-mobile-nav className={nav.mobile}>
           <span style={{ display: 'inline-block', height: '44px' }} />
         </nav>
@@ -215,7 +210,7 @@ async function read(viewport: number, height?: number) {
       if (!el) throw new Error(s + ' did not render');
       return el;
     };
-    const nav = q(window.innerWidth < 1024 ? '[data-mobile-nav]' : '[data-desktop-nav]');
+    const nav = q('[data-desktop-nav]');
     const navCs = getComputedStyle(nav);
     const scroller = q('[data-category-pill]').parentElement;
     const scs = getComputedStyle(scroller);
@@ -476,7 +471,7 @@ describe('10 — the last card clears the bottom nav at 380px', () => {
         window.scrollTo(0, document.documentElement.scrollHeight);
         const cards = [...document.querySelectorAll('[data-course-card]')];
         const card = cards[cards.length - 1].getBoundingClientRect();
-        const nav = document.querySelector(window.innerWidth < 1024 ? '[data-mobile-nav]' : '[data-desktop-nav]').getBoundingClientRect();
+        const nav = document.querySelector('[data-desktop-nav]').getBoundingClientRect();
         return { cardBottom: card.bottom, navTop: nav.top, scrolled: window.scrollY };
       })()`,
       PHONE_HEIGHT,
@@ -509,7 +504,7 @@ describe('10 — the last card clears the bottom nav at 380px', () => {
         window.scrollTo(0, document.documentElement.scrollHeight);
         const cards = [...document.querySelectorAll('[data-course-card]')];
         const card = cards[cards.length - 1].getBoundingClientRect();
-        const nav = document.querySelector(window.innerWidth < 1024 ? '[data-mobile-nav]' : '[data-desktop-nav]').getBoundingClientRect();
+        const nav = document.querySelector('[data-desktop-nav]').getBoundingClientRect();
         return { cardBottom: card.bottom, navTop: nav.top };
       })()`,
       PHONE_HEIGHT,

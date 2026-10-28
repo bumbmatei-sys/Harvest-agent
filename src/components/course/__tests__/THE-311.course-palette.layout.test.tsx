@@ -254,7 +254,16 @@ describe('4 — no measured geometry moved', () => {
       throw new Error('fixture written — unset THE_311_WRITE_FIXTURE and rerun');
     }
     const pinned = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Record<number, Shot>;
+    // THE-555 appends Lucide's glyph-only geometry; the original fixture is
+    // retained byte-for-byte. Assert the old child boxes before replacing them,
+    // so an amendment cannot silently consume a different surface.
+    const lucide = JSON.parse(readFileSync(path.join(__dirname, '__fixtures__', 'the-311-lucide-0.577-geometry.json'), 'utf8')) as {
+      librarySearch: Record<number, { at: number; before: Fingerprint[]; after: Fingerprint[] }>;
+    };
     for (const v of VIEWPORTS) {
+      const edit = lucide.librarySearch[v];
+      expect(pinned[v].library.slice(edit.at, edit.at + edit.before.length)).toEqual(edit.before);
+      pinned[v].library.splice(edit.at, edit.before.length, ...edit.after);
       for (const key of SCREENS) {
         expect(shots['classic-light'][v][key], `${key} moved at ${v}px`).toEqual(pinned[v][key]);
       }

@@ -275,11 +275,15 @@ describe('community navigation', () => {
     await mount('church');
     const nav = container.querySelector<HTMLElement>('nav[aria-label="Mobile navigation"]')!;
     expect(nav).toBeTruthy();
-    expect(nav.classList.contains('fixed')).toBe(true);
-    expect(nav.classList.contains('bottom-0')).toBe(true);
-    expect(nav.classList.contains('pb-[calc(0.5rem+env(safe-area-inset-bottom))]')).toBe(true);
-    // A transformed ancestor makes fixed positioning relative to that ancestor.
-    for (let ancestor = nav.parentElement; ancestor && ancestor !== container; ancestor = ancestor.parentElement) {
+    // THE-555: one original shell owns fixed positioning, inset and translation.
+    const navShell = nav.closest<HTMLElement>('.fixed')!;
+    expect(navShell).toBeTruthy();
+    expect(navShell.classList.contains('bottom-0')).toBe(true);
+    expect(navShell.classList.contains('py-2')).toBe(true);
+    expect(navShell.classList.contains('pb-[calc(8px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(navShell.classList.contains('max-lg:translate-y-0')).toBe(true);
+    // Ancestors ABOVE the fixed shell must not re-anchor it.
+    for (let ancestor = navShell.parentElement; ancestor && ancestor !== container; ancestor = ancestor.parentElement) {
       expect([...ancestor.classList].some(token => /translate|transform/.test(token))).toBe(false);
     }
     const header = container.querySelector('[aria-label="Switch community"]')!.parentElement!.parentElement!;

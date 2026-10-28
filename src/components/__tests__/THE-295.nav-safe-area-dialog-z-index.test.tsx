@@ -121,14 +121,8 @@ function navClass(): string {
       'would be measuring a hand-typed copy of a nav that may have moved.',
     );
   }
-  // THE-555 has separate phone and legacy tablet/desktop roots. Compose their
-  // actual class lists at the same breakpoint so every existing inset, layer,
-  // and geometry probe continues to measure the navigation served at that width.
-  const mobileSource = stripComments(src('src/components/community/MobileCommunityNav.tsx'));
-  const mobile = /<nav[^>]*className="([^"]+)"/.exec(mobileSource);
-  if (!mobile) throw new Error('the mobile navigation root could not be located');
-  return match[1].replace(' max-[768px]:hidden', '') + ' ' +
-    mobile[1].split(/\s+/).map(token => `max-[768px]:${token}`).join(' ');
+  // THE-555: mobile tabs and desktop items share this original shell again.
+  return match[1];
 }
 
 /** The nav class with its template holes filled for a given state. */
@@ -259,9 +253,7 @@ const key = (sel: string, vw: number) => `${sel}@${vw}`;
 
 setUpOrFail(async () => {
   appCss = await buildAppCss();
-  // Responsive tokens are assembled from the two real roots above, so include
-  // that composed markup in Tailwind's content rather than relying on a token
-  // accidentally appearing in an unrelated source file.
+  // Include the discovered shell markup explicitly in Tailwind's content.
   appCss += await buildCssForMarkup(navMarkup('visible', 5, 'responsive-content'));
 
   const flat = await launch(appCss, 'flat');
@@ -818,11 +810,13 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
 
   it('the shell element inventory includes the community entry additions', () => {
     // Pin the inventory including the community entry additions.
-    const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
+    const tags = [...stripComments(shell()).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     // The mobile shell and gated Products view coexist with the shared settings loading fallback.
     expect(shell()).toContain("effectiveTopTab === 'products' && <DigitalMemberProducts />");
-    // THE-555 replaces the inline mobile header with shared navigation components.
-    expect(tags.length, 'the shell gained or lost an element').toBe(89);
+    // THE-555: the mobile tabs moved into the original navigation shell.
+    // Two obsolete visibility wrappers were removed; no second fixed bar remains.
+    // Count parser-stripped source so a tag quoted in a comment is not an element.
+    expect(tags.length, 'the shell gained or lost an element').toBe(86);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

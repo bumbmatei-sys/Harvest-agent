@@ -1,6 +1,10 @@
 "use client";
 
 import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const ADMIN_MOBILE_NAV_TAB = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative data-[active=false]:text-faint';
+const ADMIN_MOBILE_NAV_MORE = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all data-[active=false]:text-faint';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package } from 'lucide-react';
@@ -1039,7 +1043,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <Button variant="ghost"
         key={tab.id}
         onClick={() => go(tab.id)}
-        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-surface-sunken active:bg-surface-sunken"
+        className="min-h-11 w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-surface-sunken active:bg-surface-sunken"
         style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
         <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-surface-sunken flex items-center justify-center">
@@ -1221,7 +1225,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
           <Button variant="ghost"
             onClick={() => go('dashboard')}
-            className="hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
+            className="min-h-11 hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
           >
             <img
               src={displayLogo}
@@ -1245,9 +1249,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 <Button variant="ghost"
                   key={tab.id}
                   onClick={() => go(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
-                    isActive ? '' : 'text-faint'
-                  }`}
+                  data-active={isActive}
+                  className={ADMIN_MOBILE_NAV_TAB}
                   style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 >
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
@@ -1260,9 +1263,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             })}
             <Button variant="ghost"
               onClick={() => setShowMoreSheet(!showMoreSheet)}
-              className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
-                showMoreSheet ? '' : 'text-faint'
-              }`}
+              data-active={showMoreSheet}
+              className={ADMIN_MOBILE_NAV_MORE}
               style={showMoreSheet ? { color: 'var(--brand-color, #C9963A)' } : undefined}
             >
               <MoreHorizontal size={22} strokeWidth={2} />
@@ -1667,7 +1669,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <Button variant="ghost"
               onClick={() => setShowProfile(false)}
               aria-label="Close profile"
-              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
+              className="min-h-11 min-w-11 p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
             </Button>
@@ -1707,7 +1709,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <Button variant="ghost"
               onClick={() => setShowBilling(false)}
               aria-label="Close billing"
-              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
+              className="min-h-11 min-w-11 p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
             </Button>

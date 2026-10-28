@@ -1,6 +1,11 @@
 "use client";
 
 import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const MEMBER_NAV_BUTTON = 'flex items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all shrink-0 data-[visibility=desktop]:hidden lg:data-[visibility=desktop]:flex data-[visibility=mobile]:flex-col lg:data-[visibility=mobile]:hidden data-[visibility=both]:flex-col lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 lg:data-[collapsed=true]:w-11 lg:data-[collapsed=true]:h-11 lg:data-[collapsed=true]:p-0 data-[active=true]:lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] data-[active=false]:text-faint data-[active=false]:hover:text-muted data-[active=false]:lg:text-muted data-[active=false]:lg:hover:text-strong data-[active=false]:lg:hover:bg-surface-sunken';
+const MEMBER_SIDEBAR_COLLAPSE = 'flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken justify-start data-[collapsed=true]:justify-center';
+const MEMBER_TOP_TAB = 'min-h-11 whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start data-[active=false]:text-muted data-[active=false]:hover:text-body';
 import { Button } from '@/components/ui/button';
 import { communityBrandStyle } from '@/lib/community/branding';
 import './community/branding.css';
@@ -662,23 +667,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     onClick: () => void,
     visibility: 'both' | 'mobile' | 'desktop' = 'both'
   ) => {
-    const visibilityClassName =
-      visibility === 'mobile' ? 'flex flex-col lg:hidden' :
-      visibility === 'desktop' ? 'hidden lg:flex' :
-      'flex flex-col';
     return (
       <Button variant="ghost"
         key={id}
         onClick={onClick}
-        className={`${visibilityClassName} items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
-          isSidebarCollapsed
-            ? 'lg:w-11 lg:h-11 lg:p-0 w-16 h-12'
-            : 'lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 w-16 h-12'
-        } ${
-          isActive
-            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)]'
-            : 'text-faint hover:text-muted lg:text-muted lg:hover:text-strong lg:hover:bg-surface-sunken'
-        }`}
+        data-visibility={visibility}
+        data-collapsed={isSidebarCollapsed}
+        data-active={isActive}
+        className={MEMBER_NAV_BUTTON}
         style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         title={isSidebarCollapsed ? label : undefined}
       >
@@ -766,7 +762,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] max-lg:hidden transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -785,17 +781,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
             )}
           </div>
 
-          {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
-          <div className="contents max-lg:hidden">{bottomTabs.map((tab) =>
-            renderNavButton(
-              tab.id,
-              tab.label,
-              tab.icon,
-              effectiveBottomTab === tab.id,
-              () => setActiveBottomTab(tab.id),
-              'mobile'
-            )
-          )}</div>
+          {/* Mobile tabs share the shell's safe area and scroll translation. */}
+          <MobileCommunityTabs onCommunities={() => setActiveBottomTab('communities')} onDiscover={() => setActiveBottomTab('discover')} homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} />
 
           <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
             {renderNavButton('desktop-communities', 'Communities', NAV_ICONS.communities, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
@@ -830,7 +817,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           <div className="hidden lg:flex flex-1 items-end pb-5 mt-auto">
             <Button variant="ghost"
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               data-collapsed={isSidebarCollapsed}
+               className={MEMBER_SIDEBAR_COLLAPSE}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
                {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
@@ -840,7 +828,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         </div>
       </div>
 
-      <div className={`hidden max-lg:block ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:hidden' : ''}`}><MobileCommunityTabs onCommunities={() => setActiveBottomTab('communities')} onDiscover={() => setActiveBottomTab('discover')} homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
+
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-dvh relative bg-surface overflow-hidden min-w-0">
@@ -900,9 +888,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   key={tab.id}
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
-                  className={`whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start ${
-                    effectiveTopTab === tab.id ? '' : 'text-muted'
-                  }`}
+                  data-active={effectiveTopTab === tab.id}
+                  className={MEMBER_TOP_TAB}
                   style={effectiveTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 >
                   {tab.label}

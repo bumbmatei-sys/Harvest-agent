@@ -436,6 +436,8 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da', 'Palette content search (#548) - AdminDashboard.tsx. go() takes an optional item id and the sidebar gets a search prop. No nav array, entitlement, plan check, permission term, query or write path changed.'],
     ['3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f', 'Two-plan repricing - AdminDashboard.tsx. The plan is read through canonicalPlanId, the Check-In withholding keys off church (the cheapest paid tier) instead of plus, and the Accounting entry is labelled Giving records. No route, permission term, plan gate cell or write path moved. (THE-378)'],
     ['1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158', 'Community setup adds its settings screen and navigation entry while retaining the existing permission gate.'],
+    // APPENDED BY THE-555; earlier digests and reasons are retained.
+    ['d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e', 'THE-555 - Lucide nav icon swap: Newsletter uses Mailbox and Community uses ToolCase through NAV_ICONS. Retains the required shadcn Button conversions, names their state classes locally, and preserves phone touch floors. No nav array structure, route, permission, entitlement or screen mount changed.'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],

@@ -729,6 +729,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f',
     // Community setup adds its screen and navigation entry.
     '1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158',
+    // APPENDED BY THE-555 - Lucide nav icon swap: Newsletter uses Mailbox and Community uses ToolCase through NAV_ICONS. Retains the required shadcn Button conversions, names their state classes locally, and preserves phone touch floors. No nav array structure, route, permission, entitlement or screen mount changed.
+    'd124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

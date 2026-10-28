@@ -123,14 +123,6 @@ function evalTemplate(tpl: string, vars: Record<string, unknown>): string {
   return fn(...names.map((n) => vars[n]));
 }
 
-// THE-555 keeps the <=768px bottom nav in MobileCommunityTabs. Read the
-// parent's shipped visibility expression as well as mounting the real component.
-const MOBILE_NAV_TEMPLATE = (() => {
-  const match = MAIN_APP.match(/className=\{`(hidden max-lg:block[^`]*)`\}><MobileCommunityTabs/);
-  if (!match) throw new Error('MainApp no longer mounts MobileCommunityTabs behind its visibility expression');
-  return match[1];
-})();
-
 const SHELL_VARS = {
   isSidebarCollapsed: false,
   isNavVisible: true,
@@ -143,8 +135,6 @@ const NAV_SHOWN = evalTemplate(NAV_TEMPLATE, { ...SHELL_VARS, isChatOpen: false 
 const NAV_HIDDEN = evalTemplate(NAV_TEMPLATE, { ...SHELL_VARS, isChatOpen: true });
 const WRAPPER_SHOWN = evalTemplate(WRAPPER_TEMPLATE, { ...SHELL_VARS, isChatOpen: false });
 const WRAPPER_HIDDEN = evalTemplate(WRAPPER_TEMPLATE, { ...SHELL_VARS, isChatOpen: true });
-const MOBILE_NAV_SHOWN = evalTemplate(MOBILE_NAV_TEMPLATE, { ...SHELL_VARS, isChatOpen: false });
-const MOBILE_NAV_HIDDEN = evalTemplate(MOBILE_NAV_TEMPLATE, { ...SHELL_VARS, isChatOpen: true });
 
 // ═════════════════════════════════════════════════════════════════════════════
 // The harness: the SHIPPED component, bundled and driven in Chromium.
@@ -285,8 +275,6 @@ window.fetch = (input, init) => String(input).startsWith('/api/community/dm-coun
 
 const NAV_SHOWN = ${JSON.stringify(NAV_SHOWN)};
 const NAV_HIDDEN = ${JSON.stringify(NAV_HIDDEN)};
-const MOBILE_NAV_SHOWN = ${JSON.stringify(MOBILE_NAV_SHOWN)};
-const MOBILE_NAV_HIDDEN = ${JSON.stringify(MOBILE_NAV_HIDDEN)};
 const WRAPPER_SHOWN = ${JSON.stringify(WRAPPER_SHOWN)};
 const WRAPPER_HIDDEN = ${JSON.stringify(WRAPPER_HIDDEN)};
 
@@ -312,8 +300,8 @@ function App() {
   };
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-surface overflow-hidden">
-      <div data-shell-bottom-nav data-desktop-nav className={chatOpen ? NAV_HIDDEN : NAV_SHOWN}><span>Nav</span></div>
-      <div data-shell-bottom-nav data-mobile-nav className={chatOpen ? MOBILE_NAV_HIDDEN : MOBILE_NAV_SHOWN}>
+      <div data-shell-bottom-nav className={chatOpen ? NAV_HIDDEN : NAV_SHOWN}>
+        <span className="hidden lg:block">Nav</span>
         <MobileCommunityTabs homeActive onHome={() => {}} onNotifications={() => {}} onProfile={() => {}} initial="M" />
       </div>
       <div className="flex-1 flex flex-col min-w-0">
@@ -377,9 +365,7 @@ const box = (el) => {
            position: cs.position, display: cs.display, zIndex: cs.zIndex,
            paddingBottom: cs.paddingBottom, opacity: cs.opacity, visibility: cs.visibility };
 };
-const q = (s) => document.querySelector(s === '[data-shell-bottom-nav]'
-  ? (window.innerWidth < 1024 ? '[data-mobile-nav] nav' : '[data-desktop-nav]')
-  : s);
+const q = (s) => document.querySelector(s);
 const txt = (el) => (el ? (el.textContent || '').trim() : '');
 /** Click by dispatching the events Base UI listens for, in order. */
 const click = async (el) => {
@@ -949,10 +935,10 @@ describe('the bottom nav is hidden inside a conversation', () => {
 
   it('and it occupies no viewport band at 380px once a thread is open', () => {
     const r = at(380);
-    // THE-555 hides the new mobile nav with display:none; the tablet bar
-    // still translates out. Both must clear the viewport AND the hit test below.
-    expect(r.navHiddenInThread!.h === 0 || r.navHiddenInThread!.top >= r.viewportH - 1,
-      'the nav still occupies a band inside a conversation at 380px').toBe(true);
+    // THE-555 restores the original shared shell's translate-on-scroll behavior.
+    expect(r.navHiddenInThread!.h).toBeGreaterThan(40);
+    expect(r.navHiddenInThread!.top,
+      'the nav still occupies a band inside a conversation at 380px').toBeGreaterThanOrEqual(r.viewportH - 1);
   });
 
   it('and the band is given BACK — a tap there lands on the composer, not the nav', () => {
@@ -966,7 +952,8 @@ describe('the bottom nav is hidden inside a conversation', () => {
 
   it('768px is still a phone for this purpose', () => {
     const r = at(768);
-    expect(r.navHiddenInThread!.h === 0 || r.navHiddenInThread!.top >= r.viewportH - 1).toBe(true);
+    expect(r.navHiddenInThread!.h).toBeGreaterThan(40);
+    expect(r.navHiddenInThread!.top).toBeGreaterThanOrEqual(r.viewportH - 1);
   });
 
   it('but the DESKTOP RAIL survives the same flag from lg up', () => {

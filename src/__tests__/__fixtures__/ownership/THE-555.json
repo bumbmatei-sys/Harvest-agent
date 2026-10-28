@@ -785,6 +785,161 @@
       "file": "src/components/layout/nav-icons.ts",
       "digest": "c4a50f16d2a76ceb9e84260e725e1088075bca784bd600ee0fb1f784b13b1ec0",
       "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e",
+      "why": "THE-555 round 4: Lucide Newsletter and Community navigation icon swap with required shadcn Button conversions retained. Stateful classes are named locally for the floor resolver; no nav array structure, route, permission, entitlement or screen mount changed."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "686af637a57e383b2c9f4c65730b2ee30b486e6bc705fc2d78db0aef4934240a",
+      "why": "THE-555 round 4: Restores the original single navigation shell with safe-area padding, py-2 and scroll translation, and mounts the shadcn mobile tabs inside it. Stateful Button classes are named locally without adding colour literals or changing the frozen layout module."
+    },
+    {
+      "file": "src/__tests__/theming-member-app.test.ts",
+      "digest": "35673e017e705fa851b29cfdc63f81a1f535396a86859b44b94f2754a1ddecc9",
+      "why": "THE-555 round 4: Keeps the deliberately black photo scrim assertion intact and removes the obsolete custom attachment-menu shadow literal from the exact baseline. The replaced shadcn DropdownMenu uses token-based shadows and introduces no new colour literal."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "6b4a5f95fcdd094ceedcea991fe0a949faecc94c096f2d4b18007e0025422ba7",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "8b74bfcba6bb78087ec616736900cb8ad20fff80d72bfc08f5bba868462c065f",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "6288cf77c5138d4d8d2a85a71a0d26212961f8b4dff4c9af492079eb0ba1950f",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "f805e6fe5cd11b8f5133fcb8d96cf1f9f907666352fc0463fbf8bcb771cfb60c",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "56fe38fc9055c8c5f17bbbee206c0bba8c229df1f91db8ecdb24266486f03c9b",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "054119863bbef32d6b3edb8fe370bf54fd0365d601f42f3018ed1ce774a71751",
+      "why": "THE-555 round 4: Names mobile shadcn Button classes locally and expresses active state with a data attribute, so the existing touch-floor resolver can discover and measure the preview without dropping a conditional class."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "e9285dda8170782879cd0423c6fe30603b70821340dc553dd32063e24e7ccf98",
+      "why": "THE-555 round 4: Restores the pinned black photo scrim and the paperclip p-2/-ml-2 optical alignment while retaining shadcn Avatar, DropdownMenu and Button controls. Pin state classes are named so the touch-floor resolver can measure every state."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "8cc8ea7356aa93f48dc0198c507db2a8306a0c14abd1c9a66ac5d9ccf266df0e",
+      "why": "THE-555 round 4: The mobile shadcn navigation now inherits fixed positioning, padding, safe-area inset and hide-on-scroll translation from MainApp, preventing a second independently positioned bottom bar. Existing Lucide icons and 44px tab floors remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "23bcba33a53289ecf355a57b8e5e39fe64e6110332993633a4eadaaa10c4b932",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-346.six-defects.layout.test.tsx",
+      "digest": "3bccab65892f948ce67025d39ff0f6c775ed02a9dfd2bcf22dfc264cbc80a399",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-279.editor-toolbar.test.tsx",
+      "digest": "1bf1a800c806348ee7a97ff9291c5cbc69a60682b60385d446192c673023d8d0",
+      "why": "THE-555 round 4: Checks colour utilities at the utility boundary after parsing variants, so Lucide text-align icon identity classes are not mistaken for colours. A planted text-red-500 mutation still fails the unchanged themed-colour assertion."
+    },
+    {
+      "file": "src/components/__tests__/preauth-funnel.desktop-layout.test.tsx",
+      "digest": "8f0c4b27647b64595ed59f54c06156fa60d4ce68754f485f0b8db5f0edc6a110",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "1aaf4b66991f1e315858d5905897aef08792e1ab115ade9022b396ce93276f64",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/AdminCourseEditor.course-info.test.tsx",
+      "digest": "b53b8b1929ad8cfb0acd1d8ecdcc7b9949b5c0671d7f18e6d511419112c78e18",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "62a06390755affe0d844ebf6f4a4296106a1ee401c6be69bb7850de6b8fc9b20",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "b92c2dd239117f988bd3170c76e94c7dd1a3fe735d7721f2c0528c48a4eecb70",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "e1ee5e26caf53a9a0d72407189771e39649f1c5b0a04711dc7c36ac5caed4256",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "daad7f947ebeefa3853865e167105e5ba79be76ee22f6fffc5b48772bddfbb39",
+      "why": "THE-555 round 4: Appends the reviewed THE-555 AdminDashboard digest and its Lucide nav-icon/shadcn rationale under this guard's existing convention. Every earlier digest and reason is retained; no rule or function acceptance changes."
+    },
+    {
+      "file": "src/components/__tests__/EnterpriseContactModal.desktop-layout.test.tsx",
+      "digest": "a7928e7f10676013b46ad774bb12ce6709c8084eacf66838c92af187ec173a9a",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/EnterpriseContactModal.mobile-layer.json",
+      "digest": "dd29506b2eebd57b2e46aea78d356b3483b302e0588df3f359bdfda0ebf2b8e0",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/admin-data-screens-mobile.json",
+      "digest": "edc7c221073779cbc17de61ab77c967f43dac31c45922bcbede6bc21c643789a",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/preauth-funnel.json",
+      "digest": "f8e68e64bbef80162543a1c92d6399a371952370715c5e5e541ddf18015c3997",
+      "why": "THE-555 round 4: Records only lucide-react 0.453.0 to 0.577.0 SVG class and child changes with an explicit dependency reason. Source digests, application colour tokens and non-SVG layout records remain pinned; historical course-editor substitutions are retained."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "8d39e29d83e352aa701e3e653e59fcd07078b913c717a313f8f7f03f2733dc99",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.layout.test.tsx",
+      "digest": "5401582abd062e905b4d71ba030492cc81ef76ac0841ec00a94d6af9dc164687",
+      "why": "THE-555 round 4: Appends the lucide-react 0.453.0 to 0.577.0 Search glyph amendment while preserving the original geometry fixture, SVG root boxes and every non-SVG box. The SVG handle changes from 4.3 to 4.34 units and its child order changes; browser confirmation remains external."
+    },
+    {
+      "file": "src/components/course/__tests__/__fixtures__/the-311-lucide-0.577-geometry.json",
+      "digest": "3beaa0cb31923e0ded1c9fda0f552a7f49a50c97d2f77e66b3aa05661f6c86b4",
+      "why": "THE-555 round 4: Appends the lucide-react 0.453.0 to 0.577.0 Search glyph amendment while preserving the original geometry fixture, SVG root boxes and every non-SVG box. The SVG handle changes from 4.3 to 4.34 units and its child order changes; browser confirmation remains external."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.community-settings.test.tsx",
+      "digest": "8377fd789b145028ad8df98a575070a0253b44ed259892f4370718eec8bb4df5",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "98959de2c5caf52f16be95aede2e4a7dff0beeb057de0e7ace7401784d0fd614",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "b4944d8e899a578523581eb75f61516b47cf73d97c05121582eafe88579b2cb4",
+      "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
     }
   ]
 }

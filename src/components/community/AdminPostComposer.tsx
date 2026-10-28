@@ -1,5 +1,8 @@
 "use client";
 import { Button } from '@/components/ui/button';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const COMPOSER_PIN_BUTTON = 'min-h-11 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors data-[pinned=true]:bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] data-[pinned=true]:text-gold data-[pinned=false]:text-muted data-[pinned=false]:hover:bg-surface-sunken';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import React from 'react';
@@ -99,7 +102,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                     type="button"
                     onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
                     aria-label={`Remove image ${i + 1}`}
-                    className="min-h-11 min-w-11 absolute top-1 right-1 flex items-center justify-center rounded-full bg-surface-raised text-strong hover:bg-surface-sunken transition-colors"
+                    className="min-h-11 min-w-11 absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                   >
                     <X size={12} />
                   </Button>
@@ -163,7 +166,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
               {composerMode === 'post' && (
                 <div ref={attachMenuRef}>
                   <DropdownMenu open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
-                    <DropdownMenuTrigger aria-label="Add attachment" className="min-h-11 min-w-11 -ml-2 rounded-full text-muted hover:bg-surface-sunken hover:text-gold"><Paperclip size={18} /></DropdownMenuTrigger>
+                    <DropdownMenuTrigger aria-label="Add attachment" className="p-2 -ml-2 text-muted hover:bg-surface-sunken hover:text-gold rounded-full min-h-11 min-w-11"><Paperclip size={18} /></DropdownMenuTrigger>
                     <DropdownMenuContent side="top" align="start" className="min-w-44">
                       <DropdownMenuItem className="min-h-11" disabled={!canPostImages} onClick={() => setShowImageAttach(true)}>{canPostImages ? 'Add image' : 'Max 3 images'}</DropdownMenuItem>
                       <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('blog')}>Add blog article</DropdownMenuItem>
@@ -180,7 +183,8 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                 onClick={() => setComposerPinned(p => !p)}
                 aria-pressed={composerPinned}
                 aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
+                data-pinned={composerPinned}
+                className={COMPOSER_PIN_BUTTON}
               >
                 <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
                 {composerPinned ? 'Pinned' : 'Pin'}

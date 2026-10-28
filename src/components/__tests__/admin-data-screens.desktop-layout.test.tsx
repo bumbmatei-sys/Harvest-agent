@@ -325,6 +325,9 @@ const SCREENS: { name: string; file: string; open: () => Promise<HTMLDivElement>
 //       src/components/__tests__/admin-data-screens.desktop-layout.test.tsx
 // ─────────────────────────────────────────────────────────────────────────────
 const FIXTURES = path.join(__dirname, '__fixtures__');
+// THE-555: re-recorded only package-owned SVG rows for lucide-react
+// 0.453.0 -> 0.577.0 (Building2, Sparkles, Search, Upload and Trash2).
+// Non-SVG rows, source baselines, colour tokens and measurements are unchanged.
 const FIXTURE = path.join(FIXTURES, 'admin-data-screens-mobile.json');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 

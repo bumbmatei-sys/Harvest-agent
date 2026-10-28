@@ -33,7 +33,7 @@ export function MobileCommunityHeader({ name, logo, onSwitch, onSearch }: { name
 }
 
 export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive, onCommunities, onDiscover }: { onHome: () => void; onCommunities?: () => void; onDiscover?: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
-  return <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[100] flex border-t border-line bg-surface-raised px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+  return <nav aria-label="Mobile navigation" className="flex w-full lg:hidden">
     <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
     {onCommunities && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Communities" onClick={onCommunities}><NAV_ICONS.communities size={20} /></Button>}
     {onDiscover && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Discover" onClick={onDiscover}><NAV_ICONS.discover size={20} /></Button>}

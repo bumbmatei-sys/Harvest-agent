@@ -666,7 +666,8 @@ describe('no hex, rgb() or inline colour is introduced', () => {
       // comment "per #104 feedback", an issue number that was never a colour.
     ],
     home: [
-      'rgba(0,0,0,0.12)', // dropdown-menu elevation shadow
+      // THE-555: the custom attachment menu was replaced by shadcn DropdownMenu,
+      // whose elevation comes from theme tokens; no raw shadow literal remains.
       // THE-348 removed both '#147's here — see `literals` above. They were
       // the comments "(the #147 fix: ...)" and "mirrors the post path's #147
       // fix": issue numbers, never colours.

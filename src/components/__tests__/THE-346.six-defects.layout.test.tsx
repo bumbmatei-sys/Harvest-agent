@@ -241,12 +241,12 @@ const composerPill = discover(
 /** 4 · the news composer's avatar row and its action row. */
 const newsAvatarRow = discover(
   NEWS,
-  /<div className="(flex items-start gap-3)">\s*\n\s*<div className="w-9 h-9 rounded-full/,
+  /<div className="(flex items-start gap-3)">\s*\n\s*<Avatar className="size-9 shrink-0"/,
   'the news composer avatar row',
 );
 const newsAvatar = discover(
   NEWS,
-  /<div className="(w-9 h-9 rounded-full bg-surface-chip[^"]*)">/,
+  /<Avatar className="(size-9 shrink-0)"/,
   'the news composer avatar',
 );
 const newsActionRow = discover(
@@ -256,7 +256,7 @@ const newsActionRow = discover(
 );
 const newsClipBtn = discover(
   NEWS,
-  /className="(p-2 -ml-2 text-muted[^"]*)"/,
+  /<DropdownMenuTrigger[^>]*className="(p-2 -ml-2 text-muted[^"]*)"/,
   'the news composer paperclip',
 );
 
