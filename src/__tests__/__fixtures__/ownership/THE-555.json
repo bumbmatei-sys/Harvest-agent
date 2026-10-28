@@ -1200,6 +1200,16 @@
       "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
       "digest": "1b60c77c531d30abe73ef41f13f9b2a3a3e747c2ce213f1adb0e7648cfd382a0",
       "why": "THE-555 review F1 follow-up: Records the shared canCommunity predicate under this guard's existing convention. Preserves every earlier digest and the exact permission inventory; documents why Community setup follows the API permission."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "4e71e2ae8e394f4c290b45122b61625f2a5f2c4149397827555ff749af3c902b",
+      "why": "Merge of PR 554 a67942f (Bugbot: question type Select renders its label via a SelectValue render function, with a closed-trigger label test) into THE-555 settings editor with branding, gallery and pricing; no other change."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.test.tsx",
+      "digest": "f3eb390015739011f7fa260d9eb512f85fda51457b47be913685d77858ed86ca",
+      "why": "Merge of PR 554 a67942f (Bugbot: question type Select renders its label via a SelectValue render function, with a closed-trigger label test) into THE-555 settings editor with branding, gallery and pricing; no other change."
     }
   ]
 }
