@@ -84,7 +84,7 @@ vi.mock('firebase/firestore', () => {
     collection: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
     doc: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
     query: (c: any, ...a: unknown[]) => ({ __path: c?.__path, a }),
-    where: () => ({}), orderBy: () => ({}), limit: () => ({}),
+    where: () => ({}), orderBy: () => ({}), limit: () => ({}), documentId: () => '__name__',
     getDoc: async () => ({ exists: () => true, data: () => ({ displayName: 'Maria Bumb', role: 'user', tenantId: 'tenant-1' }) }),
     getDocs: async (q: any) => snapOf(String(q?.__path).includes('community_posts') ? posts : []),
     getCountFromServer: async () => ({ data: () => ({ count: 3 }) }),
@@ -437,7 +437,9 @@ describe('community step 1 pins', () => {
     const discoveryMergeDigests: Record<string, string> = {"MainApp.tsx": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d", "NewsTab.tsx": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1"};
     // THE-555 polish: fixed phone tabs, sticky header and safe-area content clearance.
     const polishDigests: Record<string, string> = { 'MainApp.tsx': 'c64d985698d594ff80fbf8370b407940b442ffd41995ab3eeb67cca7707aa78a' };
-    expect([polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // THE-555 completes the phone feed's document flow so the final card can scroll above the tabs.
+    const polishCompletionDigests: Record<string, string> = { 'MainApp.tsx': '312fbad342f1befa5768f2e2667303c8d467efb2cef60e72595a329f09d57b61' };
+    expect([polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {

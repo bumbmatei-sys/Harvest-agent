@@ -310,6 +310,61 @@
       "file": "src/components/community/MemberFeed.test.tsx",
       "digest": "0199648d85d2014ff49b2d1a7ac064032bce87e7ac856d9bf5de6bad5aa05cac",
       "why": "Updates the pin-preservation test to select the shared dropdown menu item by role; a planted unconditional isPinned write still makes the original assertion fail."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "312fbad342f1befa5768f2e2667303c8d467efb2cef60e72595a329f09d57b61",
+      "why": "Completes THE-555 phone shell polish with viewport-fixed tabs outside transformed ancestors, a sticky header, dynamic viewport height and scrollable feed content that reserves the full tab height and safe area."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "0ce913ae74c0442261dc7d7d3736f84c7f0e8e1fd0ab35ddd6836fdfa9fd4e98",
+      "why": "Records THE-555 phone tabs fixed to the viewport with safe-area padding and the shadcn profile sheet with member identity, icon actions and initial focus on the sheet title."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "ec7802bbdcfea44a08aa3dd1f6864db83f9745b8b2be6a07167301bda6abe5d9",
+      "why": "Records THE-555 profile coverage for member name, shadcn profile and dashboard icons, admin visibility and dashboard navigation while preserving existing switcher checks."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "0a42e0cde9e5e89aa44e084205a0247bd16eb389b606bd311a3d3632e2a3d4de",
+      "why": "Records THE-555 compact member and rating metadata, right-aligned Free badges, desktop header Join action and mobile-only Join bar with footer clearance."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "31e467d5a0a33b9dcdfb466f0a6353fbf9af908cce5da7e5362b49a23d7dc26f",
+      "why": "Records THE-555 wording coverage for member counts and compact accessible ratings, plus desktop and mobile Join placement and reserved mobile footer space."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.tsx",
+      "digest": "bddc4b494fe63bcdd34a5b446d95c75d841c36f622e2d863113d1abfe71fa350",
+      "why": "Records THE-555 capitalised Newest, Highest and Lowest labels in the shadcn Select while preserving the existing lowercase review API sort values."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.test.tsx",
+      "digest": "1cc468f938ac380fa0263731cb9ae8499d12652638c0947a2fd44dc15f9b0860",
+      "why": "Records THE-555 review sort coverage for all three capitalised labels and the unchanged lowercase API sorting values after selecting Highest and Lowest."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "8b535e60e5b21115dbf58c0780160df4fe4358a92a2efb87050e21bcae72574a",
+      "why": "Appends the final THE-555 MainApp digest without replacing prior pins and supplies documentId in the Firestore mock so the real AllNews feed renders and its existing mobile inventories execute."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "591be9478db33a297463598c65e9d9ebecb14d4ebc4b16fb709a41c1de248d7a",
+      "why": "Records THE-555 composed navigation class measurements for phone and legacy tablet roots, retaining inset, geometry, touch-target and overlay layering assertions."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "dd08e5f0aebcaa7ae05d8bc1f178070508fe9c90119214ac1e8a23239f15447f",
+      "why": "Mounts the real THE-555 MainApp phone navigation to check fixed tabs, sticky header, ancestor placement, scroll clearance and discovery navigation. Removing fixed positioning or reserved content padding makes the new check fail."
+    },
+    {
+      "file": "src/app/dev/community/page.tsx",
+      "digest": "99409f09f2d5a8d406c9746f5ed9df0a1dceb47d07ba8b6c5498e55ca06f34ef",
+      "why": "Keeps the THE-555 local mobile harness on the production shell scrolling model with a fixed-height viewport, sticky header and mock feed cards using the shared PostPresentation and shadcn components."
     }
   ]
 }

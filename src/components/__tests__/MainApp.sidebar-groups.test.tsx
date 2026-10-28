@@ -271,6 +271,36 @@ describe('a sidebar group with no visible items does not render', () => {
 
 // ─── 2. Home, exactly once ───────────────────────────────────────────────────
 describe('community navigation', () => {
+  it('anchors the real phone tabs outside the scrolling content and reserves their safe area', async () => {
+    await mount('church');
+    const nav = container.querySelector<HTMLElement>('nav[aria-label="Mobile navigation"]')!;
+    expect(nav).toBeTruthy();
+    expect(nav.classList.contains('fixed')).toBe(true);
+    expect(nav.classList.contains('bottom-0')).toBe(true);
+    expect(nav.classList.contains('pb-[calc(0.5rem+env(safe-area-inset-bottom))]')).toBe(true);
+    // A transformed ancestor makes fixed positioning relative to that ancestor.
+    for (let ancestor = nav.parentElement; ancestor && ancestor !== container; ancestor = ancestor.parentElement) {
+      expect([...ancestor.classList].some(token => /translate|transform/.test(token))).toBe(false);
+    }
+    const header = container.querySelector('[aria-label="Switch community"]')!.parentElement!.parentElement!;
+    expect(header.classList.contains('sticky')).toBe(true);
+    expect(header.classList.contains('top-0')).toBe(true);
+    expect(header.classList.contains('shrink-0')).toBe(true);
+    const feed = container.querySelector('[data-testid="news-tab"]')!;
+    expect(feed).toBeTruthy();
+    let content = feed.parentElement!;
+    while (!content.classList.contains('overflow-y-auto') && content.parentElement) content = content.parentElement;
+    expect(content.classList.contains('min-h-0')).toBe(true);
+    expect(content.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(content.contains(header)).toBe(false);
+    expect(content.contains(nav)).toBe(false);
+    const pane = feed.closest('[class*="max-[768px]:relative"]');
+    expect(pane?.classList.contains('max-[768px]:h-auto')).toBe(true);
+    await act(async () => { container.querySelector<HTMLElement>('[aria-label="Search communities"]')!.click(); });
+    expect(content.textContent).toContain('Discover communities');
+    expect(content.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+  });
+
   it('shows both sidebar entries and opens their views', async () => {
     await mount('church');
     const buttons = Array.from(container.querySelectorAll('button'));
