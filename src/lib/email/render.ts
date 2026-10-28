@@ -4,55 +4,62 @@ import sanitizeHtml from 'sanitize-html';
  * Email HTML. Pure, so the Preview dialog and the sender produce the same
  * markup. Email clients cannot read CSS variables, so the literal colours live
  * here and nowhere in the app UI.
+ *
+ * Since themes landed, the markup is driven by resolved `EmailThemeTokens`
+ * (themes.ts): colours, fonts with web-safe fallbacks, text size, header mode,
+ * layout, width, corners, spacing, buttons, dividers, quotes and footer all
+ * come from the tokens `resolveTheme()` hands back. A broadcast saved before
+ * themes carries only an `EmailDesign`; `tokensFromDesign()` maps its settings
+ * and `legacyPalette()` keeps its exact historic colours, quirks and all, so
+ * its output is byte-identical to what it rendered before this refactor. The
+ * legacy body is left untouched; theme bodies gain the block styling.
+ *
+ * Everything is table HTML with inline styles — no classes, no CSS variables,
+ * no web-font imports. Where a theme's own colours would fall below 4.5:1 the
+ * renderer substitutes a readable colour and reports it in `adjustments`,
+ * never silently and never in legacy output.
  */
 
-import { DEFAULT_EMAIL_DESIGN, readHexColor, type EmailAccent, type EmailDesign } from '@/lib/email/design';
+import { DEFAULT_EMAIL_DESIGN, type EmailAccent, type EmailDesign } from '@/lib/email/design';
+import { inkOn, mixHex, readableTextOn } from '@/lib/email/theme-contrast';
+import {
+  buttonPadding,
+  buttonRadius,
+  fontStack,
+  legacyPalette,
+  resolveTheme,
+  spacingScale,
+  textScale,
+  widthPx,
+  type CustomTheme,
+  type EmailThemeTokens,
+  type LegacyPalette,
+  type ThemeContrastAdjustment,
+  NAVY,
+  GOLD,
+  NAVY_600,
+  NIGHT_CARD,
+  NIGHT_PAGE,
+} from '@/lib/email/themes';
 
 export { DEFAULT_EMAIL_DESIGN };
 export type { EmailDesign, EmailAccent };
-
-/**
- * Email clients cannot read CSS variables, so the Harvest brand scale
- * (globals.css: --navy-900, --wheat-500, --navy-600) is spelled out here and
- * nowhere else in this feature. The app UI itself uses theme tokens only.
- */
-const NAVY = '#0C1526';
-const GOLD = '#C9963A';
-const NAVY_600 = '#274067';
-const ACCENT_HEX = Object.freeze({ navy: NAVY, gold: GOLD });
-
-/**
- * The colour an email draws its accent in. `custom` uses the hex the design
- * carries, and falls back to gold when that is missing or malformed. Anything
- * else, including a `harbor` saved by an older version, reads as navy.
- */
-export function accentHex(design: Pick<EmailDesign, 'accent' | 'customColor'>): string {
-  if (design.accent === 'gold') return GOLD;
-  if (design.accent === 'custom') return readHexColor(design.customColor) ?? GOLD;
-  return NAVY;
-}
-
-/** White or near-black, whichever reads on `hex`. */
-export function inkOn(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-  const lum = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return lum > 0.45 ? '#1A1A1A' : '#ffffff';
-}
-const NIGHT_PAGE = '#0C1526';
-const NIGHT_CARD = '#12203B';
+export { accentHex } from '@/lib/email/themes';
+/** White or near-black, whichever reads on `hex`. Re-exported for old callers. */
+export { inkOn } from '@/lib/email/theme-contrast';
 
 /**
  * The brand scale for the one page outside the app that has no stylesheet to
  * read the theme from: the public unsubscribe page. Same values as above and as
- * globals.css (--navy-*, --wheat-*); spelled here so no other file spells them.
+ * globals.css (--navy-*, --wheat-*); spelled in themes.ts so no other file
+ * spells them.
  */
 export const BRAND_PALETTE = Object.freeze({
   navy950: '#080F1D',
-  navy900: ACCENT_HEX.navy,
+  navy900: NAVY,
   navy800: NIGHT_CARD,
   navy600: NAVY_600,
-  gold500: ACCENT_HEX.gold,
+  gold500: GOLD,
   gold100: '#F5EDE0',
   gold50: '#FBF4E6',
 });
@@ -98,53 +105,176 @@ export interface RenderInput {
   readonly mailingAddress: string;
   readonly unsubscribeUrl: string;
   readonly dark?: boolean;
+  /** A preset or CustomTheme id. When absent the legacy `design` drives output. */
+  readonly themeId?: string | null;
+  /** The token snapshot saved on the broadcast. Wins over the theme's own tokens. */
+  readonly themeTokens?: EmailThemeTokens | null;
+  readonly customThemes?: readonly CustomTheme[];
+  /** Shared brand logo, drawn beside the name in the logo-name header modes. */
+  readonly logoUrl?: string | null;
 }
 
 function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-export function renderEmail(input: RenderInput): { html: string; text: string } {
-  const { design } = input;
-  const dark0 = input.dark === true;
-  const isNavy = design.accent !== 'gold' && design.accent !== 'custom';
-  const accent = dark0 && isNavy ? ACCENT_HEX.gold : accentHex(design);
-  const dark = input.dark === true;
-  const page = dark ? NIGHT_PAGE : design.theme === 'plain' ? '#ffffff' : '#FAF8F5';
-  const card = dark ? NIGHT_CARD : '#ffffff';
-  const ink = dark ? '#F5F5F5' : '#1A1A1A';
-  const quiet = dark ? '#a3a3a3' : '#6b6b6b';
-  const family = design.font === 'serif' ? 'Georgia, "Times New Roman", serif' : '-apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
-  const buttonBg = design.buttons === 'filled' ? (dark && isNavy ? '#F5F5F5' : accent) : 'transparent';
-  const buttonInk = design.buttons === 'filled' ? (dark && isNavy ? '#0C1526' : inkOn(accent)) : (dark && isNavy ? '#F5F5F5' : accent);
-  const buttonBorder = design.buttons === 'filled' ? buttonBg : buttonInk;
+/** What the assembly draws with. `LegacyPalette` plus the theme heading ink. */
+interface Palette extends LegacyPalette {
+  readonly heading: string;
+}
 
-  const filled = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input, { html: true });
-  const body = filled.replace(
-    /<a ([^>]*?)data-button="true"([^>]*)>/g,
-    `<a $1$2 style="display:inline-block;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;background:${buttonBg};color:${buttonInk};border:1.5px solid ${buttonBorder}">`,
+/**
+ * The palette a theme's own tokens produce. Below 4.5:1 the renderer walks the
+ * offending colour toward a readable one (`readableTextOn`) and records every
+ * substitution in `adjustments` so the preview can say out loud what changed —
+ * a fallback nobody is told about is a silent failure.
+ */
+function themePalette(tokens: EmailThemeTokens, dark: boolean): { palette: Palette; adjustments: ThemeContrastAdjustment[] } {
+  const adjustments: ThemeContrastAdjustment[] = [];
+  const page = dark ? NIGHT_PAGE : tokens.page;
+  const card = dark ? NIGHT_CARD : tokens.card;
+  // The historic navy-in-dark look: a navy accent previews its buttons in the
+  // night palette. A theme is free to pick a non-navy accent and keep it.
+  const navyNight = dark && tokens.accent === NAVY;
+  const keep = (pair: ThemeContrastAdjustment['pair'], preferred: string): string => {
+    const readable = readableTextOn(card, preferred);
+    if (readable !== preferred) adjustments.push({ pair, from: preferred, to: readable });
+    return readable;
+  };
+  const ink = dark ? '#F5F5F5' : keep('text', tokens.text);
+  const heading = dark ? '#FFFFFF' : keep('heading', tokens.heading);
+  const accent = navyNight ? GOLD : keep('accent', tokens.accent);
+  const quiet = dark ? '#a3a3a3' : readableTextOn(card, mixHex(tokens.text, card, 0.45));
+  const family = fontStack(tokens.bodyFont);
+
+  const filled = tokens.buttons.fill === 'filled';
+  let buttonBg = filled ? (navyNight ? '#F5F5F5' : tokens.accent) : 'transparent';
+  let buttonInk = filled ? (navyNight ? '#0C1526' : inkOn(buttonBg)) : (navyNight ? '#F5F5F5' : tokens.accent);
+  const readableButtonInk = readableTextOn(filled ? buttonBg : card, buttonInk);
+  if (readableButtonInk !== buttonInk) adjustments.push({ pair: 'button', from: buttonInk, to: readableButtonInk });
+  buttonInk = readableButtonInk;
+  const buttonBorder = filled ? buttonBg : buttonInk;
+  return { palette: { page, card, ink, heading, quiet, accent, family, buttonBg, buttonInk, buttonBorder }, adjustments };
+}
+
+/** The inline style on a `data-button` link. Legacy tokens reproduce the exact historic string. */
+function buttonStyle(tokens: EmailThemeTokens, palette: Palette): string {
+  const b = tokens.buttons;
+  const display = b.width === 'full' ? 'block' : 'inline-block';
+  const extra = b.width === 'full' ? `;width:100%${b.align === 'center' ? ';text-align:center' : ''}` : '';
+  return `display:${display};padding:${buttonPadding(b.size)};border-radius:${buttonRadius(b.shape)}px`
+    + `;text-decoration:none;font-weight:600;background:${palette.buttonBg};color:${palette.buttonInk}`
+    + `;border:1.5px solid ${palette.buttonBorder}${extra}`;
+}
+
+/**
+ * Give the body's blocks the theme's fonts, colours, divider and quote styles.
+ * Only theme bodies get this — a legacy body is left exactly as it always was.
+ * The sanitizer strips every style attribute and id/class upstream, so these
+ * replacements can never collide with author-supplied styles.
+ */
+function styleBodyBlocks(html: string, tokens: EmailThemeTokens, palette: Palette): string {
+  const headingStack = fontStack(tokens.headingFont);
+  const tint = mixHex(palette.card, palette.accent, 0.08);
+  const hairline = mixHex(palette.ink, palette.card, 0.8);
+  let out = html.replace(
+    /<h([1-3])([^>]*)>/g,
+    `<h$1$2 style="font-family:${headingStack};color:${palette.heading};line-height:1.25;margin:1em 0 0.4em">`,
   );
-  const header = design.header === 'none'
-    ? ''
-    : `<div style="padding:28px 32px 0;font-size:${design.theme === 'bold' ? 22 : 15}px;font-weight:700;color:${design.theme === 'bold' ? accent : ink}">${esc(input.churchName)}</div>`;
+  const quoteStyle = tokens.quotes === 'italic'
+    ? `margin:16px 0;padding-left:12px;border-left:none;font-style:italic;color:${palette.quiet}`
+    : tokens.quotes === 'box'
+      ? `margin:16px 0;padding:16px;background:${tint};border-left:3px solid ${palette.accent};color:${palette.ink}`
+      : `margin:16px 0;padding-left:16px;border-left:3px solid ${palette.accent};color:${palette.ink}`;
+  out = out.replace(/<blockquote([^>]*)>/g, `<blockquote$1 style="${quoteStyle}">`);
+  const hr = tokens.dividers === 'dots'
+    ? `<div style="text-align:center;padding:8px 0;font-size:13px;line-height:1;color:${palette.quiet}">&middot; &middot; &middot;</div>`
+    : tokens.dividers === 'space'
+      ? `<div style="height:18px;line-height:18px;font-size:0">&nbsp;</div>`
+      : `<hr style="border:none;border-top:1px solid ${hairline};margin:20px 0">`;
+  return out.replace(/<hr\s*\/?>/g, hr);
+}
+
+/**
+ * The header block above the body. `masthead` is the big name in the accent,
+ * `logo-name` the plain name line (with the shared logo when one is set), and
+ * `banner` a full-width image that falls back to the name line when the theme
+ * carries no banner URL. Legacy designs map to the first two and reproduce the
+ * historic name line byte for byte.
+ */
+function headerHtml(input: RenderInput, tokens: EmailThemeTokens, palette: Palette): string {
+  const pad = spacingScale(tokens.spacing).header;
+  const name = esc(input.churchName);
+  if (tokens.header === 'none') return '';
+  if (tokens.header === 'banner' && tokens.bannerUrl) {
+    return `<img src="${esc(tokens.bannerUrl)}" alt="${name}" width="${widthPx(tokens.width)}" style="display:block;width:100%;height:auto">`;
+  }
+  const size = tokens.header === 'masthead' ? 22 : 15;
+  const color = tokens.header === 'masthead' ? palette.accent : palette.ink;
+  const logo = input.logoUrl ? `<img src="${esc(input.logoUrl)}" alt="" style="display:block;height:30px;width:auto;margin:0 0 10px">` : '';
+  if (!logo) return `<div style="padding:${pad};font-size:${size}px;font-weight:700;color:${color}">${name}</div>`;
+  return `<div style="padding:${pad}">${logo}<div style="font-size:${size}px;font-weight:700;color:${color}">${name}</div></div>`;
+}
+
+/**
+ * Render one email. Pure: the Preview dialog and the Plunk send both land here
+ * and get the same markup. The output is table HTML with inline styles and
+ * web-safe font fallback stacks only.
+ *
+ * The tokens come from `resolveTheme()`: a theme snapshot/id when the broadcast
+ * has one, otherwise the legacy `EmailDesign` mapped through `tokensFromDesign`
+ * — whose palette keeps the historic output byte-identical. The contrast
+ * substitutions made for a theme are returned in `adjustments`; a legacy render
+ * reports none because it never changes what it always drew.
+ */
+export function renderEmail(input: RenderInput): { html: string; text: string; adjustments: readonly ThemeContrastAdjustment[] } {
+  const dark = input.dark === true;
+  const resolved = resolveTheme({
+    themeId: input.themeId,
+    themeTokens: input.themeTokens,
+    design: input.design,
+    customThemes: input.customThemes,
+    dark,
+  });
+  const legacy = resolved.source === 'legacy';
+  const tokens = resolved.tokens;
+  const { palette, adjustments } = legacy
+    ? {
+        palette: { ...legacyPalette(input.design, dark), heading: legacyPalette(input.design, dark).ink },
+        adjustments: [] as ThemeContrastAdjustment[],
+      }
+    : themePalette(tokens, dark);
+  const sp = spacingScale(tokens.spacing);
+  const scale = textScale(tokens.textSize);
+  const corners = tokens.layout === 'flat' ? 0 : tokens.corners;
+
+  let body = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input, { html: true });
+  if (!legacy) body = styleBodyBlocks(body, tokens, palette);
+  body = body.replace(
+    /<a ([^>]*?)data-button="true"([^>]*)>/g,
+    `<a $1$2 style="${buttonStyle(tokens, palette)}">`,
+  );
+  const header = headerHtml(input, tokens, palette);
   const pre = input.preheader.trim()
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(fillMergeTags(input.preheader, input))}</div>`
     : '';
-  const footerLines = [design.footerText.trim(), input.mailingAddress.trim()].filter(Boolean).map(esc).join('<br>');
+  const footerLines = [input.design.footerText.trim(), input.mailingAddress.trim()].filter(Boolean).map(esc).join('<br>');
+  const hairline = mixHex(palette.ink, palette.card, 0.8);
+  const footerExtra = tokens.footer === 'boxed' ? `;border-top:1px solid ${hairline};background:${mixHex(palette.card, palette.accent, 0.05)}` : '';
 
-  const html = `<!doctype html><html><body style="margin:0;background:${page};font-family:${family};color:${ink}">${pre}`
-    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${page}"><tr><td align="center" style="padding:24px 12px">`
-    + `<div style="max-width:560px;margin:0 auto;background:${card};border-radius:${design.theme === 'plain' ? 0 : 12}px;text-align:left">`
-    + `${header}<div style="padding:20px 32px 8px;font-size:16px;line-height:1.6">${body}</div>`
-    + `<div style="padding:16px 32px 28px;font-size:12px;line-height:1.5;color:${quiet}">${footerLines ? `${footerLines}<br>` : ''}`
-    + `<a href="${esc(input.unsubscribeUrl)}" style="color:${quiet}">Unsubscribe</a></div></div></td></tr></table></body></html>`;
+  const html = `<!doctype html><html><body style="margin:0;background:${palette.page};font-family:${palette.family};color:${palette.ink}">${pre}`
+    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${palette.page}"><tr><td align="center" style="padding:${sp.outer}">`
+    + `<div style="max-width:${widthPx(tokens.width)}px;margin:0 auto;background:${palette.card};border-radius:${corners}px;text-align:left">`
+    + `${header}<div style="padding:${sp.body};font-size:${scale.fontSize}px;line-height:${scale.lineHeight}">${body}</div>`
+    + `<div style="padding:${sp.footer};font-size:12px;line-height:1.5;color:${palette.quiet}${footerExtra}">${footerLines ? `${footerLines}<br>` : ''}`
+    + `<a href="${esc(input.unsubscribeUrl)}" style="color:${palette.quiet}">Unsubscribe</a></div></div></td></tr></table></body></html>`;
 
   const text = [
     htmlToText(fillMergeTags(input.bodyHtml, input)),
     '',
-    design.footerText.trim(),
+    input.design.footerText.trim(),
     input.mailingAddress.trim(),
     `Unsubscribe: ${input.unsubscribeUrl}`,
   ].filter((line, i, all) => line !== '' || all[i - 1] !== '').join('\n');
-  return { html, text };
+  return { html, text, adjustments };
 }

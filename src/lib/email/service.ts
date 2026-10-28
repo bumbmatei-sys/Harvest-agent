@@ -20,6 +20,7 @@ import {
 import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
 import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
 import type { EmailDesign } from '@/lib/email/design';
+import type { EmailThemeTokens } from '@/lib/email/themes';
 import { assertUnsubscribeConfigured, listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
 import { contentHash, type ClaimRequest, type ClaimResult, type Settlement } from '@/lib/email/claim';
 import { resolveLimits, validateLimits, type EmailLimits } from '@/lib/email/limits';
@@ -44,6 +45,14 @@ export interface Broadcast {
   readonly preheader: string;
   readonly bodyHtml: string;
   readonly design: EmailDesign;
+  /**
+   * The theme this broadcast renders with, when it has one. Absent on every
+   * broadcast saved before themes — those render from `design` alone, exactly
+   * as they always have.
+   */
+  readonly themeId?: string | null;
+  /** Resolved token snapshot saved at edit time, so preset edits cannot rewrite sent mail. */
+  readonly themeTokens?: EmailThemeTokens | null;
   readonly filters: readonly AudienceFilter[];
   readonly status: BroadcastStatus;
   readonly scheduledAt: string | null;
@@ -477,6 +486,8 @@ export function createEmailService(deps: {
           const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: broadcast.tenantId, email: person.email, broadcastId: broadcast.id }));
           const { html, text } = renderEmail({
             design: broadcast.design,
+            themeId: broadcast.themeId,
+            themeTokens: broadcast.themeTokens,
             bodyHtml: broadcast.bodyHtml,
             preheader: broadcast.preheader,
             churchName: tenant.name,
@@ -788,7 +799,8 @@ export function createEmailService(deps: {
       const provider = await deps.getProvider();
       const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: g.tenantId, email: to, broadcastId: broadcast.id }));
       const { html, text } = renderEmail({
-        design: broadcast.design, bodyHtml: broadcast.bodyHtml, preheader: broadcast.preheader, churchName: g.tenant.name,
+        design: broadcast.design, themeId: broadcast.themeId, themeTokens: broadcast.themeTokens,
+        bodyHtml: broadcast.bodyHtml, preheader: broadcast.preheader, churchName: g.tenant.name,
         senderName: settings.fromName, firstName: 'Alex', mailingAddress: settings.mailingAddress, unsubscribeUrl: url,
       });
       const result = await provider.send({
