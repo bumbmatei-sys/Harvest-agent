@@ -59,3 +59,39 @@ npx vitest run \
 Logs: `/tmp/555-r4-final-vitest-direct.log`, `/tmp/555-r4-browser-final.log`, `/tmp/555-r4-tsc-final.log`, `/tmp/555-r4-eslint-final.log`, `/tmp/555-r4-mutation-{colour,composer,nav}.log`. The local no-git harness was temporary and is not part of the repository changes.
 
 Workflow exception: after the combined run, an ownership-only rerun accidentally omitted the temporary no-git harness. Its guards invoked read-only git checks (revision/base discovery, diff and file listing); this violated the no-git instruction. No git write, index change or commit was performed. The final combined verification uses the blocking harness again.
+
+## Round 5 resume: rechecked fdd99eb against the ten r4 failures
+
+Read every `FAIL` assertion in `/workspace/grokpr/555-full-r4.log`. The partial
+round-5 source fixes are retained and their final digests are now recorded in
+THE-555's ownership register, alongside all earlier entries.
+
+| Failure | Rechecked result |
+| --- | --- |
+| THE-319 / the-299 AdminDashboard digest | Both pass. The accepted set includes r4's Lucide nav digest and the final digest for moving desktop-logo visibility to a wrapper while retaining the shadcn Button floor. The other AdminDashboard pinners also accept this state. |
+| MemberScreens MainApp / AdminPostComposer source digests | Both pass with appended final source pins. The r4 MainApp shared-nav-shell state is also retained. |
+| MemberScreens MainApp mobile classes / heights / colours | Recorded only MainApp in the existing THE-555 fixture: r4 restores the shared fixed safe-area shell, removes duplicate wrappers/tabs, and retains Skool tabs and Lucide/state classes; r5 adds the profile touch floor. These are intended shell changes, rather than lost content tokens. The other three fixture surfaces are byte-identical. |
+| THE-323 min-h-11 inventory | Passes with MainApp and AdminContentBar recorded. |
+| THE-356 four short Buttons | Rechecked all four call sites. MainApp's profile and AdminContentBar's breadcrumb use `min-h-11` below sm with their existing desktop sizing. AdminDashboard and AdminShellPreview logo Buttons have an explicit floor, with desktop-only visibility on a wrapper so an independently rendered Button is measurable. Chromium measurement remains pending outside this sandbox. |
+| THE-311 Search handle | The guard consults the Lucide appendix and first asserts every original child row before applying it. Its final 1024px y value is 106.98, matching the supplied Chromium log. The 1280/1440 pinned SVG roots share the same position, so their appendix coordinates receive the same 0.01px correction. The original geometry fixture, SVG roots and all non-SVG boxes remain unchanged. Chromium verification remains pending. |
+
+The partial MemberScreens edits also contained an unconditional fixture write in
+`beforeAll`. Removed it: a normal test run must compare with a fixed record.
+Regenerated the MainApp entry once through a temporary recorder, removed that
+recorder, and appended the new fixture hash. Planted class, height and colour
+drift then made all three MainApp rendering checks fail, while the fixture stayed
+byte-identical. Restored the production source after the mutation.
+
+Verification:
+
+- Related runnable suites: **20 files passed, 2,139 tests passed, 25 git-dependent assertions skipped** through the existing local blocking harness. No git commands were executed.
+- `tsc --noEmit`: clean before and after.
+- ESLint across the 16 reviewed TypeScript files: **zero errors, seven existing warnings** (five image warnings and two MainApp hook-dependency warnings). The stricter `--max-warnings 0` attempt fails on those warnings; the standard run exits successfully.
+- Parsed the five reviewed production components: no raw button/input/select/textarea/dialog controls or custom SVG elements. Existing shadcn controls and Lucide icons are retained.
+- Checked all five Lucide appendix substitutions against the original fixture rows, and checked the 1024px correction against the supplied log.
+- Both Chromium suites were attempted. The initial launch could not create a profile; retrying with writable XDG config/cache directories reached a sandbox `setsockopt: Operation not permitted` failure. Neither run reached layout measurements. Run THE-356.css-isolation-and-button-floor.layout and THE-311.course-palette.layout outside the sandbox; these are not reported as passing.
+
+Logs: `/tmp/555-r5-final-vitest.log`, `/tmp/555-r5-button-guards.log`,
+`/tmp/555-r5-tsc-{before,final}.log`, `/tmp/555-r5-eslint-final.log`,
+`/tmp/555-r5-mutation-member.log`, `/tmp/555-r5-browser.log`, and
+`/tmp/555-r5-browser-xdg.log`.

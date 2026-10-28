@@ -940,6 +940,91 @@
       "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
       "digest": "b4944d8e899a578523581eb75f61516b47cf73d97c05121582eafe88579b2cb4",
       "why": "THE-555 round 4: Updates strict source discovery to the shipped shadcn controls and shared navigation shell. Preserves safe-area, scroll translation, 44px targets and geometry assertions; removes obsolete separate-bar assumptions without using copied class strings."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2",
+      "why": "THE-555 round 5: keeps Mailbox and ToolCase navigation and all existing plan and permission gates; moves desktop-logo visibility to its wrapper so the shadcn Button retains its min-h-11 floor when measured independently."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "b1c0b69372231837e9a920c6d9b3e99b31fecc507c93314aecfcd37bfbd31120",
+      "why": "THE-555 round 5: preserves the shared safe-area navigation shell and Skool mobile tabs; gives the shadcn profile Button a 44px phone floor while keeping its desktop size."
+    },
+    {
+      "file": "src/components/admin-shell/AdminContentBar.tsx",
+      "digest": "ed1c2ce6d29d12911725bae426a67f3775a0bf5f3a7ae189779a98d5ff5c6b1e",
+      "why": "THE-555 round 5: gives the shadcn breadcrumb link Button min-h-11 below sm and hands density back from sm upward."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "0a3d7259269ec0e6d91cc34bbdcea2dd4113300add001cb2a439f79864e56576",
+      "why": "THE-555 round 5: moves the desktop logo visibility to its wrapper and gives the shadcn Button an explicit min-h-11 floor."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "f8cd6782a9aebe83c85c38ee24e0d01399f66dd0274948b7cafc984f9916ee81",
+      "why": "THE-555 round 5: appends final MainApp and AdminPostComposer digests and a reviewed MainApp-only fixture revision for the restored shared nav shell, Skool tabs, Lucide/state classes and profile touch floor. Removes unconditional fixture rewriting so assertions compare against fixed records; all three rendering guards reject planted drift."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "2c6aa1daf07baa1387a6d260e08d0f24eaa0d110afb63f9e0ba58fc520328b93",
+      "why": "THE-555 round 5: records only MainApp rendering after r4 restored the fixed safe-area shell, removed duplicate mobile nav wrappers, adopted Skool tabs and Lucide/state classes, and r5 added the profile touch floor. The other three surfaces remain byte-identical."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "7da63d1baa38e98c4229788074963b8419a8f4afcdaff6fc877dfcfb890fbcbd",
+      "why": "THE-555 round 5: records MainApp and AdminContentBar in the existing min-h-11 sweep; keeps the exact inventory assertion."
+    },
+    {
+      "file": "src/components/course/__tests__/__fixtures__/the-311-lucide-0.577-geometry.json",
+      "digest": "aaf73cdb50824706c2e559fd75e82c5ee452b4c9535b8d260fb3831d4b168308",
+      "why": "THE-555 round 5: corrects the Lucide Search handle y-coordinate to 106.98px at 1024px as measured in 555-full-r4.log. The 1280/1440 SVG roots share the same position and correction. Original geometry fixture and all non-SVG bounds remain pinned; browser verification is still required outside the sandbox."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "fe39688ca5f2422dc4aca2c92aff20f0dfea4f5ddb23f53f6575f08b67dbb188",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "bcf0099cf415f23c821d226518331435d3fde31244a1354432fbfb33e5da41ab",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "de850de5adc05c59a7faccdbc720a83f441e00ae89e79582336608bddb4b6a30",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "611ce5950459500c6cbef3eb102b7e2c434ad1335300920ba5462c8cd2e13c29",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "76209ccaaccd38605fe6139f45c870b4a79f36076b30a21ca6c231ff9e9376ed",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "5b130e50271f26bbe84f43c3a7aa2aebe6736d3646bb7c8b93c140bf29b66db8",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "55fc9e417ff77e7adb1dc6001094caf37ab9b14b13639a9cc4409478cce0b4ea",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "69c5e639865ba70328dcf50b53c6dbcfc79801dfb0923a1bd780e30a2b7aed46",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "0aae677850c90726c6948ccf97696cff53fe3e8979fc3e8266828394bf06baa7",
+      "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
     }
   ]
 }
