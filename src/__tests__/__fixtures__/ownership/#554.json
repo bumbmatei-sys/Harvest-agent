@@ -260,6 +260,101 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "a46c1752dc5e270f6571c03b57285c3556d86511a0806ae135b9f9945bdbb9ff",
       "why": "Round three appends the reviewed AllNews query correction to the existing source pins, preserving every previously accepted digest and layout comparison."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "19c94d53f9a2d97fc57e1b79c6eafc8bb7021f61e14a0027097e43c646b6c349",
+      "why": "PR 554 security review binds member post names and photos to the signed-in profile and forbids claimed levels; DM sends and preview updates now recheck the same admin-counterpart requirement as thread creation, including legacy threads."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb",
+      "why": "PR 554 security review aligns member post creation with the rules by using profile displayName or the auth name, profile photoURL or empty, and no member authorLevel."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e35b4009d697d0e2b62576fb00879ee8f4a4e5644a3cc7be7dbfee67cc05ba7b",
+      "why": "PR 554 appends the reviewed composer byline-binding digest while retaining all previous accepted sources and historical layout comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "548f51faa29c175c320fee8e759d7c4604fd5e4e40177f7283a609228cf96e71",
+      "why": "PR 554 records the intended extraction of both roster queries into the scoped loader, removing only their old inline user paths and appending the current stripped source pin."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "e94be91b6d7f8cd0ba06ea4f99726d1d58b83f63a95701ae2802550bcab34258",
+      "why": "PR 554 appends the final AdminCommunity digest after scoped roster loader extraction and preserves every previous accepted value in the nav-rail guard."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "9189a21f77c29a40b90393cb7c71b98c67e8b698658366f7e1d93b61d0ef807e",
+      "why": "PR 554 Bugbot follow-up recognises private-roster admins, tenant owners and persisted platform admins in every DM counterpart gate; profile email creates and changes are bound to Auth to prevent forged roster identity. At most five distinct documents are read per member send. Rules still require the founder go before deploying."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "ab65afaca28065955e4018224ef10d3d1482d6cab70dd4841c0445b20d3aa189",
+      "why": "PR 554 keeps the member composer eligibility API aligned with the rules: private admin roster, tenant role, ownership and platform identities all allow replies, while failed identity reads remain visible as 503 responses."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.test.ts",
+      "digest": "6e74c6cb461fd314f962908b7b0980cd3e24d8b153ff94b3e25863bf49439660",
+      "why": "PR 554 covers roster-only and platform counterparts, owner identity without a profile, denied member and foreign-role identities, and visible failures for each counterpart authority read."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "15203c95320213b7c3771ebb7ef89265be9f7aee63dbdf5470868017b111e620",
+      "why": "PR 554 preserves email spoofing denial by exercising the authenticated profile-write boundary before testing that the unprivileged counterpart cannot create threads, send messages or update previews."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "b26ee43547f133f9446ce2b388a15f25a60318895c67ea1251ec0598fc23e456",
+      "why": "PR 554 adds emulator regressions for roster-admin thread replies and preview updates in a batch, member-created admin threads, platform and owner counterparts, and denied member, missing-profile and cross-tenant counterparts."
+    },
+    {
+      "file": "tests/rules/users.rules.test.ts",
+      "digest": "2605df748b989f0aca45a977a7f0e1734bad9ad994a80df5d692032e297b1728",
+      "why": "PR 554 covers Auth-bound profile email creates and updates, both self and admin spoofing paths, Auth email resynchronisation and platform corrections; consent fixtures now carry matching authenticated emails."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "cb63b658ca5be4450cd9ab19baa1e7f6c33e114e315719ab8e2cef19f48e21c3",
+      "why": "PR 554 extends the existing parser-stripped rules guard to require private-roster counterpart membership and platform identity parity, plus authenticated profile-email writes, preserving all existing message authorization guards."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "6db7d67470a44885970a27e5e7e374324dcc5898b2cb07f7f3382e718df24ab1",
+      "why": "PR 554 also isolates private-only versus public-only roster counterparts in a separate tenant: private roster membership works with a different stored tenant, while the public roster grants no DM creation, message send or preview update."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "15543d056323404839d89442cba7dc80e9a4e190db162508d0072fc73389a93e",
+      "why": "PR 554 stale-email security fix removes all profile-email trust from DM counterpart identity, retaining only protected uid-keyed roles and tenant ownerId. Roster/platform callers still use their own Auth token email; future profile email binding stays intact. No data migration is required. Rules auto-deploy on merge; no deployment is performed here."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "84e2259a31c9b9412899ad3c093687cec285f1406fed2b698bde03a7ec86e5d5",
+      "why": "PR 554 replaces email-based counterpart pins with protected UID role and ownership checks and a prohibition on profile email identity. A separate guard preserves roster-only caller token authorization; both guards reject planted regressions."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "e469a0a6fcc04bdbad2b081f995af7af399193474a32967bacf6c20ab8aadb7a",
+      "why": "PR 554 seeds pre-existing spoofed owner, roster and platform emails without any profile write, and denies new threads, existing-thread sends, previews and batched sends from both members. This exercises stale data without requiring a production migration."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "52f7889b71ada40564bcad7f2cc6dc471b83345ae20689f1ee267cd044adb6b5",
+      "why": "PR 554 preserves roster-only and platform caller token-email sends while denying member replies to email-only counterparts. Protected tenant roles, platform roles and owner UID remain valid counterparts, including an owner without a user profile."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "fc3b219c53426d2017b1dd356563212f07909ba59659950521bf2fe221bc3283",
+      "why": "PR 554 aligns composer eligibility with the rules by removing client-written profile-email roster and platform identity. Only protected UID roles or tenant ownership enable member replies; failed required identity reads still surface as 503 errors."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.test.ts",
+      "digest": "30ac84d169178475c1d23af623574448984e785766f6b1290957541685ae6650",
+      "why": "PR 554 covers stale owner, roster and platform profile email denial for both matching and foreign profile tenants, preserves protected role and owner identity, and verifies that counterpart eligibility no longer reads the email roster."
     }
   ]
 }

@@ -48,17 +48,16 @@ const ADMIN_DASHBOARD = 'src/components/AdminDashboard.tsx';
  * not a permission.
  *
  * ⚠️ `firestore.rules` PUTS NO FIELD ALLOWLIST ON MESSAGE CREATION. The
- * `dmMessages` create rule asks three things — the caller belongs to the
- * tenant, the `senderId` is their own uid, and they are a participant of the
- * parent thread — and says nothing whatever about which OTHER fields the
+ * `dmMessages` create checks tenant membership, sender identity, participation
+ * and an admin counterpart. It does not allowlist the OTHER fields the
  * document may carry. A member writing through the Firebase SDK, the emulator
  * UI or a REST call may therefore include an `attachments` array, and the
- * rules will accept it. `channelMessages` create is the same shape for any
- * member of the channel.
+ * rules will accept it. `channelMessages` binds senderName/senderRole and
+ * requires channel membership or community permission, with no field allowlist.
  *
  * 🔴 CLOSING IT WOULD BE A RULES CHANGE, AND THIS TICKET DOES NOT MAKE ONE.
- * `firestore.rules` AUTO-DEPLOYS to production on merge and CI runs no
- * emulator tests against it; THE-313's one-line `servicePlans` rule turned 46
+ * `firestore.rules` AUTO-DEPLOYS to production on merge; THE-313's one-line
+ * `servicePlans` rule turned 46
  * files red and needed a second PR that changed nothing but pins. A field
  * allowlist on two create rules is a larger change than that, on the hottest
  * paths in the product, and it belongs in a PR that can be tested with the
@@ -109,12 +108,13 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
     return m![1].replace(/\s+/g, ' ').trim();
   };
 
-  it('dmMessages create asks WHO is writing, and never WHAT they write', () => {
+  it('dmMessages create checks participation and an admin counterpart without a payload allowlist', () => {
     const clause = createClause(ruleBlock('dmMessages'));
-    // The three things it does ask.
+    // Identity and thread eligibility remain enforced server-side.
     expect(clause, 'the tenant check is gone').toContain('belongsToTenant(tenantId)');
     expect(clause, 'the sender-identity check is gone').toContain('request.resource.data.senderId == request.auth.uid');
     expect(clause, 'the participant check is gone').toContain("data.get('participants', [])");
+    expect(clause, 'the admin-counterpart check is gone').toContain('dmHasAdminCounterpart(get(');
     // 🔴 And the thing it does NOT: any constraint on the payload's shape.
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
@@ -122,18 +122,56 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
       .not.toMatch(/attachments/);
   });
 
-  it('channelMessages create checks channel access without constraining the payload', () => {
+  it('DM counterpart checks use only protected UID roles and ownership, never profile email', () => {
+    const start = RULES.indexOf('function uidIsTenantAdmin(');
+    expect(start).toBeGreaterThan(-1);
+    const end = RULES.indexOf('\n    function ', start + 1);
+    expect(end).toBeGreaterThan(start);
+    const counterpart = RULES.slice(start, end);
+    expect(counterpart).toContain('/documents/users/$(uid)');
+    expect(counterpart).toContain('exists(path)');
+    expect(counterpart).toContain('isTenantOwner(uid, tenantId)');
+    expect(counterpart).toContain("get(path).data.get('role', 'user') == 'super_admin'");
+    expect(counterpart).toContain("get(path).data.get('tenantId', null) == tenantId");
+    expect(counterpart).toContain("in ['admin', 'church_admin']");
+    expect(counterpart).not.toMatch(/\bemail\b|tokenEmail|adminEmails|tenant_private|request\.auth|participantRoles/);
+  });
+
+  it('roster-only admin callers still use their authenticated token email for DM access', () => {
+    const roster = RULES.match(/function inTenantAdminEmails\(tenantId\)[\s\S]*?\n    }/);
+    expect(roster).not.toBeNull();
+    expect(roster![0]).toContain('/documents/tenant_private/$(tenantId)');
+    expect(roster![0]).toContain("tokenEmail() in get(/databases/$(database)/documents/tenant_private/$(tenantId)).data.get('adminEmails', [])");
+    const caller = RULES.match(/function isTenantAdmin\(tenantId\)[\s\S]*?\n    }/);
+    expect(caller).not.toBeNull();
+    expect(caller![0]).toContain('inTenantAdminEmails(tenantId)');
+    const dm = RULES.match(/function dmHasAdminCounterpart\(participants, tenantId\)[\s\S]*?\n    }/);
+    expect(dm).not.toBeNull();
+    expect(dm![0]).toContain('return isTenantAdmin(tenantId) ||');
+  });
+
+  it('future profile email writes remain bound to Auth', () => {
+    const users = ruleBlock('users');
+    expect(createClause(users)).toContain('request.resource.data.email == tokenEmail()');
+    const update = users.match(/allow update:([\s\S]*?);/);
+    expect(update).not.toBeNull();
+    expect(update![1]).toContain("!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email'])");
+    expect(update![1]).toContain("request.auth.uid == userId && request.resource.data.get('email', null) == tokenEmail()");
+  });
+
+  it('channelMessages create binds sender identity and checks membership without a field allowlist', () => {
     const clause = createClause(ruleBlock('channelMessages'));
     // PR 554 checks sender identity and permits community managers or channel
     // members; a limited admin role alone no longer grants posting access.
     expect(clause).toContain('belongsToTenant(tenantId)');
+    expect(clause).toContain('channelMemberAccess(get(');
+    expect(RULES).toContain("request.auth.uid in channel.get('members', [])");
     expect(clause).toContain("request.resource.data.get('senderId', '') == request.auth.uid");
     expect(clause).toContain("request.resource.data.get('senderName', '') ==");
     expect(clause).toContain("request.resource.data.get('senderRole', '') == 'user'");
     expect(clause).toContain("request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId)");
     expect(clause).toContain("(hasPermission('manageCommunity', tenantId) || channelMemberAccess(get(");
     expect(clause).toContain('$(request.resource.data.channelId)).data)');
-    expect(RULES).toContain("request.auth.uid in channel.get('members', [])");
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
   });

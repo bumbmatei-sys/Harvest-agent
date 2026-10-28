@@ -638,12 +638,14 @@ describe('no npm dependency was added', () => {
     expect([
       '1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2',
       '50d490d35bf3a2dbb72efce29dbf954ee53d913b906e932c130dc8bcf33f8c7a',
-      'a05233586eb8cdcc2b7356ee29dd0041b51167b39136ee221a05990c9390ce40', // THE-555: embla-carousel-react, no cn artefact
+      'a05233586eb8cdcc2b7356ee29dd0041b51167b39136ee221a05990c9390ce40',
+      '836df3b3e7200f43238c39260f861b44a3bd11edb90c7661d801a5521ccbecb4', // THE-555: approved lucide-react upgrade, Embla only new runtime dependency // THE-555: embla-carousel-react, no cn artefact
     ]).toContain(sha256(read('package.json')));
     expect([
       'da626030b980aab1bcbe9ec608c563ca92ceda7970f416ea4f4ed6eeb86b8b84',
       'fd0a9097e9f397d9a76d446c37acb68800f249e1e6d0497c099a337d4bf2ecc0',
-      '39ba0d4cf0d6017641e94616af6a7f562930e203ac09506355e67471369a5fbf', // THE-555: the three Embla packages
+      '39ba0d4cf0d6017641e94616af6a7f562930e203ac09506355e67471369a5fbf',
+      '1441f60c7db6d6ebf2c8e71a17077bdc92d3fae55d79a3b55ed184b97a5cec33', // THE-555: approved lucide-react upgrade, Embla only new runtime dependency // THE-555: the three Embla packages
     ]).toContain(sha256(read('package-lock.json')));
   });
 
@@ -676,6 +678,8 @@ describe('no npm dependency was added', () => {
  */
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
+    ['8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
+    ['1652123ee9029a5250645f5cb7725fa84b4c546102e5b7677d71369b86340a36', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 915d818 — the value THE-291 (#434) left and THE-294 accepts'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main before #434 — the value THE-276, THE-283 and THE-290 accept'],
     // 🔴 THE-326 — the Services nav entry. APPENDED, NEVER SUBSTITUTED: every

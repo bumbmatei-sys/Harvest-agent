@@ -1,4 +1,7 @@
 "use client";
+
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+import { Button } from '@/components/ui/button';
 import { communityBrandStyle } from '@/lib/community/branding';
 import './community/branding.css';
 import { authFetch } from '@/utils/auth-fetch';
@@ -42,8 +45,6 @@ import { CommunityEntryDialog } from './community/CommunityEntryDialog';
 import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
 import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
 import UserEvents from './UserEvents';
-import { CommunityIcon } from './icons/CommunityIcon';
-import { DiscoverIcon } from './icons/DiscoverIcon';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -666,7 +667,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
       visibility === 'desktop' ? 'hidden lg:flex' :
       'flex flex-col';
     return (
-      <button
+      <Button variant="ghost"
         key={id}
         onClick={onClick}
         className={`${visibilityClassName} items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
@@ -682,15 +683,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         title={isSidebarCollapsed ? label : undefined}
       >
         <Icon
-          {...(Icon === CommunityIcon || Icon === DiscoverIcon ? { active: isActive } : {})}
-          strokeWidth={Icon === CommunityIcon || Icon === DiscoverIcon ? 2 : isActive ? 2.5 : 2}
+          strokeWidth={isActive ? 2.5 : 2}
           className="w-6 h-6 lg:w-5 lg:h-5 shrink-0"
           style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         />
         <span className={`text-[10px] lg:text-[13px] lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
           {label}
         </span>
-      </button>
+      </Button>
     );
   };
 
@@ -762,11 +762,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   const logoSrc = community.settings.logoUrl || displayLogo;
 
   return (
-    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-dvh max-[768px]:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-dvh max-lg:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] max-[768px]:hidden transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] max-lg:hidden transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -786,7 +786,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           </div>
 
           {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
-          <div className="contents max-[768px]:hidden">{bottomTabs.map((tab) =>
+          <div className="contents max-lg:hidden">{bottomTabs.map((tab) =>
             renderNavButton(
               tab.id,
               tab.label,
@@ -798,8 +798,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           )}</div>
 
           <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
-            {renderNavButton('desktop-communities', 'Communities', CommunityIcon, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
-            {renderNavButton('desktop-discover', 'Discover', DiscoverIcon, effectiveBottomTab === 'discover', () => setActiveBottomTab('discover'), 'desktop')}
+            {renderNavButton('desktop-communities', 'Communities', NAV_ICONS.communities, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
+            {renderNavButton('desktop-discover', 'Discover', NAV_ICONS.discover, effectiveBottomTab === 'discover', () => setActiveBottomTab('discover'), 'desktop')}
           </div>
 
           {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
@@ -828,23 +828,23 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-5 mt-auto">
-            <button
+            <Button variant="ghost"
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
                {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
                {!isSidebarCollapsed && <span className="text-[13px] font-medium">Collapse</span>}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className={`hidden max-[768px]:block ${effectiveBottomTab === 'map' || isChatOpen ? 'max-[768px]:hidden' : ''}`}><MobileCommunityTabs homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
+      <div className={`hidden max-lg:block ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:hidden' : ''}`}><MobileCommunityTabs onCommunities={() => setActiveBottomTab('communities')} onDiscover={() => setActiveBottomTab('discover')} homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-dvh relative bg-surface overflow-hidden min-w-0">
-        <div className="sticky top-0 z-20 hidden shrink-0 max-[768px]:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
+        <div className="sticky top-0 z-20 hidden shrink-0 max-lg:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
         <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} name={currentUser?.displayName || 'Member'} photo={memberPhotoURL} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
         {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
@@ -875,7 +875,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                 So the data source is fixed here and the primitive adoption is
                 reported as its own ticket: same markup, same classes, different
                 FIELD. See hooks/useMemberPhoto.ts. */}
-            <button
+            <Button variant="ghost"
               onClick={() => setActiveBottomTab('profile')}
               className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
@@ -886,17 +886,17 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               ) : (
                 <span>{memberInitial(currentUser?.displayName)}</span>
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
         {effectiveBottomTab === 'home' && (
-          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-[768px]:hidden">
+          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-lg:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
-                <button
+                <Button variant="ghost"
                   key={tab.id}
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
@@ -909,7 +909,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   {effectiveTopTab === tab.id && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
                   )}
-                </button>
+                </Button>
               ))}
             </div>
             </DesktopContainer>
@@ -918,7 +918,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 min-h-0 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px] max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]'} lg:pb-0` : 'overflow-y-auto pb-24 max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))] lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 min-h-0 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px] max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]'} lg:pb-0` : 'overflow-y-auto pb-24 max-lg:pb-[calc(61px+env(safe-area-inset-bottom))] lg:pb-0'}`} onScroll={handleScroll}>
           {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData currentTenantId={tenantId} /> : effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
@@ -938,7 +938,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1]?.id ? 0 : 1, right: effectiveTopTab === topTabs[0]?.id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
-                  className="absolute w-full h-full p-4 space-y-6 max-[768px]:relative max-[768px]:h-auto max-[768px]:min-h-full lg:space-y-4"
+                  className="absolute w-full h-full p-4 space-y-6 max-lg:relative max-lg:h-auto max-lg:min-h-full lg:space-y-4"
                 >
                   {/* Content based on effectiveTopTab */}
                   {/* 🔴 `hasNewsFeed &&` is NOT redundant with `effectiveTopTab`.

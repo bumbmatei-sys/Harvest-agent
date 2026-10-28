@@ -352,11 +352,6 @@
       "why": "Mounts the real THE-555 MainApp phone navigation to check fixed tabs, sticky header, ancestor placement, scroll clearance and discovery navigation. Removing fixed positioning or reserved content padding makes the new check fail."
     },
     {
-      "file": "src/app/dev/community/page.tsx",
-      "digest": "99409f09f2d5a8d406c9746f5ed9df0a1dceb47d07ba8b6c5498e55ca06f34ef",
-      "why": "Keeps the THE-555 local mobile harness on the production shell scrolling model with a fixed-height viewport, sticky header and mock feed cards using the shared PostPresentation and shadcn components."
-    },
-    {
       "file": "src/components/AllNews.tsx",
       "digest": "4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca",
       "why": "THE-555 merge combines PR 554's newest-post ordering before the fifty-post cap, bounded comment activity and shared post presentation with THE-555 mobile post detail sheets; every earlier accepted digest is retained."
@@ -570,6 +565,226 @@
       "file": "src/components/ui/__tests__/__fixtures__/primitive-digests.json",
       "digest": "dab5330952911ac6e6fa13d2cf952896edd447fee70cfaed7d9a2205082b1cb8",
       "why": "THE-555 explicitly records the Carousel, Embla dependencies, review route or adopter inventory while retaining historic entries and unrelated guards."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "95a12d53c29cbd7e4307086048e695e56b2e244b2a30a794e3088628a45fc9de",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.layout.test.tsx",
+      "digest": "9e79dbce5a1bcc868182d8214f00a9505a618c36f92cd73612079c440173c581",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "c175174433c4fdd0618d9bb8f46f8f4932db01b8e8460728d2c5b28246715f37",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "ea95c5a751c8b1a1d4e9d51f92e6839e08e8657d9988633d37e61e1ea55f3115",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-282.course-cards-layout.test.tsx",
+      "digest": "0b2dfa2e8fb37b04a654e724173a9dd4a9cffdc3517f4808c4d5ecf4dc5119d1",
+      "why": "THE-555 guard reconciliation records its final Carousel and Embla inventory, touch-floor or mobile-shell harness update after preserving the historical assertions and accepted states."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "fa514e5b0ca6c2340ad5739882bc2bd3a2e27b3a20267f98a25838716b75adc2",
+      "why": "THE-555 retains the merged PR 554 UID-only DM counterpart rule: protected UID roles or tenant ownership identify the other admin; legacy profile emails and participantRoles grant nothing. No rule edited during this reconciliation."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "c73fa69b7e4f3fe92915802a99fb958f46a3fb054fea52c763855f5aa8f6d6f5",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/THE-362.guards.test.ts",
+      "digest": "2c34766cd4e42a7d2e45033c8673fa3017fa30d8fbd8d70cc4c7a1b838f70092",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "26fe75c034003933080364339ff39cd8619e953c2e0cdcdcfa53fca2899d54d4",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "1652123ee9029a5250645f5cb7725fa84b4c546102e5b7677d71369b86340a36",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "ede1abc8df1cbe194bd79e7944eaa090d56d9c79161d39933c4ea69771ebeced",
+      "why": "THE-555 records the merged PR 554 sender byline binding and bounded comment reads alongside the reviewed post presentation; both security and discovery changes are retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "b9176180d56b3e3935396ffa727af02fb948ad7f2cf5438820725c5da4fb6bea",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "83fe7ed80943eb9d66e7d37530db699dcf52d518ff53b56c3525e4543911c538",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "e8c2467792b44903f7a52aae5132d4b9ca1a2487e4ae32b0748a141842c52e2f",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "778d8b1e34268d0e8a399246a01f5f62ce352deed23d9e731e7bd498df247bf0",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "06b1970283ab0c53f7543f504b925f0f915a852480175a1cc27ad42eb9d806d6",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.orphan-signup.guards.test.ts",
+      "digest": "ada65101d2a8caabb29f001b17c4884f2758f5cd64db1c8b497f68ab31595f0c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "06b358783893173e83c6020b1915fe95ef9bea3dfeaebb092f137cdd192a535a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "17d1b3913c093205c4bdb2dd391dec3c60b778cc95e145d0c8e026bd1e5b526a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "5e93bf3111994d11d57b9392502179d75836d3a9938ed3a671baf7e9e33a5516",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "f5c9c2354b35f5d98638db6251069ef626ded753bd8bc284a725c135fe297eee",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "4a6ec24fd4d00ac805cade5d40facd2940c8effd84164730327eb9b516beaa9d",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "86fc0465b4370590111decf0a54c5f043c45b037f2718216d46fbf1d914606d8",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "bd8e1b7e190e04de2adc1d522789ba4ce60640877fdfda4a742ced48ca895b05",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "e45f5dcf2d8970233d1aaefed730bc962c90c55061eac571a4b447544b3dfbc9",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "338899f33b32a8a8dfd1469f1612e6ad5b11ff726ed269a57c0463bfd50be738",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "6001d556a5ac41bf8858a2e0d52066fb9a59b88fc4d5013805107a20190d733c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "601294bfc9fbb7ddd4ef014e3becd3bc8eb6040ff1cc1a5dbc04d3b171ed249e",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "05e1a6b5e9287072fec43886b50e2d6b215e0b882ed3ccc6535f1e3f55f0e125",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "f66298b13d0fc200d16904080e8bf89f38bfc7d3ee37043c0e36c08ff56b16d4",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.test.tsx",
+      "digest": "9f93252014c79713f429a8b1e4b7ac4e013f24816a0851961a887a5c22f75259",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "2ca57f28c218f6271140a48892c8810c732c4c700b0e9c74728c9186d5fa7269",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "a5dea2f868411cdb8e2ce733e28be7ebf1702bab6941a4e70ea084c82ec9d550",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.community-settings.test.tsx",
+      "digest": "6e6b2d6dcca7a9a90e51615355d541c08dd0bec8e4adeb93cd3241a63ab07afb",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4c7e81c7d8aee50947e25909402a02843b703dd4cb412573766533349d4ed308",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "a712015bce570cc12b7c3066dfd663e7ea995e32d9152908ad884431e4295c66",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "b1ec3b075df28c95302245fb786bf41bea56150f34d93c6e78fc0ded5e7b73ea",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminContentBar.tsx",
+      "digest": "0bc7534889874f15eca6b79b5fb4709125214e0cc247f9c1661e8c38dfe33dde",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/AdminShellPreview.tsx",
+      "digest": "d142125ad8d126256c87d37c4b81f200ce106ed0d8c0ed2a932dd62fb578a2bb",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "be6737ec6cb561ea09b6815ec60a3f7ba6652f60130a1a3fe336425fd3656995",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "77181161c8d04ce3e193670dbc95271e0a43b0a9f9572bcad9e275757080950c",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "f2e3392d2a8bb4defb6fba1ae16e8cea3a090da5cac95ea074bb75b6eb564a6a",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
+    },
+    {
+      "file": "src/components/layout/nav-icons.ts",
+      "digest": "c4a50f16d2a76ceb9e84260e725e1088075bca784bd600ee0fb1f784b13b1ec0",
+      "why": "THE-555 merge reconciliation preserves both parents and records the final shadcn controls, standard lucide icons, mobile shell or explicit guard append without replacing historical accepted states."
     }
   ]
 }

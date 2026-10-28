@@ -291,14 +291,14 @@ describe('community navigation', () => {
     let content = feed.parentElement!;
     while (!content.classList.contains('overflow-y-auto') && content.parentElement) content = content.parentElement;
     expect(content.classList.contains('min-h-0')).toBe(true);
-    expect(content.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(content.classList.contains('max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
     expect(content.contains(header)).toBe(false);
     expect(content.contains(nav)).toBe(false);
-    const pane = feed.closest('[class*="max-[768px]:relative"]');
-    expect(pane?.classList.contains('max-[768px]:h-auto')).toBe(true);
+    const pane = feed.closest('[class*="max-lg:relative"]');
+    expect(pane?.classList.contains('max-lg:h-auto')).toBe(true);
     await act(async () => { container.querySelector<HTMLElement>('[aria-label="Search communities"]')!.click(); });
     expect(content.textContent).toContain('Discover communities');
-    expect(content.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(content.classList.contains('max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
   });
 
   it('shows both sidebar entries and opens their views', async () => {

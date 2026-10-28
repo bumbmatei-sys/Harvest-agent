@@ -1,7 +1,9 @@
 'use client';
 
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, ExternalLink, Plus, Search, Users } from 'lucide-react';
+import { ChevronDown, ExternalLink, Plus, Search } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -71,7 +73,7 @@ export function AdminContentBar({
                       </BreadcrumbPage>
                     ) : crumb.onClick ? (
                       <BreadcrumbLink
-                        render={<button type="button" onClick={crumb.onClick} />}
+                        render={<Button variant="link" type="button" onClick={crumb.onClick} />}
                         className="cursor-pointer text-muted-foreground"
                       >
                         {crumb.label}
@@ -116,7 +118,7 @@ export function CommunityMenu({ onOpenDefault }: { onOpenDefault: () => void }) 
         data-community-menu
         className={cn(buttonVariants({ variant: 'secondary' }), 'h-8 min-h-[44px] sm:min-h-0')}
       >
-        <Users />
+        <NAV_ICONS.communities />
         Community
         <ChevronDown />
       </DropdownMenuTrigger>
@@ -124,7 +126,7 @@ export function CommunityMenu({ onOpenDefault }: { onOpenDefault: () => void }) 
         <DropdownMenuGroup>
           <DropdownMenuLabel>Your communities</DropdownMenuLabel>
           <DropdownMenuItem data-community-default onClick={onOpenDefault}>
-            <Users />
+            <NAV_ICONS.communities />
             Default community
             <ExternalLink className="ml-auto" />
           </DropdownMenuItem>

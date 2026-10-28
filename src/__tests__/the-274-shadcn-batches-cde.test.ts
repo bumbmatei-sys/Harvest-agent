@@ -903,6 +903,7 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/community/AdminPostComposer.tsx', ticket: 'THE-555', why: 'The admin composer adopts shared Textarea and ToggleGroup primitives for post text and mutually exclusive Post or Poll modes; shared menu items own the attachment picker.' },
   { file: 'src/components/community/MemberPostComposer.tsx', ticket: 'THE-999999', why: 'The member post composer uses the shared textarea primitive for an accessible short text entry field.' },
   { file: 'src/components/community/NewGroupDialog.tsx', ticket: 'THE-999999', why: 'The new group dialog uses the shared checkbox primitive for selecting members of an explicit group roster.' },
   { file: 'src/components/community/CommunityReviews.tsx', ticket: 'THE-555', why: 'Community reviews use the shared toggle group for accessible star selection when a member writes or edits a review.' },
@@ -1731,7 +1732,12 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
       .map(([k, v]) => `${k}@${v.version ?? ''}`)
       .sort();
     expect(rest).toHaveLength(LOCK_BEFORE_COUNT);
-    expect(sha256(rest.join('\n'))).toBe(LOCK_BEFORE_SHA);
+    // THE-555: the approved lucide version bump changes one existing row.
+    // Reverse exactly that bump to keep the original dependency-tree guard intact.
+    const lucide = rest.filter(row => row.startsWith('node_modules/lucide-react@'));
+    expect(lucide).toEqual(['node_modules/lucide-react@0.577.0']);
+    const originalVersions = rest.map(row => row === lucide[0] ? 'node_modules/lucide-react@0.453.0' : row);
+    expect(sha256(originalVersions.join('\n'))).toBe(LOCK_BEFORE_SHA);
   });
 });
 

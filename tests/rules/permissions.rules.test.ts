@@ -369,7 +369,7 @@ describe('member-flow regressions', () => {
   it('a member can still create a community post and a prayer request', async () => {
     const db = (await member()).firestore();
     await assertSucceeds(db.doc('community_posts/member-post').set({
-      tenantId: T, authorId: MEMBER_UID, content: 'hello', createdAt: 'now',
+      tenantId: T, authorId: MEMBER_UID, authorName: 'Member', content: 'hello', createdAt: 'now',
     }));
     await assertSucceeds(db.doc('prayer_requests/member-prayer').set({
       tenantId: T, authorId: MEMBER_UID, request: 'please pray',
@@ -459,10 +459,10 @@ describe('community messaging [manageCommunity]', () => {
   // in messaging-isolation.rules.test.ts.
   it('dmMessages: participant send + recipient read-receipt keep working; a manageCommunity admin CAN moderate', async () => {
     // Parent thread the member participates in (dmMessages inherit its participants).
-    await seedDoc(sub('directMessages/d1'), { participants: [MEMBER_UID, 'someone-else'], lastMessage: '' });
+    await seedDoc(sub('directMessages/d1'), { participants: [MEMBER_UID, FULL_ADMIN_UID], lastMessage: '' });
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(sub('dmMessages/dm-m1')).set({ dmId: 'd1', senderId: MEMBER_UID, content: 'hey', read: false }));
-    await seedDoc(sub('dmMessages/dm-in'), { dmId: 'd1', senderId: 'someone-else', content: 'yo', read: false });
+    await seedDoc(sub('dmMessages/dm-in'), { dmId: 'd1', senderId: FULL_ADMIN_UID, content: 'yo', read: false });
     await assertSucceeds(db.doc(sub('dmMessages/dm-in')).update({ read: true }));
     // A participant cannot edit message CONTENT (even one they received)
     await assertFails(db.doc(sub('dmMessages/dm-in')).update({ content: 'tampered' }));

@@ -46,8 +46,8 @@ describe('community settings in member navigation', () => {
     expect(header.classList.contains('top-0')).toBe(true);
     const feed = host.querySelector('[data-testid="news"]')!;
     const scroller = feed.closest('[class*="overflow-y-auto"]')!;
-    expect(scroller.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
-    expect(feed.closest('[class*="max-[768px]:relative"]')).toBeTruthy();
+    expect(scroller.classList.contains('max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(feed.closest('[class*="max-lg:relative"]')).toBeTruthy();
     await act(async () => root.unmount());
   });
   it('keeps the shell usable when settings fail', async () => {

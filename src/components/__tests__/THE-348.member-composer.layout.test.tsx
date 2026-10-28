@@ -126,7 +126,7 @@ function evalTemplate(tpl: string, vars: Record<string, unknown>): string {
 // THE-555 keeps the <=768px bottom nav in MobileCommunityTabs. Read the
 // parent's shipped visibility expression as well as mounting the real component.
 const MOBILE_NAV_TEMPLATE = (() => {
-  const match = MAIN_APP.match(/className=\{`(hidden max-\[768px\]:block[^`]*)`\}><MobileCommunityTabs/);
+  const match = MAIN_APP.match(/className=\{`(hidden max-lg:block[^`]*)`\}><MobileCommunityTabs/);
   if (!match) throw new Error('MainApp no longer mounts MobileCommunityTabs behind its visibility expression');
   return match[1];
 })();
@@ -378,7 +378,7 @@ const box = (el) => {
            paddingBottom: cs.paddingBottom, opacity: cs.opacity, visibility: cs.visibility };
 };
 const q = (s) => document.querySelector(s === '[data-shell-bottom-nav]'
-  ? (window.innerWidth <= 768 ? '[data-mobile-nav] nav' : '[data-desktop-nav]')
+  ? (window.innerWidth < 1024 ? '[data-mobile-nav] nav' : '[data-desktop-nav]')
   : s);
 const txt = (el) => (el ? (el.textContent || '').trim() : '');
 /** Click by dispatching the events Base UI listens for, in order. */

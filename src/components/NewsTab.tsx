@@ -354,8 +354,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         // displayName/photoURL are often blank; the real profile is on the doc).
         const userSnap = await getDoc(doc(db, 'users', user.uid));
         const userData = userSnap.exists() ? userSnap.data() : null;
-        const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
-        const authorPhoto = userData?.photoURL || user.photoURL || '';
+        // Match the member-create byline binding in firestore.rules.
+        const authorName = userData?.displayName || user.displayName || 'Member';
+        const authorPhoto = userData?.photoURL || '';
 
         const base: Record<string, unknown> = {
           type: isPoll ? 'poll' : 'post',

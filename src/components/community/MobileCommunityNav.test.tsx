@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultCommunitySettings } from '@/lib/community/settings';
 import { Newspaper } from 'lucide-react';
-import { CommunitySwitcher, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs } from './MobileCommunityNav';
+import { CommunitySwitcher, MobileCommunityTabs, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs } from './MobileCommunityNav';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const host = document.createElement('div');
@@ -12,6 +12,16 @@ const root = createRoot(host);
 afterEach(async () => { await act(async () => root.render(null)); });
 
 describe('mobile community navigation', () => {
+  it('opens Communities and Discover through standard lucide tabs', async () => {
+    const communities = vi.fn(), discover = vi.fn();
+    await act(async () => root.render(<MobileCommunityTabs homeActive onHome={() => {}} onCommunities={communities} onDiscover={discover} onNotifications={() => {}} onProfile={() => {}} initial="M" />));
+    const communityTab = host.querySelector<HTMLButtonElement>('[aria-label="Communities"]')!;
+    const discoverTab = host.querySelector<HTMLButtonElement>('[aria-label="Discover"]')!;
+    expect(communityTab.querySelector('.lucide-tool-case')).toBeTruthy();
+    expect(discoverTab.querySelector('.lucide-compass')).toBeTruthy();
+    await act(async () => { communityTab.click(); discoverTab.click(); });
+    expect(communities).toHaveBeenCalledOnce(); expect(discover).toHaveBeenCalledOnce();
+  });
   it('hides disabled sections', async () => {
     const modules = defaultCommunitySettings().modules; modules.map = false;
     const tabs = enabledMobileTabs(['news', 'map', 'events'].map(id => ({ id, label: id, icon: Newspaper, active: false, onClick: vi.fn() })), modules);

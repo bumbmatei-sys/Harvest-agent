@@ -1,7 +1,13 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import React from 'react';
 import Image from 'next/image';
 import { Paperclip, Pin, Send, X } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUpload } from '../ImageUpload';
 import { EmbedComposerChip, type PostEmbed, type EmbedType } from '../EmbedCard';
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
@@ -24,39 +30,21 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (
-            <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-3 w-fit">
-              <button
-                type="button"
-                onClick={() => setComposerMode('post')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Post
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Poll is mutually exclusive with images/embeds — clear them.
-                  setComposerMode('poll');
-                  setComposerImages([]);
-                  setShowImageAttach(false);
-                  setComposerEmbed(null);
-                  setAttachMenuOpen(false);
-                }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Poll
-              </button>
-            </div>
+            <ToggleGroup value={[composerMode]} onValueChange={values => {
+              const mode = values[values.length - 1];
+              if (mode === 'post') setComposerMode('post');
+              if (mode === 'poll') {
+                setComposerMode('poll'); setComposerImages([]); setShowImageAttach(false);
+                setComposerEmbed(null); setAttachMenuOpen(false);
+              }
+            }} className="mb-3 w-fit">
+              <ToggleGroupItem value="post" className="min-h-11">Post</ToggleGroupItem>
+              <ToggleGroupItem value="poll" className="min-h-11">Poll</ToggleGroupItem>
+            </ToggleGroup>
           )}
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
-              {user.photoURL ? (
-                <Image src={user.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                (user.displayName || 'Y').charAt(0)
-              )}
-            </div>
-            <textarea
+            <Avatar className="size-9 shrink-0"><AvatarImage src={user.photoURL || undefined} alt="You" referrerPolicy="no-referrer" /><AvatarFallback>{(user.displayName || 'Y').charAt(0)}</AvatarFallback></Avatar>
+            <Textarea
               value={composerText}
               onChange={(e) => setComposerText(e.target.value)}
               placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
@@ -70,33 +58,33 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
             <div className="space-y-2 mt-3 pl-12">
               {pollOptions.map((option, index) => (
                 <div key={option.id} className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={option.text}
                     onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
                     placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
+                    className="min-h-11 flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
                   />
                   {pollOptions.length > 2 && (
-                    <button
+                    <Button variant="ghost"
                       type="button"
                       onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
                       aria-label={`Remove option ${index + 1}`}
-                      className="p-2 text-faint hover:text-red-500 transition-colors"
+                      className="min-h-11 p-2 text-faint hover:text-destructive transition-colors"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
               {pollOptions.length < 5 && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setPollOptions(prev => [...prev, { id: Date.now().toString(), text: '' }])}
-                  className="text-sm text-gold font-medium hover:underline"
+                  className="min-h-11 text-sm text-gold font-medium hover:underline"
                 >
                   + Add option
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -107,14 +95,14 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
               {composerImages.map((url, i) => (
                 <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-surface-sunken border border-line">
                   <Image src={url} alt={`Attachment ${i + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
                     aria-label={`Remove image ${i + 1}`}
-                    className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                    className="min-h-11 min-w-11 absolute top-1 right-1 flex items-center justify-center rounded-full bg-surface-raised text-strong hover:bg-surface-sunken transition-colors"
                   >
                     <X size={12} />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -173,62 +161,21 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
             <div className="flex items-center gap-1">
               {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
               {composerMode === 'post' && (
-                <div className="relative" ref={attachMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setAttachMenuOpen(o => !o)}
-                    aria-label="Add attachment"
-                    aria-haspopup="menu"
-                    aria-expanded={attachMenuOpen}
-                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors"
-                  >
-                    <Paperclip size={18} />
-                  </button>
-                  {attachMenuOpen && (
-                    <div
-                      role="menu"
-                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={!canPostImages}
-                        onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {canPostImages ? 'Add image' : 'Max 3 images'}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add blog article
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add fundraising
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add event
-                      </button>
-                    </div>
-                  )}
+                <div ref={attachMenuRef}>
+                  <DropdownMenu open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
+                    <DropdownMenuTrigger aria-label="Add attachment" className="min-h-11 min-w-11 -ml-2 rounded-full text-muted hover:bg-surface-sunken hover:text-gold"><Paperclip size={18} /></DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start" className="min-w-44">
+                      <DropdownMenuItem className="min-h-11" disabled={!canPostImages} onClick={() => setShowImageAttach(true)}>{canPostImages ? 'Add image' : 'Max 3 images'}</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('blog')}>Add blog article</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('fundraising')}>Add fundraising</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('event')}>Add event</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
               {/* Pin-to-top toggle (admin). Writes `isPinned` — the field the feed sorts on. */}
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => setComposerPinned(p => !p)}
                 aria-pressed={composerPinned}
@@ -237,28 +184,28 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
               >
                 <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
                 {composerPinned ? 'Pinned' : 'Pin'}
-              </button>
+              </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="min-h-11 flex items-center gap-2">
               {editingPostId && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={resetComposer}
-                  className="px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
+                  className="min-h-11 px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
                 >
                   Cancel
-                </button>
+                </Button>
               )}
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={handleSubmitPost}
                 disabled={isPosting || !composerCanSubmit}
-                className="flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-11 flex items-center gap-2 px-5 py-1.5 bg-gold text-[var(--brand-foreground)] rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={16} />
                 {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

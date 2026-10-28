@@ -1408,6 +1408,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     "THE-345 - emitted by the `alert` primitive (Alert/AlertTitle/AlertDescription), not spelled by this ticket, in the same category as the `tabs` classes THE-308 documented above and the lucide-* glyph classes THE-313 and THE-317 documented before it. The founder, looking at a published event reading '$50 - Registration open': 'I should not be able to create paid events with stripe disabled. How are we gonna know if someone paid or not.' So the event form's Ticket Price input is gone behind PAID_EVENTS_ENABLED and an Alert stands where it was, telling the church that Harvest cannot collect payments AND that registration, the QR code, check-in, the waitlist, discount codes and the CSV export are all completely unaffected - a notice that said only the first would read as 'events are broken'. It mounts INSIDE the form, so it reaches the phone layer this baseline was recorded without. alert.tsx is unchanged and its digest is pinned in THE-332.nav-rail.test.tsx.";
 
   const ALLOWED_ADDITIONS: Record<string, string> = {
+    // THE-555 upgrades lucide-react: numeric icon aliases now also emit their canonical class.
+    'lucide-link-2': 'THE-555: canonical identifier emitted alongside lucide-link2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
+    'lucide-trash-2': 'THE-555: canonical identifier emitted alongside lucide-trash2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
+
     /* ─── THE-368 — the giving documentation link, APPENDED to the list below ──
        Two entries, both from ONE element: the money-flow link this ticket puts
        under the campaigns header. Added here rather than by re-recording

@@ -224,6 +224,11 @@ const FIXTURES = path.join(__dirname, '__fixtures__');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 const FIXTURE = path.join(FIXTURES, 'member-screens-mobile.json');
 const COMMUNITY_FIXTURE = path.join(FIXTURES, 'member-screens-community-mobile.json');
+// THE-555 intentionally changes the shell and shared controls; retain all prior fixtures.
+const POLISH_FIXTURE = path.join(FIXTURES, 'member-screens-THE-555-mobile.json');
+let POLISH_BASELINE: Baseline;
+const POLISH_SURFACES = ['NewsTab', 'MainApp', 'UserMessages', 'UserMessagesThread'] as const;
+const isPolishSurface = (name: string) => (POLISH_SURFACES as readonly string[]).includes(name);
 const COMMUNITY_SURFACES = ['NewsTab', 'MainApp', 'UserMessages', 'UserMessagesThread'] as const;
 const isCommunitySurface = (name: string) => (COMMUNITY_SURFACES as readonly string[]).includes(name);
 // The last tree before community step 1. Keep the original pre-PR revision above.
@@ -379,6 +384,7 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  POLISH_BASELINE = JSON.parse(readFileSync(POLISH_FIXTURE, 'utf8')) as Baseline;
   // PR 554's post cards change the rendered feed on these three surfaces.
   POST_CARD_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-post-cards-mobile.json'), 'utf8')) as Baseline;
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
@@ -394,6 +400,11 @@ beforeAll(async () => {
  * source comparisons below still run against the last pre-community tree.
  */
 describe('community step 1 pins', () => {
+  it('THE-555 records exactly the four reviewed member surfaces without rewriting prior fixtures', () => {
+    expect(Object.keys(POLISH_BASELINE)).toEqual([...POLISH_SURFACES]);
+    expect(createHash('sha256').update(readFileSync(POLISH_FIXTURE)).digest('hex')).toBe('b1ec3b075df28c95302245fb786bf41bea56150f34d93c6e78fc0ded5e7b73ea');
+  });
+
   it.each([
     ['NewsTab.tsx', '12f1ab6a48623eda537aff4f7de3d268be70200b4c62900f38ef2489fe43ab81'],
     ['MainApp.tsx', '7bdd8d894bae432a07abdc08867b1a08c18c542e869b854c8b203f09e369fe1f'],
@@ -433,13 +444,21 @@ describe('community step 1 pins', () => {
     const mergedDigests: Record<string, string> = { 'MainApp.tsx': '4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19', 'NewsTab.tsx': '54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659' };
     // PR 554 review round two bounds comment reads.
     const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
+    // PR 554 security review aligns the member composer with the rules' byline binding.
+    const bylineBinding: Record<string, string> = { 'NewsTab.tsx': '43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb' };
     // PR 555 merge retains the mobile shell and PR 554 bounded comment activity.
     const discoveryMergeDigests: Record<string, string> = {"MainApp.tsx": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d", "NewsTab.tsx": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1"};
     // THE-555 polish: fixed phone tabs, sticky header and safe-area content clearance.
     const polishDigests: Record<string, string> = { 'MainApp.tsx': 'c64d985698d594ff80fbf8370b407940b442ffd41995ab3eeb67cca7707aa78a' };
     // THE-555 completes the phone feed's document flow so the final card can scroll above the tabs.
     const polishCompletionDigests: Record<string, string> = { 'MainApp.tsx': '312fbad342f1befa5768f2e2667303c8d467efb2cef60e72595a329f09d57b61' };
-    expect([polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // THE-555 merge and founder polish: shadcn controls, standard icons and below-lg shell.
+    const finalPolishDigests: Record<string, string> = {"MainApp.tsx": "95a12d53c29cbd7e4307086048e695e56b2e244b2a30a794e3088628a45fc9de", "NewsTab.tsx": "ede1abc8df1cbe194bd79e7944eaa090d56d9c79161d39933c4ea69771ebeced", "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f", "community/GroupList.tsx": "4a6ec24fd4d00ac805cade5d40facd2940c8effd84164730327eb9b516beaa9d", "community/AdminPostComposer.tsx": "5e93bf3111994d11d57b9392502179d75836d3a9938ed3a671baf7e9e33a5516"};
+    // THE-555 gives image-removal controls a full touch target and uses surface tokens.
+    const composerControlsDigests: Record<string, string> = { 'community/AdminPostComposer.tsx': 'f66298b13d0fc200d16904080e8bf89f38bfc7d3ee37043c0e36c08ff56b16d4' };
+    // THE-555 shares the standard Lucide mapping with admin and mobile navigation.
+    const navigationIconDigests: Record<string, string> = { 'MainApp.tsx': 'a5dea2f868411cdb8e2ce733e28be7ebf1702bab6941a4e70ea084c82ec9d550' };
+    expect([navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -619,6 +638,10 @@ function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
 
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if (isPolishSurface(name)) {
+      expect(mobileLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].mobileLayer);
+      return;
+    }
     if (isPostCardSurface(name)) {
       expect(mobileLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].mobileLayer);
       return;
@@ -704,7 +727,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
         .filter((t) => t && !wasTokens.has(t));
-      const communityTokens = new Set(undoTHE295(COMMUNITY_FIDELITY_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const communityTokens = new Set(undoTHE295(POLISH_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const communityAdded = [...communityTokens].filter((t) => t && !wasTokens.has(t));
       expect(added.sort(), `${name} gained a class beyond the community pin`).toEqual(communityAdded.sort());
       for (const token of THE_348_ADDED) expect(added).toContain(token);
@@ -748,6 +771,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if (isPolishSurface(name)) {
+      expect(heightLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].heights);
+      return;
+    }
     if (isPostCardSurface(name)) {
       expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].heights);
       return;
@@ -1604,6 +1631,10 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if (isPolishSurface(name)) {
+      expect(colourTokens(SURFACES[name])).toEqual(POLISH_BASELINE[name].colours);
+      return;
+    }
     if (isPostCardSurface(name)) {
       expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(POST_CARD_BASELINE[name].colours);
       return;

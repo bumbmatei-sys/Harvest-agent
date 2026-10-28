@@ -1,5 +1,7 @@
 'use client';
 
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+
 import { useRef } from 'react';
 import { Bell, ChevronDown, Home, LayoutDashboard, MessageCircle, Search, UserRound } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,12 +32,14 @@ export function MobileCommunityHeader({ name, logo, onSwitch, onSearch }: { name
   </div>;
 }
 
-export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive }: { onHome: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
+export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive, onCommunities, onDiscover }: { onHome: () => void; onCommunities?: () => void; onDiscover?: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
   return <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[100] flex border-t border-line bg-surface-raised px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
-    {onChat && <Button variant="ghost" className="min-h-11 flex-1" aria-label="Messages" onClick={onChat}><MessageCircle size={20} /></Button>}
-    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Notification settings" onClick={onNotifications}><Bell size={20} /></Button>
-    <Button variant="ghost" className="min-h-11 flex-1" aria-label="Profile menu" onClick={onProfile}><Avatar className="size-8"><AvatarImage src={photo || undefined} alt="" /><AvatarFallback>{initial}</AvatarFallback></Avatar></Button>
+    <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
+    {onCommunities && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Communities" onClick={onCommunities}><NAV_ICONS.communities size={20} /></Button>}
+    {onDiscover && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Discover" onClick={onDiscover}><NAV_ICONS.discover size={20} /></Button>}
+    {onChat && <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Messages" onClick={onChat}><MessageCircle size={20} /></Button>}
+    <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Notification settings" onClick={onNotifications}><Bell size={20} /></Button>
+    <Button variant="ghost" className="min-h-11 min-w-0 flex-1 px-1" aria-label="Profile menu" onClick={onProfile}><Avatar className="size-8"><AvatarImage src={photo || undefined} alt="" /><AvatarFallback>{initial}</AvatarFallback></Avatar></Button>
   </nav>;
 }
 

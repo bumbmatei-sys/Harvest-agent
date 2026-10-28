@@ -876,6 +876,7 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c',
     // THE-555 merge retains PR 554's explicit tenant filters before picker caps.
     '4731b86b68aa60f38fe8d71b519121cb1582c9059d361179e55115a9e5b5144e',
+    // PR 554 extracts roster reads into the shared tenant-scoped loader.
     '10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and

@@ -808,6 +808,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/blog/BlogScheduleFields.tsx',
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
+      // THE-555: shadcn admin composer controls state their mobile touch floor.
+      'src/components/community/AdminPostComposer.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
@@ -1124,7 +1126,10 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
     // `alert` is an already-installed FILE in this repo, not a package.
     // Phase 1 is the approved exception: @tanstack/react-table, and nothing else.
     // The installed Base UI and carousel packages are recorded by the primitive inventory.
-    expect(Object.keys(pkg.dependencies)).toHaveLength(72);
+    // THE-555: main's 70 runtime dependencies plus the approved Carousel package.
+    expect(Object.keys(pkg.dependencies)).toHaveLength(70 + 1);
+    expect(pkg.dependencies['cn']).toBeUndefined();
+    expect(pkg.dependencies['lucide-react']).toBe('^0.577.0');
     expect(pkg.dependencies['@base-ui/react']).toBe('^1.5.0');
     expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');

@@ -19,8 +19,14 @@ export async function GET(request: NextRequest) {
       adminDb.collection('users').doc(other).get(), adminDb.collection('tenants').doc(tenantId).get(),
     ]);
     const data = person.data();
-    if (!person.exists) return NextResponse.json({ error: 'Could not check conversation' }, { status: 503 });
-    const isAdmin = !!data && ((data.tenantId === tenantId && ['admin', 'church_admin', 'super_admin'].includes(data.role)) || tenant.data()?.ownerId === other);
+    const isOwner = tenant.data()?.ownerId === other;
+    if (!person.exists && !isOwner) return NextResponse.json({ error: 'Could not check conversation' }, { status: 503 });
+    // Match the rules: legacy client-written profile emails cannot establish
+    // counterpart identity, even when they match a private roster or platform email.
+    const isAdmin = isOwner || !!data && (
+      data.role === 'super_admin' ||
+      (data.tenantId === tenantId && ['admin', 'church_admin'].includes(data.role))
+    );
     return NextResponse.json({ isAdmin });
   } catch {
     return NextResponse.json({ error: 'Could not check conversation' }, { status: 503 });

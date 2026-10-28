@@ -1,9 +1,12 @@
 import { act } from 'react';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommunitiesView, DiscoverView, CommunityAbout, filterListings, type Listing } from './DiscoveryViews';
-import { CommunityIcon } from '../icons/CommunityIcon';
-import { DiscoverIcon } from '../icons/DiscoverIcon';
+import { Compass, ToolCase, Wallpaper, Mailbox } from 'lucide-react';
+import { NAV_ICONS } from '@/components/layout/nav-icons';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const listings: Listing[] = [
@@ -15,6 +18,19 @@ document.body.appendChild(host);
 const root = createRoot(host);
 afterEach(async () => { await act(async () => root.render(null)); });
 describe('community views', () => {
+  it('shares only the founder-selected standard Lucide navigation icons', () => {
+    expect(NAV_ICONS).toEqual({ discover: Compass, communities: ToolCase, website: Wallpaper, newsletter: Mailbox });
+  });
+  it('uses shared controls throughout the community surfaces', () => {
+    const root = process.cwd();
+    const sources = (dir: string): string[] => readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap(entry => {
+      const file = `${dir}/${entry.name}`;
+      return entry.isDirectory() ? sources(file) : /\.tsx?$/.test(file) && !/\.test\./.test(file) ? [file] : [];
+    });
+    const files = [...sources('src/components/community'), ...sources('src/app/discover'), ...sources('src/app/api/community'), 'src/components/MainApp.tsx', 'src/components/AdminDashboard.tsx', 'src/components/admin-shell/AdminShellPreview.tsx'];
+    const nativeControl = new RegExp('<' + '(?:button|input|select|textarea|dialog)' + '(?:\\s|>)');
+    for (const file of files) expect(stripComments(readFileSync(path.join(root, file), 'utf8')), file).not.toMatch(nativeControl);
+  });
   it('renders public cards, filters them and links to the tenant', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: listings }} />));
     expect(host.textContent).toContain('12 members');
@@ -74,11 +90,11 @@ describe('community views', () => {
     await act(async () => root.render(<CommunityAbout listing={listings[0]} onBack={() => {}} />));
     const joins = [...host.querySelectorAll<HTMLAnchorElement>('a')].filter(link => link.textContent === 'Join Grace');
     expect(joins).toHaveLength(2);
-    const desktop = joins.find(link => link.parentElement?.classList.contains('sm:block'))!;
+    const desktop = joins.find(link => link.parentElement?.classList.contains('lg:block'))!;
     expect(desktop.parentElement?.classList.contains('hidden')).toBe(true);
     expect(desktop.parentElement?.parentElement?.querySelector('h2')?.textContent).toBe('Grace');
     const bar = joins.find(link => link.parentElement?.classList.contains('fixed'))!.parentElement!;
-    expect(bar.classList.contains('sm:hidden')).toBe(true);
+    expect(bar.classList.contains('lg:hidden')).toBe(true);
     expect(bar.classList.contains('bottom-[var(--community-bottom-nav-height,0px)]')).toBe(true);
     expect(host.querySelector('section')?.classList.contains('pb-[calc(77px+env(safe-area-inset-bottom))]')).toBe(true);
   });
@@ -90,22 +106,15 @@ describe('community views', () => {
     await act(async () => { buttons[0].click(); buttons[1].click(); });
     expect(enter).toHaveBeenCalledOnce(); expect(discover).toHaveBeenCalledOnce();
   });
-  it.each([CommunityIcon, DiscoverIcon])('renders scalable icons with an optional accent', async Icon => {
-    await act(async () => root.render(<Icon size={20} className="example" />));
+  it.each([ToolCase, Compass])('renders standard lucide navigation icons', async Icon => {
+    await act(async () => root.render(<Icon size={20} className="example" aria-hidden="true" />));
     const svg = host.querySelector('svg')!;
     expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(svg.getAttribute('width')).toBe('20');
     expect(svg.getAttribute('stroke')).toBe('currentColor');
     expect(svg.getAttribute('stroke-width')).toBe('2');
-    expect(svg.getAttribute('aria-hidden')).toBe('true');
-    expect(svg.getAttribute('class')).toBe('example');
-    expect(svg.querySelector('[fill-opacity]')).toBeNull();
-    await act(async () => root.render(<Icon active />));
-    expect(svg.querySelector('[fill-opacity="0.15"]')).toBeTruthy();
-  });
-  it('uses the tenant accent for the compass needle', async () => {
-    await act(async () => root.render(<DiscoverIcon />));
-    expect(host.querySelector('path[fill="var(--brand-color)"]')).toBeTruthy();
+    expect(svg.classList.contains('lucide')).toBe(true);
+    expect(svg.classList.contains('example')).toBe(true);
   });
 });
 

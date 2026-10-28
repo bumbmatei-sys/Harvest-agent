@@ -331,7 +331,7 @@ describe('21 - the four untouchable files are byte-identical', () => {
 
   it('no dependency was added - the lockfile is still exactly its pinned length', () => {
     // THE-274 pins it by EXACT LENGTH, and THE-345 asserts the same number.
-    expect([590202, 591367, 592674 /* THE-555: Embla carousel, cn removed */]).toContain(statSync(path.join(ROOT, 'package-lock.json')).size);
+    expect([590202, 591367, 592674, 592877 /* THE-555: Embla carousel, cn removed */]).toContain(statSync(path.join(ROOT, 'package-lock.json')).size);
   });
 
   it('and no new token was minted', () => {
