@@ -1656,7 +1656,7 @@ const AdminEvents: React.FC = () => {
           */}
           <aside className="hidden lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:gap-4">
             <div className="rounded-2xl border border-line bg-surface-raised p-2" data-events-mini-calendar>
-              <React.Suspense fallback={<Skeleton className="h-[260px] w-full" />}>
+              <React.Suspense fallback={<Skeleton className="h-64 w-full" />}>
                 <EventListCalendar
                   read={monthRead}
                   selected={selectedDay}
