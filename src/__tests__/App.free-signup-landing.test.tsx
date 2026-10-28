@@ -47,6 +47,7 @@ const state = vi.hoisted(() => ({
   userDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   tenantDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   authListeners: [] as Array<(u: unknown) => void>,
+  subscriptions: 0,
   /** Every tenant id the app looked up, in order. A super admin must look up none. */
   tenantLookups: [] as unknown[],
   userDocWait: null as Promise<void> | null,
@@ -56,6 +57,7 @@ vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (_auth: unknown, cb: (u: unknown) => void) => {
+    state.subscriptions++;
     state.authListeners.push(cb);
     Promise.resolve().then(() => cb(state.user));
     return () => {
@@ -114,7 +116,7 @@ const tenantCtx = vi.hoisted(() => ({
   error: null,
   isLoading: false,
   setTenantPlan: () => {},
-  tenantPlan: null,
+  tenantPlan: null as null | 'church' | 'free' | 'ministry',
 }));
 vi.mock('../contexts/TenantContext', () => ({
   TenantProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -170,7 +172,7 @@ const provisionedOwnerDoc = (over: Record<string, unknown> = {}) => ({
 /** A free tenant whose address was chosen at signup, so nothing is left to ask. */
 const freshFreeTenant = () => ({
   exists: true,
-  data: { name: 'Grace Community Church', setupCompleted: true },
+  data: { name: 'Grace Community Church', setupCompleted: true, subdomain: TENANT },
 });
 
 let container: HTMLDivElement;
@@ -221,6 +223,7 @@ beforeEach(() => {
   state.userDoc = null;
   state.tenantDoc = null;
   state.authListeners.length = 0;
+  state.subscriptions = 0;
   state.tenantLookups.length = 0;
   state.userDocWait = null;
   tenantCtx.tenantId = null;
@@ -231,7 +234,7 @@ beforeEach(() => {
     isAuthReady: false,
     currentTenant: null,
     currentTenantId: null,
-    tenantPlan: null,
+    tenantPlan: null as null | 'church' | 'free' | 'ministry',
     isSuperAdmin: false,
   });
   container = document.createElement('div');
@@ -386,7 +389,7 @@ describe('7 — the paid signup landing is unchanged', () => {
     state.userDoc = provisionedOwnerDoc({ plan: 'pro' });
     // setupCompleted true ⇒ not a just-provisioned church mid-confirmation, so
     // the THE-138 hold does not apply and the hop is the whole behaviour.
-    state.tenantDoc = { exists: true, data: { name: 'Grace', setupCompleted: true } };
+    state.tenantDoc = { exists: true, data: { name: 'Grace', setupCompleted: true, subdomain: TENANT } };
 
     mount();
     await flush();
@@ -456,6 +459,40 @@ describe('8 — the post-auth route order is unchanged', () => {
 
 
 describe('#557 Free account routing', () => {
+  it.each(['https://theharvest.app', 'http://localhost:3000', 'https://preview.vercel.app'])('keeps a hostless upgraded owner on %s with paid admin access', async (origin) => {
+    startAt(`${origin}/auth`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'church' });
+    state.tenantDoc = { exists: true, data: { plan: 'church', setupCompleted: true } };
+    mount();
+    await flush();
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
+    expect(useAppStore.getState().tenantPlan).toBe('church');
+    expect(useAppStore.getState().currentTenantId).toBe(TENANT);
+    expect(rendered('admin-dashboard')).toBe(true);
+    const subscriptions = state.subscriptions;
+    tenantCtx.tenantPlan = 'ministry';
+    tenantCtx.isLoading = true;
+    act(() => root!.render(<App />));
+    tenantCtx.isLoading = false;
+    act(() => root!.render(<App />));
+    await flush();
+    expect(state.subscriptions).toBe(subscriptions);
+    expect(hops).toEqual([]);
+    tenantCtx.tenantPlan = null;
+  });
+  it('keeps the tenant plan on a custom domain when the user has a different plan', async () => {
+    startAt('https://ministry.example/');
+    tenantCtx.tenantId = 'tenant';
+    tenantCtx.tenantPlan = 'ministry';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    expect(useAppStore.getState().tenantPlan).toBe('ministry');
+    tenantCtx.tenantPlan = null;
+  });
   it.each(['/auth', '/church-onboarding', '/admin', '/admin/crm'])('lands on the member app from %s', async (path) => {
     startAt(`${APEX_ORIGIN}${path}`);
     state.user = { uid: 'u1', email: 'owner@example.com' };

@@ -242,6 +242,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const tenantId = tenantScope.kind === 'tenant' ? tenantScope.tenantId : null;
   /** True where creating an account would orphan the person. Blocks the create. */
   const tenantUnresolved = tenantScope.kind === 'unresolved';
+  const hostTenantAllowsSignup = async (scope: AuthTenantResolution) => {
+    if (scope.kind !== 'tenant') return scope.kind === 'platform';
+    const snapshot = await getDoc(doc(db, 'tenants', scope.tenantId));
+    return snapshot.exists() && snapshot.data().plan !== 'free';
+  };
   const [isChurchSignup, setIsChurchSignup] = useState(false);
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
@@ -399,7 +404,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
        * — including one on a live custom domain — so it is not blocked here;
        * the create branch below refuses instead, and only the create.
        */
-      if (!isLogin && tenantUnresolved) {
+      if (!isLogin && (tenantUnresolved || !(await hostTenantAllowsSignup(tenantScope)))) {
         setSuccess('');
         setError(TENANT_UNRESOLVED_MESSAGE);
         setLoading(false);
@@ -467,7 +472,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
          * `writeUserDoc` refuses in the same words rather than creating the
          * orphan there instead.
          */
-        if (tenantUnresolved) {
+        if (tenantUnresolved || !(await hostTenantAllowsSignup(tenantScope))) {
           setSuccess('');
           setError(TENANT_UNRESOLVED_MESSAGE);
           return;
@@ -672,7 +677,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
          * any Firebase Auth call: no Auth user, no `users` doc, nothing to
          * clean up, and a sentence the person can act on.
          */
-        if (tenantUnresolved) {
+        if (tenantUnresolved || !(await hostTenantAllowsSignup(tenantScope))) {
           setError(TENANT_UNRESOLVED_MESSAGE);
           setLoading(false);
           return;

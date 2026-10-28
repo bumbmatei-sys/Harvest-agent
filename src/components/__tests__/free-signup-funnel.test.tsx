@@ -316,6 +316,16 @@ describe('a free signup never says thank you for your payment', () => {
     expect(text()).toContain('Account created');
   });
 
+  it('does not offer first-run subdomain setup to a hostless upgraded tenant', async () => {
+    mount(<OnboardingGate><div>{MEMBER_APP}</div></OnboardingGate>);
+    await signIn();
+    await pushUser({ tenantId: 'matei', role: 'admin', plan: 'church' });
+    await pushTenant('matei', { setupCompleted: false, plan: 'church' });
+    await flush();
+    expect(text()).toContain(MEMBER_APP);
+    expect(text()).not.toContain('Finish setting up your ministry');
+  });
+
   it('the confirmation screen itself says only what it was told to say', async () => {
     // The component's own contract, isolated from any caller: it cannot know
     // whether money moved and must not guess. Both renders below are the SAME

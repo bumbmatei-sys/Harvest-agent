@@ -11,8 +11,20 @@ describe('tenant host resolution', () => {
     get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ plan: 'free' }) });
     expect(await getTenantFromHost('grace.theharvest.app')).toBeNull();
   });
+  it('resolves a legacy tenant without plan or subdomain fields', async () => {
+    get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ name: 'Grace' }) });
+    expect(await getTenantFromHost('grace.theharvest.app')).toEqual({ id: 'grace', name: 'Grace' });
+  });
+  it('rejects a mismatched subdomain even without a plan', async () => {
+    get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ subdomain: 'other' }) });
+    expect(await getTenantFromHost('grace.theharvest.app')).toBeNull();
+  });
   it('resolves a paid tenant', async () => {
-    get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ plan: 'church' }) });
-    expect(await getTenantFromHost('grace.theharvest.app')).toEqual({ id: 'grace', plan: 'church' });
+    get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ plan: 'church', subdomain: 'grace' }) });
+    expect(await getTenantFromHost('grace.theharvest.app')).toEqual({ id: 'grace', plan: 'church', subdomain: 'grace' });
+  });
+  it.each([undefined, 'other'])('rejects a paid tenant with subdomain %s', async (subdomain) => {
+    get.mockResolvedValue({ exists: true, id: 'grace', data: () => ({ plan: 'church', subdomain }) });
+    expect(await getTenantFromHost('grace.theharvest.app')).toBeNull();
   });
 });

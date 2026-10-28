@@ -61,7 +61,7 @@ const {
     },
   })),
   setDoc: vi.fn(async () => {}),
-  getDocMock: vi.fn(async (): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> =>
+  getDocMock: vi.fn(async (_ref?: { __path: string }): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> =>
     ({ exists: () => false, data: () => ({}) })),
   updateDocMock: vi.fn(async () => {}),
   tenantCtx: {
@@ -182,7 +182,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
   clearCookies();
-  getDocMock.mockResolvedValue({ exists: () => false, data: () => ({}) });
+  getDocMock.mockImplementation(async (ref) => ref?.__path === 'tenants/kingdom-living'
+    ? { exists: () => true, data: () => ({ plan: 'church', subdomain: 'kingdom-living' }) }
+    : { exists: () => false, data: () => ({}) });
   fetchMock = vi.fn(async (url: string) => {
     if (typeof url === 'string' && url.includes(CAP_URL)) {
       return { ok: true, status: 200, json: async () => ({ canAccept: true }) };

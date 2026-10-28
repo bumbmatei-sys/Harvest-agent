@@ -130,8 +130,9 @@ describe('attaching a first subscription to a free tenant', () => {
     expect(r).toMatchObject({ outcome: 'attached', tenantId: 't1', plan: 'plus' });
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ plan: 'plus', subdomain: 't1' }),
+      expect.objectContaining({ plan: 'plus', setupCompleted: true }),
     );
+    expect(mockBatchUpdate.mock.calls[0][1]).not.toHaveProperty('subdomain');
   });
 
   it('records the identifiers and the owning processor in the same batch', async () => {

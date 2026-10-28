@@ -33,7 +33,7 @@ import path from 'node:path';
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { auth, createUser, signIn, signInWithPopupMock, setDoc, tenantCtx } = vi.hoisted(() => ({
+const { auth, createUser, signIn, signInWithPopupMock, setDoc, tenantCtx, tenantRead } = vi.hoisted(() => ({
   auth: { currentUser: null },
   createUser: vi.fn(async () => ({
     user: { uid: 'new-member-uid', email: 'newmember@church.org', getIdToken: async () => 'tok' },
@@ -41,6 +41,7 @@ const { auth, createUser, signIn, signInWithPopupMock, setDoc, tenantCtx } = vi.
   signIn: vi.fn(),
   signInWithPopupMock: vi.fn(),
   setDoc: vi.fn(async () => {}),
+  tenantRead: vi.fn(async (): Promise<{ exists: () => boolean; data: () => { plan: string } }> => ({ exists: () => true, data: () => ({ plan: 'church' }) })),
   // A church WAY past Individual's 150 accounts — the tenant the gate refuses.
   tenantCtx: {
     branding: {}, tenantId: 'over-cap-church', tenantName: 'Over Cap Church',
@@ -59,7 +60,7 @@ vi.mock('firebase/auth', () => ({
 vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   setDoc,
-  getDoc: vi.fn(async () => ({ exists: () => false, data: () => ({}) })),
+  getDoc: (ref: { __path: string }) => ref.__path.startsWith('tenants/') ? tenantRead() : Promise.resolve({ exists: () => false, data: () => ({}) }),
   updateDoc: vi.fn(async () => {}),
   serverTimestamp: () => ({ __serverTimestamp: true }),
 }));
@@ -159,6 +160,7 @@ const submitSignupForm = async () => {
 const screenText = () => (container.textContent ?? '').replace(/\s+/g, ' ');
 
 beforeEach(() => {
+  tenantRead.mockResolvedValue({ exists: () => true, data: () => ({ plan: 'church' }) });
   vi.clearAllMocks();
   sessionStorage.clear();
   setURL('https://over-cap-church.theharvest.app/auth?signup=1');
@@ -430,5 +432,17 @@ describe('the signup path and the admin CRM cap stay separate modules', () => {
   it('contact-capacity no longer claims signup is never blocked', () => {
     const src = readFileSync(path.join(SRC, 'utils/contact-capacity.ts'), 'utf8');
     expect(src).not.toMatch(/IT NEVER BLOCKS SIGNUP/);
+  });
+});
+
+
+describe('#557 host validation', () => {
+  it.each(['free', 'missing'])('does not create an account for a %s tenant host', async (plan) => {
+    tenantRead.mockResolvedValue({ exists: () => plan !== 'missing', data: () => ({ plan }) });
+    stubFetch({ body: { canAccept: true } });
+    await renderPage();
+    await submitSignupForm();
+    expect(createUser).not.toHaveBeenCalled();
+    expect(setDoc).not.toHaveBeenCalled();
   });
 });

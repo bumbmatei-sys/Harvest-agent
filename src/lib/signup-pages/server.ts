@@ -31,7 +31,14 @@ export async function authorizePage(request: NextRequest, pageId: string) {
   if (!snapshot.exists) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
   const page = snapshot.data()!;
   if (!validId(page.tenantId)) return NextResponse.json({ error: 'Invalid page data' }, { status: 503 });
-  if (page.ownerUid !== user.uid) {
+  const [currentUser, tenant] = await Promise.all([
+    adminDb.collection('users').doc(user.uid).get(),
+    adminDb.collection('tenants').doc(page.tenantId).get(),
+  ]);
+  if (!currentUser.exists || currentUser.data()?.tenantId !== page.tenantId) {
+    return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+  }
+  if (!tenant.exists || tenant.data()?.ownerId !== user.uid) {
     const permitted = await requireTenantPermission(request, page.tenantId, 'manageForms');
     if (permitted instanceof NextResponse) return permitted;
   }

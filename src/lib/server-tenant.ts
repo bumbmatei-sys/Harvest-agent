@@ -22,7 +22,7 @@ export async function getTenantFromHost(host: string): Promise<Tenant | null> {
 
     try {
       const snap = await adminDb.collection('tenants').doc(subdomain).get();
-      if (!snap.exists || snap.data()?.plan === 'free') return null;
+      if (!snap.exists || snap.data()?.plan === 'free' || ((snap.data()?.plan != null || snap.data()?.subdomain != null) && snap.data()?.subdomain !== subdomain)) return null;
       return { id: snap.id, ...snap.data() } as Tenant;
     } catch {
       return null;

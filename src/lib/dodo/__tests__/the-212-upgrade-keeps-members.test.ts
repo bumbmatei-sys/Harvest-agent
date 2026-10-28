@@ -183,8 +183,9 @@ describe('upgrading never removes or disables a member', () => {
     // keeps the 500 it had.
     const tenantWrite = docWrites.find((w) => w.op === 'batch.update');
     // #557 activates the existing Free identity without touching its roster.
-    expect(Object.keys(tenantWrite?.data as object).sort()).toEqual(['addons', 'plan', 'setupCompleted', 'subdomain', 'updatedAt']);
-    expect(tenantWrite?.data).toMatchObject({ setupCompleted: true, subdomain: 't1' });
+    expect(Object.keys(tenantWrite?.data as object).sort()).toEqual(['addons', 'plan', 'setupCompleted', 'updatedAt']);
+    expect(tenantWrite?.data).toMatchObject({ setupCompleted: true });
+    expect(tenantWrite?.data).not.toHaveProperty('subdomain');
     expect(docDeletes).toEqual([]);
   });
 

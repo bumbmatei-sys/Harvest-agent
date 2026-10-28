@@ -10,12 +10,18 @@ export async function GET(request: NextRequest) {
     if (user instanceof NextResponse) return user;
     const tenantId = request.nextUrl.searchParams.get('tenantId');
     if (tenantId !== null && !validId(tenantId)) return NextResponse.json({ error: 'Invalid tenant' }, { status: 400 });
-    if (tenantId !== null) {
-      const permitted = await requireTenantPermission(request, tenantId, 'manageForms');
+    const currentUser = await adminDb.collection('users').doc(user.uid).get();
+    const currentTenantId = currentUser.data()?.tenantId;
+    if (!currentUser.exists || !validId(currentTenantId) || (tenantId !== null && tenantId !== currentTenantId)) {
+      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+    }
+    const tenant = await adminDb.collection('tenants').doc(currentTenantId).get();
+    if (!tenant.exists || tenant.data()?.ownerId !== user.uid) {
+      const permitted = await requireTenantPermission(request, currentTenantId, 'manageForms');
       if (permitted instanceof NextResponse) return permitted;
     }
     const pages = await adminDb.collection('signup_pages').where(tenantId !== null ? 'tenantId' : 'ownerUid', '==', tenantId !== null ? tenantId : user.uid).get();
-    return NextResponse.json({ pages: pages.docs.map((doc) => ({ ...doc.data(), id: doc.id })) });
+    return NextResponse.json({ pages: pages.docs.filter((doc) => doc.data().tenantId === currentTenantId).map((doc) => ({ ...doc.data(), id: doc.id })) });
   } catch { return NextResponse.json({ error: 'Could not load pages' }, { status: 503 }); }
 }
 

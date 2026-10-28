@@ -654,13 +654,14 @@ describe('the handler reads the subscription out of the webhook envelope', () =>
 
 
 describe('existing tenant signup provisioning', () => {
-  it('upgrades a free tenant in place and activates its subdomain', async () => {
+  it('upgrades a free tenant in place without assigning a subdomain', async () => {
     db.current.store.set(`users/${OWNER_UID}`, { tenantId: 'free-123' });
     db.current.store.set('tenants/free-123', { plan: 'free', name: 'Original', config: { retained: true } });
     db.current.store.set('tenant_private/free-123', { adminEmails: [OWNER_EMAIL] });
     const result = await provisionTenantFromDodoSubscription(subscription());
     expect(result).toMatchObject({ outcome: 'created', tenantId: 'free-123', plan: 'ministry' });
-    expect(db.current.store.get('tenants/free-123')).toMatchObject({ plan: 'ministry', subdomain: 'free-123', config: { retained: true } });
+    expect(db.current.store.get('tenants/free-123')).toMatchObject({ plan: 'ministry', setupCompleted: true, config: { retained: true } });
+    expect(db.current.store.get('tenants/free-123')).not.toHaveProperty('subdomain');
     expect(db.current.store.get('tenant_private/free-123')).toMatchObject({ adminEmails: [OWNER_EMAIL], dodoSubscriptionId: 'sub_dodo_1' });
     expect([...db.current.store.keys()].filter((key: string) => key.startsWith('tenants/'))).toEqual(['tenants/free-123']);
   });

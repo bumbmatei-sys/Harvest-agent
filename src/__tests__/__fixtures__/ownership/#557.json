@@ -540,6 +540,136 @@
       "file": "src/__tests__/App.free-signup-landing.test.tsx",
       "digest": "4245fa893e8b354920a08ca51bc62ea0746e342ced66b697044c704becca390a",
       "why": "#557 preserves resolved unknown-plan admin access while enforcing known Free entitlements and testing the loading and routing behavior."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "2a92c75e45e1fa82c7bb444b6fa5c6e66e7dc62f23ea8cca752c645bfd2682fe",
+      "why": "#557 review fixes live tenant authorization and Free host isolation while preserving existing assertions and recorded digests."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "1d5ec257abe8761125bc859f35007a5f1d3de9fbdd0c02822d65739fe3e91657",
+      "why": "#557 review fixes live tenant authorization and Free host isolation while preserving existing assertions and recorded digests."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "53f5373c92585783ed3f832b46625775cc6b0b59b8f9ce68ec9b3432a1952e4d",
+      "why": "#557 review fixes live tenant authorization and Free host isolation while preserving existing assertions and recorded digests."
+    },
+    {
+      "file": "src/components/AuthPage.tsx",
+      "digest": "8a67ce73ad01986effdc07540f913e7d270931cd1707aacdb9de900d6c516852",
+      "why": "#557 review fixes live tenant authorization and Free host isolation while preserving existing assertions and recorded digests."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "09274eeab125caceafecb9c1e4aed99afe4e3e20c39884feba89a210e5b87b9a",
+      "why": "#557 review fixes live tenant authorization and Free host isolation while preserving existing assertions and recorded digests."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "bd744123459dbb5497fe7f7b79d7dae5ade7f42da99ad900f292d11ab5fca539",
+      "why": "#557 confines user plan fallback to the apex and admin hosts after tenant resolution while preserving tenant plans on custom domains."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "2885502d5df875f6af36b76dc6dcacbdd98532c09837b3f22bbe5038a4f2bd05",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "c3a1838f5859ec0fb09f358ccf5b716463babe78cda23ed18dd4962a22842ac7",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/app/api/tenants/finish-setup/route.ts",
+      "digest": "ca48f08b463dd7657f569f88a877d678b4c8e19c0ad3fcdad33b2bff5eef99ad",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/components/__tests__/free-signup-funnel.test.tsx",
+      "digest": "bf7f315399db82e2816db54fdb6bdcb1d8e1d7a22e7491d782fb9cc9cd977e4c",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "e14955c77d3b4830ec1caf65fffcaa0aa659bec0b2d045a72750d4c71bffad7d",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/__tests__/server-tenant-free.test.ts",
+      "digest": "05486dcf30c708469b6850c1cca6256c2e8ee9e6442573de0d4966703dc273de",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "7478a601e6819a036606931d98a519ed08f96d10cbcebbeed03e5e2e6eedbedc",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/first-subscription.test.ts",
+      "digest": "3a714df20f41387dc213021f8d1381c9af872478a15e91eaaf0e50890f031e16",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/the-212-upgrade-keeps-members.test.ts",
+      "digest": "270a076de23196f006658eb00b7e438432191e889d844973247286cd620af6fa",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/dodo/first-subscription.ts",
+      "digest": "b117ffbcd34c8ba97f3aae29bb056410cae74cd24d10cb0fcdcbf91f6c5b4c74",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/lib/server-tenant.ts",
+      "digest": "f9b5c5f19386205295339856804cad365ad5e193eb8b23767dac135cefe71500",
+      "why": "#557 keeps upgraded Free tenants hostless and verifies tenant routing while preserving prior guards."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "e666e4f1bdcd77967570c2161b3075ad8d68f2251e6605d0a92dbb1415fb1c95",
+      "why": "#557 validates tenant host labels while retaining platform alias and hostless upgrade behavior."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.google-signup-tenant.test.tsx",
+      "digest": "98d14457039c7f1adb8bc10fb45f9fcc6bdef20319bfc6abc1cd8ea300d662b1",
+      "why": "#557 supplies an existing paid tenant in the signup fixture while retaining all tenant resolution assertions."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "aaa4dfbcefe2fd57162fd16d132c7452412d8aeffe5e97f8ccee7a99a11cc395",
+      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
+    },
+    {
+      "file": "src/components/OnboardingGate.tsx",
+      "digest": "308a708d0234d7e86a72933f25ddb8ebfe8a905784c47b8c7b9c3b7f0e7387dc",
+      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
+    },
+    {
+      "file": "src/lib/server-tenant.ts",
+      "digest": "e2d3b69d6297a6815234ad69a8516cabccbb6845b5f6c3b84508b24f10e4b24a",
+      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
+    },
+    {
+      "file": "src/components/__tests__/THE-277.signups-split.test.tsx",
+      "digest": "47a006ece0c741915f160f849eaee859c41192506c9dbaa5c794583ce4ffbc0c",
+      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
+    },
+    {
+      "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
+      "digest": "68aaba1da83cfbbb32b8dc9e4181469d294762c62fd6ec20f5a6135f8d6740d3",
+      "why": "#557 preserves legacy paid onboarding and records the intended rules and tenant resolver changes."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "a9cc2ffaf6ec2a01ef9b619ce66b3822503b4f488eeb9f71d60c314d36f731f1",
+      "why": "#557 preserves legacy host resolution while rejecting Free and mismatched tenant hosts."
+    },
+    {
+      "file": "src/lib/__tests__/server-tenant-free.test.ts",
+      "digest": "6bb7e1d3527413eea1b73c5242ca3ee7751fbb126d99dbae401eb430b4d4cc00",
+      "why": "#557 preserves legacy host resolution while rejecting Free and mismatched tenant hosts."
     }
   ]
 }

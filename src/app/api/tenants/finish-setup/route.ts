@@ -81,6 +81,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ tenantId: oldId, alreadyCompleted: true });
     }
 
+    // A hostless tenant has no first-run subdomain to rename. Publishing a site
+    // will choose its address separately.
+    if (!tenantData.subdomain) {
+      await tenantRef.update({ setupCompleted: true, updatedAt: new Date().toISOString() });
+      return NextResponse.json({ tenantId: oldId });
+    }
+
     const body = await request.json().catch(() => ({}));
     const desired = normalizeSubdomain(body?.subdomain || '');
     const now = new Date().toISOString();

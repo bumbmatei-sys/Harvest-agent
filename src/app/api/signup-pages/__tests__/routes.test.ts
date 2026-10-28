@@ -26,7 +26,7 @@ beforeEach(() => {
   mocks.requireAuth.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
   mocks.requireTenantPermission.mockResolvedValue(NextResponse.json({ error: 'Denied' }, { status: 403 }));
   mocks.checkRateLimit.mockResolvedValue(null);
-  documents = { 'signup_pages/page': page, 'signup_handles/hello': { pageId: 'page' } };
+  documents = { 'users/owner': { tenantId: 'tenant' }, 'users/other': { tenantId: 'tenant' }, 'tenants/tenant': { ownerId: 'owner' }, 'signup_pages/page': page, 'signup_handles/hello': { pageId: 'page' } };
   writes = [];
   const ref = (path: string): any => ({ id: path.split('/').pop(), path, get: async () => ({ exists: !!documents[path], data: () => documents[path] }), collection: (name: string) => collection(`${path}/${name}`) });
   const collection = (path: string): any => ({ doc: (id = 'new') => ref(`${path}/${id}`), where: () => ({ get: async () => ({ docs: [{ id: 'page', data: () => page }] }) }), orderBy: () => ({ get: async () => ({ docs: [{ id: 'one', data: () => ({ createdAt: '2040', answers: { name: '=1, "x"' } }) }] }) }) });
@@ -42,6 +42,7 @@ describe('signup page routes', () => {
   });
   it('requires forms permission for a tenant-wide list', async () => {
     const req = new NextRequest('http://localhost/api/signup-pages?tenantId=tenant');
+    documents['tenants/tenant'] = { ownerId: 'another' };
     expect((await list(req)).status).toBe(403);
     mocks.requireTenantPermission.mockResolvedValueOnce({ uid: 'admin', tenantId: 'tenant' });
     expect((await list(req)).status).toBe(200);
@@ -82,6 +83,15 @@ describe('signup page routes', () => {
     expect((await submit(request('POST', {}))).status).toBe(429);
     mocks.rateLimiters.signupSubmit = null;
     expect((await submit(request('POST', {}))).status).toBe(503);
+  });
+  it('requires live membership and permission even for the page creator', async () => {
+    documents['tenants/tenant'] = { ownerId: 'someone-else' };
+    expect((await submissions(request('GET'), params)).status).toBe(403);
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner' });
+    expect((await submissions(request('GET'), params)).status).toBe(200);
+    documents['users/owner'] = { tenantId: 'other' };
+    expect((await (await list(request('GET'))).json()).pages).toEqual([]);
+    expect((await submissions(request('GET'), params)).status).toBe(403);
   });
   it('restricts submissions and exports and escapes spreadsheet formulas', async () => {
     expect((await submissions(request('GET'), params)).status).toBe(200);
