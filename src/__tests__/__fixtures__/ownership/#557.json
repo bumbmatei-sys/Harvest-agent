@@ -690,6 +690,21 @@
       "file": "src/contexts/TenantContext.tsx",
       "digest": "1310e7c1e3915c982fa616e85d24e707bbee504df9fa591103edeac885bde9d1",
       "why": "#557 fixes host-scoped admin routing and applies tenant host validation before signup, with regression coverage."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "031372f3094de8dd13ac925bc8d97f7c3ce93e5f18bfffc957999cd3a78add8d",
+      "why": "#557 scopes admin routing and member controls to the resolved host tenant, with regression coverage."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "1bb823002eae6f33b5dd9ebb6024c9c9341b9d1052b63e43a3cfc8e9de0d5458",
+      "why": "#557 scopes admin routing and member controls to the resolved host tenant, with regression coverage."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "1487d233479cb64b899c462e49df711221617aeb58e5e8ed710536eea7bd71e1",
+      "why": "#557 also asserts the Free member view has no Admin control while preserving paid owner and super-admin coverage."
     }
   ]
 }

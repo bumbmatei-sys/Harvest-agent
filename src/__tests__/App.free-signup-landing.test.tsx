@@ -90,7 +90,7 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('../components/AuthPage', () => ({ default: () => <div data-testid="auth-page" /> }));
-vi.mock('../components/MainApp', () => ({ default: () => <div data-testid="main-app" /> }));
+vi.mock('../components/MainApp', () => ({ default: ({ isAdminPreview }: { isAdminPreview: boolean }) => <div data-testid="main-app">{isAdminPreview && <button>Admin</button>}</div> }));
 vi.mock('../components/AffiliateDashboard', () => ({ default: () => <div data-testid="affiliate-dashboard" /> }));
 vi.mock('../components/Onboarding', () => ({ default: () => <div data-testid="member-onboarding" /> }));
 vi.mock('../components/ChurchOnboarding', () => ({ default: () => <div data-testid="church-onboarding" /> }));
@@ -228,6 +228,7 @@ beforeEach(() => {
   state.userDocWait = null;
   tenantCtx.tenantId = null;
   tenantCtx.isAdminDomain = false;
+  tenantCtx.tenantPlan = null;
   hops = [];
   useAppStore.setState({
     currentUser: null,
@@ -496,6 +497,39 @@ describe('#557 Free account routing', () => {
     expect(window.location.pathname).toBe(destination);
     tenantCtx.tenantPlan = null;
   });
+  it.each(['/auth', '/admin', '/admin/crm'])('denies a foreign admin on a paid host from %s', async (path) => {
+    startAt(`https://paid.theharvest.app${path}`);
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ tenantId: 'other', plan: 'church' });
+    mount();
+    await flush();
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('[data-testid="main-app"] button')).toBeNull();
+  });
+
+  it.each([
+    ['own tenant admin', 'owner@example.com', TENANT, PROVISIONED_TENANT_OWNER_ROLE],
+    ['super admin', SUPER_ADMIN_EMAILS[0], 'other', 'user'],
+  ])('allows %s on a paid host', async (_label, email, userTenant, role) => {
+    startAt('https://paid.theharvest.app/admin');
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email };
+    state.userDoc = provisionedOwnerDoc({ tenantId: userTenant, role });
+    mount();
+    await flush();
+    expect(rendered('admin-dashboard')).toBe(true);
+    act(() => {
+      window.history.pushState({}, '', '/');
+      sessionStorage.setItem('intentionalUserView', 'true');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await flush();
+    expect(container.querySelector('[data-testid="main-app"] button')?.textContent).toBe('Admin');
+  });
   it('keeps the tenant plan on a custom domain when the user has a different plan', async () => {
     startAt('https://ministry.example/');
     tenantCtx.tenantId = 'tenant';
@@ -518,6 +552,7 @@ describe('#557 Free account routing', () => {
     expect(rendered('main-app')).toBe(true);
     expect(useAppStore.getState().tenantPlan).toBe('free');
     expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('[data-testid="main-app"] button')).toBeNull();
   });
 
   it('shows loading until the user document resolves, then allows an admin with no plan', async () => {

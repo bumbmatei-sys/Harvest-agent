@@ -121,6 +121,9 @@ const renderLoading = () => (
 const RequireAdmin: React.FC<{ isAdmin: boolean; children: React.ReactElement }> = ({ isAdmin, children }) =>
   isAdmin ? children : <Navigate to="/" replace />;
 
+const isAdminForHost = (role: string, superAdmin: boolean, userTenant: string | null | undefined, hostTenant: string | null) =>
+  superAdmin || (isTenantAdminRole(role) && (!hostTenant || userTenant === hostTenant));
+
 /** Inner App component that uses the TenantContext + React Router. */
 const AppInner: React.FC = () => {
   useClaimsFreshness(); // Force-refresh token when claims change
@@ -335,8 +338,8 @@ const AppInner: React.FC = () => {
               // stays on the page they were on.
               const hasAdminRole = isTenantAdminRole(role) || isSuperAdminEmail(user?.email);
               const isFreeAccount = (resolvedTenantId ? resolvedTenantPlan : canonicalPlanId(data.plan)) === 'free';
-              const isHostAdmin = !resolvedTenantId || isSuperAdminEmail(user?.email) || (hasAdminRole && data.tenantId === resolvedTenantId);
-              const homeBase = !isFreeAccount && isHostAdmin && (isAdminDomain || hasAdminRole) ? '/admin' : '/';
+              const isHostAdmin = isAdminForHost(role, isSuperAdminEmail(user.email), data.tenantId, resolvedTenantId);
+              const homeBase = !isFreeAccount && isHostAdmin ? '/admin' : '/';
 
               // One-shot intent flag: when an admin taps "Go to User App", the admin
               // dashboard sets sessionStorage.intentionalUserView before navigating to
@@ -568,10 +571,7 @@ const AppInner: React.FC = () => {
     window.scrollTo(0, 0);
   }, [navigate]);
 
-  const isAdmin =
-    isTenantAdminRole(userRole) ||
-    isAdminDomain ||
-    isSuperAdminEmail(auth.currentUser?.email);
+  const isHostAdmin = isAdminForHost(userRole, storeIsSuperAdmin, userTenantId, tenantId);
 
   if (!isAuthReady || (tenantLoading && tenantId)) {
     return renderLoading();
@@ -583,7 +583,7 @@ const AppInner: React.FC = () => {
 
   const dashboardAllowed = !tenantPlan || getEffectiveFeatures(tenantPlan).adminDashboard;
   const adminElement = (
-    <RequireAdmin isAdmin={isAdmin && dashboardAllowed}>
+    <RequireAdmin isAdmin={isHostAdmin && dashboardAllowed}>
       <ErrorBoundary>
         <AdminDashboard onNavigate={handleNavigate} />
         {/* THE-255. The add-to-home-screen step, at the END of onboarding.
@@ -652,7 +652,7 @@ const AppInner: React.FC = () => {
                   Hiding the dashboard must not re-open that. */}
               {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
-                : <MainApp onNavigate={handleNavigate} isAdminPreview={isAdmin} accountTenantId={userTenantId} />}
+                : <MainApp onNavigate={handleNavigate} isAdminPreview={isHostAdmin && dashboardAllowed} accountTenantId={userTenantId} />}
               {/* THE-292 — the same prompt on the member surface. Coverage is a
                   TENANT SETTING, not a funnel property: `Onboarding` pushes its
                   location step only when `default_country`/`default_city` is in
