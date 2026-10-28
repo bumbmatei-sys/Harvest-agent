@@ -2581,7 +2581,15 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     // (recurrence, timeZone, registrationQuestions, openToAnyone) is written onto the SAME
     // `tenants/{id}/events/{id}` document this screen always wrote, and no price, fee or
     // checkout call moved.
-    strippedSha: '24d8de7c56a2d6410cfb69be55006fbd4aafa5c172f28cc1599168f65778582f',
+    //
+    // RE-RECORDED AGAIN by a colour-literal fix (28 Oct). Previous value kept here:
+    //   strippedSha:   24d8de7c56a2d6410cfb69be55006fbd4aafa5c172f28cc1599168f65778582f
+    // WHAT MOVED: the Registration Questions builder's "Add" button, added by THE-379,
+    // spelled its own `style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}` instead
+    // of the `bg-gold` class (which already resolves to `var(--brand-color)`) every other
+    // button on this screen uses. Swapped to `bg-gold`; no className count or line moved,
+    // and no price, fee or checkout call moved.
+    strippedSha: '355bde1e6dd10a404a8c8f5537f60b9366d62cffb0b46dc2b60c5698ed48e125',
     strippedLines: 1526,
   };
 

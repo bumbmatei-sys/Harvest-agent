@@ -956,6 +956,13 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        THE-332 pins this file for: every new field writes onto the same
        tenants/{id}/events/{id} document this screen always wrote. */
     'afe0952f1093453c0afccac0f5bc154ec9edd398df097cc07607b04ce45b2db0',
+    /* APPENDED BY a colour-literal fix, nothing above removed or rewritten.
+       The Registration Questions builder's 'Add' button spelled its own
+       `style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}` instead of
+       the `bg-gold` class the rest of this file's buttons use; swapped to
+       `bg-gold`, which already reads `var(--brand-color)`. NO NAV, TAB ID,
+       READ, WRITE OR PERMISSION GATE MOVED. */
+    '2b0e4f06072644399fd6cd283b3adb667a46a81f7843d7c49032ff1e13cf8351',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */

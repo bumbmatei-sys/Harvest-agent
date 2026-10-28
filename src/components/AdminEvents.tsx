@@ -1197,7 +1197,7 @@ const AdminEvents: React.FC = () => {
                         <div className="flex gap-2">
                           <button onClick={() => { setShowQuestionForm(false); setQuestionDraft(emptyQuestion); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
                           <button onClick={saveQuestionDraft} disabled={!questionDraft.label.trim()}
-                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-gold disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Add</button>
                         </div>
                       </div>
                     )}
