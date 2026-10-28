@@ -1027,11 +1027,6 @@
       "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
     },
     {
-      "file": "firestore.rules",
-      "digest": "9f0ae0f5906787dda1efb23857c260a7f320593b8f8e52daf9059fb546fb879b",
-      "why": "Records the automatic merge of PR 554 parent-tenant, exact-six-field and profile-bound comment creation rules with THE-555 public discovery and server-owned reviews. No rule was edited during conflict resolution; production deployment still requires the founder go."
-    },
-    {
       "file": "src/components/NewsTab.tsx",
       "digest": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
       "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 member feed presentation and controls; preserves every earlier source pin."
