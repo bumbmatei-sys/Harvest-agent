@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, it } from 'vitest';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
-import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
+import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
 
 const sub = (p: string) => `tenants/${TENANT_A}/${p}`;
 beforeAll(async () => {
@@ -67,9 +67,9 @@ describe('community access', () => {
   it('permits only plain short member posts while preserving rich admin posts and reactions', async () => {
     const m = (await member()).firestore();
     const admin = (await fullAdmin()).firestore();
-    const base = { tenantId: TENANT_A, authorId: MEMBER_UID, type: 'post', content: 'hello', imageUrl: '', imageUrls: [], isPinned: false };
+    const base = { tenantId: TENANT_A, authorId: MEMBER_UID, authorName: 'Member', type: 'post', content: 'hello', imageUrl: '', imageUrls: [], isPinned: false };
     await assertSucceeds(m.doc('community_posts/plain').set(base));
-    await assertSucceeds(m.doc('community_posts/legacy').set({ tenantId: TENANT_A, authorId: MEMBER_UID, content: 'legacy' }));
+    await assertSucceeds(m.doc('community_posts/legacy').set({ tenantId: TENANT_A, authorId: MEMBER_UID, authorName: 'Member', content: 'legacy' }));
     await assertSucceeds(m.doc('community_posts/legacy').update({ content: 'edited' }));
     await assertSucceeds(m.doc('community_posts/plain').update({ content: 'edited' }));
     for (const [key, value] of Object.entries({ imageUrl: 'https://example.com/a', imageUrls: ['a'], tags: ['x'], embed: { id: 'x' }, attachment: {}, pollOptions: [], eventDetails: {}, type: 'poll', content: 'x'.repeat(501), isPinned: true })) {
@@ -85,6 +85,41 @@ describe('community access', () => {
     await seedDoc('community_posts/event', { ...base, authorId: FULL_ADMIN_UID, type: 'event', eventDetails: { attendees: [] } });
     await assertSucceeds(m.doc('community_posts/event').update({ eventDetails: { attendees: [MEMBER_UID] } }));
   });
+  it('binds member post names and photos to their profile and forbids claimed levels', async () => {
+    await seedDoc('users/post-author', { role: 'user', tenantId: TENANT_A, displayName: 'Profile member', photoURL: 'https://example.com/member.jpg' });
+    const env = await getEnv();
+    const db = env.authenticatedContext('post-author', { tenantId: TENANT_A, name: 'Token member' }).firestore();
+    const base = { tenantId: TENANT_A, authorId: 'post-author', authorName: 'Profile member', content: 'hello' };
+    await assertSucceeds(db.doc('community_posts/profile-photo').set({ ...base, authorPhoto: 'https://example.com/member.jpg' }));
+    await assertSucceeds(db.doc('community_posts/profile-no-photo').set(base));
+    await assertSucceeds(db.doc('community_posts/profile-empty-photo').set({ ...base, authorPhoto: '' }));
+    await assertFails(db.doc('community_posts/forged-name').set({ ...base, authorName: 'Pastor' }));
+    await assertFails(db.doc('community_posts/stale-token-name').set({ ...base, authorName: 'Token member' }));
+    await assertFails(db.doc('community_posts/missing-name').set({ tenantId: TENANT_A, authorId: 'post-author', content: 'hello' }));
+    await assertFails(db.doc('community_posts/forged-photo').set({ ...base, authorPhoto: 'https://example.com/pastor.jpg' }));
+    for (const level of [0, 1, 99, 'admin', 'pastor']) {
+      await assertFails(db.doc(`community_posts/forged-level-${level}`).set({ ...base, authorLevel: level }));
+    }
+    await assertFails(db.doc('community_posts/profile-photo').update({ authorName: 'Pastor' }));
+    await assertFails(db.doc('community_posts/profile-photo').update({ authorPhoto: 'https://example.com/pastor.jpg' }));
+    await assertFails(db.doc('community_posts/profile-photo').update({ authorLevel: 99 }));
+  });
+  it('uses the auth name fallback for missing or empty profile names, then Member', async () => {
+    const env = await getEnv();
+    for (const [uid, profile] of [
+      ['post-no-profile', null],
+      ['post-empty-name', { displayName: '', name: 'Unbound legacy name' }],
+    ] as const) {
+      if (profile) await seedDoc(`users/${uid}`, { ...profile, role: 'user', tenantId: TENANT_A });
+      const db = env.authenticatedContext(uid, { tenantId: TENANT_A, name: 'Auth member' }).firestore();
+      const base = { tenantId: TENANT_A, authorId: uid, content: 'hello' };
+      await assertSucceeds(db.doc(`community_posts/${uid}`).set({ ...base, authorName: 'Auth member', authorPhoto: '' }));
+      await assertFails(db.doc(`community_posts/${uid}-spoof`).set({ ...base, authorName: 'Unbound legacy name' }));
+      await assertFails(db.doc(`community_posts/${uid}-photo`).set({ ...base, authorName: 'Auth member', authorPhoto: 'https://example.com/unbound.jpg' }));
+    }
+    const m = (await member()).firestore();
+    await assertSucceeds(m.doc('community_posts/no-names').set({ tenantId: TENANT_A, authorId: MEMBER_UID, authorName: 'Member', content: 'hello', authorPhoto: '' }));
+  });
   it('requires a real tenant admin as the other DM participant', async () => {
     const m = (await member()).firestore();
     const admin = (await fullAdmin()).firestore();
@@ -99,6 +134,35 @@ describe('community access', () => {
     await assertSucceeds(m.collection(sub('directMessages')).where('participants', 'array-contains', MEMBER_UID).get());
     await assertSucceeds(m.doc(sub('directMessages/legacy')).update({ lastMessage: 'hello' }));
     await assertSucceeds(m.doc(sub('dmMessages/legacy-reply')).set({ dmId: 'legacy', senderId: MEMBER_UID }));
+  });
+  it('blocks sends and previews in existing member-to-member threads, regardless of role labels', async () => {
+    const m = (await member()).firestore();
+    const other = (await member2()).firestore();
+    for (const [id, counterpart] of [['peer', MEMBER2_UID], ['foreign', ADMIN_B_UID], ['spoofed-email', 'spoofer']]) {
+      await seedDoc(sub(`directMessages/old-${id}`), { participants: [MEMBER_UID, counterpart], participantRoles: { [counterpart]: 'admin' }, lastMessage: 'old' });
+      await assertFails(m.doc(sub(`dmMessages/old-${id}`)).set({ dmId: `old-${id}`, senderId: MEMBER_UID, content: 'bypass' }));
+      await assertFails(m.doc(sub(`directMessages/old-${id}`)).update({ lastMessage: 'bypass', lastMessageAt: 2 }));
+    }
+    await assertFails(other.doc(sub('dmMessages/peer-reply')).set({ dmId: 'old-peer', senderId: MEMBER2_UID }));
+    await assertFails(other.doc(sub('directMessages/old-peer')).update({ lastMessage: 'reply' }));
+    // Historical threads remain readable, and recipients can acknowledge old messages.
+    await seedDoc(sub('dmMessages/old-peer-inbound'), { dmId: 'old-peer', senderId: MEMBER2_UID, read: false });
+    await assertSucceeds(m.doc(sub('dmMessages/old-peer-inbound')).get());
+    await assertSucceeds(m.doc(sub('dmMessages/old-peer-inbound')).update({ read: true }));
+  });
+  it('keeps sends and preview updates working in both directions with tenant admins', async () => {
+    for (const counterpart of [FULL_ADMIN_UID, 'church-admin', 'settings-manager']) {
+      const thread = `reply-${counterpart}`;
+      await seedDoc(sub(`directMessages/${thread}`), { participants: [counterpart, MEMBER_UID], lastMessage: '' });
+      for (const uid of [MEMBER_UID, counterpart]) {
+        const db = (await asUid(uid)).firestore();
+        await assertSucceeds(db.doc(sub(`dmMessages/${thread}-${uid}`)).set({ dmId: thread, senderId: uid, content: 'hello' }));
+        await assertSucceeds(db.doc(sub(`directMessages/${thread}`)).update({ lastMessage: uid, lastMessageAt: 1 }));
+      }
+      const outsider = (await member2()).firestore();
+      await assertFails(outsider.doc(sub(`dmMessages/${thread}-outsider`)).set({ dmId: thread, senderId: MEMBER2_UID }));
+      await assertFails(outsider.doc(sub(`directMessages/${thread}`)).update({ lastMessage: 'injected' }));
+    }
   });
   it('applies all, admins and explicit membership to channels and messages', async () => {
     const m = (await member()).firestore();

@@ -4,13 +4,13 @@ import { createRoot, type Root } from 'react-dom/client';
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const fx = vi.hoisted(() => ({ writes: [] as any[], updates: [] as any[], posts: [] as any[], events: [] as any[] }));
-vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member', displayName: 'Member', email: 'member@test.com', photoURL: '' } } }));
+const fx = vi.hoisted(() => ({ writes: [] as any[], updates: [] as any[], posts: [] as any[], events: [] as any[], profile: { role: 'user', displayName: 'Member' } as Record<string, unknown> }));
+vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member', displayName: 'Member', email: 'member@test.com', photoURL: 'https://example.com/auth-photo.jpg' } } }));
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }), doc: (_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }),
   query: (ref: any) => ref, where: () => ({}), orderBy: () => ({}), limit: () => ({}),
   onSnapshot: (q: any, callback: (snap: unknown) => void) => { const rows = q.path === 'community_posts' ? fx.posts : q.path?.endsWith('/events') ? fx.events : []; callback({ docs: rows.map((data: any) => ({ id: data.id, data: () => data })), forEach: () => {} }); return () => {}; },
-  getDoc: async () => ({ exists: () => true, data: () => ({ role: 'user', displayName: 'Member' }) }),
+  getDoc: async () => ({ exists: () => true, data: () => fx.profile }),
   getDocs: async () => ({ docs: [] }), getCountFromServer: async () => ({ data: () => ({ count: 0 }) }),
   addDoc: async (...args: unknown[]) => { fx.writes.push(args); return { id: 'post' }; },
   updateDoc: async (...args: unknown[]) => { fx.updates.push(args); }, deleteDoc: async () => {}, arrayUnion: () => ({}), arrayRemove: () => ({}), deleteField: () => ({}), serverTimestamp: () => 'time', Timestamp: class {},
@@ -22,9 +22,13 @@ vi.mock('@/contexts/TenantContext', () => ({ useTenantOptional: () => ({ tenantP
 import NewsTab from '../NewsTab';
 
 let root: Root; let host: HTMLDivElement;
-afterEach(async () => { await act(async () => root?.unmount()); host?.remove(); fx.writes = []; fx.updates = []; fx.posts = []; fx.events = []; });
+afterEach(async () => { await act(async () => root?.unmount()); host?.remove(); fx.writes = []; fx.updates = []; fx.posts = []; fx.events = []; fx.profile = { role: 'user', displayName: 'Member' }; });
 describe('member feed composer', () => {
-  it('accepts short text and writes a plain post without rich controls', async () => {
+  it.each([
+    { label: 'profile byline', profile: { role: 'user', displayName: 'Profile member', photoURL: 'https://example.com/profile.jpg' }, authorName: 'Profile member', authorPhoto: 'https://example.com/profile.jpg' },
+    { label: 'auth name fallback', profile: { role: 'user', displayName: '', name: 'Unbound legacy name' }, authorName: 'Member', authorPhoto: '' },
+  ])('accepts short text and writes a plain post with $label without rich controls', async ({ profile, authorName, authorPhoto }) => {
+    fx.profile = profile;
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
     await act(async () => { root.render(<QueryClientProvider client={client}><NewsTab onOpenAllNews={() => {}} onOpenArticle={() => {}} /></QueryClientProvider>); await Promise.resolve(); await Promise.resolve(); });
@@ -36,7 +40,8 @@ describe('member feed composer', () => {
     expect(host.textContent).toContain('15 / 500');
     await act(async () => { Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Post')!.click(); await Promise.resolve(); await Promise.resolve(); });
     expect(fx.writes.length).toBe(1);
-    expect(fx.writes[0][1]).toMatchObject({ authorId: 'member', tenantId: 'tenant', content: 'Hello community', type: 'post', imageUrls: [], imageUrl: '', isPinned: false });
+    expect(fx.writes[0][1]).toMatchObject({ authorId: 'member', authorName, authorPhoto, tenantId: 'tenant', content: 'Hello community', type: 'post', imageUrls: [], imageUrl: '', isPinned: false });
+    expect(fx.writes[0][1]).not.toHaveProperty('authorLevel');
     expect(fx.writes[0][1]).not.toHaveProperty('embed'); expect(fx.writes[0][1]).not.toHaveProperty('pollOptions');
   });
   it('hides event posts, embeds and event cards when events are disabled', async () => {
@@ -58,8 +63,11 @@ describe('member feed composer', () => {
     fx.posts = [{ id: 'pinned', type: 'post', content: 'Original', authorName: 'Member', authorId: 'member', likes: [], isPinned: true, createdAt: '2020-01-01' }];
     const client = new QueryClient(); host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
     await act(async () => { root.render(<QueryClientProvider client={client}><NewsTab onOpenAllNews={() => {}} onOpenArticle={() => {}} /></QueryClientProvider>); await Promise.resolve(); await Promise.resolve(); });
-    await act(async () => (host.querySelector('[aria-label="Post options"]') as HTMLElement).click());
-    await act(async () => Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Edit post')!.click());
+    await act(async () => { (host.querySelector('[aria-label="Post options"]') as HTMLElement).click(); });
+    // shadcn renders the action as a menuitem in a portal under document.body.
+    const editItem = Array.from(document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(item => item.textContent === 'Edit post');
+    expect(editItem).toBeDefined();
+    await act(async () => { editItem!.click(); });
     const input = host.querySelector('textarea[aria-label="Share an update"]') as HTMLTextAreaElement;
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Edited'); input.dispatchEvent(new Event('input', { bubbles: true })); });
     await act(async () => { Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Update')!.click(); await Promise.resolve(); await Promise.resolve(); });

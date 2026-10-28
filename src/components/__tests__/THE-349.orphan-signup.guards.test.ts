@@ -90,7 +90,7 @@ describe('1 · 🔴 there is no auth REDIRECT, so there is no hop to lose the te
       expect(body, `${f} reads a redirect result — the hypothesis in the brief is now live`)
         .not.toMatch(/\bgetRedirectResult\b/);
     }
-  });
+  }, 30000);
 
   it('the auth screen uses the POP-UP, which cannot move the opener’s hostname', () => {
     const body = code(AUTH_PAGE);

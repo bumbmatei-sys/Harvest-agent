@@ -34,6 +34,8 @@ const DM_PARTNER = 'dm-partner-uid';
 
 beforeAll(async () => {
   await seedBase();
+  // The admin role is authoritative only on the user record, not participantRoles.
+  await seedDoc(`users/${DM_PARTNER}`, { role: 'admin', tenantId: T });
   // A channel whose only member is `member` — member2 was never added.
   await seedDoc(sub('channels/ch-a'), {
     name: 'Leaders', description: 'private group', members: [MEMBER_UID],

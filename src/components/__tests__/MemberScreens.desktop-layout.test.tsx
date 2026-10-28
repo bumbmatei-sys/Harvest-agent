@@ -431,7 +431,9 @@ describe('community step 1 pins', () => {
     };
     // PR 554 review round two bounds comment reads.
     const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
-    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 security review aligns the member composer with the rules' byline binding.
+    const bylineBinding: Record<string, string> = { 'NewsTab.tsx': '43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb' };
+    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {

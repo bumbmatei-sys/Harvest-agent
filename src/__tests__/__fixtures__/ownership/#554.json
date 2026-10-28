@@ -185,6 +185,31 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "a46c1752dc5e270f6571c03b57285c3556d86511a0806ae135b9f9945bdbb9ff",
       "why": "Round three appends the reviewed AllNews query correction to the existing source pins, preserving every previously accepted digest and layout comparison."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "19c94d53f9a2d97fc57e1b79c6eafc8bb7021f61e14a0027097e43c646b6c349",
+      "why": "PR 554 security review binds member post names and photos to the signed-in profile and forbids claimed levels; DM sends and preview updates now recheck the same admin-counterpart requirement as thread creation, including legacy threads."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "43a3867dae1ed3cdcfebef468764c6237dc681d01554de5bd9ee42ab15cc6ccb",
+      "why": "PR 554 security review aligns member post creation with the rules by using profile displayName or the auth name, profile photoURL or empty, and no member authorLevel."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e35b4009d697d0e2b62576fb00879ee8f4a4e5644a3cc7be7dbfee67cc05ba7b",
+      "why": "PR 554 appends the reviewed composer byline-binding digest while retaining all previous accepted sources and historical layout comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "548f51faa29c175c320fee8e759d7c4604fd5e4e40177f7283a609228cf96e71",
+      "why": "PR 554 records the intended extraction of both roster queries into the scoped loader, removing only their old inline user paths and appending the current stripped source pin."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "e94be91b6d7f8cd0ba06ea4f99726d1d58b83f63a95701ae2802550bcab34258",
+      "why": "PR 554 appends the final AdminCommunity digest after scoped roster loader extraction and preserves every previous accepted value in the nav-rail guard."
     }
   ]
 }

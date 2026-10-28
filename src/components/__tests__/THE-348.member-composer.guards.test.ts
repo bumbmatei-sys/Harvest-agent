@@ -48,17 +48,16 @@ const ADMIN_DASHBOARD = 'src/components/AdminDashboard.tsx';
  * not a permission.
  *
  * ⚠️ `firestore.rules` PUTS NO FIELD ALLOWLIST ON MESSAGE CREATION. The
- * `dmMessages` create rule asks three things — the caller belongs to the
- * tenant, the `senderId` is their own uid, and they are a participant of the
- * parent thread — and says nothing whatever about which OTHER fields the
+ * `dmMessages` create checks tenant membership, sender identity, participation
+ * and an admin counterpart. It does not allowlist the OTHER fields the
  * document may carry. A member writing through the Firebase SDK, the emulator
  * UI or a REST call may therefore include an `attachments` array, and the
- * rules will accept it. `channelMessages` create is the same shape for any
- * member of the channel.
+ * rules will accept it. `channelMessages` binds senderName/senderRole and
+ * requires channel membership or community permission, with no field allowlist.
  *
  * 🔴 CLOSING IT WOULD BE A RULES CHANGE, AND THIS TICKET DOES NOT MAKE ONE.
- * `firestore.rules` AUTO-DEPLOYS to production on merge and CI runs no
- * emulator tests against it; THE-313's one-line `servicePlans` rule turned 46
+ * `firestore.rules` AUTO-DEPLOYS to production on merge; THE-313's one-line
+ * `servicePlans` rule turned 46
  * files red and needed a second PR that changed nothing but pins. A field
  * allowlist on two create rules is a larger change than that, on the hottest
  * paths in the product, and it belongs in a PR that can be tested with the
@@ -81,7 +80,7 @@ const ADMIN_DASHBOARD = 'src/components/AdminDashboard.tsx';
  * this repo has recorded thirteen times.
  */
 describe('🔴 a non-admin CANNOT be stopped by the button alone — what the rules permit', () => {
-  const RULES = read('firestore.rules');
+  const RULES = code('firestore.rules');
 
   /** One rule body, from `match /<name>/{...} {` to its closing brace. */
   const ruleBlock = (name: string): string => {
@@ -109,12 +108,13 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
     return m![1].replace(/\s+/g, ' ').trim();
   };
 
-  it('dmMessages create asks WHO is writing, and never WHAT they write', () => {
+  it('dmMessages create checks participation and an admin counterpart without a payload allowlist', () => {
     const clause = createClause(ruleBlock('dmMessages'));
-    // The three things it does ask.
+    // Identity and thread eligibility remain enforced server-side.
     expect(clause, 'the tenant check is gone').toContain('belongsToTenant(tenantId)');
     expect(clause, 'the sender-identity check is gone').toContain('request.resource.data.senderId == request.auth.uid');
     expect(clause, 'the participant check is gone').toContain("data.get('participants', [])");
+    expect(clause, 'the admin-counterpart check is gone').toContain('dmHasAdminCounterpart(get(');
     // 🔴 And the thing it does NOT: any constraint on the payload's shape.
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
@@ -122,10 +122,14 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
       .not.toMatch(/attachments/);
   });
 
-  it('channelMessages create checks channel access without constraining the payload', () => {
+  it('channelMessages create binds sender identity and checks membership without a field allowlist', () => {
     const clause = createClause(ruleBlock('channelMessages'));
-    expect(clause).toContain("channelAccess(get(");
-    expect(read('firestore.rules')).toContain("request.auth.uid in channel.get('members', [])");
+    expect(clause).toContain('channelMemberAccess(get(');
+    expect(RULES).toContain("request.auth.uid in channel.get('members', [])");
+    expect(clause).toContain("request.resource.data.get('senderId', '') == request.auth.uid");
+    expect(clause).toContain("request.resource.data.get('senderName', '') ==");
+    expect(clause).toContain("request.resource.data.get('senderRole', '') == 'user'");
+    expect(clause).toContain("request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId)");
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
   });

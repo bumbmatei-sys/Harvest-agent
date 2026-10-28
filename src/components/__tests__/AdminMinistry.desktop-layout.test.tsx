@@ -2038,7 +2038,8 @@ describe('no community query or write path changed', () => {
     const channelList = expected.indexOf("'tenants', tenantId, 'channels'");
     expected.splice(channelList, 0, "'tenants', tenantId, 'channels', 'all-members'");
     // PR 554 routes both roster reads through the existing scoped loader.
-    expect(firestorePathsOf(after)).toEqual(expected);
+    const scopedRosterPaths = expected.filter(p => p !== "'users'");
+    expect(firestorePathsOf(after)).toEqual(scopedRosterPaths);
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 
@@ -2062,6 +2063,8 @@ describe('no community query or write path changed', () => {
     expect([
       [1285, '260913648f9e957b8bec6fbce8f9ade5e41bb6119907a0f005fef7d374c329ec'],
       [1280, '76881812af03d7c3baaf7e5b212de85809436fdba90246e8a70431507a710c8a'],
+      // PR 554 extracts both roster queries into the tenant-scoped loader.
+      [1259, 'ef2d02cbd289c2dee02399a92acdcd3125c1d26f91c30bfb5db92807731582aa'],
     ], DIFF_HINT('AdminCommunity')).toContainEqual([now.split('\n').length, sha(now)]);
   });
 
