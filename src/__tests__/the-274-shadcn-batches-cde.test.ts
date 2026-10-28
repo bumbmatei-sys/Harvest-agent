@@ -1564,6 +1564,24 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     why:
       "The Page step's description is several sentences of plain text on the course page, so it takes the textarea primitive, which gives it the same field styling and aria-invalid handling as every other input. The primitive is unedited.",
   },
+  {
+    file: 'src/components/email/ThemeWarning.tsx',
+    ticket: '#560',
+    why:
+      'Newsletter themes: when a chosen ink-on-ground pair misses the contrast floor the admin sees before sending, that is something real to act on, so the warning takes the alert primitive with its own title rather than plain text beside the picker. The primitive is unedited.',
+  },
+  {
+    file: 'src/components/email/blocks/Box.tsx',
+    ticket: '#560',
+    why:
+      "Newsletter themes: the tinted Box block's settings open in a popover anchored to its own gear trigger, so the tint and padding controls sit beside the block they change instead of a modal, and the block's blurb takes the textarea for the same field styling as every other input. The primitives are unedited.",
+  },
+  {
+    file: 'src/components/email/blocks/IssueHeader.tsx',
+    ticket: '#560',
+    why:
+      "Newsletter themes: the Issue Header block's size, alignment and link settings open in a popover anchored to its own gear trigger, and its reading-time and read-online toggles are each one independent on/off, so they take the switch rather than a checkbox or a select. The primitives are unedited.",
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

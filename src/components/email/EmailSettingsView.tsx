@@ -193,7 +193,10 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
                 <Button
                   type="button"
                   variant="ghost"
-                  className={TAP}
+                  // A literal, not {TAP}: THE-356 measures every Button call
+                  // site and its resolver reads literals and form-layout
+                  // constants only — an imported token would throw there.
+                  className="min-h-11"
                   aria-label={`Remove the ${SOCIAL_PLATFORM_LABELS[link.platform]} link`}
                   onClick={() => { setSocialLinks((list) => list.filter((_, i) => i !== index)); setBrandSaved(false); }}
                 >
@@ -206,7 +209,7 @@ export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSa
             <Button
               type="button"
               variant="outline"
-              className={cn(TAP, 'w-fit gap-2')}
+              className="min-h-11 w-fit gap-2"
               onClick={() => { setSocialLinks((list) => [...list, { platform: 'facebook', url: '' }]); setBrandSaved(false); }}
             >
               <Plus className="size-4" />
