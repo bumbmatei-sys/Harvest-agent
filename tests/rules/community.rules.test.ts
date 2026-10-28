@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, it } from 'vitest';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
-import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
+import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID, OWNER_EMAIL, ROSTER_ADMIN_EMAIL } from './helpers';
+import { SUPER_ADMIN_EMAILS } from '../../src/utils/super-admins';
 
 const sub = (p: string) => `tenants/${TENANT_A}/${p}`;
 beforeAll(async () => {
@@ -123,8 +124,8 @@ describe('community access', () => {
   it('requires a real tenant admin as the other DM participant', async () => {
     const m = (await member()).firestore();
     const admin = (await fullAdmin()).firestore();
-    // Profile email is now a roster identity: a member cannot forge one, even
-    // though ordinary profile updates remain allowed.
+    // Future email writes are Auth-bound as a separate defence; the counterpart
+    // check must also reject legacy forged emails already stored before deploy.
     await assertFails((await asUid('spoofer')).firestore().doc('users/spoofer').update({ email: 'owner-a@test.com' }));
     await assertSucceeds(m.doc(sub('directMessages/admin')).set({ participants: [MEMBER_UID, FULL_ADMIN_UID] }));
     await assertSucceeds(m.doc(sub('directMessages/church-admin')).set({ participants: [MEMBER_UID, 'church-admin'] }));
@@ -153,6 +154,30 @@ describe('community access', () => {
     await assertSucceeds(m.doc(sub('dmMessages/old-peer-inbound')).get());
     await assertSucceeds(m.doc(sub('dmMessages/old-peer-inbound')).update({ read: true }));
   });
+  it.each([OWNER_EMAIL, ROSTER_ADMIN_EMAIL, ...SUPER_ADMIN_EMAILS].map((email, i) => ({ email, uid: `stale-email-${i}` })))(
+    'rejects a pre-existing member profile spoofing $email for new and existing DMs', async ({ email, uid }) => {
+      // Bypass rules to model an email stored BEFORE Auth-bound writes deployed.
+      // No attempted profile write can mask the stale-identity vulnerability.
+      await seedDoc(`users/${uid}`, { role: 'user', tenantId: TENANT_A, email });
+      const m = (await member()).firestore();
+      const spoofed = (await asUid(uid)).firestore();
+      const dmId = `legacy-${uid}`;
+      const data = { participants: [uid, MEMBER_UID], participantRoles: { [uid]: 'admin' }, lastMessage: 'Old' };
+      await assertFails(m.doc(sub(`directMessages/new-${uid}`)).set(data));
+      await assertFails(spoofed.doc(sub(`directMessages/new-caller-${uid}`)).set(data));
+      await seedDoc(sub(`directMessages/${dmId}`), data);
+      for (const [db, senderId] of [[m, MEMBER_UID], [spoofed, uid]] as const) {
+        const message = db.doc(sub(`dmMessages/${dmId}-${senderId}`));
+        const thread = db.doc(sub(`directMessages/${dmId}`));
+        await assertFails(message.set({ dmId, senderId, content: 'Blocked' }));
+        await assertFails(thread.update({ lastMessage: 'Blocked', lastMessageAt: 2 }));
+        const batch = db.batch();
+        batch.set(message, { dmId, senderId, content: 'Blocked batch' });
+        batch.update(thread, { lastMessage: 'Blocked batch', lastMessageAt: 3 });
+        await assertFails(batch.commit());
+      }
+    },
+  );
   it('keeps sends and preview updates working in both directions with tenant admins', async () => {
     for (const counterpart of [FULL_ADMIN_UID, 'church-admin', 'settings-manager']) {
       const thread = `reply-${counterpart}`;

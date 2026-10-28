@@ -14,9 +14,6 @@ describe('DM counterpart status', () => {
     expect(await response.json()).toEqual({ isAdmin: true });
     fx.docs['users/other'] = { tenantId: 'tenant', role: 'church_admin' };
     expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
-    fx.docs['tenant_private/tenant'] = { adminEmails: ['owner@example.com'] };
-    fx.docs['users/other'] = { tenantId: 'tenant', role: 'user', email: 'owner@example.com' };
-    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
   });
   it('does not trust thread role labels, public rosters, or a foreign tenant role', async () => {
     fx.docs['users/other'] = { tenantId: 'tenant', role: 'user', email: 'member@example.com' };
@@ -26,16 +23,17 @@ describe('DM counterpart status', () => {
     fx.docs['users/other'] = { tenantId: 'foreign', role: 'admin' };
     expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: false });
   });
-  it('recognises private roster membership even before the stored tenant matches', async () => {
-    fx.docs['users/other'] = { tenantId: 'foreign', role: 'user', email: 'roster@example.com' };
-    fx.docs['tenant_private/tenant'] = { adminEmails: ['roster@example.com'] };
-    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
+  it.each(['tenant', 'foreign'])('rejects stale roster/platform profile emails with stored tenant %s', async (tenantId) => {
+    fx.docs['tenants/tenant'] = { ownerId: 'real-owner', adminEmails: ['owner@example.com'] };
+    fx.docs['tenant_private/tenant'] = { adminEmails: ['owner@example.com', 'roster@example.com'] };
+    for (const email of ['owner@example.com', 'roster@example.com', ...SUPER_ADMIN_EMAILS]) {
+      fx.docs['users/other'] = { tenantId, role: 'user', email };
+      fx.docs['tenants/tenant/directMessages/thread']!.participantRoles = { other: 'admin' };
+      expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: false });
+    }
   });
-  it.each([
-    { role: 'super_admin', tenantId: null },
-    ...SUPER_ADMIN_EMAILS.map(email => ({ role: 'user', tenantId: 'foreign', email })),
-  ])('recognises the persisted platform admin shape %j', async (profile) => {
-    fx.docs['users/other'] = profile;
+  it('recognises the protected platform role independently of email and tenant', async () => {
+    fx.docs['users/other'] = { role: 'super_admin', tenantId: null };
     expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
   });
   it('recognises ownership independently of the user profile', async () => {
@@ -45,15 +43,11 @@ describe('DM counterpart status', () => {
     delete fx.docs['users/other'];
     expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
   });
-  it('treats a missing private roster as empty and excludes missing profile emails', async () => {
-    fx.docs['users/other'] = { role: 'user', email: 'roster@example.com' };
-    delete fx.docs['tenant_private/tenant'];
-    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: false });
-    fx.docs['users/other'] = { role: 'user' };
-    fx.docs['tenant_private/tenant'] = { adminEmails: [''] };
-    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: false });
+  it('does not depend on the email roster for UID-based counterpart checks', async () => {
+    fx.failPath = 'tenant_private/tenant';
+    expect(await (await GET(request('thread'))).json()).toEqual({ isAdmin: true });
   });
-  it.each(['users/other', 'tenants/tenant', 'tenant_private/tenant'])('surfaces a failed %s read', async (path) => {
+  it.each(['users/other', 'tenants/tenant'])('surfaces a failed %s read', async (path) => {
     fx.failPath = path;
     const response = await GET(request('thread'));
     expect(response.status).toBe(503);

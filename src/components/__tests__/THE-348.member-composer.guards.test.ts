@@ -122,28 +122,35 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
       .not.toMatch(/attachments/);
   });
 
-  it('DM counterpart checks include private-roster admins as well as role, owner and platform identities', () => {
+  it('DM counterpart checks use only protected UID roles and ownership, never profile email', () => {
     const start = RULES.indexOf('function uidIsTenantAdmin(');
     expect(start).toBeGreaterThan(-1);
     const end = RULES.indexOf('\n    function ', start + 1);
     expect(end).toBeGreaterThan(start);
     const counterpart = RULES.slice(start, end);
+    expect(counterpart).toContain('/documents/users/$(uid)');
+    expect(counterpart).toContain('exists(path)');
     expect(counterpart).toContain('isTenantOwner(uid, tenantId)');
     expect(counterpart).toContain("get(path).data.get('role', 'user') == 'super_admin'");
     expect(counterpart).toContain("get(path).data.get('tenantId', null) == tenantId");
     expect(counterpart).toContain("in ['admin', 'church_admin']");
-    expect(counterpart).toContain('/documents/tenant_private/$(tenantId)');
-    expect(counterpart).toContain("get(path).data.email in get(rosterPath).data.get('adminEmails', [])");
-    // Both functions must recognise exactly the same platform email identities.
-    const caller = RULES.match(/function isSuperAdmin\(\)[\s\S]*?\n    }/);
-    expect(caller).not.toBeNull();
-    const platformEmails = caller![0].match(/tokenEmail\(\) in (\[[^\]]+\])/);
-    expect(platformEmails).not.toBeNull();
-    expect(counterpart).toContain(`get(path).data.email in ${platformEmails![1]}`);
-    expect(counterpart).not.toContain('participantRoles');
+    expect(counterpart).not.toMatch(/\bemail\b|tokenEmail|adminEmails|tenant_private|request\.auth|participantRoles/);
   });
 
-  it('profile email writes cannot forge a roster or platform counterpart identity', () => {
+  it('roster-only admin callers still use their authenticated token email for DM access', () => {
+    const roster = RULES.match(/function inTenantAdminEmails\(tenantId\)[\s\S]*?\n    }/);
+    expect(roster).not.toBeNull();
+    expect(roster![0]).toContain('/documents/tenant_private/$(tenantId)');
+    expect(roster![0]).toContain("tokenEmail() in get(/databases/$(database)/documents/tenant_private/$(tenantId)).data.get('adminEmails', [])");
+    const caller = RULES.match(/function isTenantAdmin\(tenantId\)[\s\S]*?\n    }/);
+    expect(caller).not.toBeNull();
+    expect(caller![0]).toContain('inTenantAdminEmails(tenantId)');
+    const dm = RULES.match(/function dmHasAdminCounterpart\(participants, tenantId\)[\s\S]*?\n    }/);
+    expect(dm).not.toBeNull();
+    expect(dm![0]).toContain('return isTenantAdmin(tenantId) ||');
+  });
+
+  it('future profile email writes remain bound to Auth', () => {
     const users = ruleBlock('users');
     expect(createClause(users)).toContain('request.resource.data.email == tokenEmail()');
     const update = users.match(/allow update:([\s\S]*?);/);

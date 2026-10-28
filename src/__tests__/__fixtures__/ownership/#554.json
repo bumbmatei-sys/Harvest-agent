@@ -250,6 +250,36 @@
       "file": "tests/rules/messaging-isolation.rules.test.ts",
       "digest": "6db7d67470a44885970a27e5e7e374324dcc5898b2cb07f7f3382e718df24ab1",
       "why": "PR 554 also isolates private-only versus public-only roster counterparts in a separate tenant: private roster membership works with a different stored tenant, while the public roster grants no DM creation, message send or preview update."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "15543d056323404839d89442cba7dc80e9a4e190db162508d0072fc73389a93e",
+      "why": "PR 554 stale-email security fix removes all profile-email trust from DM counterpart identity, retaining only protected uid-keyed roles and tenant ownerId. Roster/platform callers still use their own Auth token email; future profile email binding stays intact. No data migration is required. Rules auto-deploy on merge; no deployment is performed here."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "84e2259a31c9b9412899ad3c093687cec285f1406fed2b698bde03a7ec86e5d5",
+      "why": "PR 554 replaces email-based counterpart pins with protected UID role and ownership checks and a prohibition on profile email identity. A separate guard preserves roster-only caller token authorization; both guards reject planted regressions."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "e469a0a6fcc04bdbad2b081f995af7af399193474a32967bacf6c20ab8aadb7a",
+      "why": "PR 554 seeds pre-existing spoofed owner, roster and platform emails without any profile write, and denies new threads, existing-thread sends, previews and batched sends from both members. This exercises stale data without requiring a production migration."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "52f7889b71ada40564bcad7f2cc6dc471b83345ae20689f1ee267cd044adb6b5",
+      "why": "PR 554 preserves roster-only and platform caller token-email sends while denying member replies to email-only counterparts. Protected tenant roles, platform roles and owner UID remain valid counterparts, including an owner without a user profile."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "fc3b219c53426d2017b1dd356563212f07909ba59659950521bf2fe221bc3283",
+      "why": "PR 554 aligns composer eligibility with the rules by removing client-written profile-email roster and platform identity. Only protected UID roles or tenant ownership enable member replies; failed required identity reads still surface as 503 errors."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.test.ts",
+      "digest": "30ac84d169178475c1d23af623574448984e785766f6b1290957541685ae6650",
+      "why": "PR 554 covers stale owner, roster and platform profile email denial for both matching and foreign profile tenants, preserves protected role and owner identity, and verifies that counterpart eligibility no longer reads the email roster."
     }
   ]
 }

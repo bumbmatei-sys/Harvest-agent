@@ -222,9 +222,9 @@ service cloud.firestore {
            hasPermission('manageAdmins', resource.data.tenantId))) ||
         isSuperAdmin()
       ) && (
-        // DM counterpart checks use the profile email for the private admin
-        // roster. Clients may only write their own authenticated email; admin
-        // corrections to another user's identity must go through the server.
+        // Bind future profile email changes to Auth. Legacy stored emails may
+        // still be forged, so profile email is never an admin identity source.
+        // Admin corrections to another user's email go through the server.
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email']) ||
         (request.auth.uid == userId && request.resource.data.get('email', null) == tokenEmail()) ||
         isSuperAdmin()
@@ -283,22 +283,20 @@ service cloud.firestore {
         !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']);
     }
 
-    // Counterpart claims cannot be read from another user's Auth token. Their
-    // persisted role, Auth-bound profile email and tenant ownership cover the
-    // caller's admin shapes; never trust participantRoles from the creator.
+    // Counterpart claims cannot be read from another user's Auth token. Only
+    // protected uid-keyed roles and tenant ownership identify an admin here.
+    // Legacy profile emails may be forged, even with future writes Auth-bound.
+    // Email-only roster/platform admins are recognised as CALLERS through
+    // isTenantAdmin and their token email, never as counterparts by profile email.
+    // Never trust participantRoles from the creator.
     // Repeated exists/get calls share cached documents: a member send needs at
     // most five distinct docs (caller, counterpart, tenant, private roster, DM).
     function uidIsTenantAdmin(uid, tenantId) {
       let path = /databases/$(database)/documents/users/$(uid);
-      let rosterPath = /databases/$(database)/documents/tenant_private/$(tenantId);
       return isTenantOwner(uid, tenantId) || (exists(path) && (
         get(path).data.get('role', 'user') == 'super_admin' ||
         (get(path).data.get('tenantId', null) == tenantId &&
-          get(path).data.get('role', 'user') in ['admin', 'church_admin']) ||
-        (get(path).data.get('email', '') is string && get(path).data.get('email', '') != '' && (
-          get(path).data.email in ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'] ||
-          (exists(rosterPath) && get(path).data.email in get(rosterPath).data.get('adminEmails', []))
-        ))
+          get(path).data.get('role', 'user') in ['admin', 'church_admin'])
       ));
     }
 
