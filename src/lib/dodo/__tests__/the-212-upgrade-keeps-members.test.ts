@@ -139,7 +139,7 @@ beforeEach(() => {
   docReads.length = 0;
   mockBatchCommit.mockResolvedValue(undefined);
   // A free tenant holding 500 members — over Individual's 150 cap on purpose.
-  mockTenantGet.mockReturnValue({ exists: true, data: () => ({ plan: 'free', name: 'Grace', memberCount: 500 }) });
+  mockTenantGet.mockReturnValue({ exists: true, data: () => ({ plan: 'free', name: 'Grace', memberCount: 500, ownerId: 'buyer' }) });
   mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ adminEmails: ['pastor@grace.example'] }) });
 });
 

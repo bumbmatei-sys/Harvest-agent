@@ -705,6 +705,66 @@
       "file": "src/__tests__/App.free-signup-landing.test.tsx",
       "digest": "1487d233479cb64b899c462e49df711221617aeb58e5e8ed710536eea7bd71e1",
       "why": "#557 also asserts the Free member view has no Admin control while preserving paid owner and super-admin coverage."
+    },
+    {
+      "file": "src/lib/dodo/provisioning.ts",
+      "digest": "21bab7832439f1e5e251c56ad6d28bd5b0b8b8f563f6c67a639fedc2184bfaa8",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/first-subscription.ts",
+      "digest": "0c2da97752f236fd92940a781d499d099ce83188259b4ca835d242b7e0aee917",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "66566ad8dafe5dc28c6d9d214cd963cd45ebb1c0129a10d6f3fd5d2715885251",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/first-subscription.test.ts",
+      "digest": "231c6068d1c69d8b50fe6db82c3b21c6454f3ae2fc0903312e8299c49afa2197",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/the-212-upgrade-keeps-members.test.ts",
+      "digest": "9729a80fbe3b7b43e5951698e0c1ce51b3b6f22af5351d4bff955005620665f2",
+      "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "ea5c56489eede8d7824156cf1fbd30a5dd1e3b5c6a4edfd06b1cc0292ea089ca",
+      "why": "#557 appends the provisioning digest for the Free upgrade owner check while retaining prior pins."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/the-226-plan-change-term.test.ts",
+      "digest": "3a5795cb332048bf709f0fa862b949392c81963f5e768ec56bc02bfd1b5d3bd0",
+      "why": "#557 identifies the buyer as the Free tenant owner in the existing subscription term fixture."
+    },
+    {
+      "file": "src/lib/dodo/provisioning.ts",
+      "digest": "42e9ff93e972caec2813721cd89c323fcb80f0752f5cfc00c4b7bd4115554bb0",
+      "why": "#557 reports and durably acknowledges refused Free upgrades while preserving owner checks, existing pins, and regression coverage."
+    },
+    {
+      "file": "src/lib/dodo/first-subscription.ts",
+      "digest": "6eb45cad5dd02a5c8c06daef6e663ef9094849d8d4e3938ea7cef25651998bdc",
+      "why": "#557 reports and durably acknowledges refused Free upgrades while preserving owner checks, existing pins, and regression coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "a712ae00ec973557e64f392f973ec8f997c941a47ba5340eb17264f1f2c94a52",
+      "why": "#557 reports and durably acknowledges refused Free upgrades while preserving owner checks, existing pins, and regression coverage."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/first-subscription.test.ts",
+      "digest": "c852a783258dd1d41a2ec9b249afb668ae174c7c46c09d4353b79c4c36fe1733",
+      "why": "#557 reports and durably acknowledges refused Free upgrades while preserving owner checks, existing pins, and regression coverage."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "236287f30a8c402a7879565d0e9ac114f36494532c2b8b043672413f01fc1c50",
+      "why": "#557 reports and durably acknowledges refused Free upgrades while preserving owner checks, existing pins, and regression coverage."
     }
   ]
 }
