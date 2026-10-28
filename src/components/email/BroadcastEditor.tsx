@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DEFAULT_EMAIL_DESIGN, THEME_LABELS, type EmailDesign } from '@/lib/email/design';
+import { getThemePreset, type EmailThemeTokens } from '@/lib/email/themes';
 import { BodyEditor } from '@/components/email/BodyEditor';
 import { DesignDialog } from '@/components/email/DesignDialog';
 import { PreviewDialog } from '@/components/email/PreviewDialog';
@@ -27,7 +28,7 @@ type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
 const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved', error: 'Not saved' };
 
 /** What would be saved, without the id: two drafts with the same snapshot are the same email. */
-const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters]);
+const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters, d.themeId ?? null, d.themeTokens ?? null]);
 
 function SideAction({ icon, children, onClick, disabled, danger }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
@@ -60,6 +61,8 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [preheader, setPreheader] = useState(initial?.preheader ?? '');
   const [bodyHtml, setBodyHtml] = useState(initial?.bodyHtml ?? '<p>Hi {{first_name}},</p><p></p><p>{{sender_name}}</p>');
   const [design, setDesign] = useState<EmailDesign>(initial?.design ?? DEFAULT_EMAIL_DESIGN);
+  const [themeId, setThemeId] = useState<string | null>(initial?.themeId ?? null);
+  const [themeTokens, setThemeTokens] = useState<EmailThemeTokens | null>(initial?.themeTokens ?? null);
   const [filters, setFilters] = useState<AudienceFilter[]>([...(initial?.filters ?? [])]);
   const [step, setStep] = useState<Step>('write');
   const [saving, setSaving] = useState<Saving>(initial ? 'saved' : 'unsaved');
@@ -76,7 +79,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const wasScheduled = useRef(initial?.status === 'scheduled');
   const dirty = useRef(false);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
-  const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters });
+  const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters, themeId, themeTokens });
   const latest = useRef(draft);
   latest.current = draft;
   // The email as last saved (or as opened). An edit is "unsaved" only while it differs from this,
@@ -120,7 +123,13 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
     if (wasScheduled.current) return;
     const t = setTimeout(() => { void persist(); }, 800);
     return () => clearTimeout(t);
-  }, [subject, subjectB, preheader, bodyHtml, design, filters, persist]);
+  }, [subject, subjectB, preheader, bodyHtml, design, filters, themeId, themeTokens, persist]);
+
+  /** A pick or an edit sets the token snapshot the renderer reads; classic clears both. */
+  const applyTheme = (nextId: string | null, nextTokens: EmailThemeTokens | null) => {
+    setThemeId(nextId);
+    setThemeTokens(nextId ? nextTokens : null);
+  };
 
   const tips = inboxCheck({ subject, preheader, bodyHtml });
   const ready = Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
@@ -328,7 +337,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
             <h2 className="px-2 pb-1 text-xs text-faint">Design</h2>
             <Button type="button" variant="ghost" onClick={() => setDesignOpen(true)} className="h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl border-line bg-card p-3 text-left font-normal hover:bg-muted">
               <span aria-hidden className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Palette className="size-4" /></span>
-              <span className="flex-1"><span className="block font-medium text-strong">{THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">Colors, fonts, header, buttons</span></span>
+              <span className="flex-1"><span className="block font-medium text-strong">{themeId ? getThemePreset(themeId)?.name ?? 'Custom theme' : THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">{themeId ? 'Colours, fonts, layout and more' : 'Colors, fonts, header, buttons'}</span></span>
             </Button>
             <Separator />
             <h2 className="px-2 pb-1 pt-3 text-xs text-faint">Check it</h2>
@@ -362,8 +371,17 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         </DialogContent>
       </Dialog>
 
-      <DesignDialog open={designOpen} onOpenChange={setDesignOpen} design={design} onChange={setDesign} brandColor={brandColor} />
-      <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design }} />
+      <DesignDialog
+        open={designOpen}
+        onOpenChange={setDesignOpen}
+        design={design}
+        onChange={setDesign}
+        brandColor={brandColor}
+        themeId={themeId}
+        themeTokens={themeTokens}
+        onThemeChange={applyTheme}
+      />
+      <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design, themeId, themeTokens }} />
       <TemplatesDialog
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}

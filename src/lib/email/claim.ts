@@ -24,9 +24,12 @@ export function contentHash(b: {
   readonly bodyHtml: string;
   readonly design: unknown;
   readonly filters: unknown;
+  /** Part of what would send since themes landed: an edit here is an edit to the email. */
+  readonly themeId?: string | null;
+  readonly themeTokens?: unknown;
 }): string {
   return createHash('sha256')
-    .update(stable({ subject: b.subject, subjectB: b.subjectB, preheader: b.preheader, bodyHtml: b.bodyHtml, design: b.design, filters: b.filters }))
+    .update(stable({ subject: b.subject, subjectB: b.subjectB, preheader: b.preheader, bodyHtml: b.bodyHtml, design: b.design, filters: b.filters, themeId: b.themeId ?? null, themeTokens: b.themeTokens ?? null }))
     .digest('hex');
 }
 

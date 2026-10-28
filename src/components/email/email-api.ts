@@ -1,6 +1,7 @@
 import type { AudienceFilter, EmailContact } from '@/lib/email/audience';
 import type { EmailDesign } from '@/lib/email/design';
 import type { EmailLimits } from '@/lib/email/limits';
+import type { EmailThemeTokens } from '@/lib/email/themes';
 import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/lib/email/service';
 import { NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 
@@ -48,6 +49,9 @@ export interface DraftFields {
   readonly bodyHtml?: string;
   readonly design?: Partial<EmailDesign>;
   readonly filters?: readonly AudienceFilter[];
+  /** The theme this draft renders with, and the token snapshot that goes with it. */
+  readonly themeId?: string | null;
+  readonly themeTokens?: EmailThemeTokens | null;
 }
 
 export interface ImportRowInput {

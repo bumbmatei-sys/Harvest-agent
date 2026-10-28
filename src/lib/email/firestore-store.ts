@@ -7,6 +7,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { DEFAULT_EMAIL_DESIGN } from '@/lib/email/render';
+import type { EmailThemeTokens } from '@/lib/email/themes';
 import {
   EMAIL_OPT_IN_AT_FIELD,
   EMAIL_OPT_IN_SOURCE_FIELD,
@@ -78,6 +79,11 @@ function broadcastFrom(id: string, tenantId: string, data: Record<string, unknow
     preheader: str(data.preheader),
     bodyHtml: str(data.bodyHtml),
     design: { ...DEFAULT_EMAIL_DESIGN, ...((data.design as object) ?? {}) },
+    // Read back only when present: a broadcast saved before themes keeps the
+    // exact shape it had, so its contentHash still compares with what a caller
+    // computed from the in-memory draft.
+    ...(typeof data.themeId === 'string' && data.themeId ? { themeId: data.themeId } : {}),
+    ...(data.themeTokens && typeof data.themeTokens === 'object' ? { themeTokens: data.themeTokens as EmailThemeTokens } : {}),
     filters: Array.isArray(data.filters) ? (data.filters as Broadcast['filters']) : [],
     status: (str(data.status) || 'draft') as Broadcast['status'],
     scheduledAt: typeof data.scheduledAt === 'string' ? data.scheduledAt : null,

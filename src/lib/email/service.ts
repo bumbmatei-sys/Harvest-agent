@@ -240,6 +240,9 @@ export interface DraftInput {
   readonly bodyHtml?: string;
   readonly design?: Partial<EmailDesign>;
   readonly filters?: readonly AudienceFilter[];
+  /** The theme this email renders with, and the token snapshot saved with it. */
+  readonly themeId?: string | null;
+  readonly themeTokens?: EmailThemeTokens | null;
 }
 
 export interface ImportRow {
@@ -379,6 +382,8 @@ export function createEmailService(deps: {
 
   function normaliseDraft(input: DraftInput, existing: Broadcast | null, g: Gated, actor: EmailActor): Broadcast {
     const stamp = now().toISOString();
+    const themeId = input.themeId !== undefined ? clean(input.themeId) || null : existing?.themeId ?? null;
+    const themeTokens = input.themeTokens !== undefined ? input.themeTokens ?? null : existing?.themeTokens ?? null;
     return {
       id: existing?.id ?? newId(),
       tenantId: g.tenantId,
@@ -399,6 +404,10 @@ export function createEmailService(deps: {
       createdBy: existing?.createdBy ?? actor.uid,
       createdAt: existing?.createdAt ?? stamp,
       updatedAt: stamp,
+      // Set only when present, so an email saved before themes keeps the exact
+      // document shape it always had (and its contentHash stays comparable).
+      ...(themeId ? { themeId } : {}),
+      ...(themeTokens ? { themeTokens } : {}),
     };
   }
 
@@ -771,6 +780,8 @@ export function createEmailService(deps: {
       const design = { ...DEFAULT_EMAIL_DESIGN, ...(input.design ?? {}) };
       const { html } = renderEmail({
         design,
+        themeId: input.themeId ?? null,
+        themeTokens: input.themeTokens ?? null,
         bodyHtml: String(input.bodyHtml ?? ''),
         preheader: clean(input.preheader),
         churchName: g.tenant.name,

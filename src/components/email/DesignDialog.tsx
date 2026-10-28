@@ -8,7 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ACCENT_LABELS, THEME_LABELS, readHexColor, type EmailAccent, type EmailDesign, type EmailTheme } from '@/lib/email/design';
 import { BRAND_PALETTE } from '@/lib/email/render';
+import {
+  DEFAULT_THEME_TOKENS,
+  getCustomTheme,
+  getThemePreset,
+  type CustomTheme,
+  type EmailThemeTokens,
+} from '@/lib/email/themes';
 import { Segmented, TAP } from '@/components/email/kit';
+import { ThemePicker } from '@/components/email/ThemePicker';
+import { ThemeSettingsPanels } from '@/components/email/ThemeSettingsPanels';
 import { cn } from '@/lib/utils';
 
 const THEMES = (Object.keys(THEME_LABELS) as EmailTheme[]).map((value) => ({ value, label: THEME_LABELS[value] }));
@@ -31,13 +40,24 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function DesignDialog({ open, onOpenChange, design, onChange, brandColor }: {
+export function DesignDialog({ open, onOpenChange, design, onChange, brandColor, themeId, themeTokens, customThemes, onThemeChange }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   design: EmailDesign;
   onChange: (next: EmailDesign) => void;
   /** The ministry's branding colour. Without a valid hex, Custom is not offered. */
   brandColor?: string | null;
+  /** The theme this email renders with. Absent on an older email, which renders from `design`. */
+  themeId?: string | null;
+  themeTokens?: EmailThemeTokens | null;
+  /** A ministry's saved themes. Empty until custom themes land. */
+  customThemes?: readonly CustomTheme[];
+  /**
+   * Hands back a look: a theme id and a snapshot of its tokens, or `null, null`
+   * for the classic look this email renders from `design`. Without this prop the
+   * dialog is the classic dialog and nothing about themes is shown.
+   */
+  onThemeChange?: (id: string | null, tokens: EmailThemeTokens | null) => void;
 }) {
   const brand = readHexColor(brandColor);
   const pickAccent = (accent: EmailAccent) => {
@@ -45,14 +65,46 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor 
     onChange(accent === 'custom' && brand ? { ...rest, accent, customColor: brand } : { ...rest, accent });
   };
   const set = <K extends keyof EmailDesign>(key: K, value: EmailDesign[K]) => onChange({ ...design, [key]: value });
+  /** The theme layer is on only when the caller listens for picks. */
+  const themed = onThemeChange !== undefined && Boolean(themeId && themeTokens);
+  const defaults = getThemePreset(themeId)?.tokens
+    ?? getCustomTheme(customThemes ?? [], themeId)?.tokens
+    ?? DEFAULT_THEME_TOKENS;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className={cn('max-h-[90vh] overflow-y-auto', onThemeChange ? 'sm:max-w-xl' : 'sm:max-w-lg')}>
         <DialogHeader>
           <DialogTitle>Design</DialogTitle>
           <DialogDescription>Colors, fonts, header, buttons and footer for this email.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-5">
+          {onThemeChange && (
+            <Row label="Theme presets">
+              <ThemePicker
+                selectedId={themeId ?? null}
+                onSelect={(choice) => onThemeChange(choice.id, choice.tokens)}
+                customThemes={customThemes}
+              />
+            </Row>
+          )}
+          {themed && themeTokens ? (
+            <>
+              <ThemeSettingsPanels
+                tokens={themeTokens}
+                onChange={(next) => onThemeChange?.(themeId ?? null, next)}
+                defaults={defaults}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11 justify-start px-0 text-sm text-muted"
+                onClick={() => onThemeChange?.(null, null)}
+              >
+                Use the classic look instead
+              </Button>
+            </>
+          ) : (
+            <>
           <Row label="Theme">
             <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
               {THEMES.map((t) => (
@@ -115,6 +167,8 @@ export function DesignDialog({ open, onOpenChange, design, onChange, brandColor 
               <Segmented label="Buttons" value={design.buttons} onChange={(v) => set('buttons', v)} options={[{ value: 'filled', label: 'Filled' }, { value: 'outline', label: 'Outline' }]} />
             </Row>
           </div>
+            </>
+          )}
           <Row label="Footer note">
             <Input
               aria-label="Footer note"
