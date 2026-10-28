@@ -816,7 +816,8 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     // THE-555: the mobile tabs moved into the original navigation shell.
     // Two obsolete visibility wrappers were removed; no second fixed bar remains.
     // Count parser-stripped source so a tag quoted in a comment is not an element.
-    expect(tags.length, 'the shell gained or lost an element').toBe(86);
+    // #557 adds the FreeMemberShell element for Free accounts.
+    expect(tags.length, 'the shell gained or lost an element').toBe(87);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

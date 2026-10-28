@@ -500,6 +500,21 @@
       "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
       "digest": "46f6acdf3315b7c779b6583c40ba4efac43dea96890d0df1e843f63cb2eeec6f",
       "why": "#557 appends the Free entitlement matrix digest while preserving the original reprice digest and all existing assertions."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "8494752bc69bf5e512cfcd6a536893b01ce578700c5e043dab369b8e5cea3232",
+      "why": "#557 records the added FreeMemberShell element in the exact shell inventory while preserving existing guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "291debaa308fca54e4bc8cd945173394f23fcd1413549839c67846d85fcbe35e",
+      "why": "#557 records the FreeMemberShell and sign-up page components using the phone touch floor while preserving existing guards."
+    },
+    {
+      "file": "src/components/__tests__/THE-334.nav-rail-coordination.test.tsx",
+      "digest": "6071ebeed7185bb608ae437a12c7b4456a656158c233220a2ca79f81a6459d7f",
+      "why": "#557 appends the drawer digest for the Sign-up pages navigation entry while preserving existing guards."
     }
   ]
 }
