@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Segmented, ErrorNote } from '@/components/email/kit';
+import { ThemeWarning } from '@/components/email/ThemeWarning';
 import type { DraftFields, EmailApi } from '@/components/email/email-api';
+import { getThemePreset } from '@/lib/email/themes';
 import { cn } from '@/lib/utils';
 
 type Mode = 'computer' | 'phone' | 'dark';
@@ -23,6 +25,11 @@ export function PreviewDialog({ open, onOpenChange, api, draft }: {
   const [mode, setMode] = useState<Mode>('computer');
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The tokens this draft renders with, for the contrast banner above the
+  // frame. A draft that carries only a theme id still warns from that theme's
+  // own colours; a classic draft has no tokens and no substitutions to report.
+  const warningTokens = draft.themeTokens
+    ?? (draft.themeId ? getThemePreset(draft.themeId)?.tokens ?? null : null);
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +59,7 @@ export function PreviewDialog({ open, onOpenChange, api, draft }: {
             options={[{ value: 'computer', label: 'Computer' }, { value: 'phone', label: 'Phone' }, { value: 'dark', label: 'Dark' }]}
           />
         </DialogHeader>
+        <ThemeWarning tokens={warningTokens} />
         {error && <ErrorNote>{error}</ErrorNote>}
         {!error && html === null && <Skeleton className="h-[60vh] w-full" />}
         {html !== null && (

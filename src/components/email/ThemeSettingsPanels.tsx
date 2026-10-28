@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Segmented, TAP } from '@/components/email/kit';
+import { ThemeWarning } from '@/components/email/ThemeWarning';
 import { readHexColor } from '@/lib/email/design';
 import {
   DEFAULT_THEME_TOKENS,
@@ -124,6 +125,9 @@ export function ThemeSettingsPanels({ tokens, onChange, defaults = DEFAULT_THEME
 
   return (
     <div className="flex flex-col">
+      {/* Above every knob, live: the colours below can make a send unreadable,
+          and a fallback nobody is told about is a silent failure. */}
+      <ThemeWarning tokens={tokens} className="mb-4" />
       <Section
         title="Colours"
         summary="Page, card, words, headings, links and buttons"

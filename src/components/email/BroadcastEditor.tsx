@@ -13,9 +13,10 @@ import { DEFAULT_THEME_TOKENS, getCustomTheme, getThemePreset, type CustomTheme,
 import { BodyEditor } from '@/components/email/BodyEditor';
 import { DesignDialog } from '@/components/email/DesignDialog';
 import { PreviewDialog } from '@/components/email/PreviewDialog';
+import { ThemeWarning } from '@/components/email/ThemeWarning';
 import { SendStep } from '@/components/email/SendStep';
 import { TemplatesDialog } from '@/components/email/TemplatesDialog';
-import { ErrorNote, TAP, formatStamp, plural } from '@/components/email/kit';
+import { ErrorNote, Segmented, TAP, formatStamp, plural, type Option } from '@/components/email/kit';
 import { inboxCheck, inboxSummary, plainWords } from '@/components/email/inbox-check';
 import { EmailApiError, type SettingsFocus, type AudienceFilter, type Broadcast, type DraftFields, type EmailApi, type Overview, type SendResponse } from '@/components/email/email-api';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,14 @@ type Step = 'write' | 'send';
 type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
 
 const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved', error: 'Not saved' };
+
+/** The inline preview's three windows. `''` means the pane is closed. */
+type InlinePreview = 'computer' | 'phone' | 'dark' | '';
+const INLINE_PREVIEW: readonly Option<InlinePreview>[] = [
+  { value: 'computer', label: 'Computer' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'dark', label: 'Dark' },
+];
 
 /**
  * A brand-new email starts on the default theme when the ministry has set one;
@@ -90,6 +99,9 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [result, setResult] = useState<Extract<SendResponse, { outcome: string }> | null>(null);
   const [pending, setPending] = useState<'back' | 'next' | 'test' | null>(null);
+  const [inlinePreview, setInlinePreview] = useState<InlinePreview>('');
+  const [inlineHtml, setInlineHtml] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   const idRef = useRef(id);
   const wasScheduled = useRef(initial?.status === 'scheduled');
@@ -141,6 +153,25 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
     return () => clearTimeout(t);
   }, [subject, subjectB, preheader, bodyHtml, design, filters, themeId, themeTokens, persist]);
 
+  /**
+   * The inline pane renders the same HTML a send would, through the server's
+   * own renderer. It waits a beat after typing so keystrokes do not each queue
+   * a request, and keeps the last frame up while the next one is built.
+   */
+  useEffect(() => {
+    if (inlinePreview === '') return;
+    let live = true;
+    setInlineError(null);
+    const t = setTimeout(() => {
+      api.preview({ ...latest.current(), dark: inlinePreview === 'dark' }).then(
+        (h) => { if (live) setInlineHtml(h); },
+        (e: unknown) => { if (live) setInlineError(e instanceof Error ? e.message : 'The preview could not be built.'); },
+      );
+    }, 400);
+    return () => { live = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlinePreview, snapshotOf(draft())]);
+
   /** A pick or an edit sets the token snapshot the renderer reads; classic clears both. */
   const applyTheme = (nextId: string | null, nextTokens: EmailThemeTokens | null) => {
     setThemeId(nextId);
@@ -167,6 +198,9 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   }
 
   const tips = inboxCheck({ subject, preheader, bodyHtml });
+  /** The tokens the contrast warning and the inline preview reason about. */
+  const previewTokens = themeTokens
+    ?? (themeId ? getThemePreset(themeId)?.tokens ?? getCustomTheme(customThemes, themeId)?.tokens ?? null : null);
   const ready = Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
 
   // The way back is the top bar's breadcrumb (Newsletter > this email), not a button
@@ -342,6 +376,34 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               )}
             </div>
             <div className="mt-3 border-t border-line">
+              <div className="flex items-center gap-3 px-5 py-2">
+                <span className="text-xs text-faint">Preview</span>
+                <Segmented label="Inline preview as" value={inlinePreview} onChange={setInlinePreview} options={INLINE_PREVIEW} />
+                {inlinePreview !== '' && (
+                  <Button variant="ghost" size="icon" className="ml-auto min-h-11" aria-label="Hide the inline preview" onClick={() => setInlinePreview('')}>
+                    <X />
+                  </Button>
+                )}
+              </div>
+              {inlinePreview !== '' && (
+                <div className="flex flex-col gap-3 px-5 pb-4">
+                  <ThemeWarning tokens={previewTokens} />
+                  {inlineError ? (
+                    <ErrorNote>{inlineError}</ErrorNote>
+                  ) : inlineHtml === null ? (
+                    <p role="status" className="text-sm text-muted">Building the preview…</p>
+                  ) : (
+                    <div className="flex justify-center overflow-auto rounded-lg bg-surface-sunken p-3">
+                      <iframe
+                        title="Inline email preview"
+                        sandbox=""
+                        srcDoc={inlineHtml}
+                        className={cn('h-72 rounded-md border border-line bg-white', inlinePreview === 'phone' ? 'w-[320px]' : 'w-full')}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <BodyEditor html={bodyHtml} onChange={setBodyHtml} />
             </div>
             <Collapsible open={tipsOpen} onOpenChange={setTipsOpen} className="border-t border-line">
