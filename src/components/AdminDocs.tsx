@@ -1728,10 +1728,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               onChange={(html) => handleContentChange(openDoc.id, html)}
               minHeight="calc(100vh - 320px)"
               placeholder="Start writing... Type / for commands"
-              // The shared default is capped at `lg:prose-lg` now — the 18px
-              // body the published article renders at. A note is not a blog
-              // post being read at arm's length; this is the flat, compact
-              // measure.
+              // The shared default ends at `xl:prose-2xl` — a 1.5rem base — so
+              // on a monitor a note, and the placeholder that inherits from it,
+              // rendered at 24px. A note is not a blog post being read at arm's
+              // length; this is the flat, compact measure.
               proseClass={COMPACT_PROSE_CLASS}
             />
           </div>

@@ -487,7 +487,26 @@ describe('the #425 editor toolbar still renders as one horizontally-scrolling ro
   it('is untouched by this ticket', () => {
     // The toolbar is RichTextEditor's, mounted into this screen. THE-305 edits
     // neither the component nor its mount, which is the whole claim.
-    expect(changedSince('src/components/RichTextEditor.tsx'), 'the toolbar component was edited').toEqual([]);
+    //
+    // ⚠️ AMENDED, and RECORDED here rather than deleted or relaxed. The
+    // byte-identity claim on RichTextEditor.tsx held on THE-305's branch and
+    // stopped holding when the blog-editor font fix legitimately landed on that
+    // file: `DEFAULT_PROSE_CLASS` drops `xl:prose-2xl`, and the doc comments
+    // beside it were rewritten to say why. Neither shape can move the toolbar,
+    // so the claim survives as a claim about the CONTENT of the diff — exactly
+    // as the course.constants.ts pin below was narrowed for THE-311: whatever
+    // anyone does to RichTextEditor.tsx, the changed lines may be comment prose
+    // or the one named `DEFAULT_PROSE_CLASS` declaration, and nothing else.
+    const editorDiff = execFileSync('git', ['diff', baseRef(), '--', 'src/components/RichTextEditor.tsx'],
+      { cwd: ROOT, encoding: 'utf8' });
+    const editorTouched = editorDiff.split('\n')
+      .filter((l) => /^[+-][^+-]/.test(l))
+      // Comment lines are prose; the font fix rewrote the doc comments on
+      // purpose, the same exemption the course.constants.ts pin makes below.
+      .filter((l) => !/^[+-]\s*(\/\/|\*|\/\*)/.test(l))
+      // The one code line the font fix touches: the named default itself.
+      .filter((l) => !/^[+-]\s*(export\s+)?const\s+DEFAULT_PROSE_CLASS\s*=/.test(l));
+    expect(editorTouched, 'the toolbar component was edited beyond the prose cap').toEqual([]);
     const diff = execFileSync('git', ['diff', baseRef(), '--', 'src/components/AdminCourseEditor.tsx'],
       { cwd: ROOT, encoding: 'utf8' });
     const touched = diff.split('\n')
