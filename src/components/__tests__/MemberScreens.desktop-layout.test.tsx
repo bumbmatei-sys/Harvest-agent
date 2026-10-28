@@ -317,6 +317,7 @@ let SURFACES!: Record<string, HTMLDivElement>;
 let COMMUNITY_BASELINE!: Baseline;
 let COMMUNITY_FIDELITY_BASELINE!: Baseline;
 let POST_CARD_BASELINE!: Baseline;
+let SHADCN_MESSAGES_BASELINE!: Baseline;
 const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
@@ -390,6 +391,9 @@ beforeAll(async () => {
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
   // Community Eden fidelity pass: retain the earlier fixture for historical checks.
   COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
+  // PR 554: reviewer-requested shadcn Input/Button swaps add intrinsic state,
+  // file-input and height classes. Keep the old fixture; append only Messages.
+  SHADCN_MESSAGES_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-shadcn-messages-mobile.json'), 'utf8')).surfaces as Baseline;
 });
 
 /**
@@ -408,6 +412,8 @@ describe('community step 1 pins', () => {
       // mobile nav wrappers; records Skool tabs, Lucide/state classes and the
       // profile's 44px floor. The other three surfaces are byte-identical.
       '2c6aa1daf07baa1387a6d260e08d0f24eaa0d110afb63f9e0ba58fc520328b93',
+      // Merge PR 554's shadcn search with THE-555's left-aligned group rows.
+      '61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b',
     ]).toContain(createHash('sha256').update(readFileSync(POLISH_FIXTURE)).digest('hex'));
   });
 
@@ -468,7 +474,48 @@ describe('community step 1 pins', () => {
     const sharedNavShellDigests: Record<string, string> = { 'MainApp.tsx': '686af637a57e383b2c9f4c65730b2ee30b486e6bc705fc2d78db0aef4934240a' };
     // THE-555 round 5: r4 shared nav shell, Lucide/state classes, composer alignment and profile touch floor.
     const roundFiveDigests: Record<string, string> = {"MainApp.tsx": "b1c0b69372231837e9a920c6d9b3e99b31fecc507c93314aecfcd37bfbd31120", "community/AdminPostComposer.tsx": "e9285dda8170782879cd0423c6fe30603b70821340dc553dd32063e24e7ccf98"};
-    expect([roundFiveDigests[file], sharedNavShellDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 final review binds comments and adopts shadcn controls with phone touch floors.
+    const finalReview: Record<string, string> = {
+      "NewsTab.tsx": "b6ee8784f381206a2f4ff4894b4ea59a1994835c539faf8f77bf3b767739b1b1",
+      "UserMessages.tsx": "5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3",
+      "community/GroupList.tsx": "af984b8150e09ed4462651e8232dbd860f82676900a85b9ac02e538dd89fd8b8",
+      "community/AdminPostComposer.tsx": "55e2e910ad61b8e76c2f52ace0323eac01422fb58e9d2cf0bdccfc289cbadd0f"
+};
+    // Keep selected states in static aria-pressed classes so the button floor guard measures them.
+    const staticControls: Record<string, string> = { 'community/AdminPostComposer.tsx': 'd81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41' };
+    // PR 554 follow-up: intrinsic shadcn sizing and THE-346 discovery anchor.
+    const shadcnLayoutFixes: Record<string, string> = {
+      "UserMessages.tsx": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
+      "community/AdminPostComposer.tsx": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2"
+    };
+    // PR 554 Bugbot: comment writes inherit the parent ministry in the apex feed.
+    const commentTenant: Record<string, string> = { 'NewsTab.tsx': 'acc2b8bfe18f7f6a7169bd4df9335f6e5f74b1b4da3374c44668b30516ae2a9b' };
+    // Merge PR 554 comment security and controls with THE-555 discovery and touch targets.
+    const reconciledDigests: Record<string, string> = {
+      "NewsTab.tsx": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "community/GroupList.tsx": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "community/AdminPostComposer.tsx": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8"
+};
+    expect([reconciledDigests[file], commentTenant[file], shadcnLayoutFixes[file], staticControls[file], finalReview[file], roundFiveDigests[file], sharedNavShellDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+  });
+
+  it('the shadcn record changes only the group search and group button rows', () => {
+    for (const name of THE_348_SURFACES) {
+      const before = COMMUNITY_FIDELITY_BASELINE[name].mobileLayer;
+      const after = SHADCN_MESSAGES_BASELINE[name].mobileLayer;
+      expect(after).toHaveLength(before.length);
+      const moved = after.filter((row, i) => row !== before[i]);
+      expect(moved).toHaveLength(2);
+      expect(moved.filter((row) => row.split('\t')[1] === 'input')).toHaveLength(1);
+      expect(moved.filter((row) => row.includes('aria-pressed:bg-surface-sunken'))).toHaveLength(1);
+      // Neither the composer, its reserved band nor its send control can hide
+      // behind this new record. All other rows still equal the earlier pin.
+      const movedIndices = new Set(moved.map((row) => row.split('\t')[0]));
+      expect(SHADCN_MESSAGES_BASELINE[name].heights.filter((row) => !movedIndices.has(row.split('\t')[0])))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].heights);
+      expect(SHADCN_MESSAGES_BASELINE[name].colours.filter(isResponsive))
+        .toEqual(COMMUNITY_FIDELITY_BASELINE[name].colours.filter(isResponsive));
+    }
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -657,7 +704,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
+      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
       if (name === 'NewsTab' || name === 'MainApp') {
         // The seeded composer has one submit button; only its touch floor changed.
         const rows = mobileLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name]);
@@ -790,7 +837,7 @@ describe('no touch target got smaller', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
+      expect(heightLayer(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
@@ -1405,7 +1452,14 @@ describe('no behaviour changed on any screen in scope', () => {
       // PR 554 round three selects the newest 50 posts before promoting pins.
       'f74589c637154c3f0ae2cdf72832067dfe49e9bd0625b9a1bff1a284f60b3644',
       // THE-555 merge keeps the mobile post sheet and PR 554's ordered query.
-      '4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca'])
+      '4e4d8d72f76d4000000c00ba5f67c303521b6b6c9bd6528277fe73e116d92cca',
+
+      // PR 554 final review binds comment bylines and omits untrusted comment levels.
+      'f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066',
+      // PR 554 Bugbot: preserve the parent ministry on every comment create.
+      '257b9a094466c2bc1e5c774469d1c483630d1bddcd7de36e24aaff663c969af4',
+      // Merge comment tenant/byline protection with THE-555's mobile post sheet.
+      '4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 
@@ -1650,7 +1704,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       return;
     }
     if (isCommunitySurface(name)) {
-      expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
+      expect(colourTokens(name === 'MainApp' ? beforeDiscoveryShell(SURFACES[name]) : SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? SHADCN_MESSAGES_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {

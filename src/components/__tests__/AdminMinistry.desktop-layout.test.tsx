@@ -2075,6 +2075,8 @@ describe('no community query or write path changed', () => {
       [1280, '76881812af03d7c3baaf7e5b212de85809436fdba90246e8a70431507a710c8a'],
       // THE-555 merge retains PR 554's extracted, tenant-scoped user picker.
       [1259, 'ef2d02cbd289c2dee02399a92acdcd3125c1d26f91c30bfb5db92807731582aa'],
+      // PR 554 final review adopts shadcn for the member and onboarding actions.
+      [1260, 'f5dad168ccab0e90c653baa24cab8f420774a7e1be14a14ebf16ac4e04fc5837'],
     ], DIFF_HINT('AdminCommunity')).toContainEqual([now.split('\n').length, sha(now)]);
   });
 

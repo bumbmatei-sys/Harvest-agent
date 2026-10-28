@@ -364,10 +364,14 @@ service cloud.firestore {
         allow read: if isAuthenticated() &&
           belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''));
         allow create: if isAuthenticated() &&
+          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) &&
+          request.resource.data.tenantId == get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '') &&
+          request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
+          request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
           request.resource.data.authorId == request.auth.uid &&
+          memberPostByline(request.resource.data) &&
           request.resource.data.content is string &&
-          request.resource.data.content.size() <= 280 &&
-          request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']);
+          request.resource.data.content.size() <= 280;
         allow delete: if isAuthenticated() &&
           resource.data.authorId == request.auth.uid;
         allow update: if false;

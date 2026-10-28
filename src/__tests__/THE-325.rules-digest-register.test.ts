@@ -819,14 +819,16 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
-    'b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b',
-    'THE-378',
+    'd5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55',
+    '#554',
     'the Ministry row of the matrix transcription gained socialScheduler true, because Matei '
       + 'approved the scheduler on the Ministry plan on 2026-10-21. One cell on one tier; the suite '
       + 'still asserts every other cell and no price moved. The previous digest was '
       + 'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6 (#530). The row in '
       + 'CONTENT_ASSERTING is untouched. '
-      + 'Moved again by THE-378, the two-plan repricing: the matrix transcription now has the free, church and ministry rows in place of free, plus, pro and max. The suite still asserts every cell of every tier. The previous current digest was 9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2 (THE-376). The row in CONTENT_ASSERTING is untouched.',
+      + 'Moved again by THE-378, the two-plan repricing: the matrix transcription now has the free, church and ministry rows in place of free, plus, pro and max. The suite still asserts every cell of every tier. The previous current digest was 9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2 (THE-376). The row in CONTENT_ASSERTING is untouched. '
+      + 'APPENDED BY #554 / B1: comment creation now binds the parent tenant, exactly six fields, and the commenter profile name/photo. The suite records the exact reviewed /community_posts block digest while retaining its earlier clause assertions and every matrix, no-plan-rule, index, erasure and permalink check. '
+      + 'This map keeps one current digest; the previous current digest remains recorded here: b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b (THE-378). The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
     'a2fcd58b7b66fa1f29f6e445846ce4b159122d4ae3d419d4a5b6f3ffcf3d19f8',

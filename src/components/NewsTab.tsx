@@ -41,7 +41,6 @@ interface Comment {
   authorId: string;
   authorName: string;
   authorPhoto?: string;
-  authorLevel?: number;
   content: string;
   createdAt: string;
 }
@@ -63,6 +62,7 @@ interface EventDetails {
 
 interface CommunityPost {
   id: string;
+  tenantId?: string;
   type: 'post' | 'poll' | 'event';
   authorId: string;
   authorName: string;
@@ -668,7 +668,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     }
   };
 
-  const handleComment = async (postId: string) => {
+  const handleComment = async (post: CommunityPost) => {
+    const postId = post.id;
     const text = (commentInputs[postId] || '').trim();
     if (!text) return;
     if (text.length > 280) {
@@ -683,30 +684,20 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       return;
     }
     try {
-      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
-      // resolver returns null for a super admin on the apex ("all tenants",
-      // right for a read), which stamped `tenantId: null` on the comment.
-      //
-      // Scope of the harm, stated precisely: NO rule reads a comment's own
-      // tenantId (the read scopes off the parent post's, create validates
-      // authorId/content/keys only, delete is authorId-only), so a null here
-      // does not orphan the comment. It is simply wrong denormalised data that
-      // any future tenant-filtered query or export would silently miss.
-      // `|| null` is kept — the field's `string | null` contract is unchanged.
-      const tenantId = await getWriteTenantScope();
-      // Resolve author from the user doc (mirrors the post path's #147 fix —
-      // Auth displayName/photoURL are often blank; the real profile is on the doc).
+      // Comments belong to their parent ministry, including in the unscoped super admin feed.
+      const tenantId = post.tenantId;
+      if (typeof tenantId !== 'string' || !tenantId.trim()) throw new Error('A ministry is required to comment.');
       const userSnap = await getDoc(doc(db, 'users', user.uid));
       const userData = userSnap.exists() ? userSnap.data() : null;
-      const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
-      const authorPhoto = userData?.photoURL || user.photoURL || '';
+      const authorName = userData?.displayName || user.displayName || 'Member';
+      const authorPhoto = userData?.photoURL || '';
       await addDoc(collection(db, 'community_posts', postId, 'comments'), {
         authorId: user.uid,
         authorName,
         authorPhoto,
         content: text,
         createdAt: new Date().toISOString(),
-        tenantId: tenantId || null,
+        tenantId,
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
 
@@ -1105,7 +1096,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 {commentErrors[post.id] && <p role="alert" className="text-xs text-muted">Could not load comments.</p>}
                 {!commentErrors[post.id] && postComments[post.id]?.map(comment => (
                   <div key={comment.id} className="flex items-start gap-2.5">
-                    <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} level={comment.authorLevel} small />
+                    <MemberAvatar name={comment.authorName} photo={comment.authorPhoto} small />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-strong">{comment.authorName}</span>
@@ -1151,13 +1142,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       type="text"
                       value={commentInputs[post.id] || ''}
                       onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value.slice(0, 280) }))}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post); } }}
                       placeholder="Write a comment..."
                       maxLength={280}
                       className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                     />
                     <Button type="button" variant="ghost" size="icon" aria-label="Send comment"
-                      onClick={() => handleComment(post.id)}
+                      onClick={() => handleComment(post)}
                       disabled={!(commentInputs[post.id] || '').trim()}
                       className="min-h-11 min-w-11 p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors sm:min-h-0 sm:min-w-0"
                     >

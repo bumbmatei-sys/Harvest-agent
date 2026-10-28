@@ -599,6 +599,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // band Rule 4 governs. The disclaimer's TEXT is unchanged — the fold is
       // the whole edit.
       'src/components/AdminCRM.tsx',
+      // PR 554 reviewer-requested shadcn controls: 44px phone floors on community actions.
+      'src/components/AdminCommunity.tsx',
       // APPENDED BY THE-345, NOTHING BELOW REMOVED OR REWRITTEN. It sits second
       // because this list is the sweep's own sorted order, not the order tickets
       // arrived in.
@@ -811,6 +813,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
       // THE-555: shadcn admin composer controls state their mobile touch floor.
+      // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
       'src/components/community/AdminPostComposer.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.

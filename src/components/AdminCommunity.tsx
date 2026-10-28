@@ -18,6 +18,7 @@ import { useAdminHeader } from './AdminScreenHeader';
 import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
 import { loadScopedUserDocs } from './community/loadScopedUserDocs';
 import { NewGroupDialog, type GroupDraft } from './community/NewGroupDialog';
+import { Button } from './ui/button';
 import { OnboardingAnswers } from './community/OnboardingAnswers';
 
 /**
@@ -1292,9 +1293,9 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                   <p className="text-xs text-faint">{openChannel.audience === 'all' ? 'Everyone' : openChannel.audience === 'admins' ? 'Admins only' : `${(openChannel.members?.length || 0).toLocaleString()} ${(openChannel.members?.length || 0) === 1 ? 'member' : 'members'}`}</p>
                 </div>
               </div>
-              {openChannel.audience !== 'all' && openChannel.audience !== 'admins' && <button onClick={() => setShowChannelMembers(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-brand border border-line text-xs font-semibold text-strong hover:bg-surface-sunken transition-colors">
+              {openChannel.audience !== 'all' && openChannel.audience !== 'admins' && <Button variant="outline" onClick={() => setShowChannelMembers(true)} className="min-h-11 sm:min-h-0 flex items-center gap-1.5 px-3 py-1.5 rounded-brand border border-line text-xs font-semibold text-strong hover:bg-surface-sunken transition-colors">
                 <Users size={14} /> Members
-              </button>}
+              </Button>}
             </div>
             <div className="flex-1 min-h-0">
               <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
@@ -1400,7 +1401,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                       {membershipBadge(m.id)}
                     </div>
                   </button>
-                  <button type="button" className="px-5 pb-3 text-sm underline" onClick={() => setAnswersMember(answersMember?.id === m.id ? null : m)}>Onboarding answers</button>
+                  <Button variant="link" type="button" className="min-h-11 sm:min-h-0 px-5 pb-3 text-sm underline" onClick={() => setAnswersMember(answersMember?.id === m.id ? null : m)}>Onboarding answers</Button>
                   {answersMember?.id === m.id && tenantId && <OnboardingAnswers tenantId={tenantId} uid={m.id} />}
                   </div>
                 ))

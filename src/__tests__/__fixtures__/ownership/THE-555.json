@@ -1025,6 +1025,66 @@
       "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
       "digest": "0aae677850c90726c6948ccf97696cff53fe3e8979fc3e8266828394bf06baa7",
       "why": "THE-555 round 5: appends the AdminDashboard digest for the Lucide navigation and shadcn logo Button touch-floor fix. Earlier digests and reasons remain accepted; existing plan and permission gates remain intact."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "9f0ae0f5906787dda1efb23857c260a7f320593b8f8e52daf9059fb546fb879b",
+      "why": "Records the automatic merge of PR 554 parent-tenant, exact-six-field and profile-bound comment creation rules with THE-555 public discovery and server-owned reviews. No rule was edited during conflict resolution; production deployment still requires the founder go."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 member feed presentation and controls; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "why": "Retains PR 554 shadcn ghost Button group rows and THE-555 left alignment, full-width wrapping, Badge unread count and min-h-11 touch floor; removes the duplicate Button import introduced by the merge."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "24158b4a9053e644c340e4fabee39c6a4f2fb8b4c30e53bd8e89c0e5f2d4f83f",
+      "why": "Unions both branches explanations for the composer touch floor and preserves the full exact min-h-11 sweep inventory, including THE-555 MainApp and AdminContentBar entries; no sweep assertion is removed."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 mobile post sheet; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e369cefd12a60cda0c00fcd6f232a87a0f3d7e26e6ac92aaf83f12b4d5f1f1f0",
+      "why": "Unions both branches source pins and historical Messages fixture checks, appends final merged source and fixture digests and retains THE-555 discovery shell normalization, group alignment and touch-floor comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "0a0e8181e6f44f579b55695119f5404d295514e23d52e670320ba50bbafdd4ec",
+      "why": "Records the automatically merged admin community and sidebar source pins from PR 554 and THE-555; no assertion or source inventory was changed while resolving the four explicit conflicts."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "ffa40f6cc08c5769ba21bc249ed3f8bcf70df0d949aaed221f11cbe25b018ee6",
+      "why": "Records the automatic union of PR 554 shadcn UserMessages Input accepted values with THE-555 community navigation pins; every prior accepted value and navigation authorization assertion remains intact."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "fa13f2ce126264e307d82a139ec68e204016e6e5cbfd1a644337fcc89a27efc8",
+      "why": "Records the automatic union of PR 554 comment tenant, field allowlist, byline and authorization regressions with THE-555 public discovery and server-owned review rules tests. No emulator test was edited during conflict resolution."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "8858c0abe8888a61f0b4ce6a9e6ab92d2c4bc62284be15c40a583591fed61f47",
+      "why": "Records the automatic merge retaining PR 554 exact-six-field parent-tenant comment authorization and UID-only counterpart guards with THE-555 shared safe-area navigation and sender identity protections."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8",
+      "why": "Combines PR 554 ghost Button, Input and Textarea controls and responsive intrinsic sizing with THE-555 Avatar, ToggleGroup, DropdownMenu, named pin states and THE-346 avatar/paperclip anchors; retains 44px mobile targets."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
+      "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
     }
   ]
 }

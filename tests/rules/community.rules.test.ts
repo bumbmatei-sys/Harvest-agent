@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, it } from 'vitest';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
-import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID, OWNER_EMAIL, ROSTER_ADMIN_EMAIL } from './helpers';
+import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, TENANT_B, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID, OWNER_EMAIL, ROSTER_ADMIN_EMAIL } from './helpers';
 import { SUPER_ADMIN_EMAILS } from '../../src/utils/super-admins';
 
 const sub = (p: string) => `tenants/${TENANT_A}/${p}`;
@@ -11,7 +11,7 @@ beforeAll(async () => {
   await seedDoc('email_log/private', { tenantId: 'other', subject: 'private' });
   await seedDoc('users/settings-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageSettings') });
   await seedDoc('users/community-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageCommunity') });
-  await seedDoc('users/church-admin', { role: 'church_admin', tenantId: TENANT_A, displayName: 'Church admin' });
+  await seedDoc('users/church-admin', { role: 'church_admin', tenantId: TENANT_A, displayName: 'Church admin', permissions: { fullAccess: true } });
   await seedDoc('users/spoofer', { role: 'user', tenantId: TENANT_A, email: 'spoofer@test.com' });
   await seedDoc(sub('channels/everyone'), { audience: 'all', members: [] });
   await seedDoc(sub('channels/admins'), { audience: 'admins', members: [FULL_ADMIN_UID] });
@@ -54,6 +54,65 @@ describe('community access', () => {
     await assertSucceeds(churchAdmin.doc(sub('settings/community')).get());
     await assertFails(churchAdmin.doc('tenants/other/settings/community').get());
   });
+  it('keeps church_admin user reads and post moderation scoped to their tenant', async () => {
+    const admin = (await asUid('church-admin')).firestore();
+    await seedDoc('community_posts/church-admin-own-tenant', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Own ministry' });
+    await seedDoc('community_posts/church-admin-foreign-tenant', { tenantId: TENANT_B, authorId: ADMIN_B_UID, content: 'Other ministry' });
+    await assertSucceeds(admin.doc(`users/${MEMBER_UID}`).get());
+    await assertFails(admin.doc(`users/${ADMIN_B_UID}`).get());
+    await assertSucceeds(admin.doc('community_posts/church-admin-own-tenant').update({ isPinned: true }));
+    await assertFails(admin.doc('community_posts/church-admin-foreign-tenant').update({ isPinned: true }));
+    await assertFails(admin.doc('community_posts/church-admin-foreign-tenant').delete());
+  });
+  it('rejects three-person and duplicate-participant DMs even for a full admin', async () => {
+    const admin = (await fullAdmin()).firestore();
+    await assertFails(admin.doc(sub('directMessages/admin-three-participants')).set({ participants: [FULL_ADMIN_UID, MEMBER_UID, MEMBER2_UID] }));
+    await assertFails(admin.doc(sub('directMessages/admin-duplicate-participants')).set({ participants: [FULL_ADMIN_UID, FULL_ADMIN_UID] }));
+    await assertSucceeds(admin.doc(sub('directMessages/admin-two-distinct-participants')).set({ participants: [FULL_ADMIN_UID, MEMBER_UID] }));
+  });
+  it('rejects cross-tenant comments even when the caller is a full admin', async () => {
+    await seedDoc('community_posts/comment-tenant-boundary', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Tenant A post' });
+    const foreign = (await adminB()).firestore();
+    const base = { authorId: ADMIN_B_UID, authorName: 'Member', authorPhoto: '', content: 'Cross-tenant', createdAt: '2040-01-01T12:00:00Z' };
+    // Matching the parent must not substitute for belonging to its tenant.
+    await assertFails(foreign.doc('community_posts/comment-tenant-boundary/comments/matching-parent').set({ ...base, tenantId: TENANT_A }));
+    await assertFails(foreign.doc('community_posts/comment-tenant-boundary/comments/matching-caller').set({ ...base, tenantId: TENANT_B }));
+  });
+  it('binds comment bylines, requires exactly six keys and matches the parent tenant', async () => {
+    const uid = 'comment-author';
+    await seedDoc(`users/${uid}`, { role: 'user', tenantId: TENANT_A, displayName: 'Profile commenter', photoURL: 'https://example.com/profile.jpg' });
+    await seedDoc('community_posts/comment-byline', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Post' });
+    const env = await getEnv();
+    const db = env.authenticatedContext(uid, { tenantId: TENANT_A, name: 'Token commenter' }).firestore();
+    const base = { authorId: uid, authorName: 'Profile commenter', authorPhoto: 'https://example.com/profile.jpg', content: 'Hello', createdAt: '2040-01-01T12:00:00Z', tenantId: TENANT_A };
+    const comments = db.collection('community_posts/comment-byline/comments');
+    await assertSucceeds(comments.doc('valid').set(base));
+    await assertSucceeds(comments.doc('empty-photo').set({ ...base, authorPhoto: '' }));
+    for (const [key, value] of Object.entries({ authorId: MEMBER_UID, authorName: 'Pastor John', authorPhoto: 'https://example.com/fake.jpg', authorLevel: 99, authorRole: 'admin', tenantId: TENANT_B, content: 'x'.repeat(281) })) {
+      await assertFails(comments.doc(`forged-${key}`).set({ ...base, [key]: value }));
+    }
+    await assertFails(comments.doc('stale-token-name').set({ ...base, authorName: 'Token commenter' }));
+    for (const key of Object.keys(base)) {
+      const missing: Record<string, unknown> = { ...base };
+      delete missing[key];
+      await assertFails(comments.doc(`missing-${key}`).set(missing));
+    }
+    const anonymous = env.unauthenticatedContext().firestore();
+    await assertFails(anonymous.doc('community_posts/comment-byline/comments/anonymous').set(base));
+  });
+  it('uses the Auth name and then Member when a comment author has no profile name', async () => {
+    await seedDoc('community_posts/comment-fallback', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Post' });
+    const env = await getEnv();
+    for (const [uid, profile] of [['comment-no-profile', null], ['comment-empty-profile', { displayName: '', name: 'Unbound legacy name' }]] as const) {
+      if (profile) await seedDoc(`users/${uid}`, { ...profile, role: 'user', tenantId: TENANT_A });
+      const db = env.authenticatedContext(uid, { tenantId: TENANT_A, name: 'Auth commenter' }).firestore();
+      const base = { authorId: uid, authorName: 'Auth commenter', authorPhoto: '', content: 'Hello', createdAt: '2040-01-01T12:00:00Z', tenantId: TENANT_A };
+      await assertSucceeds(db.doc(`community_posts/comment-fallback/comments/${uid}`).set(base));
+      await assertFails(db.doc(`community_posts/comment-fallback/comments/${uid}-legacy-name`).set({ ...base, authorName: 'Unbound legacy name' }));
+    }
+    const m = (await member()).firestore();
+    await assertSucceeds(m.doc('community_posts/comment-fallback/comments/member').set({ authorId: MEMBER_UID, authorName: 'Member', authorPhoto: '', content: 'Hello', createdAt: '2040-01-01T12:00:00Z', tenantId: TENANT_A }));
+  });
   it('restricts limited admins to permitted channels when posting', async () => {
     const limited = (await asUid('settings-manager')).firestore();
     const manager = (await asUid('community-manager')).firestore();
@@ -87,6 +146,11 @@ describe('community access', () => {
   it('allows setup managers to create only the fixed default group', async () => {
     const manager = (await asUid('settings-manager')).firestore();
     const data = { name: 'All members', description: '', audience: 'all', members: [], createdBy: 'settings-manager', type: 'announcement' };
+    // A setup-only admin cannot bypass the fixed default-group shape. These
+    // run before the valid create so they exercise create, never update.
+    for (const extra of [{ audience: 'admins' }, { isPublic: true }, { members: [MEMBER_UID] }]) {
+      await assertFails(manager.doc(sub('channels/all-members')).set({ ...data, ...extra, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    }
     await assertSucceeds(manager.doc(sub('channels/all-members')).set({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
     await assertFails(manager.doc(sub('channels/all-members')).update({ name: 'Changed' }));
     await assertFails(manager.doc(sub('channels/other')).set({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));

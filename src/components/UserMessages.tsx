@@ -8,6 +8,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { Input } from './ui/input';
 import { GroupList } from './community/GroupList';
 import { sortByTime } from '../utils/query-helpers';
 import { getOrCreateDm } from '../lib/dm';
@@ -966,7 +967,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
 
       <div className="flex-1 p-4 lg:overflow-y-auto lg:min-h-0">
         <label className="sr-only" htmlFor="group-search">Search groups</label>
-        <input id="group-search" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Search groups" className="mb-4 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm" />
+        <Input id="group-search" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Search groups" className="mb-4 h-auto min-h-[44px] sm:min-h-0 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm" />
         {groupError && <p role="alert" className="mb-3 text-destructive">{groupError}</p>}
         {!groupError && dms.length === 0 && channels.length === 0 ? (
           <div className="text-center py-16 text-faint">

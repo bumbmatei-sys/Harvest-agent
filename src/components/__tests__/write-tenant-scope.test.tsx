@@ -4,8 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /**
- * Write paths must resolve the tenant with getWriteTenantScope(), not
- * getTenantScope().
+ * New top-level writes resolve the tenant with getWriteTenantScope().
+ * Comment writes inherit their parent post tenant instead.
  *
  * getTenantScope() returns null BY DESIGN for a super admin with no host scope:
  * null means "all tenants", which is correct for a read and wrong for a write.
@@ -139,11 +139,10 @@ function apexSuperAdmin() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sites 2 & 3 — community comments (AllNews and NewsTab)
 //
-// SCOPE OF HARM, precisely: no rule reads a comment's own tenantId. The read
-// scopes off the PARENT POST's tenantId, create validates authorId/content/keys
-// only, delete is authorId-only, update is false. So a null here does NOT orphan
-// the comment — it is wrong denormalised data that a future tenant-filtered
-// query or export would silently miss. Worth fixing, not a visibility bug.
+// Comment creation requires tenantId to equal the parent post tenant. The apex
+// feed is unscoped for a super admin, whose default write tenant is harvest.
+// belongsToTenant explicitly permits super admins across ministries, so the
+// composer stays available and must inherit the post tenant, never the default.
 // ─────────────────────────────────────────────────────────────────────────────
 const POST = {
   id: 'post-1',
@@ -158,10 +157,10 @@ for (const [label, importer] of [
   ['NewsTab', () => import('../NewsTab')],
 ] as const) {
   describe(`${label} — community comment create`, () => {
-    async function mountAndComment() {
+    async function mountAndComment(tenantId: unknown, sendWithEnter = false) {
       const mod: any = await importer();
       const Component = mod.default;
-      fx.snapshots = { community_posts: [POST] };
+      fx.snapshots = { community_posts: [{ ...POST, data: () => ({ ...POST.data(), tenantId }) }] };
       const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       await act(async () => {
         root = createRoot(container);
@@ -195,22 +194,35 @@ for (const [label, importer] of [
 
       const send = input.parentElement?.querySelector('button:not([disabled])') as HTMLButtonElement | null;
       if (!send) return false;
-      await act(async () => { send.click(); await Promise.resolve(); await Promise.resolve(); });
+      await act(async () => {
+        if (sendWithEnter) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        else send.click();
+        await Promise.resolve(); await Promise.resolve();
+      });
       return true;
     }
 
-    it('stamps tenantId "harvest" for an apex super admin, not null', async () => {
+    it.each([['tenant-1', false], ['tenant-2', true]] as const)('inherits parent tenant %s for an apex super admin (Enter: %s)', async (tenantId, sendWithEnter) => {
       apexSuperAdmin();
-      const reached = await mountAndComment();
+      const reached = await mountAndComment(tenantId, sendWithEnter);
       expect(reached, 'comment composer was not reachable — test needs updating').toBe(true);
       const write = fx.adds.find((a) => a.path === 'community_posts/post-1/comments');
       expect(write, 'no comment write was captured').toBeDefined();
-      expect(write!.data.tenantId).toBe('harvest');
-      expect(write!.data.tenantId).not.toBeNull();
+      expect(write!.data.tenantId).toBe(tenantId);
+      expect(write!.data.tenantId).not.toBe(scope.write);
+    });
+
+    it.each([undefined, null, '', '   '])('does not substitute a write scope for an invalid parent tenant (%s)', async (tenantId) => {
+      apexSuperAdmin();
+      const reached = await mountAndComment(tenantId);
+      expect(reached).toBe(true);
+      expect(fx.adds).toHaveLength(0);
+      expect(container.textContent).toContain("Couldn't post your comment. Please try again.");
+      expect(container.querySelector<HTMLInputElement>('input[placeholder="Write a comment..."]')!.value).toBe('Nice post');
     });
 
     it('is unchanged for an ordinary tenant admin on a subdomain', async () => {
-      const reached = await mountAndComment();
+      const reached = await mountAndComment('tenant-1');
       expect(reached).toBe(true);
       const write = fx.adds.find((a) => a.path === 'community_posts/post-1/comments');
       expect(write!.data.tenantId).toBe('tenant-1');

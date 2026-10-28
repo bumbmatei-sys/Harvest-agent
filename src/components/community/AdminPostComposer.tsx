@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 
 // THE-555: named classes let the touch-floor guard resolve every state.
-const COMPOSER_PIN_BUTTON = 'min-h-11 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors data-[pinned=true]:bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] data-[pinned=true]:text-gold data-[pinned=false]:text-muted data-[pinned=false]:hover:bg-surface-sunken';
+const COMPOSER_PIN_BUTTON = 'h-auto min-h-11 sm:min-h-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors data-[pinned=true]:bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] data-[pinned=true]:text-gold data-[pinned=false]:text-muted data-[pinned=false]:hover:bg-surface-sunken';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import React from 'react';
@@ -52,7 +52,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
               onChange={(e) => setComposerText(e.target.value)}
               placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
               rows={2}
-              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-hidden"
+              className="h-auto min-h-11 sm:min-h-0 flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-hidden"
             />
           </div>
 
@@ -66,14 +66,14 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                     value={option.text}
                     onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
                     placeholder={`Option ${index + 1}`}
-                    className="min-h-11 flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
+                    className="h-auto min-h-11 sm:min-h-0 flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
                   />
                   {pollOptions.length > 2 && (
                     <Button variant="ghost"
                       type="button"
                       onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
                       aria-label={`Remove option ${index + 1}`}
-                      className="min-h-11 p-2 text-faint hover:text-destructive transition-colors"
+                      className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 text-faint hover:text-destructive transition-colors"
                     >
                       <X size={16} />
                     </Button>
@@ -84,7 +84,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                 <Button variant="ghost"
                   type="button"
                   onClick={() => setPollOptions(prev => [...prev, { id: Date.now().toString(), text: '' }])}
-                  className="min-h-11 text-sm text-gold font-medium hover:underline"
+                  className="h-auto min-h-11 sm:min-h-0 text-sm text-gold font-medium hover:underline"
                 >
                   + Add option
                 </Button>
@@ -102,7 +102,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                     type="button"
                     onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
                     aria-label={`Remove image ${i + 1}`}
-                    className="min-h-11 min-w-11 absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                    className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                   >
                     <X size={12} />
                   </Button>
@@ -196,7 +196,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                 <Button variant="ghost"
                   type="button"
                   onClick={resetComposer}
-                  className="min-h-11 px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
+                  className="h-auto min-h-11 sm:min-h-0 px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
                 >
                   Cancel
                 </Button>
@@ -205,7 +205,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                 type="button"
                 onClick={handleSubmitPost}
                 disabled={isPosting || !composerCanSubmit}
-                className="min-h-11 flex items-center gap-2 px-5 py-1.5 bg-gold text-[var(--brand-foreground)] rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-auto min-h-11 sm:min-h-0 flex items-center gap-2 px-5 py-1.5 bg-gold text-[var(--brand-foreground)] rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={16} />
                 {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}

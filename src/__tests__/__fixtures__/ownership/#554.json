@@ -355,6 +355,216 @@
       "file": "src/app/api/community/dm-counterpart/route.test.ts",
       "digest": "30ac84d169178475c1d23af623574448984e785766f6b1290957541685ae6650",
       "why": "PR 554 covers stale owner, roster and platform profile email denial for both matching and foreign profile tenants, preserves protected role and owner identity, and verifies that counterpart eligibility no longer reads the email roster."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "3c4121d46838dddb1cfd03369e9bb0e2b27902e4f0434d2d102f6ac87ebc5294",
+      "why": "PR 554 final review scopes comment creation to the parent tenant, requires exactly six fields and binds names and photos to the commenter profile; production rules deployment still requires the founder go."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "6cee8b5dc18f3482dabf26fa6d35fd5200176f4ac47fd73ef7dba8ddd5d558f4",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "b6ee8784f381206a2f4ff4894b4ea59a1994835c539faf8f77bf3b767739b1b1",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f045fb6b69b07bf324bf4916bc2a0a1da69dcf2fd538217b01f3406ddb2de066",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "6c9bc5697460e05528193829bbaf889de85c1effe244f6f2378d4ad1041616c7",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "af984b8150e09ed4462651e8232dbd860f82676900a85b9ac02e538dd89fd8b8",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "55e2e910ad61b8e76c2f52ace0323eac01422fb58e9d2cf0bdccfc289cbadd0f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "11edad7746e77e253f941b3699892dba18b6b89496a248a797eb5992b8018b7f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "c2a2b00fd3c303df1ca8f36fe1541f41ee897c26568adba3486f163ec453037c",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "5d2d4762d09942798edb4139ba4cb4050a44851819fb6788b203e2859b7b70ce",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "52b66bc26bee9cfe0741bcbb5d7133144cf79cc605f3cff407bf18f8281624ef",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "2164b2ffe993e1641ce610542c9beccbdc240087e01debf3ff59c59ecf22862f",
+      "why": "PR 554 final review binds comment bylines, removes untrusted comment level badges, adopts shadcn controls and adds authorization regressions while preserving every prior accepted guard digest."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "2041d5b0705353ab476f61b3c3acbdb652964ec01f52a7eb1adb3aa17bc0d219",
+      "why": "PR 554 final review completes the scoped church_admin fixture and appends all shadcn source pins, retaining the earlier guard values and authorization checks."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "965f0a413be4995152e8d68dcb1379437bca657719322f548753fb02de1516e8",
+      "why": "PR 554 final review completes the scoped church_admin fixture and appends all shadcn source pins, retaining the earlier guard values and authorization checks."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "d81a7c42917659b5fa07310196517ebebf62b9810b058571c88ec8f66e5b5e41",
+      "why": "PR 554 final review records static selected-state classes for the shadcn composer, retaining phone touch floors and all previous source pins so the button guard can resolve every control."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "4487dc411c2a13becbfcbc70a92cdd17bf5aaac6b5a8265706a3b06cf7187146",
+      "why": "PR 554 final review records static selected-state classes for the shadcn composer, retaining phone touch floors and all previous source pins so the button guard can resolve every control."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "4e4d4fcd38626ddee22e8b63302c2395d8b16fbaad7336398edc7e15991ee3b2",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "19db28671b1fc9926ed8c57672da475d27520dc1f8c16e84ce660a17d3539ecf",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "c58ede871e367c6703b4ec71b54f9d8ce34ec6b4b7aefafedbc6b884d08102a0",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.news-feed.test.ts",
+      "digest": "d5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-shadcn-messages-mobile.json",
+      "digest": "44719d8ad5a43153436db1d06e672167ec07c0533789cb7bbc6ff877bdf0eb06",
+      "why": "PR 554 layout follow-up preserves the reviewer-requested shadcn controls, records their intrinsic class layers without overwriting earlier fixtures, restores THE-346 discovery, and pins the complete B1 comment authorization block."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "53b93c496558ed1c901d14fea419c09bc037b447ebed015d747b2785f4132ef3",
+      "why": "PR 554 keeps the shadcn fixture guard focused on the two deliberately changed rows and retains the earlier heights and responsive colours on all other elements, alongside exact rendered inventory checks."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "a64f8072c54b92eceb5205233891a103568461e394c83a9ae0df1f956d508c1e",
+      "why": "PR 554 appends the reviewed UserMessages shadcn Input digest with its h-auto phone touch floor, preserving every earlier accepted value and all navigation, permission and byte-identity assertions."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "acc2b8bfe18f7f6a7169bd4df9335f6e5f74b1b4da3374c44668b30516ae2a9b",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "257b9a094466c2bc1e5c774469d1c483630d1bddcd7de36e24aaff663c969af4",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "457dd4c95c25139abae707329da0b880240d056a76b2e10b4a1f8e3b285693fe",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/__tests__/write-tenant-scope.test.tsx",
+      "digest": "b1c732960bedce386722744023599c961fc59c2bdb1a17e400cfa0c6578a66b0",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "7fe277c49816bb3b232a8ade1f5a45054ca9a3930d65f5570cfac18e125d86f8",
+      "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "9f0ae0f5906787dda1efb23857c260a7f320593b8f8e52daf9059fb546fb879b",
+      "why": "Records the automatic merge of PR 554 parent-tenant, exact-six-field and profile-bound comment creation rules with THE-555 public discovery and server-owned reviews. No rule was edited during conflict resolution; production deployment still requires the founder go."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 member feed presentation and controls; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "why": "Retains PR 554 shadcn ghost Button group rows and THE-555 left alignment, full-width wrapping, Badge unread count and min-h-11 touch floor; removes the duplicate Button import introduced by the merge."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "24158b4a9053e644c340e4fabee39c6a4f2fb8b4c30e53bd8e89c0e5f2d4f83f",
+      "why": "Unions both branches explanations for the composer touch floor and preserves the full exact min-h-11 sweep inventory, including THE-555 MainApp and AdminContentBar entries; no sweep assertion is removed."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 mobile post sheet; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e369cefd12a60cda0c00fcd6f232a87a0f3d7e26e6ac92aaf83f12b4d5f1f1f0",
+      "why": "Unions both branches source pins and historical Messages fixture checks, appends final merged source and fixture digests and retains THE-555 discovery shell normalization, group alignment and touch-floor comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "0a0e8181e6f44f579b55695119f5404d295514e23d52e670320ba50bbafdd4ec",
+      "why": "Records the automatically merged admin community and sidebar source pins from PR 554 and THE-555; no assertion or source inventory was changed while resolving the four explicit conflicts."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "ffa40f6cc08c5769ba21bc249ed3f8bcf70df0d949aaed221f11cbe25b018ee6",
+      "why": "Records the automatic union of PR 554 shadcn UserMessages Input accepted values with THE-555 community navigation pins; every prior accepted value and navigation authorization assertion remains intact."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "fa13f2ce126264e307d82a139ec68e204016e6e5cbfd1a644337fcc89a27efc8",
+      "why": "Records the automatic union of PR 554 comment tenant, field allowlist, byline and authorization regressions with THE-555 public discovery and server-owned review rules tests. No emulator test was edited during conflict resolution."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "8858c0abe8888a61f0b4ce6a9e6ab92d2c4bc62284be15c40a583591fed61f47",
+      "why": "Records the automatic merge retaining PR 554 exact-six-field parent-tenant comment authorization and UID-only counterpart guards with THE-555 shared safe-area navigation and sender identity protections."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8",
+      "why": "Combines PR 554 ghost Button, Input and Textarea controls and responsive intrinsic sizing with THE-555 Avatar, ToggleGroup, DropdownMenu, named pin states and THE-346 avatar/paperclip anchors; retains 44px mobile targets."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
+      "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
     }
   ]
 }
