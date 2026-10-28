@@ -25,6 +25,16 @@ import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { expandRuns } from '../lib/events/recurrence';
+import type { RecurrenceRule, RegistrationQuestion } from '../hooks/queries/useEventQueries';
 import {
   PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE,
   eventPriceLabel, csvAmountCell, ticketPricingAvailable, manualConfirmationMode,
@@ -32,7 +42,6 @@ import {
 import { useTenantOptional } from '../contexts/TenantContext';
 import { readGivingLinks } from './donations/giving-providers';
 import { GivingDocsLink } from './admin/GivingDocsLink';
-import PaymentLinkPicker from './donations/PaymentLinkPicker';
 import {
   CREATION_DISCLAIMER_BODY, CREATION_DISCLAIMER_TITLE,
   DOOR_CONFIRMED_BADGE, DOOR_UNCONFIRMED_BADGE, DOOR_UNCONFIRMED_HELP,
@@ -143,7 +152,41 @@ const emptyForm = {
    * staring at a dead tile.
    */
   paymentProviders: [] as string[],
+  // Eden "Repeats" — 'none' means the event does not recur, and nothing
+  // below is read unless it is one of the other three.
+  recurrenceFreq: 'none' as 'none' | RecurrenceRule['freq'],
+  recurrenceEndMode: 'never' as 'never' | 'on' | 'after',
+  recurrenceUntil: '',
+  recurrenceCount: '8',
+  // IANA zone; filled in with the browser's zone at create time.
+  timeZone: '',
+  // Eden "Open to anyone" — on by default, matching every event's behaviour today.
+  openToAnyone: true,
+  registrationQuestions: [] as RegistrationQuestion[],
 };
+
+const BROWSER_TIME_ZONE = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+};
+
+const REPEATS_LABEL: Record<'none' | RecurrenceRule['freq'], string> = {
+  none: 'Does not repeat',
+  weekly: 'Weekly',
+  every_2_weeks: 'Every 2 weeks',
+  monthly: 'Monthly',
+};
+
+const QUESTION_KIND_LABEL: Record<RegistrationQuestion['kind'], string> = {
+  short: 'Short answer',
+  long: 'Long answer',
+  choice: 'Multiple choice',
+};
+
+const MAX_REGISTRATION_QUESTIONS = 10;
 
 const AdminEvents: React.FC = () => {
   const { setHeaderOverride } = useAdminHeader();
@@ -183,6 +226,9 @@ const AdminEvents: React.FC = () => {
   const [view, setView] = useState<ViewMode>('list');
   // THE-308 — which tab the list screen is showing. `list` is the default.
   const [listTab, setListTab] = useState<'list' | 'month'>('list');
+  // Eden list filter: Upcoming (default) / Drafts / Past. Independent of the
+  // List/Month tab above — the month grid shows everything on its own terms.
+  const [listFilter, setListFilter] = useState<'upcoming' | 'drafts' | 'past'>('upcoming');
   const { data: monthRead, isLoading: monthLoading } = useMonthEvents(tenantId, isAuthReady);
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -224,6 +270,9 @@ const AdminEvents: React.FC = () => {
   const emptyDiscount = { code: '', type: 'percent' as DiscountCode['type'], value: '', maxUses: '' };
   const [discountDraft, setDiscountDraft] = useState(emptyDiscount);
   const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const emptyQuestion = { label: '', kind: 'short' as RegistrationQuestion['kind'], required: false, optionsText: '' };
+  const [questionDraft, setQuestionDraft] = useState(emptyQuestion);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
 
   const registrationUrl = (eventId: string) => `https://${tenantId}.theharvest.app/event/${eventId}`;
 
@@ -275,7 +324,7 @@ const AdminEvents: React.FC = () => {
   }, [view, selected, tenantId]);
 
   const openCreate = () => {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, timeZone: BROWSER_TIME_ZONE() });
     setSelected(null);
     setView('create');
   };
@@ -303,6 +352,13 @@ const AdminEvents: React.FC = () => {
       // THE-351 — cleaned through the provider table, so a stored id this build
       // no longer defines simply drops rather than rendering an empty tile.
       paymentProviders: readEventProviderIds((ev as { paymentProviders?: unknown }).paymentProviders),
+      recurrenceFreq: ev.recurrence?.freq || 'none',
+      recurrenceEndMode: ev.recurrence?.until ? 'on' : ev.recurrence?.count != null ? 'after' : 'never',
+      recurrenceUntil: ev.recurrence?.until || '',
+      recurrenceCount: ev.recurrence?.count != null ? String(ev.recurrence.count) : '8',
+      timeZone: ev.timeZone || BROWSER_TIME_ZONE(),
+      openToAnyone: ev.openToAnyone ?? true,
+      registrationQuestions: Array.isArray(ev.registrationQuestions) ? ev.registrationQuestions : [],
     });
     setShowTicketForm(false);
     setShowDiscountForm(false);
@@ -321,6 +377,18 @@ const AdminEvents: React.FC = () => {
     if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
     setSaving(true);
     try {
+      // Eden "Repeats" — `null` (not an object with freq 'none') so an event
+      // that does not recur reads exactly like every event created before
+      // this feature existed.
+      const recurrence: RecurrenceRule | null = form.recurrenceFreq === 'none'
+        ? null
+        : {
+            freq: form.recurrenceFreq,
+            ...(form.recurrenceEndMode === 'on' && form.recurrenceUntil ? { until: form.recurrenceUntil } : {}),
+            ...(form.recurrenceEndMode === 'after' && form.recurrenceCount
+              ? { count: Math.max(1, Math.min(104, Number(form.recurrenceCount) || 1)) }
+              : {}),
+          };
       const data: Partial<Omit<Event, 'id'>> = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -356,6 +424,10 @@ const AdminEvents: React.FC = () => {
         // so a church that corrects its PayPal URL corrects it for every event
         // at once and nothing here holds a stale copy of a money link.
         paymentProviders: readEventProviderIds(form.paymentProviders),
+        recurrence,
+        timeZone: form.timeZone || BROWSER_TIME_ZONE(),
+        openToAnyone: form.openToAnyone,
+        registrationQuestions: form.registrationQuestions.slice(0, MAX_REGISTRATION_QUESTIONS),
       };
       if (view === 'edit' && selected) {
         await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), {
@@ -396,6 +468,10 @@ const AdminEvents: React.FC = () => {
           waitlistEnabled: data.waitlistEnabled || false,
           discountCodes: data.discountCodes || [],
           showOnPublicCalendar: data.showOnPublicCalendar ?? true,
+          recurrence: data.recurrence ?? null,
+          timeZone: data.timeZone,
+          openToAnyone: data.openToAnyone ?? true,
+          registrationQuestions: data.registrationQuestions || [],
         };
         await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setSelected(newEvent);
@@ -536,6 +612,36 @@ const AdminEvents: React.FC = () => {
   const removeDiscount = (code: string) =>
     setForm({ ...form, discountCodes: form.discountCodes.filter(d => d.code !== code) });
 
+  // ── Registration engine: registration-question management ──
+  const saveQuestionDraft = () => {
+    const label = questionDraft.label.trim();
+    if (!label) return;
+    const q: RegistrationQuestion = {
+      id: genId(),
+      label,
+      kind: questionDraft.kind,
+      required: questionDraft.required,
+      ...(questionDraft.kind === 'choice'
+        ? { options: questionDraft.optionsText.split('\n').map(o => o.trim()).filter(Boolean) }
+        : {}),
+    };
+    setForm({ ...form, registrationQuestions: [...form.registrationQuestions, q] });
+    setQuestionDraft(emptyQuestion);
+    setShowQuestionForm(false);
+  };
+
+  const removeQuestion = (id: string) =>
+    setForm({ ...form, registrationQuestions: form.registrationQuestions.filter(q => q.id !== id) });
+
+  const moveQuestion = (id: string, dir: -1 | 1) => {
+    const arr = [...form.registrationQuestions];
+    const idx = arr.findIndex(q => q.id === id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= arr.length) return;
+    [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
+    setForm({ ...form, registrationQuestions: arr });
+  };
+
   const copyRegUrl = async () => {
     if (!selected) return;
     try { await navigator.clipboard.writeText(registrationUrl(selected.id)); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
@@ -579,9 +685,23 @@ const AdminEvents: React.FC = () => {
   }
 
   // ── Form View ──
+  // Eden's "New event" is a single popup, not a page — shadcn Dialog, with a
+  // scrollable body (DialogContent's own max-h) and the actions pinned in
+  // DialogFooter. `onOpenChange(false)` covers every way a Dialog closes
+  // (Escape, backdrop click, the X) with the same `setView('list')` the
+  // Cancel button already called.
   if (view === 'create' || view === 'edit') {
     return (
-      <div className={`${FORM_MEASURE} pb-32`}>
+      <Dialog open onOpenChange={(open: boolean) => { if (!open) { setView('list'); setSelected(null); } }}>
+        <DialogContent data-event-form-dialog className="max-h-[85vh] overflow-y-auto">
+        {/* The shared width measure sits on the FIRST child of the dialog's
+            own content, exactly where every other screen's root surface
+            carries it, so the "every surface is capped at desktop widths"
+            sweep finds it in the same place. */}
+        <div className={FORM_MEASURE}>
+        <DialogHeader>
+          <DialogTitle>{view === 'edit' ? 'Edit event' : 'New event'}</DialogTitle>
+        </DialogHeader>
         <div className="bg-surface-raised rounded-2xl border border-line shadow-xs p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
             <div>
@@ -612,21 +732,124 @@ const AdminEvents: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-semibold text-body">Online Event</label>
-                <button onClick={() => setForm({ ...form, isOnline: !form.isOnline })} className="transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${form.isOnline ? 'bg-gold' : 'bg-surface-chip'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-surface-raised shadow transition-transform ${form.isOnline ? 'translate-x-5' : ''}`} />
-                  </div>
-                </button>
-              </div>
+              <label className="text-xs font-semibold text-body mb-1.5 block">Where</label>
+              <ToggleGroup
+                value={[form.isOnline ? 'online' : 'in_person']}
+                onValueChange={(next) => {
+                  const picked = next[0];
+                  if (picked === 'online' || picked === 'in_person') setForm({ ...form, isOnline: picked === 'online' });
+                }}
+                aria-label="Where"
+                className="w-fit rounded-xl bg-surface-sunken p-1"
+              >
+                <ToggleGroupItem value="in_person" className="px-3 py-1.5 text-xs font-semibold rounded-lg aria-pressed:bg-surface-raised aria-pressed:shadow-xs">
+                  In person
+                </ToggleGroupItem>
+                <ToggleGroupItem value="online" className="px-3 py-1.5 text-xs font-semibold rounded-lg aria-pressed:bg-surface-raised aria-pressed:shadow-xs">
+                  Online
+                </ToggleGroupItem>
+              </ToggleGroup>
               {form.isOnline ? (
                 <input value={form.onlineLink} onChange={e => setForm({ ...form, onlineLink: e.target.value })}
-                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Meeting link (Zoom, Google Meet...)" />
+                  className={`mt-3 w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
-                <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Event location / address" />
+                <>
+                  <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+                    className={`mt-3 w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Venue name and address" />
+                  {/*
+                    Keyless map preview — an OpenStreetMap search embed needs no
+                    API key and no new env var, unlike Google Maps' JS/embed APIs.
+                    It is a PREVIEW, not a geocoder: the iframe's own search box
+                    resolves `form.location` to a pin, so a typo just shows the
+                    nearest match rather than failing closed.
+                  */}
+                  {/*
+                    THE-379 — NOT under test. happy-dom actually attempts the
+                    iframe's network fetch (unlike a real browser's lazy load,
+                    which it does not model), which the component tests below
+                    don't need and CI shouldn't be making real outbound HTTP
+                    calls for. Same `process.env.NODE_ENV === 'test'` idiom
+                    AdminDashboard.tsx already uses for the opposite case.
+                  */}
+                  {form.location.trim() && process.env.NODE_ENV !== 'test' && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-line h-40">
+                      <iframe
+                        title="Location map preview"
+                        className="w-full h-full"
+                        loading="lazy"
+                        src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=&query=${encodeURIComponent(form.location.trim())}`}
+                      />
+                    </div>
+                  )}
+                </>
               )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-body mb-1.5 block">Time zone</label>
+                <Select value={form.timeZone || BROWSER_TIME_ZONE()} onValueChange={(v: unknown) => setForm({ ...form, timeZone: String(v) })}>
+                  <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
+                    <SelectValue>{() => form.timeZone || BROWSER_TIME_ZONE()}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set([form.timeZone || BROWSER_TIME_ZONE(), BROWSER_TIME_ZONE(), 'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Africa/Lagos', 'Asia/Manila'])).map(tz => (
+                      <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
+                <Select value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>
+                  <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
+                    <SelectValue>{() => REPEATS_LABEL[form.recurrenceFreq]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(REPEATS_LABEL) as (keyof typeof REPEATS_LABEL)[]).map(freq => (
+                      <SelectItem key={freq} value={freq}>{REPEATS_LABEL[freq]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {form.recurrenceFreq !== 'none' && (
+              <div data-recurrence-ends>
+                <label className="text-xs font-semibold text-body mb-1.5 block">Ends</label>
+                <RadioGroup
+                  value={form.recurrenceEndMode}
+                  onValueChange={(v: unknown) => setForm({ ...form, recurrenceEndMode: v as typeof form.recurrenceEndMode })}
+                  aria-label="Ends"
+                  className="gap-2"
+                >
+                  <label className="flex items-center gap-2 text-sm text-body" htmlFor="recur-never">
+                    <RadioGroupItem id="recur-never" value="never" /> Never
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-body" htmlFor="recur-on">
+                    <RadioGroupItem id="recur-on" value="on" /> On date
+                    {form.recurrenceEndMode === 'on' && (
+                      <input type="date" value={form.recurrenceUntil} onChange={e => setForm({ ...form, recurrenceUntil: e.target.value })}
+                        className="ml-1 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm" />
+                    )}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-body" htmlFor="recur-after">
+                    <RadioGroupItem id="recur-after" value="after" /> After
+                    {form.recurrenceEndMode === 'after' && (
+                      <input type="number" min={1} max={104} value={form.recurrenceCount} onChange={e => setForm({ ...form, recurrenceCount: e.target.value })}
+                        className="ml-1 w-16 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm" />
+                    )}
+                    {form.recurrenceEndMode === 'after' ? ' times' : 'a number of times'}
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-strong">Open to anyone</p>
+                <p className="text-xs text-faint mt-0.5">
+                  Anyone with the link can see this event and say they&apos;re going — not just people in your ministry.
+                </p>
+              </div>
+              <Switch aria-label="Open to anyone" checked={form.openToAnyone} onCheckedChange={(v: boolean) => setForm({ ...form, openToAnyone: v })} />
             </div>
             {/*
               THE-345 - the price field is ABSENT while no payment rail exists,
@@ -722,14 +945,38 @@ const AdminEvents: React.FC = () => {
                     an event with no manual payment never shows it. */}
                 <GivingDocsLink page="theMoneyFlow" />
 
-                <PaymentLinkPicker
-                  links={churchLinks}
-                  selected={form.paymentProviders}
-                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
-                  title={PROVIDER_PICKER_TITLE}
-                  help={PROVIDER_PICKER_HELP}
-                  wrapperAttribute="data-event-provider-picker"
-                />
+                {/*
+                  🔴 ONE LINK, NOT A SUBSET — Eden's create popup, and the
+                  payment-claims flow needs exactly one link to put a code in
+                  front of. The shared `PaymentLinkPicker` (checkboxes) stays
+                  exactly as it is for the campaign giving widget, which still
+                  wants several; this is a bespoke single-select for events
+                  only. `readEventProviderIds` still receives — and the stored
+                  shape is still — a `string[]`, just with at most one entry,
+                  so `resolveEventPaymentLinks` and every other existing
+                  reader need no change at all.
+                */}
+                <div data-event-provider-picker>
+                  <p className="text-xs font-semibold text-body mb-1">{PROVIDER_PICKER_TITLE}</p>
+                  <p className="text-xs text-muted mb-2.5">{PROVIDER_PICKER_HELP}</p>
+                  <RadioGroup
+                    value={form.paymentProviders[0] || ''}
+                    onValueChange={(v: unknown) => setForm({ ...form, paymentProviders: v ? [String(v)] : [] })}
+                    aria-label={PROVIDER_PICKER_TITLE}
+                    className="gap-1"
+                  >
+                    {churchLinks.map(({ provider }) => (
+                      <label
+                        key={provider.id}
+                        data-provider-option={provider.id}
+                        className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer"
+                      >
+                        <RadioGroupItem value={provider.id} />
+                        <span className="text-sm text-body">{provider.label}</span>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                </div>
               </>
             )}
             <div>
@@ -890,6 +1137,72 @@ const AdminEvents: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Registration questions — Eden one-at-a-time, asked before the event */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-body flex items-center gap-1.5 font-display">Registration Questions</h4>
+                      {!showQuestionForm && form.registrationQuestions.length < MAX_REGISTRATION_QUESTIONS && (
+                        <button onClick={() => { setQuestionDraft(emptyQuestion); setShowQuestionForm(true); }}
+                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-line text-muted hover:bg-surface-sunken">
+                          <Plus size={12} /> Add Question
+                        </button>
+                      )}
+                    </div>
+
+                    {form.registrationQuestions.length === 0 && !showQuestionForm && (
+                      <p className="text-xs text-faint bg-surface-sunken rounded-xl p-3">
+                        Optional. Attendees answer these one at a time when they register, and you can see the answers in Registrations.
+                      </p>
+                    )}
+
+                    <div className="space-y-2">
+                      {form.registrationQuestions.map((q, i) => (
+                        <div key={q.id} className="flex items-center gap-2 bg-surface-raised border border-line rounded-xl px-3 py-2.5">
+                          <div className="flex flex-col">
+                            <button onClick={() => moveQuestion(q.id, -1)} disabled={i === 0} className="text-stone-300 hover:text-muted disabled:opacity-30"><ArrowUp size={12} /></button>
+                            <button onClick={() => moveQuestion(q.id, 1)} disabled={i === form.registrationQuestions.length - 1} className="text-stone-300 hover:text-muted disabled:opacity-30"><ArrowDown size={12} /></button>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-strong truncate">{q.label}{q.required && <span className="text-wheat-600"> *</span>}</p>
+                            <p className="text-xs text-faint">{QUESTION_KIND_LABEL[q.kind]}{q.kind === 'choice' && q.options?.length ? ` · ${q.options.length} options` : ''}</p>
+                          </div>
+                          <button onClick={() => removeQuestion(q.id)} className="p-1.5 rounded-lg hover:bg-red-50"><X size={14} className="text-red-400" /></button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {showQuestionForm && (
+                      <div className="mt-2 bg-surface-sunken rounded-xl p-3 space-y-2.5">
+                        <input value={questionDraft.label} onChange={e => setQuestionDraft({ ...questionDraft, label: e.target.value })}
+                          placeholder="Question (e.g. Dietary needs)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                        <Select value={questionDraft.kind} onValueChange={(v: unknown) => setQuestionDraft({ ...questionDraft, kind: v as RegistrationQuestion['kind'] })}>
+                          <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
+                            <SelectValue>{() => QUESTION_KIND_LABEL[questionDraft.kind]}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(QUESTION_KIND_LABEL) as RegistrationQuestion['kind'][]).map(kind => (
+                              <SelectItem key={kind} value={kind}>{QUESTION_KIND_LABEL[kind]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {questionDraft.kind === 'choice' && (
+                          <textarea value={questionDraft.optionsText} onChange={e => setQuestionDraft({ ...questionDraft, optionsText: e.target.value })}
+                            rows={3} placeholder={'One option per line'}
+                            className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold resize-none ${FIELD_WIDTH.long}`} />
+                        )}
+                        <label className="flex items-center gap-2 text-sm text-body">
+                          <input type="checkbox" checked={questionDraft.required} onChange={e => setQuestionDraft({ ...questionDraft, required: e.target.checked })} />
+                          Required
+                        </label>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setShowQuestionForm(false); setQuestionDraft(emptyQuestion); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
+                          <button onClick={saveQuestionDraft} disabled={!questionDraft.label.trim()}
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Public calendar */}
                   <div>
                     <div className="flex items-center justify-between">
@@ -913,16 +1226,18 @@ const AdminEvents: React.FC = () => {
               </select>
             </div>
           </div>
-          <div className="flex gap-3 pt-2">
+        </div>
+        <DialogFooter>
             <button onClick={() => setView('list')} className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.title.trim()}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
               {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Create Event'}
             </button>
-          </div>
+        </DialogFooter>
         </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -1169,6 +1484,16 @@ const AdminEvents: React.FC = () => {
   const copyCalendarUrl = async () => {
     try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
+  const now = Date.now();
+  // Eden's three list filters. A draft always sorts under Drafts regardless
+  // of its date (an admin still drafting next year's conference should find
+  // it there, not buried in "Upcoming"); everything else splits on whether
+  // it has already started.
+  const isPastEvent = (ev: Event) => ev.status !== 'draft' && !!ev.startDate?.toDate && ev.startDate.toDate().getTime() < now;
+  const draftEvents = events.filter(ev => ev.status === 'draft');
+  const pastEvents = events.filter(ev => isPastEvent(ev));
+  const upcomingEvents = events.filter(ev => ev.status !== 'draft' && !isPastEvent(ev));
+  const visibleEvents = listFilter === 'drafts' ? draftEvents : listFilter === 'past' ? pastEvents : upcomingEvents;
   return (
     <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
       <AdminPageHeader
@@ -1182,7 +1507,7 @@ const AdminEvents: React.FC = () => {
             items={[{ value: 'list', label: 'List' }, { value: 'month', label: 'Month' }]}
           />
         )}
-        action={<AdminPrimaryButton onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
+        action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
       />
       {events.length > 0 && tenantId && (
         <div className="flex items-center gap-2 bg-surface-sunken border border-line rounded-brand-lg px-3 py-2.5 text-xs">
@@ -1230,14 +1555,40 @@ const AdminEvents: React.FC = () => {
         </TabsContent>
         <TabsContent value="list" className="mt-4 space-y-6">
       {events.length === 0 ? (
-        <div className="text-center py-16 text-faint">
-          <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium font-display">No events yet</p>
-          <p className="text-sm mt-1">Create your first event to start accepting registrations</p>
-        </div>
+        <Empty data-events-empty className="py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><CalendarCheck aria-hidden="true" /></EmptyMedia>
+            <EmptyTitle>Plan your first event</EmptyTitle>
+            <EmptyDescription>Create an event to start accepting registrations — in person or online, free or paid.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>New event</AdminPrimaryButton>
+          </EmptyContent>
+        </Empty>
       ) : (
+        <>
+        <PageTabs
+          label="Events filter"
+          value={listFilter}
+          onValueChange={setListFilter}
+          items={[
+            { value: 'upcoming', label: `Upcoming${upcomingEvents.length ? ` (${upcomingEvents.length})` : ''}` },
+            { value: 'drafts', label: `Drafts${draftEvents.length ? ` (${draftEvents.length})` : ''}` },
+            { value: 'past', label: 'Past' },
+          ]}
+        />
+        {visibleEvents.length === 0 ? (
+          <Empty data-events-filter-empty className="py-10">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><CalendarCheck aria-hidden="true" /></EmptyMedia>
+              <EmptyTitle>
+                {listFilter === 'drafts' ? 'No drafts' : listFilter === 'past' ? 'No past events' : 'Nothing upcoming'}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
         <div className="space-y-3">
-          {events.map(ev => (
+          {visibleEvents.map(ev => (
             <React.Fragment key={ev.id}>
               {/* Mobile card — mockup design: hero band (cover, else navy→gold gradient),
                   status pill overlay, meta row, actions. Same handlers as the desktop card. */}
@@ -1360,6 +1711,8 @@ const AdminEvents: React.FC = () => {
             </React.Fragment>
           ))}
         </div>
+        )}
+        </>
       )}
         </TabsContent>
       </Tabs>

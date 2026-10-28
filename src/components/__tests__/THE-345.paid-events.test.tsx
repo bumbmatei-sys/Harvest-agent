@@ -173,7 +173,13 @@ let mounted: { container: HTMLElement; unmount: () => void } | null = null;
 
 async function screen() {
   mounted = await mountScreen(<AdminEvents />);
-  return mounted.container;
+  // THE-379 (events remodel) — the create/edit form is now a shadcn Dialog,
+  // which base-ui portals to `document.body` rather than mounting inside
+  // `mounted.container`. `document.body` is always a strict superset of the
+  // container (the container is one of its children), so returning it here
+  // changes nothing this suite could see for the LIST view and additionally
+  // reaches the dialog's content once one is open.
+  return document.body;
 }
 
 /** Open the create form, from the list. */
@@ -289,9 +295,12 @@ describe('THE-345 · a paid event cannot be created while no payment rail exists
   it('2 · a ticket type cannot carry a price while no rail exists', async () => {
     const c = await createForm();
     // Turn registrations on, then open the ticket-type sub-form.
+    // THE-379 (events remodel) — narrowed to the parent-text match only: the
+    // new "Where" ToggleGroup (In person / Online) also carries aria-pressed
+    // and sits earlier in the DOM, so the old `aria-pressed !== null` branch
+    // started matching that instead of this toggle.
     const toggle = Array.from(c.querySelectorAll('button'))
-      .find((b) => b.getAttribute('aria-pressed') !== null
-        || /Enable Registrations/.test(b.parentElement?.textContent ?? ''));
+      .find((b) => /Enable Registrations/.test(b.parentElement?.textContent ?? ''));
     if (toggle) await click(toggle);
     const add = Array.from(c.querySelectorAll('button'))
       .find((b) => /Add Ticket Type/.test(b.textContent ?? ''));

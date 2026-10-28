@@ -167,7 +167,11 @@ function attendeeRow(root: ParentNode, name: string): HTMLElement {
 let mounted: { container: HTMLElement; unmount: () => void } | null = null;
 async function screen() {
   mounted = await mountScreen(<AdminEvents />);
-  return mounted.container;
+  // THE-379 (events remodel) — see the identical note in
+  // THE-345.paid-events.test.tsx: the create/edit form moved into a shadcn
+  // Dialog, which portals to `document.body`, a strict superset of
+  // `mounted.container`.
+  return document.body;
 }
 async function detail(): Promise<HTMLElement> {
   const c = await screen();
