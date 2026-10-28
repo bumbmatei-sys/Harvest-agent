@@ -730,6 +730,16 @@
       "file": "src/lib/dodo/__tests__/the-212-upgrade-keeps-members.test.ts",
       "digest": "9729a80fbe3b7b43e5951698e0c1ce51b3b6f22af5351d4bff955005620665f2",
       "why": "#557 refuses free tenant upgrades when the buyer is not the owner and preserves existing upgrade coverage."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "ea5c56489eede8d7824156cf1fbd30a5dd1e3b5c6a4edfd06b1cc0292ea089ca",
+      "why": "#557 appends the provisioning digest for the Free upgrade owner check while retaining prior pins."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/the-226-plan-change-term.test.ts",
+      "digest": "3a5795cb332048bf709f0fa862b949392c81963f5e768ec56bc02bfd1b5d3bd0",
+      "why": "#557 identifies the buyer as the Free tenant owner in the existing subscription term fixture."
     }
   ]
 }
