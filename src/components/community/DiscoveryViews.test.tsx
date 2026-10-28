@@ -26,11 +26,18 @@ describe('community views', () => {
     expect(host.textContent).toContain('Grace');
     expect(host.textContent).not.toContain('Hope');
   });
+  it('disables the paid filter while all cards show Free', async () => {
+    await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: [{ ...listings[0], price: 12 }] }} />));
+    expect(host.textContent).toContain('Free'); expect(host.textContent).not.toContain('$12');
+    await act(async () => host.querySelector<HTMLElement>('[aria-label="Filter by price"]')!.click());
+    const paid = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(item => item.textContent?.includes('Paid'));
+    expect(paid?.getAttribute('aria-disabled')).toBe('true'); expect(paid?.textContent).toContain('Soon');
+  });
   it('filters by search and price together', () => {
     const items = [listings[0], { ...listings[1], price: 12 }];
     expect(filterListings(items, ' WELCOMING ', 'free')).toEqual([items[0]]);
-    expect(filterListings(items, '', 'paid')).toEqual([items[1]]);
-    expect(filterListings(items, 'hope', 'free')).toEqual([]);
+    expect(filterListings(items, '', 'paid')).toEqual([]);
+    expect(filterListings(items, 'hope', 'free')).toEqual([items[1]]);
   });
   it('filters and sorts by published ratings', () => {
     const items = [{ ...listings[0], ratingAvg: 4.5, ratingCount: 2 }, { ...listings[1], ratingAvg: 3, ratingCount: 1 }, { ...listings[1], tenantId: 'c' }];

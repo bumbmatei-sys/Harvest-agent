@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { auth, db } from '@/firebase';
 import { readPublicListing } from '@/lib/community/public-listing';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 import { CommunitySwitcher } from './MobileCommunityNav';
@@ -11,7 +11,8 @@ import { CommunitiesView, DiscoverView, type Listing, type LoadState, type Membe
 function validSlug(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value) && !isNonTenantSubdomain(value);
 }
-export function DiscoverData() {
+export function DiscoverData({ currentTenantId }: { currentTenantId?: string | null }) {
+  const member = useMemo(() => currentTenantId ? { tenantId: currentTenantId, getToken: async () => { const user = auth.currentUser; if (!user) throw new Error('Sign in to review.'); return user.getIdToken(); } } : undefined, [currentTenantId]);
   const [state, setState] = useState<LoadState<Listing[]>>({ status: 'loading' });
   useEffect(() => {
     let cancelled = false;
@@ -22,7 +23,7 @@ export function DiscoverData() {
     }).catch(() => { if (!cancelled) setState({ status: 'error', message: 'Could not load communities. Please try again later.' }); });
     return () => { cancelled = true; };
   }, []);
-  return <DiscoverView state={state} />;
+  return <DiscoverView state={state} member={member} />;
 }
 export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, switcher }: { uid?: string; currentTenantId: string | null; onEnter: () => void; onDiscover: () => void; switcher?: { open: boolean; onOpenChange: (open: boolean) => void } }) {
   const [state, setState] = useState<LoadState<MemberCommunity[]>>({ status: 'loading' });

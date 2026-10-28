@@ -30,11 +30,11 @@ async function write(request: NextRequest, deleting: boolean) {
     const listing = adminDb.collection('discovery_listings').doc(tenantId);
     const person = adminDb.collection('users').doc(user.uid);
     const tenant = adminDb.collection('tenants').doc(tenantId);
-    await adminDb.runTransaction(async tx => {
+    const aggregate = await adminDb.runTransaction(async tx => {
       const [old, saved, published, profile, tenantDoc] = await Promise.all([tx.get(review), tx.get(settings), tx.get(listing), tx.get(person), tx.get(tenant)]);
       if (!tenantDoc.exists || !profile.exists || profile.data()?.tenantId !== tenantId) throw new Error('Membership unavailable');
       if (isTenantAdminRole(profile.data()?.role) || tenantDoc.data()?.ownerId === user.uid) throw new Error('Owner cannot review');
-      if (deleting && !old.exists) return;
+      if (deleting && !old.exists) return readReviewAggregate(saved.data());
       const aggregate = updateReviewAggregate(readReviewAggregate(saved.data()), old.exists ? old.data()!.rating : null, deleting ? null : body.rating as number);
       if (deleting) tx.delete(review);
       else {
@@ -47,8 +47,9 @@ async function write(request: NextRequest, deleting: boolean) {
       }
       tx.set(settings, saved.exists ? aggregate : { ...defaultCommunitySettings(), ...aggregate }, { merge: true });
       if (published.exists) tx.set(listing, aggregate, { merge: true });
+      return aggregate;
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, aggregate });
   } catch (error) {
     if (error instanceof Error && error.message === 'Owner cannot review') return NextResponse.json({ error: "Admins can't review their own community" }, { status: 403 });
     return failure();
@@ -68,6 +69,22 @@ export async function GET(request: NextRequest) {
   const offset = Number(offsetText);
   if (!validId(tenantId) || !['newest', 'highest', 'lowest'].includes(sort) || !/^\d+$/.test(rawLimit) || !Number.isInteger(limit) || limit < 1 || limit > 50 || (!/^\d+$/.test(offsetText) || !Number.isSafeInteger(offset))) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   try {
+    if (params.get('mine') === '1') {
+      const member = await requireTenantMember(request, tenantId);
+      if (member instanceof NextResponse) return member;
+      const admin = await requireTenantAdmin(request, tenantId);
+      if (!(admin instanceof NextResponse)) return NextResponse.json({ canReview: false, review: null });
+      if (admin.status !== 403) return admin;
+      const [profile, tenant, review] = await Promise.all([
+        adminDb.collection('users').doc(member.uid).get(),
+        adminDb.collection('tenants').doc(tenantId).get(),
+        adminDb.collection('tenants').doc(tenantId).collection('settings').doc('community').collection('reviews').doc(member.uid).get(),
+      ]);
+      if (!profile.exists || !tenant.exists || profile.data()?.tenantId !== tenantId) return NextResponse.json({ error: 'Membership unavailable.' }, { status: 403 });
+      const canReview = !isTenantAdminRole(profile.data()?.role) && tenant.data()?.ownerId !== member.uid;
+      const data = review.data();
+      return NextResponse.json({ canReview, review: canReview && review.exists ? { rating: data!.rating, text: data!.text } : null });
+    }
     const listing = await adminDb.collection('discovery_listings').doc(tenantId).get();
     if (!listing.exists) {
       const member = await requireTenantMember(request, tenantId);

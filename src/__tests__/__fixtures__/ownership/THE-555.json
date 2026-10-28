@@ -75,6 +75,61 @@
       "file": "src/components/community/CommunitySettingsEditor.tsx",
       "digest": "547c08b5ef15a8e4e03008e5c2501c55087169f8ce85400861743eb7a10330e7",
       "why": "Records the existing community settings editor digest already present in this branch for the ownership guard."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.tsx",
+      "digest": "e4d79928f5a841119d3d6ca920c74f25d586dd4b7d910294a4e98bcf2c4acbe8",
+      "why": "Provides accessible review display, sorting, member-only editing and error handling using shared UI components."
+    },
+    {
+      "file": "src/components/community/CommunityReviews.test.tsx",
+      "digest": "05391a98f4097a03b338539cddbe2aa1aa2240b143c0fd162e9ed693bd14847e",
+      "why": "Exercises the review summary, sorting requests, required rating, text limit and admin access restrictions."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "f2511518d6343302e0e7be6faa3270d23188022a6b2b6b38e65ac5f61bf91dbf",
+      "why": "Shows review summaries and detail views, restricts pricing to free and provides the public Harvest footer."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "b87a53ba4277893aa7b3d6e1df352cc001fea59d65f8400eb11b0ed52f28fe22",
+      "why": "Covers community discovery, free pricing, disabled paid filtering and review summary presentation."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "f2f5e660dbe301ccbe45728b675617ea57f7322afdad5d1ff7c7c2087ca11f58",
+      "why": "Passes authenticated tenant membership to discovery so only eligible members can manage their review."
+    },
+    {
+      "file": "src/components/community/PublicDiscover.tsx",
+      "digest": "59ebf8aa0a8c9b597cc3df6b0f3ac87fe7e21f84da831e3232c6f06b0664f3f9",
+      "why": "Displays the shared discovery experience with a Harvest footer for public visitors."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "435e0a27846c2c31ef4fdc43a1437219a5b9ffbcea37af74fcd30dbada576cfa",
+      "why": "Adds a free pricing choice and a disabled paid option labelled coming soon in the community builder."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.test.tsx",
+      "digest": "e61c3f152a2ce00bd72db5cd40df5f0863dec938ca4c02192a4f982b71a2dfef",
+      "why": "Checks the pricing option is disabled alongside the existing settings editor behavior."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "4506a07b2a944ca80cda95e6493e60ebe27953f5b2f93eb029eec7bd6fd84df8",
+      "why": "Passes the current tenant into discovery to identify eligible community members for reviews."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "3cca34d597d7aae4d4ff76eddff9bdcd3c614820580c57357765f4ba02778f4b",
+      "why": "Returns the transaction aggregate and provides an authenticated own-review and admin eligibility lookup."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "0794b7c882c7d6c5c6016ec7fa3765d2a3e6408e03c2e4cc40128b22beb2bead",
+      "why": "Checks own-review privacy, admin refusal and transaction aggregate responses for the review interface."
     }
   ]
 }

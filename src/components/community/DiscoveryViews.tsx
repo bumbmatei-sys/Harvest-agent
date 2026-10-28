@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CommunityReviews, HarvestFooter, Stars } from './CommunityReviews';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export type Listing = { tenantId: string; name: string; slug: string; logoUrl: string; shortDescription: string; memberCount: number; coverUrl?: string; galleryUrls?: string[]; longDescription?: string; ownerName?: string; isPublic?: boolean; price?: number; ratingAvg?: number; ratingCount?: number };
@@ -25,7 +26,7 @@ export type RatingFilter = 'any' | 'four' | 'sort';
 export function filterListings(listings: Listing[], search: string, price: PriceFilter, rating: RatingFilter = 'any'): Listing[] {
   const term = search.trim().toLowerCase();
   const matches = listings.filter(item => `${item.name} ${item.shortDescription}`.toLowerCase().includes(term) &&
-    (price === 'all' || (price === 'paid' ? (item.price ?? 0) > 0 : (item.price ?? 0) === 0)) &&
+    (price !== 'paid') &&
     (rating !== 'four' || ((item.ratingCount || 0) > 0 && (item.ratingAvg || 0) >= 4)));
   if (rating === 'sort') matches.sort((a, b) => (b.ratingAvg || 0) - (a.ratingAvg || 0));
   return matches;
@@ -34,32 +35,36 @@ function Rating({ listing }: { listing: Listing }) {
   if (!listing.ratingCount || listing.ratingAvg === undefined) return null;
   return <span className="inline-flex items-center gap-1"><Star size={16} fill="var(--brand-color)" stroke="var(--brand-color)" aria-hidden="true" /> {listing.ratingAvg.toFixed(1)} · {listing.ratingCount.toLocaleString()} {listing.ratingCount === 1 ? 'review' : 'reviews'}</span>;
 }
-function priceLabel(item: Listing) { return item.price ? `$${item.price}/month` : 'Free'; }
+function priceLabel() { return 'Free'; }
 function Cover({ url, name }: { url?: string; name: string }) {
   return <div className="aspect-video overflow-hidden bg-surface-sunken">{url ? <img src={url} alt={`${name} cover`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted"><ImageIcon aria-hidden="true" size={36} /></div>}</div>;
 }
-export function CommunityAbout({ listing, onBack }: { listing: Listing; onBack: () => void }) {
+export function CommunityAbout({ listing, onBack, access }: { listing: Listing; onBack: () => void; access?: { getToken: () => Promise<string> } }) {
+  const [summary, setSummary] = useState({ ratingAvg: listing.ratingAvg || 0, ratingCount: listing.ratingCount || 0 });
   const images = [listing.coverUrl, ...(listing.galleryUrls || [])].filter((url): url is string => Boolean(url));
   return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 pb-28 sm:p-8">
     <Button variant="ghost" className="min-h-11" onClick={onBack}><ArrowLeft size={18} /> Back to discover</Button>
     <h2 className="font-display text-3xl font-semibold">{listing.name}</h2>
-    <Rating listing={listing} />
+    {summary.ratingCount ? <div className="flex items-center gap-2 text-sm text-muted"><Stars rating={summary.ratingAvg} /><span>{summary.ratingAvg.toFixed(1)} · {summary.ratingCount.toLocaleString()} {summary.ratingCount === 1 ? 'review' : 'reviews'}</span></div> : <p className="text-sm text-muted">No reviews yet</p>}
     {images.length ? <Carousel aria-label={`${listing.name} gallery`} className="overflow-hidden rounded-xl border border-line"><CarouselContent>{images.map((url, index) => <CarouselItem key={`${url}-${index}`}><Cover url={url} name={listing.name} /></CarouselItem>)}</CarouselContent>{images.length > 1 && <><CarouselPrevious className="left-3 min-h-11 min-w-11" /><CarouselNext className="right-3 min-h-11 min-w-11" /></>}</Carousel> : <div className="overflow-hidden rounded-xl border border-line"><Cover name={listing.name} /></div>}
-    <div className="grid grid-cols-2 gap-3 text-sm font-medium"><span>{listing.isPublic === false ? 'Private' : 'Public'}</span><span>{listing.memberCount.toLocaleString()} {listing.memberCount === 1 ? 'member' : 'members'} at listing</span><span>{priceLabel(listing)}</span>{listing.ownerName && <span>By {listing.ownerName}</span>}</div>
+    <div className="grid grid-cols-2 gap-3 text-sm font-medium"><span>{listing.isPublic === false ? 'Private' : 'Public'}</span><span>{listing.memberCount.toLocaleString()} {listing.memberCount === 1 ? 'member' : 'members'} at listing</span><span>{priceLabel()}</span>{listing.ownerName && <span>By {listing.ownerName}</span>}</div>
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface-raised p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:static sm:border-0 sm:bg-transparent sm:p-0"><Button render={<a href={`https://${listing.slug}.theharvest.app`} />} className="min-h-11 w-full">Join {listing.name}</Button></div>
     <p className="whitespace-pre-wrap text-body">{listing.longDescription || listing.shortDescription}</p>
+    <CommunityReviews tenantId={listing.tenantId} access={access} onRatingChange={setSummary} />
+    <HarvestFooter />
   </section>;
 }
-export function DiscoverView({ state }: { state: LoadState<Listing[]> }) {
+export function DiscoverView({ state, member, showFooter = false }: { state: LoadState<Listing[]>; member?: { tenantId: string; getToken: () => Promise<string> }; showFooter?: boolean }) {
   const [search, setSearch] = useState('');
   const [price, setPrice] = useState<PriceFilter>('all');
   const [rating, setRating] = useState<RatingFilter>('any');
   const [selected, setSelected] = useState<Listing | null>(null);
   const matches = state.status === 'ready' ? filterListings(state.data, search, price, rating) : [];
-  if (selected) return <CommunityAbout listing={selected} onBack={() => setSelected(null)} />;
+  if (selected) return <CommunityAbout listing={selected} onBack={() => setSelected(null)} access={member?.tenantId === selected.tenantId ? member : undefined} />;
   return <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-8"><div><h2 className="font-display text-3xl font-semibold">Discover communities</h2><p className="mt-2 text-sm text-muted">Find a community to connect with.</p></div>
-    <div className="flex gap-2"><div className="relative max-w-xl flex-1"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" /><Input aria-label="Search communities" placeholder="Search communities" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11 pl-10" /></div><Select value={price} onValueChange={value => { if (value) setPrice(value as PriceFilter); }}><SelectTrigger aria-label="Filter by price" className="min-h-11"><SelectValue>{price === 'all' ? 'All' : price === 'free' ? 'Free' : 'Paid'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="free">Free</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent></Select><Select value={rating} onValueChange={value => { if (value) setRating(value as RatingFilter); }}><SelectTrigger aria-label="Filter or sort by rating" className="min-h-11"><SelectValue>{rating === 'any' ? 'Any rating' : rating === 'four' ? '4+ stars' : 'Sort by rating'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="any">Any rating</SelectItem><SelectItem value="four">4+ stars</SelectItem><SelectItem value="sort">Sort by rating</SelectItem></SelectContent></Select></div>
-    {state.status === 'loading' ? <LoadingCards /> : state.status === 'error' ? <p role="alert" className="text-sm text-muted">{state.message}</p> : matches.length === 0 ? <p className="text-sm text-muted">{search.trim() || price !== 'all' || rating !== 'any' ? 'No communities match your search.' : 'No public communities to discover yet.'}</p> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{matches.map(item => <Card key={item.tenantId} className="overflow-hidden bg-surface-raised p-0"><Button variant="ghost" onClick={() => setSelected(item)} className="h-auto w-full flex-col items-stretch gap-0 whitespace-normal p-0 text-left"><Cover url={item.coverUrl} name={item.name} /><CardContent className="flex flex-col gap-3 p-4"><div className="flex items-center gap-3"><CommunityAvatar name={item.name} logoUrl={item.logoUrl} /><h3 className="font-display text-lg font-semibold">{item.name}</h3></div><p className="line-clamp-3 text-sm text-body">{item.shortDescription}</p><div className="flex items-center gap-3 text-sm text-muted"><span className="flex items-center gap-1"><Users size={16} /> {item.memberCount.toLocaleString()} {item.memberCount === 1 ? 'member' : 'members'} at listing</span><Rating listing={item} /><span className="font-semibold text-strong">{priceLabel(item)}</span></div></CardContent></Button></Card>)}</div>}
+    <div className="flex gap-2"><div className="relative max-w-xl flex-1"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" /><Input aria-label="Search communities" placeholder="Search communities" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11 pl-10" /></div><Select value={price} onValueChange={value => { if (value) setPrice(value as PriceFilter); }}><SelectTrigger aria-label="Filter by price" className="min-h-11"><SelectValue>{price === 'all' ? 'All' : price === 'free' ? 'Free' : 'Paid'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="free">Free</SelectItem><SelectItem value="paid" disabled>Paid <Badge variant="secondary">Soon</Badge></SelectItem></SelectContent></Select><Select value={rating} onValueChange={value => { if (value) setRating(value as RatingFilter); }}><SelectTrigger aria-label="Filter or sort by rating" className="min-h-11"><SelectValue>{rating === 'any' ? 'Any rating' : rating === 'four' ? '4+ stars' : 'Sort by rating'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="any">Any rating</SelectItem><SelectItem value="four">4+ stars</SelectItem><SelectItem value="sort">Sort by rating</SelectItem></SelectContent></Select></div>
+    {state.status === 'loading' ? <LoadingCards /> : state.status === 'error' ? <p role="alert" className="text-sm text-muted">{state.message}</p> : matches.length === 0 ? <p className="text-sm text-muted">{search.trim() || price !== 'all' || rating !== 'any' ? 'No communities match your search.' : 'No public communities to discover yet.'}</p> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{matches.map(item => <Card key={item.tenantId} className="overflow-hidden bg-surface-raised p-0"><Button variant="ghost" onClick={() => setSelected(item)} className="h-auto w-full flex-col items-stretch gap-0 whitespace-normal p-0 text-left"><Cover url={item.coverUrl} name={item.name} /><CardContent className="flex flex-col gap-3 p-4"><div className="flex items-center gap-3"><CommunityAvatar name={item.name} logoUrl={item.logoUrl} /><h3 className="font-display text-lg font-semibold">{item.name}</h3></div><p className="line-clamp-3 text-sm text-body">{item.shortDescription}</p><div className="flex items-center gap-3 text-sm text-muted"><span className="flex items-center gap-1"><Users size={16} /> {item.memberCount.toLocaleString()} {item.memberCount === 1 ? 'member' : 'members'} at listing</span><Rating listing={item} /><span className="font-semibold text-strong">{priceLabel()}</span></div></CardContent></Button></Card>)}</div>}
+    {showFooter && <HarvestFooter />}
   </section>;
 }
 

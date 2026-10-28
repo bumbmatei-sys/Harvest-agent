@@ -915,7 +915,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         {/* Main Content Area */}
         <ErrorBoundary>
         <div className={`flex-1 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
-          {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData /> : effectiveBottomTab === 'home' ? (
+          {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData currentTenantId={tenantId} /> : effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">

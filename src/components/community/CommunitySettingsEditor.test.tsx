@@ -17,6 +17,9 @@ describe('community settings editor', () => {
     expect(host.textContent).toContain('Not on your plan');
     expect(host.textContent).toContain('Connect in group conversations.');
     expect(host.textContent).toContain('appear in Discovery');
+    expect(host.textContent).toContain('Coming soon');
+    const paid = host.querySelector('[aria-label="Paid"]');
+    expect(paid?.hasAttribute('disabled') || paid?.getAttribute('aria-disabled') === 'true').toBe(true);
     expect(host.querySelector('[aria-label="Messages and groups"]')?.getAttribute('aria-disabled')).toBe('true');
     const button = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Save changes')!;
     await act(async () => button.click());

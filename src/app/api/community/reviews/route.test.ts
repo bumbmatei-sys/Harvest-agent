@@ -35,7 +35,9 @@ describe('community reviews API', () => {
     expect((await POST(req({ tenantId: 'a', rating: 5, text: 'x'.repeat(1001) }))).status).toBe(400);
   });
   it('creates, edits and deletes with both summaries updated', async () => {
-    expect((await POST(req({ tenantId: 'a', rating: 5, text: 'First' }))).status).toBe(200);
+    const created = await POST(req({ tenantId: 'a', rating: 5, text: 'First' }));
+    expect(created.status).toBe(200);
+    expect((await created.json()).aggregate).toMatchObject({ ratingSum: 5, ratingCount: 1, ratingAvg: 5 });
     expect(h.docs.get(review)).toMatchObject({ uid: 'u', rating: 5, authorName: 'Jane Doe' });
     expect(h.docs.get(settings)).toMatchObject({ ratingSum: 5, ratingCount: 1, ratingAvg: 5 });
     expect((await POST(req({ tenantId: 'a', rating: 3, text: 'Edit' }))).status).toBe(200);
@@ -43,6 +45,15 @@ describe('community reviews API', () => {
     expect((await DELETE(req({ tenantId: 'a' }, 'DELETE'))).status).toBe(200);
     expect(h.docs.has(review)).toBe(false);
     expect(h.docs.get(settings)).toMatchObject({ ratingSum: 0, ratingCount: 0, ratingAvg: 0 });
+  });
+  it("returns only the member's own review and denies admin review access", async () => {
+    h.docs.set(review, { rating: 4, text: 'Mine', uid: 'u' });
+    const mine = () => GET(new NextRequest('http://localhost/api/community/reviews?tenantId=a&mine=1'));
+    expect(await (await mine()).json()).toEqual({ canReview: true, review: { rating: 4, text: 'Mine' } });
+    h.admin.mockResolvedValueOnce({ uid: 'u' });
+    expect(await (await mine()).json()).toEqual({ canReview: false, review: null });
+    h.member.mockResolvedValueOnce(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+    expect((await mine()).status).toBe(403);
   });
   it('projects public reviews without uid or email', async () => {
     h.docs.set(review, { uid: 'u', authorName: 'Jane Doe', email: 'jane@example.com', rating: 5, text: 'Great' });
