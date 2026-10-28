@@ -435,7 +435,9 @@ describe('community step 1 pins', () => {
     const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
     // PR 555 merge retains the mobile shell and PR 554 bounded comment activity.
     const discoveryMergeDigests: Record<string, string> = {"MainApp.tsx": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d", "NewsTab.tsx": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1"};
-    expect([file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // THE-555 polish: fixed phone tabs, sticky header and safe-area content clearance.
+    const polishDigests: Record<string, string> = { 'MainApp.tsx': 'c64d985698d594ff80fbf8370b407940b442ffd41995ab3eeb67cca7707aa78a' };
+    expect([polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -592,9 +594,22 @@ function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
   };
   const oldNav = one('contents max-[768px]:hidden');
   oldNav.replaceWith(...Array.from(oldNav.childNodes));
-  one('hidden w-full max-[768px]:flex').remove();
+  one("hidden max-[768px]:block " ).remove();
   one('hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4').remove();
-  one('hidden max-[768px]:block').remove();
+  one('sticky top-0 z-20 hidden shrink-0 max-[768px]:block').remove();
+  // Undo only the reviewed phone layout changes for the older fixture. The
+  // current complete source remains pinned above; real MainApp rendering is
+  // asserted separately by MainApp.community-settings.test.tsx.
+  for (const element of clone.querySelectorAll<HTMLElement>('[class]')) {
+    const classes = element.getAttribute('class')!;
+    element.setAttribute('class', classes
+      .replaceAll('h-dvh', 'h-screen')
+      .replace(' max-[768px]:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))]', '')
+      .replace(' max-[768px]:hidden transition-all', ' transition-all')
+      .replace('flex-1 min-h-0 overflow-x-hidden', 'flex-1 overflow-x-hidden')
+      .replaceAll(' max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]', '')
+      .replace(' max-[768px]:relative max-[768px]:h-auto max-[768px]:min-h-full', ''));
+  }
   const topNav = one('bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-[768px]:hidden');
   topNav.classList.remove('max-[768px]:hidden');
   return clone;

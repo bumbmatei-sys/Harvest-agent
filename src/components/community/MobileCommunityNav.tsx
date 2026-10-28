@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Bell, ChevronDown, Home, MessageCircle, Search } from 'lucide-react';
+import { useRef } from 'react';
+import { Bell, ChevronDown, Home, LayoutDashboard, MessageCircle, Search, UserRound } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import type { CommunityModule } from '@/lib/community/settings';
 import type { LoadState, MemberCommunity } from './DiscoveryViews';
 
@@ -30,18 +31,23 @@ export function MobileCommunityHeader({ name, logo, onSwitch, onSearch }: { name
 }
 
 export function MobileCommunityTabs({ onHome, onChat, onNotifications, onProfile, photo, initial, homeActive }: { onHome: () => void; onChat?: () => void; onNotifications: () => void; onProfile: () => void; photo?: string | null; initial: string; homeActive: boolean }) {
-  return <>
+  return <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[100] flex border-t border-line bg-surface-raised px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
     <Button variant="ghost" className="min-h-11 flex-1" aria-label="Home" aria-current={homeActive ? 'page' : undefined} onClick={onHome}><Home size={20} /></Button>
     {onChat && <Button variant="ghost" className="min-h-11 flex-1" aria-label="Messages" onClick={onChat}><MessageCircle size={20} /></Button>}
     <Button variant="ghost" className="min-h-11 flex-1" aria-label="Notification settings" onClick={onNotifications}><Bell size={20} /></Button>
     <Button variant="ghost" className="min-h-11 flex-1" aria-label="Profile menu" onClick={onProfile}><Avatar className="size-8"><AvatarImage src={photo || undefined} alt="" /><AvatarFallback>{initial}</AvatarFallback></Avatar></Button>
-  </>;
+  </nav>;
 }
 
-export function MobileProfileSheet({ open, onOpenChange, isAdmin, onProfile, onAdmin }: { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean; onProfile: () => void; onAdmin: () => void }) {
-  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="bottom" className="pb-[calc(1rem+env(safe-area-inset-bottom))]"><SheetHeader><SheetTitle>Profile and settings</SheetTitle></SheetHeader>
-    <Button variant="ghost" className="min-h-11 justify-start" onClick={() => { onOpenChange(false); onProfile(); }}>My profile and settings</Button>
-    {isAdmin && <Button className="min-h-11" onClick={() => { onOpenChange(false); onAdmin(); }}>Admin dashboard</Button>}
+export function MobileProfileSheet({ open, onOpenChange, isAdmin, name, photo, onProfile, onAdmin }: { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean; name: string; photo?: string | null; onProfile: () => void; onAdmin: () => void }) {
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="bottom" initialFocus={titleRef} className="pb-[calc(1rem+env(safe-area-inset-bottom))]"><SheetHeader><SheetTitle ref={titleRef} tabIndex={-1}>Profile and settings</SheetTitle></SheetHeader>
+    <div className="flex items-center gap-3 px-4"><Avatar size="lg"><AvatarImage src={photo || undefined} alt="" /><AvatarFallback>{name.trim().slice(0, 1).toUpperCase()}</AvatarFallback></Avatar><p className="truncate font-semibold">{name}</p></div>
+    <Separator />
+    <div className="flex flex-col gap-2 px-4">
+      <Button variant="ghost" className="min-h-11 justify-start gap-3" onClick={() => { onOpenChange(false); onProfile(); }}><UserRound aria-hidden="true" />My profile and settings</Button>
+      {isAdmin && <Button className="min-h-11 justify-start gap-3" onClick={() => { onOpenChange(false); onAdmin(); }}><LayoutDashboard aria-hidden="true" />Admin dashboard</Button>}
+    </div>
   </SheetContent></Sheet>;
 }
 export function CommunitySwitcher({ open, onOpenChange, state, onEnter, onDiscover }: { open: boolean; onOpenChange: (open: boolean) => void; state: LoadState<MemberCommunity[]>; onEnter: () => void; onDiscover: () => void }) {

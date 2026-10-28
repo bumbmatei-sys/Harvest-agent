@@ -18,6 +18,7 @@ import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -97,7 +98,7 @@ const NAV_Z = 100;
  * hand-typed copy of a nav that may since have moved.
  */
 function navClass(): string {
-  const shell = src('src/components/MainApp.tsx');
+  const shell = stripComments(src('src/components/MainApp.tsx'));
   /* ⚠️ THE-332 — WIDENED, NOT LOOSENED. This looked for `className={`…`}`
      exactly: a template literal, with nothing between `<div` and `className`.
      Both of those were implementation details of a nav that has since changed
@@ -120,7 +121,14 @@ function navClass(): string {
       'would be measuring a hand-typed copy of a nav that may have moved.',
     );
   }
-  return match[1];
+  // THE-555 has separate phone and legacy tablet/desktop roots. Compose their
+  // actual class lists at the same breakpoint so every existing inset, layer,
+  // and geometry probe continues to measure the navigation served at that width.
+  const mobileSource = stripComments(src('src/components/community/MobileCommunityNav.tsx'));
+  const mobile = /<nav[^>]*className="([^"]+)"/.exec(mobileSource);
+  if (!mobile) throw new Error('the mobile navigation root could not be located');
+  return match[1].replace(' max-[768px]:hidden', '') + ' ' +
+    mobile[1].split(/\s+/).map(token => `max-[768px]:${token}`).join(' ');
 }
 
 /** The nav class with its template holes filled for a given state. */
@@ -251,6 +259,10 @@ const key = (sel: string, vw: number) => `${sel}@${vw}`;
 
 setUpOrFail(async () => {
   appCss = await buildAppCss();
+  // Responsive tokens are assembled from the two real roots above, so include
+  // that composed markup in Tailwind's content rather than relying on a token
+  // accidentally appearing in an unrelated source file.
+  appCss += await buildCssForMarkup(navMarkup('visible', 5, 'responsive-content'));
 
   const flat = await launch(appCss, 'flat');
   try {

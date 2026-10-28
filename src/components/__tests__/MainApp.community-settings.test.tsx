@@ -28,9 +28,28 @@ vi.mock('../LivestreamView', () => stub('livestream'));
 vi.mock('../ErrorBoundary', () => ({ default: ({ children }: any) => children }));
 vi.mock('../layout/DesktopLayout', () => ({ DesktopContainer: ({ children }: any) => children }));
 vi.mock('next/dynamic', () => ({ default: () => () => <div data-testid="map" /> }));
-vi.mock('framer-motion', () => ({ motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }), AnimatePresence: ({ children }: any) => children }));
+vi.mock('framer-motion', () => ({ motion: new Proxy({}, { get: () => ({ children, className }: any) => <div className={className}>{children}</div> }), AnimatePresence: ({ children }: any) => children }));
 
 describe('community settings in member navigation', () => {
+  it('anchors the real mobile navigation outside the translated legacy rail and reserves its space', async () => {
+    fx.settings = defaultCommunitySettings(); fx.member = null; fx.user = null; fx.error = null;
+    const host = document.createElement('div'); const root = createRoot(host);
+    await act(async () => root.render(<MainApp onNavigate={() => {}} />));
+    const nav = host.querySelector<HTMLElement>('nav[aria-label="Mobile navigation"]')!;
+    expect(nav).toBeTruthy();
+    expect(nav.classList.contains('fixed')).toBe(true);
+    expect(nav.classList.contains('bottom-0')).toBe(true);
+    expect(nav.classList.contains('pb-[calc(0.5rem+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(nav.closest('[class*="translate-y-"]')).toBeNull();
+    const header = host.querySelector('[aria-label="Switch community"]')!.parentElement!.parentElement!;
+    expect(header.classList.contains('sticky')).toBe(true);
+    expect(header.classList.contains('top-0')).toBe(true);
+    const feed = host.querySelector('[data-testid="news"]')!;
+    const scroller = feed.closest('[class*="overflow-y-auto"]')!;
+    expect(scroller.classList.contains('max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(true);
+    expect(feed.closest('[class*="max-[768px]:relative"]')).toBeTruthy();
+    await act(async () => root.unmount());
+  });
   it('keeps the shell usable when settings fail', async () => {
     fx.settings = defaultCommunitySettings(); fx.member = null; fx.user = null; fx.error = 'Could not load community settings.';
     const host = document.createElement('div'); const root = createRoot(host);

@@ -760,11 +760,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   }
 
   return (
-    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-dvh max-[768px]:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] max-[768px]:hidden transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -794,7 +794,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               'mobile'
             )
           )}</div>
-          <div className="hidden w-full max-[768px]:flex"><MobileCommunityTabs homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
 
           <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
             {renderNavButton('desktop-communities', 'Communities', CommunityIcon, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
@@ -839,10 +838,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         </div>
       </div>
 
+      <div className={`hidden max-[768px]:block ${effectiveBottomTab === 'map' || isChatOpen ? 'max-[768px]:hidden' : ''}`}><MobileCommunityTabs homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} /></div>
+
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
-        <div className="hidden max-[768px]:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
-        <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
+      <div className="flex-1 flex flex-col h-dvh relative bg-surface overflow-hidden min-w-0">
+        <div className="sticky top-0 z-20 hidden shrink-0 max-[768px]:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
+        <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} name={currentUser?.displayName || 'Member'} photo={memberPhotoURL} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
         {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
@@ -915,7 +916,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 min-h-0 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px] max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))]'} lg:pb-0` : 'overflow-y-auto pb-24 max-[768px]:pb-[calc(61px+env(safe-area-inset-bottom))] lg:pb-0'}`} onScroll={handleScroll}>
           {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData currentTenantId={tenantId} /> : effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
@@ -935,7 +936,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1]?.id ? 0 : 1, right: effectiveTopTab === topTabs[0]?.id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
-                  className="absolute w-full h-full p-4 space-y-6 lg:space-y-4"
+                  className="absolute w-full h-full p-4 space-y-6 max-[768px]:relative max-[768px]:h-auto max-[768px]:min-h-full lg:space-y-4"
                 >
                   {/* Content based on effectiveTopTab */}
                   {/* 🔴 `hasNewsFeed &&` is NOT redundant with `effectiveTopTab`.

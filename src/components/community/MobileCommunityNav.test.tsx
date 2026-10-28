@@ -22,10 +22,15 @@ describe('mobile community navigation', () => {
   });
   it('lets an admin open the dashboard and hides it from members', async () => {
     const navigate = vi.fn();
-    const renderSheet = (isAdmin: boolean) => <MobileProfileSheet open onOpenChange={() => {}} isAdmin={isAdmin} onProfile={() => {}} onAdmin={navigate} />;
+    const renderSheet = (isAdmin: boolean) => <MobileProfileSheet open onOpenChange={() => {}} isAdmin={isAdmin} name="Alex Morgan" onProfile={() => {}} onAdmin={navigate} />;
     await act(async () => root.render(renderSheet(true)));
     const dashboard = [...document.body.querySelectorAll('button')].find(button => button.textContent === 'Admin dashboard');
     expect(dashboard).toBeTruthy();
+    expect(document.body.textContent).toContain('Alex Morgan');
+    expect(dashboard?.querySelector('.lucide-layout-dashboard')).toBeTruthy();
+    const profile = [...document.body.querySelectorAll('button')].find(button => button.textContent === 'My profile and settings');
+    expect(profile?.querySelector('.lucide-user-round')).toBeTruthy();
+    expect(profile?.getAttribute('data-slot')).toBe('button');
     await act(async () => dashboard!.click());
     expect(navigate).toHaveBeenCalledOnce();
     await act(async () => root.render(renderSheet(false)));

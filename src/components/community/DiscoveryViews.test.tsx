@@ -17,7 +17,7 @@ afterEach(async () => { await act(async () => root.render(null)); });
 describe('community views', () => {
   it('renders public cards, filters them and links to the tenant', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: listings }} />));
-    expect(host.textContent).toContain('12 members at listing');
+    expect(host.textContent).toContain('12 members');
     await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Grace'))!.click(); });
     expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
     await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Back to discover'))!.click(); });
@@ -32,6 +32,13 @@ describe('community views', () => {
     await act(async () => host.querySelector<HTMLElement>('[aria-label="Filter by price"]')!.click());
     const paid = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(item => item.textContent?.includes('Paid'));
     expect(paid?.getAttribute('aria-disabled')).toBe('true'); expect(paid?.textContent).toContain('Soon');
+  });
+  it('uses compact ratings and member counts on cards', async () => {
+    await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: [{ ...listings[0], memberCount: 1248, ratingAvg: 4.8, ratingCount: 24 }] }} />));
+    expect(host.textContent).toContain('1,248 members');
+    expect(host.textContent).toContain('4.8 (24)');
+    expect(host.textContent).not.toContain('at listing');
+    expect(host.querySelector('[aria-label="4.8 out of 5, 24 reviews"]')).toBeTruthy();
   });
   it('filters by search and price together', () => {
     const items = [listings[0], { ...listings[1], price: 12 }];
@@ -48,6 +55,8 @@ describe('community views', () => {
     const listing = { ...listings[0], coverUrl: 'https://example.com/cover.jpg', galleryUrls: ['https://example.com/gallery.jpg'], longDescription: 'First line\nSecond line', ownerName: 'Alex', isPublic: true };
     await act(async () => root.render(<CommunityAbout listing={listing} onBack={() => {}} />));
     expect(host.textContent).toContain('By Alex');
+    expect(host.textContent).toContain('12 members');
+    expect(host.textContent).not.toContain('at listing');
     expect(host.textContent).toContain('First line\nSecond line');
     expect(host.querySelector('[aria-roledescription="carousel"]')).toBeTruthy();
     expect(Array.from(host.querySelectorAll('img[alt="Grace cover"]')).map(image => image.getAttribute('src'))).toEqual(['https://example.com/cover.jpg', 'https://example.com/gallery.jpg']);
@@ -60,6 +69,17 @@ describe('community views', () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toBe('Read failed');
     await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: [] }} />));
     expect(host.textContent).toContain('No public communities to discover yet.');
+  });
+  it('offers a desktop header join and reserves space for the mobile join bar', async () => {
+    await act(async () => root.render(<CommunityAbout listing={listings[0]} onBack={() => {}} />));
+    const joins = [...host.querySelectorAll<HTMLAnchorElement>('a')].filter(link => link.textContent === 'Join Grace');
+    expect(joins).toHaveLength(2);
+    const desktop = joins.find(link => link.classList.contains('sm:inline-flex'))!;
+    expect(desktop.parentElement?.querySelector('h2')?.textContent).toBe('Grace');
+    const bar = joins.find(link => link.parentElement?.classList.contains('fixed'))!.parentElement!;
+    expect(bar.classList.contains('sm:hidden')).toBe(true);
+    expect(bar.classList.contains('bottom-[var(--community-bottom-nav-height,0px)]')).toBe(true);
+    expect(host.querySelector('section')?.classList.contains('pb-[calc(77px+env(safe-area-inset-bottom))]')).toBe(true);
   });
   it('shows the account community and opens it or discovery', async () => {
     const enter = vi.fn(), discover = vi.fn();

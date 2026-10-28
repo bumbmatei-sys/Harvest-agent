@@ -20,10 +20,17 @@ describe('community reviews', () => {
   it('sorts reviews through the API', async () => {
     const fetcher = vi.fn().mockResolvedValue(response({ reviews: [], nextOffset: null })); vi.stubGlobal('fetch', fetcher);
     await act(async () => root.render(<CommunityReviews tenantId="one" />));
+    expect(host.querySelector('[aria-label="Sort reviews"]')?.textContent).toContain('Newest');
     await act(async () => { host.querySelector<HTMLElement>('[aria-label="Sort reviews"]')!.click(); });
     const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(element => element.textContent === 'Highest');
     expect(option).toBeTruthy(); await act(async () => option!.click());
     expect(fetcher.mock.calls.some(([url]) => String(url).includes('sort=highest'))).toBe(true);
+    expect(host.querySelector('[aria-label="Sort reviews"]')?.textContent).toContain('Highest');
+    await act(async () => host.querySelector<HTMLElement>('[aria-label="Sort reviews"]')!.click());
+    const lowest = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(element => element.textContent === 'Lowest');
+    await act(async () => lowest!.click());
+    expect(host.querySelector('[aria-label="Sort reviews"]')?.textContent).toContain('Lowest');
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('sort=lowest'))).toBe(true);
   });
   it('requires a rating and limits review text', async () => {
     const save = vi.fn(); await act(async () => root.render(<ReviewDialog open onOpenChange={() => {}} review={null} onSave={save} onDelete={async () => {}} />));
