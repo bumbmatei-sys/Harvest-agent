@@ -12,6 +12,9 @@
 /** Cover art, logos, avatars. Enforced in /api/storage/presign. */
 export const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB
 
+export const MAX_SOCIAL_IMAGE_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_SOCIAL_VIDEO_UPLOAD_BYTES = 200 * 1024 * 1024;
+
 /**
  * Sermon / study PDFs for the AI Knowledge base.
  *

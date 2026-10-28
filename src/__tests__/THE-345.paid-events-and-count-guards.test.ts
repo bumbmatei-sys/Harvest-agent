@@ -336,7 +336,7 @@ describe('15 · adoptedCourses is still server-only', () => {
     // One route path in the whole screen, and the ghost's remove control calls
     // the un-adopt handler that already used it.
     const routes = [...code.matchAll(/authFetch\('([^']+)'/g)].map((m) => m[1]);
-    expect([...new Set(routes)], 'a new route appeared on this screen').toEqual(['/api/courses/adopt']);
+    expect([...new Set(routes)], 'a new route appeared on this screen').toEqual(['/api/digital-products?admin=1', '/api/courses/adopt']); // DIGITAL-1 reads the digital product cap; adoption stays on its existing route.
     expect(code).toContain('handleUnadopt(id)');
   });
 });

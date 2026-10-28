@@ -16,8 +16,8 @@ describe('the New product picker offers product types only', () => {
     }
   });
 
-  it('Course is the only type that can be picked; the rest are Coming soon', () => {
-    expect(PRODUCT_TYPES.filter((t) => t.available).map((t) => t.id)).toEqual(['course']);
+  it('Course and digital downloads can be picked; the rest are Coming soon', () => {
+    expect(PRODUCT_TYPES.filter((t) => t.available).map((t) => t.id)).toEqual(['course', 'digital-download']);
   });
 
   describe('rendered', () => {
@@ -31,8 +31,8 @@ describe('the New product picker offers product types only', () => {
       await act(async () => { root.render(<NewProductDialog open onOpenChange={() => {}} types={PRODUCT_TYPES} onSelect={onSelect} />); });
       const cards = [...document.querySelectorAll<HTMLButtonElement>('[data-product-type]')];
       expect(cards.map((c) => c.getAttribute('data-product-type'))).toEqual(['course', 'digital-download', 'coaching', 'bundle', 'community', 'more']);
-      expect(cards.filter((c) => c.disabled).map((c) => c.getAttribute('data-product-type'))).toEqual(['digital-download', 'coaching', 'bundle', 'community', 'more']);
-      expect(cards.slice(1, -1).every((c) => c.textContent?.includes('Coming soon'))).toBe(true);
+      expect(cards.filter((c) => c.disabled).map((c) => c.getAttribute('data-product-type'))).toEqual(['coaching', 'bundle', 'community', 'more']);
+      expect(cards.slice(2, -1).every((c) => c.textContent?.includes('Coming soon'))).toBe(true);
       const community = cards.find((c) => c.getAttribute('data-product-type') === 'community')!;
       expect(community.textContent).toContain('Community');
       expect(community.textContent).toContain('Coming soon');

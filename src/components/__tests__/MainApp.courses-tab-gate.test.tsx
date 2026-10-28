@@ -20,6 +20,9 @@ import MainApp from '../MainApp';
 
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 
+const productPresence = vi.hoisted(() => ({ present: false, fail: false }));
+vi.mock('../../utils/auth-fetch', () => ({ authFetch: async () => ({ ok: !productPresence.fail, json: async () => ({ present: productPresence.present }) }) }));
+
 const scope = vi.hoisted(() => ({ read: 'tenant-1' as string | null, write: 'tenant-1' as string | null }));
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => scope.read,
@@ -118,6 +121,25 @@ async function mount() {
 function coursesTab(): Element | null {
   return container.querySelector('[data-tab-id="courses"]');
 }
+
+describe('Products tab', () => {
+  beforeEach(() => { container = document.createElement('div'); document.body.appendChild(container); productPresence.present = false; productPresence.fail = false; });
+  afterEach(() => { act(() => root.unmount()); container.remove(); });
+  it('is hidden when no published digital products exist and shown when one exists', async () => {
+    await mount();
+    expect(container.querySelector('[data-tab-id="products"]')).toBeNull();
+    await act(async () => root.unmount());
+    productPresence.present = true;
+    await mount();
+    expect(container.querySelector('[data-tab-id="products"]')).not.toBeNull();
+  });
+  it('hides the tab without adding a shell alert when the presence read fails', async () => {
+    productPresence.fail = true;
+    await mount();
+    expect(container.querySelector('[data-tab-id="products"]')).toBeNull();
+    expect(container.textContent).not.toContain('Could not check for digital products');
+  });
+});
 
 const libraryCourse = (over: Record<string, unknown> = {}) => ({
   id: 'lib-1', title: 'Foundations of Prayer', status: 'published',

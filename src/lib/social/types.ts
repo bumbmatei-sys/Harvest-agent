@@ -12,6 +12,9 @@ export interface SocialAccount {
 export interface SocialMedia {
   readonly name: string;
   readonly kind: 'image' | 'video';
+  readonly url?: string;
+  readonly mimeType?: string;
+  readonly alt?: string;
 }
 
 export interface SocialTarget {

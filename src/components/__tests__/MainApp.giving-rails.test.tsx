@@ -93,6 +93,7 @@ vi.mock('firebase/firestore', () => {
 const posts = vi.hoisted(() => ({ urls: [] as string[] }));
 vi.mock('../../utils/auth-fetch', () => ({
   authFetch: async (url: string) => {
+    if (url === '/api/digital-products?presence=1') return { ok: true, json: async () => ({ present: false }) };
     posts.urls.push(url);
     return { ok: true, json: async () => ({ url: 'https://checkout.stripe.test/x' }) };
   },

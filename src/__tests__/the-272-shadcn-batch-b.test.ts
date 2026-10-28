@@ -1150,7 +1150,10 @@ const COURSES_PROGRESS_ADOPTERS = [
   'src/components/product-wizard/ProductWizard.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
+/** The scheduler media attachments use progress to show upload completion. */
+const SCHEDULER_PROGRESS_ADOPTERS = ['src/components/admin/social/MediaAttachments.tsx'] as const;
+
+it('records chart, table and all 11 progress adopters, while pagination remains unadopted', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -1193,6 +1196,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...PHASE_1_PROGRESS_ADOPTERS,
       ...COURSES_PROGRESS_ADOPTERS,
       ...NEWSLETTER_PROGRESS_ADOPTERS,
+      ...SCHEDULER_PROGRESS_ADOPTERS,
     ].sort());
 
   for (const name of ['pagination']) {

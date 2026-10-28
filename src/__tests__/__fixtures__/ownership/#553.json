@@ -1,0 +1,37 @@
+{
+  "ticket": "#553",
+  "recordedIn": "#553",
+  "note": "DIGITAL-1 (PR #553): digital products step 1 adds the member catalogue and admin editor.",
+  "entries": [
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "8eb88a25bdfce3acd48927dcf0b58369b0c814e2ab6b698c6831d54a4804042b",
+      "why": "DIGITAL-1 adds digital product list and editor access, checks its separate product cap, and disables the course picker card at the existing course limit with a visible reason."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "1dfcf83a018bdfd41dab1b7f95a5cf0609fba892f403bc2a15a9bd6f7a0209b7",
+      "why": "DIGITAL-1 adds the member Products tab only when a published digital product exists, displays presence-read failures, and renders the digital catalogue for that tab."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "e247bd6f8defa1d73be6738d9c1b9aa3c3e4f7e034eec730d61112fd118d4bf3",
+      "why": "DIGITAL-1 appends DigitalProducts.tsx to the primitive adopter register with its ticket and reason; no previous adopter or assertion is removed."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "04bedb0769977c65bc2369c65781021ae043239a13090545382ab85cf1609534",
+      "why": "DIGITAL-1 round 5 hides the Products tab on a failed presence read, matching the existing Courses gate without adding an element to the member shell."
+    },
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "e24586624f2a6bb344b96ca6c3bec39bc27f385a26f22b16338bec60791188b4",
+      "why": "Keep the last digital product count during refresh and distinguish a loading plan or count from a failed limit check."
+    },
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "dc00af14edee1f81c0dacf7eb9966168f54c2074db76b0cdf4fd52e165ab12e5",
+      "why": "Pass the selected tenant to the digital product permission gate for product counts, so the server checks the same scope the admin is managing."
+    }
+  ]
+}
