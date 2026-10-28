@@ -16,5 +16,5 @@ export function makeDiscoveryListing(tenantId: string, tenant: Record<string, un
     try { url = new URL(logoUrl); } catch { throw new Error('Enter a valid HTTPS logo URL.'); }
     if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Enter a valid HTTPS logo URL.');
   }
-  return { tenantId, slug, name: name.trim(), logoUrl, shortDescription: settings.shortDescription.trim(), coverUrl: settings.coverUrl, galleryUrls: settings.galleryUrls, longDescription: settings.longDescription, ownerName: settings.ownerName.trim(), isPublic: settings.isPublic, memberCount, updatedAt };
+  return { tenantId, slug, name: name.trim(), logoUrl, brandColor: settings.brandColor, shortDescription: settings.shortDescription.trim(), coverUrl: settings.coverUrl, galleryUrls: settings.galleryUrls, longDescription: settings.longDescription, ownerName: settings.ownerName.trim(), isPublic: settings.isPublic, memberCount, updatedAt };
 }

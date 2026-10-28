@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       previous = readCommunitySettings(body.previous);
       next = readCommunitySettings(body.next);
       const mediaBase = process.env.R2_PUBLIC_URL?.replace(/\/+$/, '');
-      for (const image of [next.coverUrl, ...next.galleryUrls].filter(Boolean)) {
+      for (const image of [next.logoUrl, next.coverUrl, ...next.galleryUrls].filter(Boolean)) {
         if (!mediaBase || !image.startsWith(`${mediaBase}/`) || !isTenantUploadKey(image.slice(mediaBase.length + 1), tenantId)) throw new Error('Invalid media URL.');
       }
       if (communitySettingsFingerprint(prepareCommunitySettings(previous, next)) !== communitySettingsFingerprint(next)) throw new Error('Invalid settings version.');

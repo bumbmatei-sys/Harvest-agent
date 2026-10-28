@@ -87,3 +87,18 @@ describe('community views', () => {
     expect(host.querySelector('path[fill="var(--brand-color)"]')).toBeTruthy();
   });
 });
+
+describe('community branding', () => {
+  it('scopes the selected accent to cards and the About page', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const item = { tenantId: 'brand', slug: 'brand', name: 'Brand', logoUrl: '', shortDescription: 'Hello', memberCount: 1, brandColor: '#112233' };
+    await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: [item] }} />));
+    expect((host.querySelector('.community-brand-scope') as HTMLElement).style.getPropertyValue('--community-brand-light')).toBe('#112233');
+    await act(async () => root.render(<CommunityAbout listing={item} onBack={() => {}} />));
+    expect((host.querySelector('.community-brand-scope') as HTMLElement).style.getPropertyValue('--community-brand-light')).toBe('#112233');
+    await act(async () => root.unmount());
+    host.remove();
+  });
+});

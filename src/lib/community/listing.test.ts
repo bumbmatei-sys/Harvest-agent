@@ -8,7 +8,7 @@ describe('public listing projection', () => {
     const settings = { ...defaultCommunitySettings(), shortDescription: ' Hello ' };
     const date = new Date('2020-01-01');
     expect(makeDiscoveryListing('id', { name: 'Ministry', subdomain: 'ministry', config: { logo: 'https://example.com/logo', email: 'private' }, ownerId: 'private' }, settings, 3, date)).toEqual({
-      tenantId: 'id', slug: 'ministry', name: 'Ministry', logoUrl: 'https://example.com/logo', shortDescription: 'Hello', coverUrl: '', galleryUrls: [], longDescription: '', ownerName: '', isPublic: false, memberCount: 3, updatedAt: date,
+      tenantId: 'id', slug: 'ministry', name: 'Ministry', logoUrl: 'https://example.com/logo', brandColor: '#C9963A', shortDescription: 'Hello', coverUrl: '', galleryUrls: [], longDescription: '', ownerName: '', isPublic: false, memberCount: 3, updatedAt: date,
     });
   });
   it('projects only the public About fields on read', () => {

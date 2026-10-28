@@ -35,7 +35,7 @@ describe('community settings API', () => {
     expect(result.status).toBe(200);
     expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.objectContaining({ tenantId: 'ministry', memberCount: 7, shortDescription: 'Hello' }));
     const listing = h.set.mock.calls[0][1];
-    expect(Object.keys(listing).sort()).toEqual(['logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt', 'coverUrl', 'galleryUrls', 'longDescription', 'ownerName', 'isPublic', 'ratingSum', 'ratingCount', 'ratingAvg'].sort());
+    expect(Object.keys(listing).sort()).toEqual(['brandColor', 'logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt', 'coverUrl', 'galleryUrls', 'longDescription', 'ownerName', 'isPublic', 'ratingSum', 'ratingCount', 'ratingAvg'].sort());
   });
   it('preserves server-owned ratings when settings are saved or republished', async () => {
     h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: true, data: () => ({ ...defaultCommunitySettings(), ratingSum: 9, ratingCount: 2, ratingAvg: 4.5 }) } : { exists: true, data: () => ({ name: 'Ministry', subdomain: 'ministry' }) });
@@ -47,6 +47,9 @@ describe('community settings API', () => {
   it('accepts tenant uploads and rejects foreign, malformed and oversized media', async () => {
     vi.stubEnv('R2_PUBLIC_URL', 'https://media.example');
     const base = defaultCommunitySettings();
+    expect((await POST(request({ ...base, brandColor: 'red' }))).status).toBe(400);
+    expect((await POST(request({ ...base, logoUrl: 'https://evil.example/logo.jpg' }))).status).toBe(400);
+    expect((await POST(request({ ...base, logoUrl: 'https://media.example/tenants/ministry/uploads/id-image.jpg' }))).status).toBe(200);
     expect((await POST(request({ ...base, coverUrl: 'https://media.example/tenants/ministry/uploads/id-image.jpg' }))).status).toBe(200);
     for (const coverUrl of ['https://evil.example/tenants/ministry/uploads/id-image.jpg', 'https://media.example/tenants/other/uploads/id-image.jpg', 'https://media.example/tenants/ministry/uploads/../secret']) {
       expect((await POST(request({ ...base, coverUrl }))).status).toBe(400);

@@ -130,6 +130,101 @@
       "file": "src/app/api/community/reviews/route.test.ts",
       "digest": "0794b7c882c7d6c5c6016ec7fa3765d2a3e6408e03c2e4cc40128b22beb2bead",
       "why": "Checks own-review privacy, admin refusal and transaction aggregate responses for the review interface."
+    },
+    {
+      "file": "src/lib/community/branding.ts",
+      "digest": "5ef16c2f1af01ceba22d00e5f32e20c0243ac36d6cb8c1b05642d9aefeded17a",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/branding.test.ts",
+      "digest": "d7eaa78b15d72fa50990ede56cc04cb67401388f79fd7930978adecfa043bb9a",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/settings.ts",
+      "digest": "af7b6f854f6a6016f5c156ea0af18dc65320d9d3ca220fbbc05fce52814a3bfd",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/listing.ts",
+      "digest": "da69fb0d17ffcdd06ee9657dc650c293ed8edfc0fba84b74838a552d90cc1195",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/listing.test.ts",
+      "digest": "d37dab17d4c4e8bc7e665a603de9d1de898833988af916561f8fb957109e41ed",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/lib/community/public-listing.ts",
+      "digest": "f4d303f1a9bf3b778ccd6aa2e4a8241bce66aacebbb5cd9eac335f406aa27e31",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/branding.css",
+      "digest": "d66dddfa1b0b35bb294ff3d27da430ca7ba0946f760f14f7d0af390e36b7cf18",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "cb5f1e9e8c437730ff0701ddcbba0adb536aedbfa5f49d519db49c9458d4d503",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "070d5b6e822bc660ce984494e7ab9aba9d708e2dc38882083cfdd912bad3d6eb",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "815d92a7bccbdbb1f8e8039545fb0e7971ae67ca6e598d75fb2df2e2b93f7eb5",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "f87e008e77a5ad6d059e8b3e0b3bfe786ef0fea0e6b76ed0dc15aadcd3396da0",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "46bf2e15d394a47438318ba0b1762f9059ce811e3766b81eac029dff3b3dffb6",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "a301dfb712561060e1b06fe9dc5c91b7419c6906c1b5516c2b58bb9d4b367e64",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "375d42cfd36de3f1078ad7f0425ee82933e9b03b8f8de215ab0d588bf62bb736",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-digests.json",
+      "digest": "e2622f554df34d2f17efe314a408b172015c5c257f2443652682844ae00b4a0f",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/__tests__/__fixtures__/primitive-class-counts.json",
+      "digest": "b85a03f9072504ac11356dedced34d2ba3e9395149f29980af01b7f8391e18f2",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/components/ui/carousel.tsx",
+      "digest": "7cb0820eb976544895da1efa2b7d350bd73e65586c62c0a7fad9a6896c9fdb8d",
+      "why": "THE-555 community branding, validation, scoped appearance, or carousel inventory and its coverage."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "8ff8f29d8a1641aa1a2121529e900eb14da4a0c78ab62a8188aa77b135698583",
+      "why": "Records the carousel primitive, review adopter and installed dependency entries while preserving existing inventory and lockfile pins."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "46d05813562816f1aa4a035b3db7288e17875f3b8f4c031c171c56022e9e880d",
+      "why": "Records the review rating toggle group adopter with the required explanation and preserves the carousel inventory and lockfile pins."
     }
   ]
 }

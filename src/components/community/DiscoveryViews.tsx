@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import './branding.css';
+import { communityBrandStyle } from '@/lib/community/branding';
 import { Search, Users, Image as ImageIcon, ArrowLeft, Star } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,12 +14,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CommunityReviews, HarvestFooter, Stars } from './CommunityReviews';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
-export type Listing = { tenantId: string; name: string; slug: string; logoUrl: string; shortDescription: string; memberCount: number; coverUrl?: string; galleryUrls?: string[]; longDescription?: string; ownerName?: string; isPublic?: boolean; price?: number; ratingAvg?: number; ratingCount?: number };
+export type Listing = { tenantId: string; name: string; slug: string; logoUrl: string; brandColor?: string; shortDescription: string; memberCount: number; coverUrl?: string; galleryUrls?: string[]; longDescription?: string; ownerName?: string; isPublic?: boolean; price?: number; ratingAvg?: number; ratingCount?: number };
 export type LoadState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: T };
 export type MemberCommunity = { name: string; logoUrl?: string; href?: string };
 
 function CommunityAvatar({ name, logoUrl }: { name: string; logoUrl?: string }) {
-  return <Avatar className="size-12 rounded-xl"><AvatarImage src={logoUrl || undefined} alt="" /><AvatarFallback className="rounded-xl">{name.trim().slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>;
+  return <Avatar className="size-12 rounded-xl ring-2 ring-[var(--brand-color)]"><AvatarImage src={logoUrl || undefined} alt="" /><AvatarFallback className="rounded-xl">{name.trim().slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>;
 }
 function LoadingCards() { return <div aria-label="Loading communities" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}</div>; }
 
@@ -42,7 +44,7 @@ function Cover({ url, name }: { url?: string; name: string }) {
 export function CommunityAbout({ listing, onBack, access }: { listing: Listing; onBack: () => void; access?: { getToken: () => Promise<string> } }) {
   const [summary, setSummary] = useState({ ratingAvg: listing.ratingAvg || 0, ratingCount: listing.ratingCount || 0 });
   const images = [listing.coverUrl, ...(listing.galleryUrls || [])].filter((url): url is string => Boolean(url));
-  return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 pb-28 sm:p-8">
+  return <section style={communityBrandStyle(listing.brandColor)} className="community-brand-scope mx-auto w-full max-w-3xl space-y-5 p-4 pb-28 sm:p-8">
     <Button variant="ghost" className="min-h-11" onClick={onBack}><ArrowLeft size={18} /> Back to discover</Button>
     <h2 className="font-display text-3xl font-semibold">{listing.name}</h2>
     {summary.ratingCount ? <div className="flex items-center gap-2 text-sm text-muted"><Stars rating={summary.ratingAvg} /><span>{summary.ratingAvg.toFixed(1)} · {summary.ratingCount.toLocaleString()} {summary.ratingCount === 1 ? 'review' : 'reviews'}</span></div> : <p className="text-sm text-muted">No reviews yet</p>}
@@ -63,7 +65,7 @@ export function DiscoverView({ state, member, showFooter = false }: { state: Loa
   if (selected) return <CommunityAbout listing={selected} onBack={() => setSelected(null)} access={member?.tenantId === selected.tenantId ? member : undefined} />;
   return <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-8"><div><h2 className="font-display text-3xl font-semibold">Discover communities</h2><p className="mt-2 text-sm text-muted">Find a community to connect with.</p></div>
     <div className="flex gap-2"><div className="relative max-w-xl flex-1"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" /><Input aria-label="Search communities" placeholder="Search communities" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11 pl-10" /></div><Select value={price} onValueChange={value => { if (value) setPrice(value as PriceFilter); }}><SelectTrigger aria-label="Filter by price" className="min-h-11"><SelectValue>{price === 'all' ? 'All' : price === 'free' ? 'Free' : 'Paid'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="free">Free</SelectItem><SelectItem value="paid" disabled>Paid <Badge variant="secondary">Soon</Badge></SelectItem></SelectContent></Select><Select value={rating} onValueChange={value => { if (value) setRating(value as RatingFilter); }}><SelectTrigger aria-label="Filter or sort by rating" className="min-h-11"><SelectValue>{rating === 'any' ? 'Any rating' : rating === 'four' ? '4+ stars' : 'Sort by rating'}</SelectValue></SelectTrigger><SelectContent><SelectItem value="any">Any rating</SelectItem><SelectItem value="four">4+ stars</SelectItem><SelectItem value="sort">Sort by rating</SelectItem></SelectContent></Select></div>
-    {state.status === 'loading' ? <LoadingCards /> : state.status === 'error' ? <p role="alert" className="text-sm text-muted">{state.message}</p> : matches.length === 0 ? <p className="text-sm text-muted">{search.trim() || price !== 'all' || rating !== 'any' ? 'No communities match your search.' : 'No public communities to discover yet.'}</p> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{matches.map(item => <Card key={item.tenantId} className="overflow-hidden bg-surface-raised p-0"><Button variant="ghost" onClick={() => setSelected(item)} className="h-auto w-full flex-col items-stretch gap-0 whitespace-normal p-0 text-left"><Cover url={item.coverUrl} name={item.name} /><CardContent className="flex flex-col gap-3 p-4"><div className="flex items-center gap-3"><CommunityAvatar name={item.name} logoUrl={item.logoUrl} /><h3 className="font-display text-lg font-semibold">{item.name}</h3></div><p className="line-clamp-3 text-sm text-body">{item.shortDescription}</p><div className="flex items-center gap-3 text-sm text-muted"><span className="flex items-center gap-1"><Users size={16} /> {item.memberCount.toLocaleString()} {item.memberCount === 1 ? 'member' : 'members'} at listing</span><Rating listing={item} /><span className="font-semibold text-strong">{priceLabel()}</span></div></CardContent></Button></Card>)}</div>}
+    {state.status === 'loading' ? <LoadingCards /> : state.status === 'error' ? <p role="alert" className="text-sm text-muted">{state.message}</p> : matches.length === 0 ? <p className="text-sm text-muted">{search.trim() || price !== 'all' || rating !== 'any' ? 'No communities match your search.' : 'No public communities to discover yet.'}</p> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{matches.map(item => <Card key={item.tenantId} style={communityBrandStyle(item.brandColor)} className="community-brand-scope overflow-hidden border-t-4 border-t-[var(--brand-color)] bg-surface-raised p-0"><Button variant="ghost" onClick={() => setSelected(item)} className="h-auto w-full flex-col items-stretch gap-0 whitespace-normal p-0 text-left"><Cover url={item.coverUrl} name={item.name} /><CardContent className="flex flex-col gap-3 p-4"><div className="flex items-center gap-3"><CommunityAvatar name={item.name} logoUrl={item.logoUrl} /><h3 className="font-display text-lg font-semibold">{item.name}</h3></div><p className="line-clamp-3 text-sm text-body">{item.shortDescription}</p><div className="flex items-center gap-3 text-sm text-muted"><span className="flex items-center gap-1"><Users size={16} /> {item.memberCount.toLocaleString()} {item.memberCount === 1 ? 'member' : 'members'} at listing</span><Rating listing={item} /><Badge className="bg-[var(--brand-color)] text-[var(--brand-foreground)]">{priceLabel()}</Badge></div></CardContent></Button></Card>)}</div>}
     {showFooter && <HarvestFooter />}
   </section>;
 }

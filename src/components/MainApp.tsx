@@ -1,4 +1,6 @@
 "use client";
+import { communityBrandStyle } from '@/lib/community/branding';
+import './community/branding.css';
 import { authFetch } from '@/utils/auth-fetch';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays, Bell, ChevronDown } from 'lucide-react';
@@ -701,7 +703,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
   if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
   if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
-    return <CommunityEntryDialog communityName={tenantName || 'the community'} logoUrl={branding?.logo} settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
+    return <CommunityEntryDialog communityName={tenantName || 'the community'} logoUrl={community.settings.logoUrl || branding?.logo} settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
   }
 
   // The ROUTE, gated as well as its entry point — the same reasoning written on
@@ -757,7 +759,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
@@ -766,7 +768,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
             <img
-              src={displayLogo}
+              src={community.settings.logoUrl || displayLogo}
               alt={displayName}
               className="logo-plate w-9 h-9 object-contain shrink-0"
             />
@@ -839,7 +841,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
         <div className="hidden max-[768px]:flex items-center justify-between gap-2 border-b border-line bg-surface-raised px-4 pt-[env(safe-area-inset-top)]">
-          <button className="flex min-h-11 min-w-0 items-center gap-2" onClick={() => setSwitcherOpen(true)} aria-label="Switch community"><img src={displayLogo} alt="" className="logo-plate size-8 object-contain" /><span className="truncate font-display font-semibold">{displayName}</span><ChevronDown size={16} /></button>
+          <button className="flex min-h-11 min-w-0 items-center gap-2" onClick={() => setSwitcherOpen(true)} aria-label="Switch community"><img src={community.settings.logoUrl || displayLogo} alt="" className="logo-plate size-8 object-contain" /><span className="truncate font-display font-semibold">{displayName}</span><ChevronDown size={16} /></button>
           <div className="flex items-center"><button className="flex size-11 items-center justify-center" aria-label="Notification settings" onClick={() => setActiveBottomTab('profile')}><Bell size={20} /></button><button className="flex size-11 items-center justify-center" aria-label="My Profile" onClick={() => setActiveBottomTab('profile')}>{memberPhotoURL ? <img src={memberPhotoURL} alt="" className="size-8 rounded-full object-cover" /> : <span className="flex size-8 items-center justify-center rounded-full bg-surface-sunken">{memberInitial(currentUser?.displayName)}</span>}</button></div>
         </div>
         {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
