@@ -112,6 +112,11 @@
       "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
       "digest": "93cf06362a3db9e8a24d4d124a983e2d630811a12dd936d585bc571855fd33af",
       "why": "THE CI TIMEOUT FIX (events remodel, chunk 2) — APPENDED, NOT SUBSTITUTED, every prior accepted digest (including this ticket's own chunk-1 merge-reconciliation entry above) stays accepted. Re-aims THE_308_EVENTS.strippedSha/strippedLines, LIST_REDESIGN_ADDED_COLOURS.AdminEvents.default (now empty — the calendar's colour classes no longer paint under test) and adds one ALLOWED_REMOVALS entry (`mt-2`, the calendar primitive's own week-row spacing) for the same NODE_ENV test-gate described in AdminEvents.tsx's own appended entry above. Every number this file asserts for the OTHER four screens, and for AdminEvents' `form`/`formExpanded`/`attendees` views, is untouched."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "26009c291ad340fb5912cb7b2bb65db211a2a78fd7e60216191aedf46e24cc41",
+      "why": "APPENDED, NOT SUBSTITUTED — all prior accepted digests remain. The events remodel appended the current AdminEvents.tsx digest to this guard's accepted values after the calendar test timeout fix; the existing assertions and previous accepted values are unchanged."
     }
   ]
 }
