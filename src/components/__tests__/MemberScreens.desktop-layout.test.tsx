@@ -311,6 +311,8 @@ let BASELINE!: Baseline;
 let SURFACES!: Record<string, HTMLDivElement>;
 let COMMUNITY_BASELINE!: Baseline;
 let COMMUNITY_FIDELITY_BASELINE!: Baseline;
+let POST_CARD_BASELINE!: Baseline;
+const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
@@ -377,6 +379,8 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  // PR 554's post cards change the rendered feed on these three surfaces.
+  POST_CARD_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-post-cards-mobile.json'), 'utf8')) as Baseline;
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
   // Community Eden fidelity pass: retain the earlier fixture for historical checks.
   COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
@@ -563,17 +567,13 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(mobileLayer(SURFACES[name])).toEqual(POST_CARD_BASELINE[name].mobileLayer);
+      return;
+    }
     if (isCommunitySurface(name)) {
       const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
-      if (name === 'NewsTab' || name === 'MainApp') {
-        // The seeded composer has one submit button; only its touch floor changed.
-        const rows = mobileLayer(SURFACES[name]);
-        const candidates = rows.filter((row, i) => row.includes('\tbutton\t') && row.includes(' min-h-11 ') && rows[i - 1]?.endsWith('\tflex gap-2') && rows[i - 4]?.includes('\ttextarea\t'));
-        expect(candidates).toHaveLength(1);
-        expect(rows.map((row) => row === candidates[0] ? row.replace(' min-h-11 ', ' ') : row)).toEqual(expected);
-      } else {
-        expect(mobileLayer(SURFACES[name])).toEqual(expected);
-      }
+      expect(mobileLayer(SURFACES[name])).toEqual(expected);
       return;
     }
     const now0 = undoTHE295(mobileLayer(SURFACES[name]));
@@ -688,6 +688,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(heightLayer(SURFACES[name])).toEqual(POST_CARD_BASELINE[name].heights);
+      return;
+    }
     if (isCommunitySurface(name)) {
       expect(heightLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
       return;
@@ -1288,10 +1292,15 @@ describe('no behaviour changed on any screen in scope', () => {
     .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER)[^}]*\}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
-  it.each(['AllNews', 'BiblePage'] as const)(
-    '%s differs from the pre-PR revision only in class strings', (n) => {
-      expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
-    });
+  it('BiblePage differs from the pre-PR revision only in class strings', () => {
+    expect(strip(read('BiblePage.tsx'))).toBe(strip(at('BiblePage.tsx')));
+  });
+
+  it('AllNews retains the reviewed events switch and post card implementation', () => {
+    // PR 554 changes behavior and presentation, so pin the whole reviewed source.
+    expect(createHash('sha256').update(read('AllNews.tsx')).digest('hex'))
+      .toBe('ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4');
+  });
 
   /**
    * 🔴 `UserMessages` IS NO LONGER ON THAT LIST, and this is the entry that
@@ -1460,8 +1469,10 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(mainAppTags.slice(productsIndex - 1, productsIndex + 2)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
     mainAppTags.splice(productsIndex, 1);
     const entryIndex = mainAppTags.indexOf('CommunityEntryDialog');
-    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['p', 'p', 'CommunityEntryDialog']);
-    mainAppTags.splice(entryIndex - 2, 3);
+    // The settings fallback reuses renderLoading; only the alert and dialog
+    // remain as additions to the original shell tree.
+    expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['div', 'p', 'CommunityEntryDialog']);
+    mainAppTags.splice(entryIndex - 1, 2);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
@@ -1515,6 +1526,10 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if (isPostCardSurface(name)) {
+      expect(colourTokens(SURFACES[name])).toEqual(POST_CARD_BASELINE[name].colours);
+      return;
+    }
     if (isCommunitySurface(name)) {
       expect(colourTokens(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
       return;

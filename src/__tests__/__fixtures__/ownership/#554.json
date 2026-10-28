@@ -100,6 +100,11 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "906d33f9819d142bbb7459b705e9372acc4a65ffc2decb3e980b0e2d8628d4d1",
       "why": "PR 554 finalises comment touch targets and card presentation; earlier accepted digests remain intact."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "a3687d404ac5ca60cf0c2e9d60ee4b9f055fbf5c45d6355f6c9af96975631efa",
+      "why": "PR 554 records the reviewed AllNews source, post card rendering and the settings fallback's exact shell element change while retaining the other layout comparisons."
     }
   ]
 }
