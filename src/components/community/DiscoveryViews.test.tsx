@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CommunitiesView, DiscoverView, type Listing } from './DiscoveryViews';
+import { CommunitiesView, DiscoverView, CommunityAbout, filterListings, type Listing } from './DiscoveryViews';
 import { CommunityIcon } from '../icons/CommunityIcon';
 import { DiscoverIcon } from '../icons/DiscoverIcon';
 
@@ -18,11 +18,28 @@ describe('community views', () => {
   it('renders public cards, filters them and links to the tenant', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: listings }} />));
     expect(host.textContent).toContain('12 members at listing');
+    await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Grace'))!.click(); });
     expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
+    await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Back to discover'))!.click(); });
     const input = host.querySelector('input')!;
     await act(async () => { const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!; setter.call(input, 'welcoming'); input.dispatchEvent(new Event('input', { bubbles: true })); });
     expect(host.textContent).toContain('Grace');
     expect(host.textContent).not.toContain('Hope');
+  });
+  it('filters by search and price together', () => {
+    const items = [listings[0], { ...listings[1], price: 12 }];
+    expect(filterListings(items, ' WELCOMING ', 'free')).toEqual([items[0]]);
+    expect(filterListings(items, '', 'paid')).toEqual([items[1]]);
+    expect(filterListings(items, 'hope', 'free')).toEqual([]);
+  });
+  it('shows public details and switches gallery images', async () => {
+    const listing = { ...listings[0], coverUrl: 'https://example.com/cover.jpg', galleryUrls: ['https://example.com/gallery.jpg'], longDescription: 'First line\nSecond line', ownerName: 'Alex', isPublic: true };
+    await act(async () => root.render(<CommunityAbout listing={listing} onBack={() => {}} />));
+    expect(host.textContent).toContain('By Alex');
+    expect(host.textContent).toContain('First line\nSecond line');
+    await act(async () => (host.querySelector('[aria-label="Show image 2"]') as HTMLButtonElement).click());
+    expect(host.querySelector('img[alt="Grace cover"]')?.getAttribute('src')).toBe('https://example.com/gallery.jpg');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
   });
   it('distinguishes loading, errors and empty listings', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'loading' }} />));

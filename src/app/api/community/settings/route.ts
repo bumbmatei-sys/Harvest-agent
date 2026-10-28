@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTenantAdmin, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
+import { isTenantUploadKey } from '@/utils/r2-keys';
 import { makeDiscoveryListing } from '@/lib/community/listing';
 import { communitySettingsFingerprint, prepareCommunitySettings, readCommunitySettings } from '@/lib/community/settings';
 
@@ -26,6 +27,10 @@ export async function POST(request: NextRequest) {
     try {
       previous = readCommunitySettings(body.previous);
       next = readCommunitySettings(body.next);
+      const mediaBase = process.env.R2_PUBLIC_URL?.replace(/\/+$/, '');
+      for (const image of [next.coverUrl, ...next.galleryUrls].filter(Boolean)) {
+        if (!mediaBase || !image.startsWith(`${mediaBase}/`) || !isTenantUploadKey(image.slice(mediaBase.length + 1), tenantId)) throw new Error('Invalid media URL.');
+      }
       if (communitySettingsFingerprint(prepareCommunitySettings(previous, next)) !== communitySettingsFingerprint(next)) throw new Error('Invalid settings version.');
     } catch { return NextResponse.json({ error: 'Invalid community settings.' }, { status: 400 }); }
     const tenantRef = adminDb.collection('tenants').doc(tenantId);

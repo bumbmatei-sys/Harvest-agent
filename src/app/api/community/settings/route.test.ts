@@ -35,7 +35,18 @@ describe('community settings API', () => {
     expect(result.status).toBe(200);
     expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.objectContaining({ tenantId: 'ministry', memberCount: 7, shortDescription: 'Hello' }));
     const listing = h.set.mock.calls[0][1];
-    expect(Object.keys(listing).sort()).toEqual(['logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt'].sort());
+    expect(Object.keys(listing).sort()).toEqual(['logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt', 'coverUrl', 'galleryUrls', 'longDescription', 'ownerName', 'isPublic'].sort());
+  });
+  it('accepts tenant uploads and rejects foreign, malformed and oversized media', async () => {
+    vi.stubEnv('R2_PUBLIC_URL', 'https://media.example');
+    const base = defaultCommunitySettings();
+    expect((await POST(request({ ...base, coverUrl: 'https://media.example/tenants/ministry/uploads/id-image.jpg' }))).status).toBe(200);
+    for (const coverUrl of ['https://evil.example/tenants/ministry/uploads/id-image.jpg', 'https://media.example/tenants/other/uploads/id-image.jpg', 'https://media.example/tenants/ministry/uploads/../secret']) {
+      expect((await POST(request({ ...base, coverUrl }))).status).toBe(400);
+    }
+    expect((await POST(request({ ...base, galleryUrls: Array(9).fill('https://media.example/tenants/ministry/uploads/id.jpg') }))).status).toBe(400);
+    expect((await POST(request({ ...base, longDescription: 'x'.repeat(10001) }))).status).toBe(400);
+    vi.unstubAllEnvs();
   });
   it('deletes a private listing atomically with the settings save', async () => {
     expect((await POST(request())).status).toBe(200);

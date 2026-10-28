@@ -14,5 +14,17 @@ export function readPublicListing(data: Record<string, unknown>): Listing {
     const url = new URL(logoUrl);
     if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Invalid public community logo');
   }
-  return { tenantId, slug, name, logoUrl, shortDescription, memberCount: memberCount as number };
+  const coverUrl = data.coverUrl === undefined ? '' : data.coverUrl;
+  const galleryUrls = data.galleryUrls === undefined ? [] : data.galleryUrls;
+  const longDescription = data.longDescription === undefined ? '' : data.longDescription;
+  const ownerName = data.ownerName === undefined ? '' : data.ownerName;
+  const isPublic = data.isPublic === undefined ? true : data.isPublic;
+  const validImage = (value: unknown) => {
+    if (typeof value !== 'string' || value.length > 2048) return false;
+    if (!value) return true;
+    try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; } catch { return false; }
+  };
+  if (!validImage(coverUrl) || !Array.isArray(galleryUrls) || galleryUrls.length > 8 || galleryUrls.some(url => !url || !validImage(url)) || typeof longDescription !== 'string' || longDescription.length > 10000 || typeof ownerName !== 'string' || ownerName.length > 120 || typeof isPublic !== 'boolean') throw new Error('Invalid public community details');
+  return { tenantId, slug, name, logoUrl, shortDescription, memberCount: memberCount as number, coverUrl: coverUrl as string, galleryUrls: galleryUrls as string[], longDescription, ownerName, isPublic };
+
 }

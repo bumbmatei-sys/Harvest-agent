@@ -1,0 +1,15 @@
+{
+  "ticket": "THE-555",
+  "entries": [
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "547c08b5ef15a8e4e03008e5c2501c55087169f8ce85400861743eb7a10330e7",
+      "why": "PR 555 adds the public community cover, gallery, description and owner controls using the existing uploader and replaces the question type control with Select."
+    },
+    {
+      "file": "src/app/discover/page.test.tsx",
+      "digest": "7f74dbfdb7379320c066cf46f7a643c9922b1122e7b478b2b2398ff4c6fda980",
+      "why": "PR 555 opens the public card About view before the tenant join link, so the server-rendered listing test checks the Free label while retaining its host and privacy checks."
+    }
+  ]
+}

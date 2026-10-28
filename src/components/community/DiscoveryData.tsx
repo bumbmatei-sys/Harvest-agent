@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase';
+import { readPublicListing } from '@/lib/community/public-listing';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 import { CommunitySwitcher } from './MobileCommunityNav';
 import { CommunitiesView, DiscoverView, type Listing, type LoadState, type MemberCommunity } from './DiscoveryViews';
@@ -10,17 +11,12 @@ import { CommunitiesView, DiscoverView, type Listing, type LoadState, type Membe
 function validSlug(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value) && !isNonTenantSubdomain(value);
 }
-function readListing(value: Record<string, unknown>): Listing {
-  if (typeof value.tenantId !== 'string' || !value.tenantId || !validSlug(value.slug) || typeof value.name !== 'string' || !value.name.trim() || typeof value.logoUrl !== 'string' || typeof value.shortDescription !== 'string' || !Number.isSafeInteger(value.memberCount) || (value.memberCount as number) < 0) throw new Error('Invalid listing');
-  if (value.logoUrl) { const url = new URL(value.logoUrl); if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Invalid logo'); }
-  return value as Listing;
-}
 export function DiscoverData() {
   const [state, setState] = useState<LoadState<Listing[]>>({ status: 'loading' });
   useEffect(() => {
     let cancelled = false;
     getDocs(collection(db, 'discovery_listings')).then(snapshot => {
-      const data = snapshot.docs.map(item => readListing(item.data()));
+      const data = snapshot.docs.map(item => readPublicListing(item.data()));
       data.sort((a, b) => a.name.localeCompare(b.name));
       if (!cancelled) setState({ status: 'ready', data });
     }).catch(() => { if (!cancelled) setState({ status: 'error', message: 'Could not load communities. Please try again later.' }); });

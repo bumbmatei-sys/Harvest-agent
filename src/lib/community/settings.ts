@@ -15,6 +15,10 @@ export type CommunitySettings = {
   isPublic: boolean;
   shortDescription: string;
   logoUrl: string;
+  coverUrl: string;
+  galleryUrls: string[];
+  longDescription: string;
+  ownerName: string;
   rules: { enabled: boolean; items: string[]; version: number };
   questions: { enabled: boolean; items: CommunityQuestion[] };
 };
@@ -25,6 +29,7 @@ export function defaultCommunitySettings(): CommunitySettings {
     isPublic: false,
     shortDescription: '',
     logoUrl: '',
+    coverUrl: '', galleryUrls: [], longDescription: '', ownerName: '',
     rules: { enabled: false, items: [], version: 0 },
     questions: { enabled: false, items: [] },
   };
@@ -35,9 +40,11 @@ export function readCommunitySettings(value: unknown): CommunitySettings {
   if (value === undefined) return defaultCommunitySettings();
   if (!value || typeof value !== 'object') throw new Error('Invalid community settings');
   const raw = value as Partial<CommunitySettings>;
-  const data = { ...raw, shortDescription: raw.shortDescription === undefined ? '' : raw.shortDescription, logoUrl: raw.logoUrl === undefined ? '' : raw.logoUrl } as CommunitySettings;
+  const data = { ...raw, shortDescription: raw.shortDescription === undefined ? '' : raw.shortDescription, logoUrl: raw.logoUrl === undefined ? '' : raw.logoUrl, coverUrl: raw.coverUrl === undefined ? '' : raw.coverUrl, galleryUrls: raw.galleryUrls === undefined ? [] : raw.galleryUrls, longDescription: raw.longDescription === undefined ? '' : raw.longDescription, ownerName: raw.ownerName === undefined ? '' : raw.ownerName } as CommunitySettings;
   if (!data.modules || COMMUNITY_MODULES.some(key => typeof data.modules[key] !== 'boolean') ||
-      typeof data.shortDescription !== 'string' || typeof data.logoUrl !== 'string' ||
+      typeof data.shortDescription !== 'string' || data.shortDescription.length > 240 || typeof data.logoUrl !== 'string' ||
+      typeof data.coverUrl !== 'string' || data.coverUrl.length > 2048 || !Array.isArray(data.galleryUrls) || data.galleryUrls.length > 8 || data.galleryUrls.some(url => typeof url !== 'string' || !url || url.length > 2048) ||
+      typeof data.longDescription !== 'string' || data.longDescription.length > 10000 || typeof data.ownerName !== 'string' || data.ownerName.length > 120 ||
       typeof data.isPublic !== 'boolean' || !data.rules || typeof data.rules.enabled !== 'boolean' ||
       !Array.isArray(data.rules.items) || data.rules.items.some(item => typeof item !== 'string') ||
       !Number.isSafeInteger(data.rules.version) || data.rules.version < 0 || !data.questions ||
@@ -77,6 +84,6 @@ export function requiredQuestionsAnswered(questions: CommunityQuestion[], answer
 /** Compare settings by value, independent of Firestore map key order. */
 export function communitySettingsFingerprint(settings: CommunitySettings): string {
   return JSON.stringify([COMMUNITY_MODULES.map(key => settings.modules[key]), settings.isPublic,
-    settings.shortDescription, settings.logoUrl, settings.rules.enabled, settings.rules.items, settings.rules.version,
+    settings.shortDescription, settings.logoUrl, settings.coverUrl, settings.galleryUrls, settings.longDescription, settings.ownerName, settings.rules.enabled, settings.rules.items, settings.rules.version,
     settings.questions.enabled, settings.questions.items.map(q => [q.id, q.type, q.label, q.options, q.required])]);
 }

@@ -24,7 +24,7 @@ describe('public discover page', () => {
     expect(html).toContain('Grace Community');
     expect(html).toContain('Welcome together');
     expect(html).toContain('42');
-    expect(html).toContain('https://grace.theharvest.app');
+    expect(html).toContain('Free');
     expect(html).not.toContain('secret@example.test');
     expect(metadata.title).toContain('Discover');
     expect(revalidate).toBe(0);
