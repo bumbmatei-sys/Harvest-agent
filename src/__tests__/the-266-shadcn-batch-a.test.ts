@@ -726,6 +726,13 @@ describe('the out-of-scope files are untouched', () => {
       // for either would read as a slow load rather than as an answer.
       // 🔴 A SEVENTH adopter still fails.
       'src/components/events/EventMonthView.tsx',
+      // THE-379 (events remodel) — the events LIST's own mini calendar
+      // (`EventListCalendar`, lazy-mounted the same way `EventMonthView`
+      // above is), while the lazy chunk loads. Same judgement as that entry:
+      // a month grid's size is known before any data returns, so a skeleton
+      // draws the shape that is coming rather than merely saying "wait".
+      // APPENDED beside EventMonthView, never over it.
+      'src/components/AdminEvents.tsx',
       // THE-330 — the SMS number panel's COUNTRY CATALOGUE wait. Same judgement
       // as the three above and APPENDED beside them, never over one: the shape
       // arriving is KNOWN (a country picker, a type picker, then the capability

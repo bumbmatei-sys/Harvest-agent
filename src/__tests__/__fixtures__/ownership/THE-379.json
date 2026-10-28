@@ -47,6 +47,11 @@
       "file": "src/components/UserEvents.tsx",
       "digest": "d308e5cd862325b34b16dd7215ce0567efbbdba898be1446e60c7fc1374a724b",
       "why": "EDEN'S UPCOMING/GOING/PAST, AND NOTHING ABOUT THE TICKET OR ITS PAYMENT STATE. A new `Tabs`/`TabsList`/`TabsTrigger` row under the header switches between three row sets: `rows` (the existing upcoming read, unchanged — still every published tenant event ordered by `startDate` desc, limit 100, plus any ticketed event not already in that page), `goingRows` (the same `rows` narrowed to `!!r.ticket`, no new read), and `pastRows` (built from a new `allTickets` state var — the SAME `/api/my-registrations` response this screen already fetched, now also kept in full rather than only turned into `ticketByEvent` — filtered to `event.startMillis < todayMs` and mapped into the same `EventRow` shape the upcoming list already renders). NO NEW FETCH, NO NEW FIRESTORE PATH: `allTickets` is populated from the SAME API response `ticketByEvent` already was, so `firestorePathsOf`-equivalent reasoning holds unchanged. THE DEFAULT TAB IS 'upcoming', rendering the exact same list a visitor saw before this ticket, so nothing about the existing behaviour moved for anyone who never touches the new tabs. `TicketPaymentPanel`, `TicketModal`, the QR-withholding gate, the claim button and every string THE-351/THE-359 own are byte-identical — none of this ticket's changes touch them."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "cc13a5929e938c1efaf1551f4ea92238f5c7208f0c9c18439af4a3577a300e69",
+      "why": "THE-322's own ownership register pins this guard FILE, not only the production files it polices — editing a guard is itself a tracked change. THE-379 appended ONE entry to this file's own RECORDED_ADOPTERS list: src/components/events/EventListCalendar.tsx, the events list's lazy-mounted mini calendar, as a second adopter of the `calendar` primitive THE-308's month view already uses (same primitive, a smaller picker rather than a full grid). No earlier RECORDED_ADOPTERS row was removed or reworded, and no assertion in the suite changed — only the list this guard's own test reads from grew by one line."
     }
   ]
 }
