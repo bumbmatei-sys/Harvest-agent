@@ -131,6 +131,19 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
       'main + THE-359 — the confirmation email drops the door promise and withholds the QR on an unconfirmed paid ticket; every write is byte-identical'],
     ['20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed',
       'main + THE-355 — the claim token is minted beside the reference; the CRM write and the Stripe path are byte-identical'],
+    // ⚠️ APPENDED, NOT SUBSTITUTED. THE-379 (events remodel) OWNS this file's
+    // change: `openToAnyone`, `registrationDeadline` enforcement, a required
+    // `runDate` for a recurring event validated against `expandRuns`, and
+    // `validateAnswers` against `registrationQuestions`. The capacity reduce
+    // also gates on `registrationMatchesRun`, which is true for every
+    // existing registration (no `runDate`) against every non-recurring
+    // event, so capacity counting for every event before this ticket is
+    // unchanged. 🔴 THE WRITE THIS GUARD EXISTS TO PROTECT IS UNCHANGED: the
+    // `contactActivities` CRM row, THE-154's direct charge, the platform fee,
+    // the Checkout metadata and the pending-registration rollback are all
+    // byte-identical. THE-313 still did not touch this file.
+    ['516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
+      'main + THE-379 — the registration deadline, the open-to-anyone gate and per-run questions/capacity; the CRM write and the Stripe path are byte-identical'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
@@ -153,6 +166,16 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // query in the file are byte-identical.
     ['074f3a92e83d2d0cd6f7f35036dadf98edabfefddf65afd99d2e085b2dd22f15',
       'main + THE-351 — optional payment fields on Event and Registration; no query, read or fetch shape moved'],
+    // ⚠️ APPENDED, NOT SUBSTITUTED. THE-379 adds optional FIELDS only —
+    // `recurrence`, `timeZone`, `registrationQuestions`, `openToAnyone` on
+    // `Event`; `runDate`, `answers` on `Registration`; and the two literal
+    // `Registration.status` members ('pending_payment', 'expired') the
+    // webhook already wrote but the type previously omitted. `useEvents`'
+    // `orderBy('startDate','desc').limit(100)`, `useEvent`'s `get`, and
+    // `useEventRegistrations`' single-field `where('eventId', ...)` are
+    // byte-identical.
+    ['288455d90e7ae152da8e69ec60b1d3385fa8d71f6481cca91547cdd15686d4c5',
+      'main + THE-379 — optional recurrence/question/run fields on Event and Registration; no query, read or fetch shape moved'],
   ],
   /**
    * ✅ #413's drag mechanism. This ticket READ it and reimplemented the same
@@ -470,8 +493,27 @@ describe('no new token, component or dependency was added', () => {
     // form, and that file is the adopter on THE-274's RECORDED_ADOPTERS.
     // `alert` (THE-345) and `tabs` (THE-308) are still required. A third import
     // on this screen still fails here.
+    //
+    // APPENDED BY THE-379 (events remodel), SIX JOIN THE TWO ABOVE. `dialog`
+    // — Eden's "New event" is a single popup, not a full page, so the
+    // create/edit form the-313/THE-345 pinned by region now mounts inside
+    // one. `toggle-group` — "Where" (In person/Online), a segmented pick-one
+    // the brief names by name. `select` — time zone and Repeats, each a
+    // closed list. `radio-group` — the single-select payment-link picker on
+    // THIS screen only ("make the admin create form pick ONE link"); the
+    // shared multi-select `checkbox` picker THE-351 recorded stays on the
+    // campaign giving widget, untouched. `switch` — "Open to anyone" and the
+    // waitlist toggle; THE-345 rejected `switch` for ITS OWN gate because the
+    // platform chooses that one, not the church — this is a different
+    // control for a church's own choice. `empty` — Eden's "Plan your first
+    // event" true-empty state, which THE-345 also rejected for its own,
+    // unrelated reason (a capability withheld, not an absent collection) —
+    // both can be true at once because they are two different empty states.
+    // `skeleton` — the fallback for the lazy-mounted mini calendar
+    // (`React.lazy()`, the same pattern `EventMonthView` already used), so
+    // the calendar chunk stays out of the list's own bundle.
     expect(imports, 'the events screen adopted an unrecorded primitive')
-      .toEqual(['alert', 'tabs']);
+      .toEqual(['alert', 'dialog', 'empty', 'radio-group', 'select', 'skeleton', 'switch', 'tabs', 'toggle-group']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -703,6 +745,20 @@ describe('the existing events list, its write paths and paid-event creation are 
       // gated because it is charged by nothing in either mode — and the ticket
       // types are still passed through from `form.ticketTypes` untouched.
       '65da31740529d15e98b603c1f30a3971bbe5fed8f91421f6883843a41a888655',
+      /**
+       * APPENDED BY THE-379 (events remodel) — SEVEN FIELDS JOIN THE WRITE,
+       * NONE OF THEM MONEY. `recurrenceFreq`/`recurrenceEndMode`/
+       * `recurrenceUntil`/`recurrenceCount` assemble an optional `recurrence`
+       * object (Eden's "Repeats"/"Ends"); `timeZone` is the IANA zone runs
+       * are expanded in; `openToAnyone` is the members-only gate the submit
+       * route now enforces; `registrationQuestions` is the one-at-a-time
+       * question builder's output. Every one is absent on every event
+       * created before this ticket, so the submit route treats a missing
+       * `recurrence` as the single run every existing event already had.
+       * THE-345's price clamp and THE-351's `paymentProviders` line, both
+       * above, are byte-identical inside this region.
+       */
+      '9d5ced7593b4dfb58d8141e4b8bedeaee536cd91bf0383fa09641ffc680d2296',
     ];
     const actual = sha256(src);
     expect(
@@ -729,12 +785,19 @@ describe('the existing events list, its write paths and paid-event creation are 
       // tenant document, so a church that corrects its PayPal URL corrects it
       // for every event at once and no event holds a stale copy of a money link.
       'paymentProviders',
+      // APPENDED BY THE-379 (events remodel) — seven fields, none of them
+      // money. Four assemble an optional `recurrence` object (Eden's
+      // "Repeats"/"Ends"); `timeZone` is the IANA zone runs expand in;
+      // `openToAnyone` is the members-only gate; `registrationQuestions` is
+      // the one-at-a-time question builder's output.
+      'recurrenceFreq', 'recurrenceEndMode', 'recurrenceUntil', 'recurrenceCount',
+      'timeZone', 'openToAnyone', 'registrationQuestions',
     ]) {
       expect(src, `emptyForm lost ${field}`).toContain(`${field}:`);
     }
-    // 19 fields and no twentieth — a new one would be a new stored field.
-    // 18 -> 19, THE-351, and the arrival is named in the list above.
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(19);
+    // 26 fields and no twenty-seventh — a new one would be a new stored field.
+    // 18 -> 19, THE-351; 19 -> 26, THE-379, and the seven arrivals are named above.
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(26);
   });
 
   /**
@@ -871,8 +934,27 @@ describe('the existing events list, its write paths and paid-event creation are 
     // AMENDED BY UI-POLISH: 214 -> 211. The List / Month pill moved into the shared page header
     // (`PageTabs`), which took the `TabsList` and the two `TabsTrigger` classNames with it:
     // three classNames left this file, and none was added. The inline-style count stays 7.
+    //
+    // ── AMENDED BY THE-379 (EVENTS REMODEL): 211 -> 272, AND NONE OF THE 61
+    // IS AN INLINE STYLE ─────────────────────────────────────────────────
+    //
+    // The create/edit form became a shadcn Dialog (Eden's single popup) with
+    // Where (ToggleGroup + a map preview), time zone/Repeats/Ends, Open to
+    // anyone (Switch), a single-select payment-link RadioGroup and a
+    // Registration Questions builder; the list gained an Upcoming/Drafts/
+    // Past filter, a mini calendar panel and Eden's row layout. Full
+    // accounting of the colour and mobile-layer deltas this carries is in
+    // `THE_379_PRIMITIVE_CLASSES`, `THE_379_ADDED_COLOURS`,
+    // `THE_379_REMOVED_COLOURS`, `THE_379_MOBILE_TOKENS` and
+    // `THE_379_UNPREFIXED_HEIGHTS` in `AdminMinistry.desktop-layout.test.tsx`.
+    //
+    // 🔴 THE INLINE-STYLE COUNT IS STILL EXACTLY 7 — this ticket's Dialog,
+    // ToggleGroup, ticket questions builder and calendar panel all spend
+    // Tailwind classes, never `style={{`, so the ratio moves in the one
+    // direction this guard has always been about. A count that is not
+    // exactly 272 (classNames) or 7 (inline styles) means something else moved.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(211);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(272);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

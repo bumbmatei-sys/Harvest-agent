@@ -399,6 +399,21 @@ describe('9-10 · event write paths are byte-identical', () => {
        * than here. Nothing else in the create or update payload moved.
        */
       '65da31740529d15e98b603c1f30a3971bbe5fed8f91421f6883843a41a888655',
+      /**
+       * APPENDED BY THE-379 (events remodel) — SEVEN FIELDS JOIN THE WRITE,
+       * NONE OF THEM MONEY. `recurrenceFreq`/`recurrenceEndMode`/
+       * `recurrenceUntil`/`recurrenceCount` assemble an optional `recurrence`
+       * object (Eden's "Repeats"/"Ends"); `timeZone` is the IANA zone runs are
+       * expanded in; `openToAnyone` is the members-only gate the submit route
+       * now enforces; `registrationQuestions` is the one-at-a-time question
+       * builder's output. Every one of the four is ABSENT on every event
+       * created before this ticket, so `expandRuns` and the submit route both
+       * treat a missing `recurrence` as a single, non-recurring run — the
+       * exact behaviour every existing event already had. THE-345's price
+       * clamp and THE-351's `paymentProviders` line, both above, are
+       * byte-identical inside this region.
+       */
+      '9d5ced7593b4dfb58d8141e4b8bedeaee536cd91bf0383fa09641ffc680d2296',
     ];
     const actual = sha256(src);
     expect(
@@ -412,16 +427,23 @@ describe('9-10 · event write paths are byte-identical', () => {
     expect(sha256(src)).toBe('803e468cb1f5b8061ce9c1481b813088b46bcba6d94e35dc553acd2bc0a616e5');
   });
 
-  it('and emptyForm still carries exactly its 19 stored fields', () => {
+  it('and emptyForm still carries exactly its 26 stored fields', () => {
     /**
      * 18 → 19, THE-351. `paymentProviders` joins the form, and it is the only
      * addition: the point of counting rather than listing is that a NINETEENTH
      * field arriving unannounced would be a new stored key on every event
      * document, so the count moves once, deliberately, and goes red again for
      * the next one.
+     *
+     * 19 → 26, THE-379 (events remodel). Seven fields arrive, none of them
+     * money: `recurrenceFreq`, `recurrenceEndMode`, `recurrenceUntil` and
+     * `recurrenceCount` (Eden's "Repeats"/"Ends", assembled into an optional
+     * `recurrence` object by `handleSave`), `timeZone` (the IANA zone runs
+     * are expanded in), `openToAnyone` (the members-only gate) and
+     * `registrationQuestions` (the one-at-a-time question builder's output).
      */
     const src = region(read(EDITED), 'const emptyForm = {', '};');
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(19);
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(26);
   });
 
   /**
@@ -515,6 +537,26 @@ describe('9-10 · event write paths are byte-identical', () => {
        * pending-registration rollback and the capacity count.
        */
       '0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e',
+      /**
+       * 🔴 APPENDED FOR THE-379 (events remodel), never substituted. FOUR
+       * ADDITIONS, each gated so an existing event never reaches the new
+       * code: (1) `event.openToAnyone === false` requires a signed-in member
+       * of the same tenant, checked right after the existing
+       * published+registrationEnabled gate; (2) `event.registrationDeadline`
+       * is now enforced (stored since before this ticket, never read until
+       * now); (3) a recurring event requires a `runDate` validated against
+       * `expandRuns`; (4) `validateAnswers` checks `event.registrationQuestions`
+       * and the capacity reduce also calls `registrationMatchesRun`, which is
+       * true for every existing registration (no `runDate`) against every
+       * non-recurring event — capacity counting for every event that existed
+       * before this ticket is unchanged.
+       *
+       * ⚠️ THE THREE EXISTING BYPASSES ARE STILL UNTOUCHED, and the WRITES
+       * THIS GUARD PROTECTS ARE STILL BYTE-IDENTICAL: the CRM row, THE-154's
+       * direct charge, the platform fee, the Checkout metadata, the
+       * pending-registration rollback and the capacity count's SEATS unit.
+       */
+      '516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(
@@ -569,8 +611,16 @@ describe('8 · the existing list view is intact', () => {
   });
 
   it('the list still renders every event row it did', () => {
-    expect(SRC).toContain('events.map(ev => (');
-    expect(SRC, 'the empty-list copy went missing').toContain('No events yet');
+    // ⚠️ AMENDED BY THE-379 (events remodel). The list redesign filters the
+    // read into Upcoming/Drafts/Past before mapping, so the variable the map
+    // runs over renamed from `events` to `rowsToShow` — the row JSX itself,
+    // and the fact that it is a `.map`, did not move. The true-empty state's
+    // copy became Eden's "Plan your first event" (`data-events-empty`); "No
+    // events yet" is gone with it. A SEPARATE empty state, `data-events-filter-
+    // empty`, covers a filter or a picked day with zero rows while other
+    // events exist — that state did not exist before this ticket.
+    expect(SRC).toContain('rowsToShow.map(ev => (');
+    expect(SRC, 'the true-empty-state copy went missing').toContain('Plan your first event');
   });
 
   /**

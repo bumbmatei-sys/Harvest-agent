@@ -934,6 +934,17 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'primitive was edited.',
   },
   {
+    file: 'src/components/events/EventListCalendar.tsx',
+    ticket: 'THE-379',
+    why:
+      "THE EVENTS REMODEL's mini month calendar, lazy-mounted beside the Upcoming/Drafts/Past "
+      + 'list the same way EventMonthView already lazy-mounts its own grid, so the primitive '
+      + 'stays out of the list screen\'s own chunk. It takes `calendar` (Calendar, '
+      + 'CalendarDayButton) to mark which days carry an event and filter the list to a clicked '
+      + "day - the SAME primitive THE-308's month view already adopted, used here a second time "
+      + 'for a smaller picker rather than a full grid. No primitive was edited.',
+  },
+  {
     file: 'src/components/settings/IntegrationsSection.tsx',
     ticket: 'THE-339',
     why:

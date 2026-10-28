@@ -519,6 +519,17 @@ describe('no other hardcoded term list remains in a validation path', () => {
       'NOT A BILLING TERM. A blog scheduling frequency.',
     'components/AdminBlog.tsx':
       'NOT A BILLING TERM. The same blog scheduling frequency.',
+    'lib/events/recurrence.ts':
+      "NOT A BILLING TERM (THE-379, events remodel). `RecurrenceRule['freq']` " +
+      "is Eden's event-repeat vocabulary — 'weekly' | 'every_2_weeks' | " +
+      "'monthly' — the schedule an event SERIES repeats on, not a Dodo " +
+      'subscription period. `expandRuns` reads it to generate run dates; it ' +
+      'never touches `BILLING_TERMS` or any Dodo module.',
+    'hooks/queries/useEventQueries.ts':
+      "NOT A BILLING TERM (THE-379, events remodel). The `RecurrenceRule` " +
+      "type re-declares the same 'monthly' member of the same event-repeat " +
+      'vocabulary as `lib/events/recurrence.ts`, for the admin form and the ' +
+      'submit route to import. Same reasoning, same file pair.',
   });
 
   function walk(dir: string): string[] {

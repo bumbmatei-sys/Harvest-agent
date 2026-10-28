@@ -327,9 +327,14 @@ describe('5 · the date selector renders a formatted date, never a raw epoch', (
 
 describe('6 · Events keeps its list, month view, create/edit/detail and registrations', () => {
   it('the list and its empty state are intact', () => {
+    // ⚠️ AMENDED BY THE-379 (events remodel), same reason the-308-guards
+    // amends its own copy of this check: the Upcoming/Drafts/Past filter
+    // renamed the mapped variable from `events` to `rowsToShow` without
+    // moving the row JSX, and the true-empty state's copy became Eden's
+    // "Plan your first event" (`data-events-empty`).
     const src = read(EVENTS);
-    expect(src).toContain('events.map(ev => (');
-    expect(src, 'the empty-list copy went missing').toContain('No events yet');
+    expect(src).toContain('rowsToShow.map(ev => (');
+    expect(src, 'the true-empty-state copy went missing').toContain('Plan your first event');
     expect(src, 'the public calendar bar went missing').toContain('Public calendar:');
   });
 

@@ -500,13 +500,31 @@ describe('5 — event registration is untouched', () => {
     // ticket code stays in the intro either way: for a logged-out registrant
     // this email is the only record they will ever hold.
     //
+    // ─── REPINNED FOR THE-379 (EVENTS REMODEL) ───────────────────────────────
+    //
+    // THE-256's OWN CLAIM IS STILL UNTOUCHED, RE-ASSERTED TWO LINES BELOW:
+    // this route still never mentions the Connect switch or its module, and
+    // the Stripe branch is still whole for the day a rail returns.
+    //
+    // What THE-379 adds, each gated so an existing event never reaches it:
+    // `openToAnyone === false` requires a signed-in same-tenant member;
+    // `registrationDeadline` (stored since before this ticket, never read
+    // until now) 410s once passed; a recurring event requires a `runDate`
+    // validated against `expandRuns`; `validateAnswers` checks
+    // `registrationQuestions`, and the capacity reduce also gates on
+    // `registrationMatchesRun`, which is true for every existing registration
+    // (no `runDate`) against every non-recurring event. None of this touches
+    // the manual-confirmation branch THE-351/355/359 own, or the Stripe
+    // direct-charge branch below.
+    //
     // Previous pins:
     //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e  (pre-THE-314)
     //   b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98  (THE-314)
     //   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
     //   20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed  (THE-355)
+    //   0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e  (THE-359)
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e');
+      .toBe('516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019');
     expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
       .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')
@@ -538,11 +556,21 @@ describe('5 — event registration is untouched', () => {
     // answer and is the thing THE-345's whole discipline forbids ("nothing is
     // deleted to hide a feature").
     //
+    // ── REPINNED AGAIN, FOR THE-379, AND THE SUITE IS NOT WEAKENED ──────────
+    //
+    // Three new `describe` blocks land at the end of the file, each a pure
+    // ADDITION proving one of THE-379's new gates on this route: required
+    // answers rejected/stored (and an event with none never requires or
+    // stores any), the registration deadline enforced/not-yet-passed, and
+    // `openToAnyone` refusing a logged-out visitor and a different tenant's
+    // member while admitting the event's own member and defaulting open on
+    // an absent field. NOT ONE EXISTING ASSERTION CHANGED.
+    //
     // Previous pins:
     //   4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797  (pre-THE-314)
-    //   d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec  (THE-314)
+    //   d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec  (THE-314/THE-351)
     expect(digest('src/app/api/event-registration/__tests__/submit-route.test.ts'))
-      .toBe('2215924946e5803840b368fa0862b2a362307f59f340ebd7adb4d6c99dbcf430');
+      .toBe('f70a30a3080239b5627c69af6c5fbf8b5870dd6b7d3432925074014a05b3d843');
   });
 
   it('the two rules that make it independent of Connect are still there', () => {
