@@ -73,7 +73,7 @@ export function AdminContentBar({
                       </BreadcrumbPage>
                     ) : crumb.onClick ? (
                       <BreadcrumbLink
-                        render={<Button variant="link" type="button" onClick={crumb.onClick} />}
+                        render={<Button variant="link" type="button" onClick={crumb.onClick} className="min-h-11 sm:min-h-0" />}
                         className="cursor-pointer text-muted-foreground"
                       >
                         {crumb.label}

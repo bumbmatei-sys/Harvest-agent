@@ -678,6 +678,8 @@ describe('no npm dependency was added', () => {
  */
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
+    ['d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e', 'THE-555 round 4: Lucide nav icon swap; Newsletter uses Mailbox and Community uses ToolCase, with existing plan and permission gates retained.'],
+    ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
     ['8052cfc14da3f3afe57d386601ce7d6bd7bcd87e47496a7efda6f1dcf3653771', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
     ['1652123ee9029a5250645f5cb7725fa84b4c546102e5b7677d71369b86340a36', 'THE-555: community setup merge, standard lucide nav icons and shadcn Button adoption; plan and permission gates retained.'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 915d818 — the value THE-291 (#434) left and THE-294 accepts'],

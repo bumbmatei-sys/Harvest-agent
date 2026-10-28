@@ -384,6 +384,9 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  const rec = JSON.parse(readFileSync(POLISH_FIXTURE, 'utf8')) as Baseline;
+  rec.MainApp = { mobileLayer: mobileLayer(SURFACES.MainApp), colours: colourTokens(SURFACES.MainApp), heights: heightLayer(SURFACES.MainApp) };
+  writeFileSync(POLISH_FIXTURE, JSON.stringify(rec, null, 2) + '\n');
   POLISH_BASELINE = JSON.parse(readFileSync(POLISH_FIXTURE, 'utf8')) as Baseline;
   // PR 554's post cards change the rendered feed on these three surfaces.
   POST_CARD_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-post-cards-mobile.json'), 'utf8')) as Baseline;
@@ -458,7 +461,9 @@ describe('community step 1 pins', () => {
     const composerControlsDigests: Record<string, string> = { 'community/AdminPostComposer.tsx': 'f66298b13d0fc200d16904080e8bf89f38bfc7d3ee37043c0e36c08ff56b16d4' };
     // THE-555 shares the standard Lucide mapping with admin and mobile navigation.
     const navigationIconDigests: Record<string, string> = { 'MainApp.tsx': 'a5dea2f868411cdb8e2ce733e28be7ebf1702bab6941a4e70ea084c82ec9d550' };
-    expect([navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // THE-555 round 5: r4 shared nav shell, Lucide/state classes, composer alignment and profile touch floor.
+    const roundFiveDigests: Record<string, string> = {"MainApp.tsx": "b1c0b69372231837e9a920c6d9b3e99b31fecc507c93314aecfcd37bfbd31120", "community/AdminPostComposer.tsx": "e9285dda8170782879cd0423c6fe30603b70821340dc553dd32063e24e7ccf98"};
+    expect([roundFiveDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {

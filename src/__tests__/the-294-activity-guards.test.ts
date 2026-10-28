@@ -451,6 +451,7 @@ describe('the two labels that would otherwise be false claims', () => {
  */
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
+    ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 133d557 — THE-291 (#434) removed the client-side plan write'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main before #434 — the value THE-276, THE-283 and THE-290 all accept'],
     // 🔴 THE-326 — the Services nav entry. APPENDED, NEVER SUBSTITUTED: every

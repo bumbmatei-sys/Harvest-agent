@@ -865,7 +865,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                 FIELD. See hooks/useMemberPhoto.ts. */}
             <Button variant="ghost"
               onClick={() => setActiveBottomTab('profile')}
-              className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
+              className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
               data-testid="member-header-avatar"
             >

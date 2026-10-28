@@ -749,6 +749,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     '1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158',
     // APPENDED BY THE-555 - Lucide nav icon swap: Newsletter uses Mailbox and Community uses ToolCase through NAV_ICONS. Retains the required shadcn Button conversions, names their state classes locally, and preserves phone touch floors. No nav array structure, route, permission, entitlement or screen mount changed.
     'd124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e',
+    // THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.
+    'ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

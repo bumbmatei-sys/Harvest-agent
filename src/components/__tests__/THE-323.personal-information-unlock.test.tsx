@@ -665,6 +665,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/CoursePage.tsx',
       'src/components/EmbedCard.tsx',
       'src/components/KebabMenu.tsx', // PR 554: portal menu trigger has a phone touch floor.
+      'src/components/MainApp.tsx', // THE-555: mobile tabs and profile control use the phone floor.
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order
@@ -758,6 +759,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // mounts only from lg, where the floor is 38px and 2.75rem at the 14.5px
       // root is 39.875px, inside that band. The preview copies the old rail
       // button classes so the before shot still measures them.
+      'src/components/admin-shell/AdminContentBar.tsx', // THE-555: shadcn breadcrumb Button phone floor.
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminHome.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',

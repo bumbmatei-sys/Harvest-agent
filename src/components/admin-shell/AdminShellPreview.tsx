@@ -112,9 +112,11 @@ function BeforeChrome() {
       <div className="flex h-[100dvh] bg-surface font-sans" data-preview-view="before">
         <div data-nav-shell className={BEFORE_SHELL}>
           <div className="flex lg:flex-col justify-around lg:justify-start items-center w-full lg:gap-2">
-            <Button variant="ghost" type="button" className="hidden lg:flex items-center mb-6 shrink-0 justify-center w-full">
+            <div className="hidden lg:contents">
+            <Button variant="ghost" type="button" className="min-h-11 flex items-center mb-6 shrink-0 justify-center w-full">
               <img src={LOGO} alt="Harvest" className="w-9 h-9 object-contain" />
             </Button>
+            </div>
             <div className="flex lg:hidden justify-around items-center w-full">
               {MOBILE_TABS.map((tab) => {
                 const Icon = tab.icon;

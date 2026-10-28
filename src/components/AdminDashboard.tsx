@@ -1223,9 +1223,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
               the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
+          <div className="hidden lg:contents">
           <Button variant="ghost"
             onClick={() => go('dashboard')}
-            className="min-h-11 hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
+            className="min-h-11 flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
           >
             <img
               src={displayLogo}
@@ -1239,6 +1240,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 the member-app entry point. The tenant name is not lost — the
                 top bar carries it, and a white-label tenant's mark is its own. */}
           </Button>
+          </div>
 
           {/* Mobile: primary tabs + More button */}
           <div className="flex lg:hidden justify-around items-center w-full">
