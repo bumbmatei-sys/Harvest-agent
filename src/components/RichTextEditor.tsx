@@ -21,13 +21,16 @@ import { auth } from '../firebase';
 import RichTextToolbar, { type ToolbarItem } from './editor/RichTextToolbar';
 
 /**
- * The prose ramp every editor in the app has had, unchanged.
+ * The prose ramp every editor in the app has had, now capped at `lg:prose-lg`.
  *
- * `xl:prose-2xl` is a 1.5rem base above 1280px, which is a deliberate reading
- * size for long-form writing and the wrong one for a dense screen. Named so the
- * default is a value with a reason rather than a string nobody can question.
+ * The cap is the point: the editor body tops out at 18px, the size the
+ * published article renders at, so a piece is written at the size it is read.
+ * The dropped `xl:prose-2xl` ran past that — a 1.5rem base above 1280px, a
+ * deliberate reading size for long-form writing and the wrong one for a dense
+ * screen. Named so the default is a value with a reason rather than a string
+ * nobody can question.
  */
-export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl';
+export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg';
 
 /**
  * A document-sized body, for screens that are not documents.
@@ -46,11 +49,10 @@ interface RichTextEditorProps {
   /**
    * The prose classes on the editor body.
    *
-   * Defaults to the responsive ramp every caller has always had. That ramp ends
-   * at `xl:prose-2xl`, whose base is 1.5rem — fine for a blog post being written
-   * at reading size, far too big for a notes app, where it rendered the body and
-   * its placeholder at 24px on any monitor. A caller whose measure is not a
-   * document's passes its own instead of every screen inheriting one screen's.
+   * Defaults to the shared responsive ramp, capped at `lg:prose-lg` so the body
+   * tops out at 18px — the size the published article renders at. A caller whose
+   * measure is not a document's passes its own instead of every screen
+   * inheriting one screen's.
    */
   proseClass?: string;
 }
