@@ -20,6 +20,16 @@ import sanitizeHtml from 'sanitize-html';
  * never silently and never in legacy output.
  */
 
+import {
+  boxAttrs,
+  boxTintBase,
+  issueHeaderAttrs,
+  safeBlockUrl,
+  type BoxAttrs,
+  type IssueHeaderAttrs,
+  type RawBox,
+  type RawIssueHeader,
+} from '@/lib/email/blocks';
 import { DEFAULT_EMAIL_DESIGN, type EmailAccent, type EmailDesign } from '@/lib/email/design';
 import { inkOn, mixHex, readableTextOn } from '@/lib/email/theme-contrast';
 import {
@@ -79,14 +89,32 @@ export function fillMergeTags(
   return text.replace(/\{\{\s*(first_name|sender_name)\s*\}\}/g, (_match, tag: string) => (tag === 'first_name' ? first : sender));
 }
 
-const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'strong', 'em', 's', 'a', 'br', 'img', 'hr'];
+const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'strong', 'em', 's', 'a', 'br', 'img', 'hr', 'div'];
+
+/**
+ * The exact `data-*` attributes the two slash-menu blocks travel in — the
+ * Issue header and the Box. Everything else on a `div` is stripped. A `div`
+ * WITHOUT a `data-hv-block` marker is transformed to `span`, which is not an
+ * allowed tag, so it unwraps and keeps its children: byte-identical to the
+ * days when `div` was not allowed at all.
+ */
+const BLOCK_MARKER_ATTRS = [
+  'data-hv-block', 'data-title', 'data-subtitle', 'data-size', 'data-align', 'data-reading', 'data-read-online',
+  'data-label', 'data-blurb', 'data-button-text', 'data-button-url', 'data-tint', 'data-variant',
+];
 
 export function sanitizeEmailBody(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
-    allowedAttributes: { a: ['href', 'data-button'], img: ['src', 'alt'] },
+    allowedAttributes: { a: ['href', 'data-button'], img: ['src', 'alt'], div: BLOCK_MARKER_ATTRS },
     allowedSchemes: ['https', 'mailto'],
     allowedSchemesByTag: { img: ['https'] },
+    transformTags: {
+      div: (tagName, attribs) =>
+        attribs['data-hv-block'] === 'issue-header' || attribs['data-hv-block'] === 'box'
+          ? { tagName, attribs }
+          : { tagName: 'span', attribs: {} },
+    },
   });
 }
 
@@ -201,6 +229,138 @@ function styleBodyBlocks(html: string, tokens: EmailThemeTokens, palette: Palett
   return out.replace(/<hr\s*\/?>/g, hr);
 }
 
+/* ── Slash-menu blocks: Issue header and Box ─────────────────────────────── */
+
+/** Attribute values in sanitized HTML are entity-escaped; decode once before use. */
+function decodeAttr(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+function attrOf(openTag: string, name: string): string | null {
+  const m = new RegExp(`\\b${name}="([^"]*)"`).exec(openTag);
+  return m ? decodeAttr(m[1]) : null;
+}
+
+interface BlockMarker {
+  readonly kind: 'issue-header' | 'box';
+  readonly start: number;
+  readonly end: number;
+  readonly raw: RawIssueHeader & RawBox;
+}
+
+const BLOCK_OPEN = /<div\b[^>]*\bdata-hv-block="(issue-header|box)"[^>]*>/g;
+const BLOCK_FIELDS = ['title', 'subtitle', 'size', 'align', 'reading', 'readOnline', 'label', 'blurb', 'buttonText', 'buttonUrl', 'tint', 'variant'];
+
+/**
+ * Locate every block marker in sanitized body HTML, element span included. The
+ * blocks the editor writes are empty `div`s, but the scanner balances nested
+ * `div`s anyway so a hand-authored marker with children is replaced wholesale
+ * (a block is an atom; inner markup is never forwarded into the email).
+ */
+function findBlockMarkers(html: string): BlockMarker[] {
+  const found: BlockMarker[] = [];
+  BLOCK_OPEN.lastIndex = 0;
+  let open: RegExpExecArray | null;
+  while ((open = BLOCK_OPEN.exec(html))) {
+    const start = open.index;
+    const TAGS = /<div\b|<\/div>/g;
+    TAGS.lastIndex = start + open[0].length;
+    let end = -1;
+    let depth = 1;
+    let tag: RegExpExecArray | null;
+    while ((tag = TAGS.exec(html))) {
+      depth += tag[0] === '</div>' ? -1 : 1;
+      if (depth === 0) { end = tag.index + tag[0].length; break; }
+    }
+    if (end < 0) break; // malformed tail: leave the rest untouched
+    const raw: Record<string, string | null> = {};
+    for (const name of BLOCK_FIELDS) {
+      raw[name] = attrOf(open[0], `data-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`);
+    }
+    found.push({ kind: open[1] as BlockMarker['kind'], start, end, raw: raw as RawIssueHeader & RawBox });
+    BLOCK_OPEN.lastIndex = end;
+  }
+  return found;
+}
+
+const SIZE_PX = { s: 22, m: 28, l: 34 } as const;
+
+/** The Issue header: title, subtitle line, reading time and a read-online link. */
+function issueHeaderHtml(attrs: IssueHeaderAttrs, tokens: EmailThemeTokens, palette: Palette, minutes: number): string {
+  const rows: string[] = [];
+  if (attrs.title) {
+    rows.push(`<div style="font-family:${fontStack(tokens.headingFont)};font-size:${SIZE_PX[attrs.size]}px;line-height:1.2;font-weight:700;color:${palette.heading};margin:0">${esc(attrs.title)}</div>`);
+  }
+  if (attrs.subtitle) rows.push(`<div style="font-size:15px;line-height:1.5;color:${palette.quiet};margin:6px 0 0">${esc(attrs.subtitle)}</div>`);
+  if (attrs.readingTime) rows.push(`<div style="font-size:11px;line-height:1.4;letter-spacing:0.12em;font-weight:600;color:${palette.quiet};margin:14px 0 0">${minutes} MIN READ</div>`);
+  const url = safeBlockUrl(attrs.readOnline);
+  if (url) rows.push(`<div style="margin:10px 0 0"><a href="${esc(url)}" style="color:${palette.accent};text-decoration:underline;font-size:12px">Read this issue online</a></div>`);
+  if (!rows.length) return '';
+  const align = attrs.align === 'center' ? 'center' : 'left';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:18px 0"><tr><td align="${align}" style="text-align:${align};padding:0">${rows.join('')}</td></tr></table>`;
+}
+
+/** The tinted Box: label, title, blurb and an optional button. */
+function boxHtml(attrs: BoxAttrs, tokens: EmailThemeTokens, palette: Palette): string {
+  const base = boxTintBase(attrs.tint, tokens);
+  const filled = attrs.variant === 'filled';
+  const darkBase = inkOn(base) === '#ffffff';
+  const fill = filled ? (darkBase ? mixHex(palette.card, base, 0.9) : mixHex(palette.card, base, 0.22)) : palette.card;
+  const border = mixHex(fill, base, 0.45);
+  const parts: string[] = [];
+  if (attrs.label) parts.push(`<div style="font-size:11px;line-height:1.4;letter-spacing:0.12em;font-weight:600;color:${readableTextOn(fill, base)};margin:0 0 6px">${esc(attrs.label.toUpperCase())}</div>`);
+  if (attrs.title) parts.push(`<div style="font-family:${fontStack(tokens.headingFont)};font-size:20px;line-height:1.3;font-weight:700;color:${readableTextOn(fill, palette.heading)};margin:0">${esc(attrs.title)}</div>`);
+  if (attrs.blurb) parts.push(`<div style="font-size:15px;line-height:1.55;color:${readableTextOn(fill, palette.ink)};margin:${attrs.title ? 8 : 0}px 0 0">${esc(attrs.blurb)}</div>`);
+  const url = safeBlockUrl(attrs.buttonUrl);
+  if (attrs.buttonText && url) parts.push(`<div style="margin:16px 0 0"><a href="${esc(url)}" style="${buttonStyle(tokens, palette)}">${esc(attrs.buttonText)}</a></div>`);
+  if (!parts.length) return '';
+  const corners = tokens.layout === 'flat' ? 0 : tokens.corners;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin:20px 0"><tr><td style="background:${fill};border:1px solid ${border};border-radius:${corners}px;padding:20px">${parts.join('')}</td></tr></table>`;
+}
+
+/** Block markers become email-safe tables. No marker in, byte-identical string out. */
+function renderBlockMarkup(html: string, tokens: EmailThemeTokens, palette: Palette, minutes: number): string {
+  const markers = findBlockMarkers(html);
+  if (!markers.length) return html;
+  let out = '';
+  let cursor = 0;
+  for (const marker of markers) {
+    out += html.slice(cursor, marker.start);
+    out += marker.kind === 'issue-header'
+      ? issueHeaderHtml(issueHeaderAttrs(marker.raw), tokens, palette, minutes)
+      : boxHtml(boxAttrs(marker.raw), tokens, palette);
+    cursor = marker.end;
+  }
+  return out + html.slice(cursor);
+}
+
+/** The plain-text part carries the blocks' words, like every other line of the body. */
+function renderBlockText(html: string, minutes: number): string {
+  const markers = findBlockMarkers(html);
+  if (!markers.length) return html;
+  let out = '';
+  let cursor = 0;
+  for (const marker of markers) {
+    out += html.slice(cursor, marker.start);
+    if (marker.kind === 'issue-header') {
+      const a = issueHeaderAttrs(marker.raw);
+      const url = safeBlockUrl(a.readOnline);
+      out += [a.title, a.subtitle, a.readingTime ? `${minutes} min read` : '', url ? `Read this issue online: ${url}` : ''].filter(Boolean).join('\n');
+    } else {
+      const a = boxAttrs(marker.raw);
+      const url = safeBlockUrl(a.buttonUrl);
+      out += [a.label, a.title, a.blurb, a.buttonText && url ? `${a.buttonText}: ${url}` : ''].filter(Boolean).join('\n');
+    }
+    cursor = marker.end;
+  }
+  return out + html.slice(cursor);
+}
+
 /**
  * The header block above the body. `masthead` is the big name in the accent,
  * `logo-name` the plain name line (with the shared logo when one is set), and
@@ -255,6 +415,9 @@ export function renderEmail(input: RenderInput): { html: string; text: string; a
   const corners = tokens.layout === 'flat' ? 0 : tokens.corners;
 
   let body = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input, { html: true });
+  // Reading time for the Issue header block: whole-body words at 200 wpm.
+  const minutes = Math.max(1, Math.round(htmlToText(input.bodyHtml).split(/\s+/).filter(Boolean).length / 200));
+  body = renderBlockMarkup(body, tokens, palette, minutes);
   if (!legacy) body = styleBodyBlocks(body, tokens, palette);
   body = body.replace(
     /<a ([^>]*?)data-button="true"([^>]*)>/g,
@@ -285,7 +448,7 @@ export function renderEmail(input: RenderInput): { html: string; text: string; a
     + `<a href="${esc(input.unsubscribeUrl)}" style="color:${palette.quiet}">Unsubscribe</a></div></div></td></tr></table></body></html>`;
 
   const text = [
-    htmlToText(fillMergeTags(input.bodyHtml, input)),
+    htmlToText(renderBlockText(fillMergeTags(input.bodyHtml, input), minutes)),
     '',
     input.design.footerText.trim(),
     brandNote,
