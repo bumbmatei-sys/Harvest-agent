@@ -26,8 +26,9 @@ import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 import EmbedPicker, { type PickerItem } from './EmbedPicker';
 import { FeedEmbedCard, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
-import { MemberAvatar, PostHeader, PostText, relativeCommentTime } from './community/PostPresentation';
+import { MemberAvatar, PostHeader, PostText, relativeCommentTime, CommentActivity } from './community/PostPresentation';
 import { Card } from './ui/card';
+import { usePostComments } from './community/usePostComments';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { AdminPostComposer } from './community/AdminPostComposer';
@@ -147,8 +148,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   // Comments state
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
-  const [commentErrors, setCommentErrors] = useState<Record<string, boolean>>({});
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -425,18 +424,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     return () => { cancelled = true; };
   }, []);
 
-  // Each listener supplies an exact count and the latest comment without a stored counter.
-  useEffect(() => {
-    const unsubs = allPosts.map(post => onSnapshot(
-      query(collection(db, 'community_posts', post.id, 'comments'), orderBy('createdAt', 'asc')),
-      snap => {
-        setPostComments(prev => ({ ...prev, [post.id]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment)) }));
-        setCommentErrors(prev => ({ ...prev, [post.id]: false }));
-      },
-      () => setCommentErrors(prev => ({ ...prev, [post.id]: true }))
-    ));
-    return () => { unsubs.forEach(unsub => unsub()); };
-  }, [allPosts]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -832,6 +820,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     return true;
   }).slice(0, 3);
 
+  const { comments: postComments, counts: commentCounts, latest: latestComments, errors: commentErrors } = usePostComments(posts.map(post => post.id), commentsOpen);
+
   // Desktop rail: same live state the top-of-feed LiveNowBanner uses.
   const { active: isLive, title: liveTitle } = useLiveNow(tenantId);
 
@@ -1076,11 +1066,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
               >
                 <MessageSquare size={16} />
-                <span>{commentErrors[post.id] ? 'Unavailable' : postComments[post.id]?.length ?? '…'}</span>
+                <span>{commentErrors[post.id] ? 'Unavailable' : commentCounts[post.id] ?? '…'}</span>
               </Button>
-              {!commentErrors[post.id] && postComments[post.id]?.length > 0 && relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt) && (
-                  <span className="text-xs font-semibold text-gold">New comment {relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt)}</span>
-                )}
+              {!commentErrors[post.id] && <CommentActivity comment={latestComments[post.id]} viewerId={auth.currentUser?.uid} />}
                 <div className="ml-auto flex items-center gap-2">
                 <SaveButton
                   entry={{

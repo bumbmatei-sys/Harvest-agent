@@ -45,6 +45,7 @@ vi.mock('firebase/firestore', () => ({
   query: (col: any) => col,
   where: () => ({}),
   orderBy: () => ({}),
+  documentId: () => "__name__",
   limit: () => ({}),
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   addDoc: async () => ({ id: 'new-doc' }),
@@ -163,7 +164,7 @@ for (const [label, importer] of [
     }
 
     const menuLabels = (): string[] =>
-      Array.from(container.querySelectorAll('button')).map((b) => (b.textContent || '').trim());
+      Array.from(document.body.querySelectorAll('[role=menuitem]')).map((b) => (b.textContent || '').trim());
 
     it('is offered on Ministry', async () => {
       expect(await openCommentMenu('ministry'), 'the comment menu was not reachable').toBe(true);
@@ -194,7 +195,7 @@ for (const [label, importer] of [
 
     it('creates no DM on Free, because there is nothing to click', async () => {
       expect(await openCommentMenu('free')).toBe(true);
-      const dmButton = Array.from(container.querySelectorAll('button')).find(
+      const dmButton = Array.from(document.body.querySelectorAll('[role=menuitem]')).find(
         (b) => (b.textContent || '').includes('Message privately'),
       );
       expect(dmButton).toBeUndefined();

@@ -140,6 +140,41 @@
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "948de2d4021d6d2aea61ba01785d9b03ccd5067039f219fe4685de1d21a443eb",
       "why": "PR 554 records the post action touch floors and their static classes while preserving prior source pins."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "61296bbac3873511c66776f8eb9674eff6361a0af35b7ec058ea388a4759f1a5",
+      "why": "Round two limits the global admin helper and restores community permission or membership for channel message creation, retaining sender identity checks."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "4731b86b68aa60f38fe8d71b519121cb1582c9059d361179e55115a9e5b5144e",
+      "why": "Round two filters each platform user query by explicit tenant identity before applying its cap; missing fields require a server backfill."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773",
+      "why": "Round two bounds visible comment summaries, loads expanded comments only on demand, and distinguishes stale activity."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495",
+      "why": "Round two caps posts and bounds visible comment summaries, loads expanded comments only on demand, and distinguishes stale activity."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "21765094d8a5a38e5862c6859a5a095288bc6d6a6249a9d1e89ceb8c86a32db4",
+      "why": "Round two appends reviewed feed source digests while retaining previous source pins and layout comparisons."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "4cdd7232148f1b2462d74cf5ae15c12b62aa9213313c01ec27a29131f97c6961",
+      "why": "Round two records the shared dropdown trigger phone touch floor in the existing sorted class inventory."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d",
+      "why": "Round two extracts the scoped user query for a regression test; explicit tenant values are filtered before each ordered limit."
     }
   ]
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 
 export function MemberAvatar({ name, photo, level, small = false }: { name: string; photo?: string; level?: number; small?: boolean }) {
   return <Avatar size={small ? 'default' : 'lg'}>
-    {photo && <AvatarImage src={photo} alt={name} />}
+    {photo && <AvatarImage src={photo} alt={name} referrerPolicy="no-referrer" />}
     <AvatarFallback>{name.charAt(0)}</AvatarFallback>
     {typeof level === 'number' && Number.isFinite(level) && <AvatarBadge className="!size-5 text-[10px]" aria-label={`Level ${level}`}>{level}</AvatarBadge>}
   </Avatar>;
@@ -46,4 +46,13 @@ export function PostText({ content, title }: { content: string; title?: string }
     {body && <p className={`text-sm text-body whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}>{body}</p>}
     {(body || heading.length > 100) && <Button type="button" variant="link" className="h-auto min-h-11 p-0 text-xs text-gold sm:min-h-0" onClick={() => setExpanded(!expanded)}>{expanded ? 'Show less' : 'Read more'}</Button>}
   </div>;
+}
+
+export function CommentActivity({ comment, viewerId }: { comment?: { createdAt: string; authorId: string }; viewerId?: string }) {
+  if (!comment) return null;
+  const relative = relativeCommentTime(comment.createdAt);
+  if (!relative) return null;
+  const age = Date.now() - new Date(comment.createdAt).getTime();
+  const isNew = age >= 0 && age < 7 * 24 * 60 * 60 * 1000 && comment.authorId !== viewerId;
+  return <span className={`text-xs font-semibold ${isNew ? 'text-gold' : 'text-muted'}`}>{isNew ? 'New' : 'Last'} comment {relative}</span>;
 }

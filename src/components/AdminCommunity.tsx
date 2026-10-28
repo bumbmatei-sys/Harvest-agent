@@ -16,6 +16,7 @@ import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
 import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
+import { loadScopedUserDocs } from './community/loadScopedUserDocs';
 import { NewGroupDialog, type GroupDraft } from './community/NewGroupDialog';
 import { OnboardingAnswers } from './community/OnboardingAnswers';
 
@@ -36,29 +37,6 @@ async function dualTenantDocs(
   const legacy = await getDocs(query(collection(db, collName), where('tenantId', '==', null), limit(max)));
   const seen = new Set(primary.docs.map(d => d.id));
   return [...primary.docs, ...legacy.docs.filter(d => !seen.has(d.id))];
-}
-
-/**
- * Load `users` docs for an admin scope. For the platform super admin (includeNull),
- * members created BEFORE the tenant existed may carry a null OR a *missing*
- * tenantId — which an equality query can't union (Firestore can't match a missing
- * field) — so fetch and keep the platform-owned rows (tenantId == tenant / null /
- * '' / missing). A super admin may read the whole `users` collection. Regular
- * tenant admins keep the cheap, precise equality query.
- */
-async function loadScopedUserDocs(
-  tenantId: string,
-  includeNull: boolean,
-  max: number,
-): Promise<QueryDocumentSnapshot[]> {
-  if (!includeNull) {
-    return (await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(max)))).docs;
-  }
-  const snap = await getDocs(query(collection(db, 'users'), limit(max)));
-  return snap.docs.filter(d => {
-    const t = (d.data() as { tenantId?: string | null }).tenantId;
-    return t == null || t === '' || t === tenantId;
-  });
 }
 
 /** Avatar initials from a display name: first letter of first + last word. */

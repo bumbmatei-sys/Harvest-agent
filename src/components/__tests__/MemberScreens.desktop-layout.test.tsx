@@ -429,7 +429,9 @@ describe('community step 1 pins', () => {
     const staticButtonDigests: Record<string, string> = {
       'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
     };
-    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 review round two bounds comment reads.
+    const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
+    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -1306,7 +1308,8 @@ describe('no behaviour changed on any screen in scope', () => {
     // PR 554 changes behavior and presentation, so pin the whole reviewed source.
     expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
       'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
-      '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f'])
+      '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
+      'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 

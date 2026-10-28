@@ -664,6 +664,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        */
       'src/components/CoursePage.tsx',
       'src/components/EmbedCard.tsx',
+      'src/components/KebabMenu.tsx', // PR 554: portal menu trigger has a phone touch floor.
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order

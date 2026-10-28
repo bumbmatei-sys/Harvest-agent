@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, addDoc, deleteDoc, limit, documentId } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft, MessageSquare, Send } from 'lucide-react';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -14,8 +14,9 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
-import { MemberAvatar, PostHeader, PostText, relativeCommentTime } from './community/PostPresentation';
+import { MemberAvatar, PostHeader, PostText, relativeCommentTime, CommentActivity } from './community/PostPresentation';
 import { Card } from './ui/card';
+import { usePostComments } from './community/usePostComments';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { READING_MEASURE } from './layout/form-layout';
@@ -93,8 +94,6 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
   // Comments state
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
-  const [commentErrors, setCommentErrors] = useState<Record<string, boolean>>({});
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -150,18 +149,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
     return () => { cancelled = true; };
   }, []);
 
-  // Listen to existing comments for exact counts and latest activity.
-  useEffect(() => {
-    const unsubs = allPosts.map(post => onSnapshot(
-      query(collection(db, 'community_posts', post.id, 'comments'), orderBy('createdAt', 'asc')),
-      snap => {
-        setPostComments(prev => ({ ...prev, [post.id]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment)) }));
-        setCommentErrors(prev => ({ ...prev, [post.id]: false }));
-      },
-      () => setCommentErrors(prev => ({ ...prev, [post.id]: true }))
-    ));
-    return () => { unsubs.forEach(unsub => unsub()); };
-  }, [allPosts]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -172,8 +160,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
       setScopeTenantId(tenantId);
       // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const q = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId))
-        : query(collection(db, 'community_posts'));
+        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy(documentId()), limit(50))
+        : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
 
       unsubscribe = onSnapshot(q, (snapshot) => {
         const postsData = sortByTime(snapshot.docs.map(doc => ({
@@ -481,6 +469,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
     return true;
   });
 
+  const { comments: postComments, counts: commentCounts, latest: latestComments, errors: commentErrors } = usePostComments(posts.map(post => post.id), commentsOpen);
+
   return (
     <div className="flex flex-col h-screen bg-surface ">
       {/* Rule 6 (form-layout.ts): the header tracks the feed's measure so the
@@ -506,6 +496,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
             {errorMessage}
           </div>
         )}
+        {!loading && allPosts.length === 50 && <p className="text-xs text-muted">Showing up to 50 posts.</p>}
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
@@ -635,11 +626,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                   className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
                   <MessageSquare size={16} />
-                  <span className="font-medium">{commentErrors[post.id] ? 'Unavailable' : postComments[post.id]?.length ?? '…'}</span>
+                  <span className="font-medium">{commentErrors[post.id] ? 'Unavailable' : commentCounts[post.id] ?? '…'}</span>
                 </Button>
-                {!commentErrors[post.id] && postComments[post.id]?.length > 0 && relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt) && (
-                  <span className="text-xs font-semibold text-gold">New comment {relativeCommentTime(postComments[post.id][postComments[post.id].length - 1].createdAt)}</span>
-                )}
+                {!commentErrors[post.id] && <CommentActivity comment={latestComments[post.id]} viewerId={auth.currentUser?.uid} />}
                 
               </div>
 
