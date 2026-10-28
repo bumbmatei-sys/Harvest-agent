@@ -1,0 +1,75 @@
+{
+  "ticket": "#554",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "1facdf5167ee15ac9c15d5da3e648622c932ec1056ee8f557f908deaea2cb6f8",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "9a5f76091262e5e65cd82e7ce3f277ec75151d602ee8b8f5c2e415478641367a",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "5e17ff5c6d11c903659f03f27ec6032e3467361df9526dc1086eee858868d0ea",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "d7856c2eef952a18e8e3675ef953093f083146e8091b948facc0bfff464bee6e",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsScreen.tsx",
+      "digest": "62d5db5c2088678a8bb61ed40f16e025fab8b473e76cc395443e53151e34d492",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "8b7a6ba4d810cb84d1f387bf8bcf1e0940982d1e584b8eae9688cdf5a417ac65",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "faefee9c05aa34b530211271ece7750efb1cc471b8e88826bad9188532dd3b47",
+      "why": "PR 554 review fixes community authorization, bounded group loading and settings behavior while preserving existing functionality."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "272837d0dbf5f7a7b61b16806625b66a7ebc3bb17b5715ded9fff677bfc161c3",
+      "why": "Community setup managers can create only the fixed default group as part of the atomic settings save."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "89eda146d1cb33da6aec9eb50e6f3afcbaa4e778054fb2a2195cabb5b1340a5b",
+      "why": "PR 554 appends review-specific source pins while keeping the previous community and navigation guard values intact."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "fddc3b5258aa2f8c96ea2db4e2831286b14be03d5b7369e82957dec1434970a8",
+      "why": "PR 554 appends review-specific source pins while keeping the previous community and navigation guard values intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "8153ff32c8ccbe6d34bb4d20dc25e21a068efa8aafaf126dc36a962f4cb153d5",
+      "why": "PR 554 appends review-specific source pins while keeping the previous community and navigation guard values intact."
+    },
+    {
+      "file": "src/components/community/NewGroupDialog.tsx",
+      "digest": "620e901f9a386ca725773cead81d2d43b768e3e00873896af267c55f51671538",
+      "why": "The group picker discloses that its scoped account search is capped, so its visible list is not presented as complete."
+    }
+  ]
+}

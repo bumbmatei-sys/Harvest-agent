@@ -409,7 +409,13 @@ describe('community step 1 pins', () => {
       'MainApp.tsx': '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12',
       'community/MemberPostComposer.tsx': '0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34',
     };
-    expect([digest, fidelityDigests[file], laterDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 fixes community visibility, identity and member post edits.
+    const reviewDigests: Record<string, string> = {
+      "MainApp.tsx": "9a5f76091262e5e65cd82e7ce3f277ec75151d602ee8b8f5c2e415478641367a",
+      "NewsTab.tsx": "5e17ff5c6d11c903659f03f27ec6032e3467361df9526dc1086eee858868d0ea",
+      "UserMessages.tsx": "ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f"
+};
+    expect([digest, fidelityDigests[file], laterDigests[file], reviewDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {

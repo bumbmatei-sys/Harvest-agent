@@ -15,8 +15,8 @@ export function useCommunitySettings(tenantId: string | null): SettingsState {
     if (!tenantId) return;
     return onSnapshot(doc(db, 'tenants', tenantId, 'settings', 'community'), snapshot => {
       try { setState({ tenantId, settings: readCommunitySettings(snapshot.exists() ? snapshot.data() : undefined), loading: false, error: null }); }
-      catch { setState({ tenantId, settings: defaultCommunitySettings(), loading: false, error: 'Community settings are invalid.' }); }
-    }, () => setState({ tenantId, settings: defaultCommunitySettings(), loading: false, error: 'Could not load community settings.' }));
+      catch (error) { console.error('Invalid community settings:', error); setState({ tenantId, settings: defaultCommunitySettings(), loading: false, error: 'Community settings are invalid.' }); }
+    }, error => { console.error('Could not load community settings:', error); setState({ tenantId, settings: defaultCommunitySettings(), loading: false, error: 'Could not load community settings.' }); });
   }, [tenantId]);
   return state.tenantId === tenantId ? state : { tenantId, settings: defaultCommunitySettings(), loading: !!tenantId, error: null };
 }

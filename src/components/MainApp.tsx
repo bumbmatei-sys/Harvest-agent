@@ -683,7 +683,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     </div>
   );
 
-  if (community.error) return <p role="alert">{community.error}</p>;
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
   if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
   if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
@@ -699,6 +698,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   if (fullScreenView.type === 'all-news' && hasNewsFeed && modules.news) {
     return (
       <AllNews
+        eventsEnabled={modules.events}
         onBack={() => setFullScreenView({type: 'none'})}
         onOpenMessages={() => { setFullScreenView({type: 'none'}); setActiveBottomTab('home'); setActiveTopTab('messages'); }}
       />
@@ -928,6 +928,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
                         <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
                       </div>}
                       <NewsTab
+                        eventsEnabled={modules.events}
                         tenantId={tenantId}
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}

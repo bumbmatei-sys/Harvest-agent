@@ -65,12 +65,13 @@ interface CommunityPost {
 }
 
 interface AllNewsProps {
+  eventsEnabled?: boolean;
   onBack: () => void;
   /** Navigates to the Messages top-tab; used by the comment menu's "Message privately". */
   onOpenMessages?: () => void;
 }
 
-const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
+const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled = true }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{country?: string, city?: string} | null>(null);
@@ -467,6 +468,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   };
 
   const posts = allPosts.filter(post => {
+    if (!eventsEnabled && (post.type === 'event' || post.embed?.type === 'event')) return false;
     // Legacy support
     if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
       // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.

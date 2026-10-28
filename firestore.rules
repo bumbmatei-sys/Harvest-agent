@@ -41,8 +41,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isSuperAdmin() ||
         request.auth.token.get('admin', false) == true ||
-        userRole() == 'admin' ||
-        userRole() == 'super_admin'
+        userRole() in ['admin', 'church_admin', 'super_admin']
       );
     }
 
@@ -272,8 +271,7 @@ service cloud.firestore {
       return data.get('type', 'post') == 'post' && data.get('content', null) is string &&
         data.content.size() <= 500 && data.get('imageUrl', '') == '' &&
         data.get('imageUrls', []) == [] && data.get('tags', []) == [] &&
-        !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']) &&
-        data.get('isPinned', false) == false;
+        !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']);
     }
 
     // Other-party identity is taken from the server-controlled user record,
@@ -282,10 +280,8 @@ service cloud.firestore {
       let path = /databases/$(database)/documents/users/$(uid);
       return exists(path) && (
         (get(path).data.get('tenantId', null) == tenantId &&
-          get(path).data.get('role', 'user') in ['admin', 'super_admin']) ||
-        isTenantOwner(uid, tenantId) ||
-        (exists(/databases/$(database)/documents/tenant_private/$(tenantId)) &&
-          get(path).data.get('email', '') in get(/databases/$(database)/documents/tenant_private/$(tenantId)).data.get('adminEmails', []))
+          get(path).data.get('role', 'user') in ['admin', 'church_admin', 'super_admin']) ||
+        isTenantOwner(uid, tenantId)
       );
     }
 
@@ -302,7 +298,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         request.resource.data.authorId == request.auth.uid &&
         requestHasCorrectTenant() &&
-        (hasPermission('createPosts', request.resource.data.tenantId) || plainCommunityPost(request.resource.data));
+        (hasPermission('createPosts', request.resource.data.tenantId) || (plainCommunityPost(request.resource.data) && request.resource.data.get('isPinned', false) == false));
 
       // Members may only touch likes/polls/RSVPs or their own posts; cross-
       // author moderation (edit/delete/pin) is the Posts screen → createPosts.
@@ -313,7 +309,7 @@ service cloud.firestore {
            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['pollOptions']) || 'pollOptions' in resource.data) &&
            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventDetails']) || 'eventDetails' in resource.data)) ||
           (resource.data.authorId == request.auth.uid &&
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'type', 'imageUrl', 'imageUrls', 'embed', 'pollOptions', 'isPinned']) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'type', 'imageUrl', 'imageUrls', 'embed', 'pollOptions']) &&
            plainCommunityPost(request.resource.data)) ||
           hasPermission('createPosts', resource.data.tenantId)
         );
@@ -749,6 +745,13 @@ service cloud.firestore {
           channelAccess(resource.data, tenantId);
         // Channel management (create/roster/edit) is the Community screen.
         allow write: if hasPermission('manageCommunity', tenantId);
+        // Setup may create only the fixed default group, without managing other groups.
+        allow create: if channelId == 'all-members' && hasPermission('manageSettings', tenantId) &&
+          request.resource.data.keys().hasOnly(['name', 'description', 'audience', 'members', 'createdAt', 'createdBy', 'type']) &&
+          request.resource.data.get('name', '') == 'All members' && request.resource.data.get('description', null) == '' &&
+          request.resource.data.get('audience', '') == 'all' && request.resource.data.get('members', null) == [] &&
+          request.resource.data.get('createdAt', null) == request.time && request.resource.data.get('createdBy', '') == request.auth.uid &&
+          request.resource.data.get('type', '') == 'announcement';
         // Members may update only the last-message preview fields when they post.
         allow update: if belongsToTenant(tenantId) &&
           channelAccess(resource.data, tenantId) &&
@@ -761,9 +764,12 @@ service cloud.firestore {
         allow read: if belongsToTenant(tenantId) && (
           channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data, tenantId)
         );
-        allow create: if belongsToTenant(tenantId) && (
-          channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data, tenantId)
-        );
+        allow create: if belongsToTenant(tenantId) &&
+          request.resource.data.get('senderId', '') == request.auth.uid &&
+          request.resource.data.get('senderName', '') == (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '') != '' ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName : request.auth.token.get('name', 'Member')) &&
+          (request.resource.data.get('senderRole', '') == 'user' ||
+            (request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId))) &&
+          channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data, tenantId);
         allow update, delete: if hasPermission('manageCommunity', tenantId);
       }
 

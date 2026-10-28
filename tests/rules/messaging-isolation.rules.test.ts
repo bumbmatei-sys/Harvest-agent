@@ -289,11 +289,11 @@ describe('member flows keep working end-to-end (no lockout)', () => {
   it('a channel member can post a channelMessage; a non-member cannot', async () => {
     const mem = (await member()).firestore();
     await assertSucceeds(mem.doc(sub('channelMessages/cm-1')).set({
-      channelId: 'ch-a', senderId: MEMBER_UID, senderName: 'M', content: 'hi', createdAt: 1,
+      channelId: 'ch-a', senderId: MEMBER_UID, senderName: 'Member', senderRole: 'user', content: 'hi', createdAt: 1,
     }));
     const m2 = (await member2()).firestore();
     await assertFails(m2.doc(sub('channelMessages/cm-2')).set({
-      channelId: 'ch-a', senderId: MEMBER2_UID, senderName: 'M2', content: 'nope', createdAt: 1,
+      channelId: 'ch-a', senderId: MEMBER2_UID, senderName: 'Member', senderRole: 'user', content: 'nope', createdAt: 1,
     }));
   });
 

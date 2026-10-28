@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import MainApp from '../MainApp';
 import { defaultCommunitySettings } from '../../lib/community/settings';
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-const fx = vi.hoisted(() => ({ settings: null as any, member: null as any, user: null as any }));
+const fx = vi.hoisted(() => ({ settings: null as any, member: null as any, user: null as any, error: null as string | null }));
 vi.mock('../../lib/community/use-community', () => ({
-  useCommunitySettings: () => ({ settings: fx.settings, loading: false, error: null }),
+  useCommunitySettings: () => ({ settings: fx.settings, loading: false, error: fx.error }),
   useCommunityMember: () => ({ member: fx.member, loading: false, error: null, save: vi.fn() }),
 }));
 vi.mock('../../firebase', () => ({ db: {} }));
@@ -31,6 +31,13 @@ vi.mock('next/dynamic', () => ({ default: () => () => <div data-testid="map" /> 
 vi.mock('framer-motion', () => ({ motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }), AnimatePresence: ({ children }: any) => children }));
 
 describe('community settings in member navigation', () => {
+  it('keeps the shell usable when settings fail', async () => {
+    fx.settings = defaultCommunitySettings(); fx.member = null; fx.user = null; fx.error = 'Could not load community settings.';
+    const host = document.createElement('div'); const root = createRoot(host);
+    await act(async () => root.render(<MainApp onNavigate={() => {}} />));
+    expect(host.querySelector('[data-testid="news"]')).not.toBeNull();
+    await act(async () => root.unmount()); fx.error = null;
+  });
   it('hides disabled tabs and redirects an active tab and bottom tab to Home', async () => {
     fx.settings = defaultCommunitySettings(); fx.member = null; fx.user = null;
     const host = document.createElement('div'); document.body.appendChild(host); const root = createRoot(host);

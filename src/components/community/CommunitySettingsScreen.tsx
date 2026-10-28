@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/firebase';
 import { readCommunitySettings, type CommunityModule, type CommunitySettings } from '@/lib/community/settings';
 import { CommunitySettingsEditor } from './CommunitySettingsEditor';
 
@@ -34,10 +34,15 @@ export function CommunitySettingsScreen({ tenantId, available }: {
   return <><CommunitySettingsEditor key={tenantId} settings={settings} available={available}
     onSave={(next, previous) => runTransaction(db, async transaction => {
       const ref = doc(db, 'tenants', tenantId, 'settings', 'community');
-      const snapshot = await transaction.get(ref);
+      const groupRef = doc(db, 'tenants', tenantId, 'channels', 'all-members');
+      const [snapshot, group] = await Promise.all([transaction.get(ref), transaction.get(groupRef)]);
       const current = readCommunitySettings(snapshot.exists() ? snapshot.data() : undefined);
       if (settingsFingerprint(current) !== settingsFingerprint(previous)) {
         throw new Error('Community settings changed elsewhere. Reload this page before saving.');
+      }
+      if (!group.exists()) {
+        if (!auth.currentUser) throw new Error('Sign in to save community settings.');
+        transaction.set(groupRef, { name: 'All members', description: '', audience: 'all', members: [], createdAt: serverTimestamp(), createdBy: auth.currentUser.uid, type: 'announcement' });
       }
       transaction.set(ref, next);
     })} /></>;

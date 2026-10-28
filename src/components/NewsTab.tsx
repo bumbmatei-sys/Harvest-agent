@@ -109,6 +109,7 @@ interface AdminEvent {
 }
 
 interface NewsTabProps {
+  eventsEnabled?: boolean;
   onOpenAllNews: () => void;
   onOpenArticle: (post: BlogPost) => void;
   /** Tenant scope for the desktop rail's "Live Now" card. Optional — the card is simply omitted without it. */
@@ -121,7 +122,7 @@ interface NewsTabProps {
   onOpenMessages?: () => void;
 }
 
-const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
+const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages, eventsEnabled = true }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const shareBase = useShareBaseUrl();
   const [articles, setArticles] = useState<BlogPost[]>([]);
@@ -322,7 +323,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         const update: Record<string, unknown> = {
           type: isPoll ? 'poll' : 'post',
           content: text,
-          isPinned: composerPinned,
+          ...(canManage ? { isPinned: composerPinned } : {}),
         };
         if (isPoll) {
           update.pollOptions = pollDocOptions;
@@ -521,7 +522,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       });
 
       // Fetch published events from AdminEvents system (tenant-scoped only)
-      if (tenantId) {
+      if (tenantId && eventsEnabled) {
         // Single-field filter only (status); sort client-side to avoid a composite index.
         const eventsQ = query(
           collection(db, 'tenants', tenantId, 'events'),
@@ -549,7 +550,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       if (unsubArticles) unsubArticles();
       if (unsubEvents) unsubEvents();
     };
-  }, []);
+  }, [eventsEnabled]);
 
   const handleLike = async (postId: string, likes: string[]) => {
     const user = auth.currentUser;
@@ -854,6 +855,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   
   const posts = allPosts.filter(post => {
+    if (!eventsEnabled && (post.type === 'event' || post.embed?.type === 'event')) return false;
     // Legacy support
     if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
       // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.
@@ -876,7 +878,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const { active: isLive, title: liveTitle } = useLiveNow(tenantId);
 
   // Desktop rail: compact companion to the "Upcoming Events" section below.
-  const upcomingRailEvents = adminEvents.filter(e => !e.pinned).slice(0, 4);
+  const visibleEvents = eventsEnabled ? adminEvents : [];
+  const upcomingRailEvents = visibleEvents.filter(e => !e.pinned).slice(0, 4);
 
   // Desktop greeting hero: real logged-in user only, time-of-day from the client clock.
   const greetingHour = new Date().getHours();
@@ -939,7 +942,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       <CampaignWidget />
 
       {/* Pinned events from AdminEvents system */}
-      {adminEvents.filter(e => e.pinned).map(event => (
+      {visibleEvents.filter(e => e.pinned).map(event => (
         <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid (mobile + desktop) */}
           <div className="relative h-36 lg:h-[150px]">
@@ -1242,14 +1245,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       )}
 
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
-      {adminEvents.filter(e => !e.pinned).length > 0 && (
+      {visibleEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4 lg:hidden">
           <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-strong px-1 mb-3 font-display">
             <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
             Upcoming Events
           </h2>
           <div className="space-y-3">
-            {adminEvents.filter(e => !e.pinned).map(event => (
+            {visibleEvents.filter(e => !e.pinned).map(event => (
               <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
                   <div className="relative h-32 bg-surface-sunken">
