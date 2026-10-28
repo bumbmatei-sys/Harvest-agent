@@ -25,7 +25,7 @@ export function DiscoverData({ currentTenantId }: { currentTenantId?: string | n
   }, []);
   return <DiscoverView state={state} member={member} />;
 }
-export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, switcher }: { uid?: string; currentTenantId: string | null; onEnter: () => void; onDiscover: () => void; switcher?: { open: boolean; onOpenChange: (open: boolean) => void } }) {
+export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, switcher, accountTenantId }: { uid?: string; currentTenantId: string | null; accountTenantId?: string | null; onEnter: () => void; onDiscover: () => void; switcher?: { open: boolean; onOpenChange: (open: boolean) => void } }) {
   const [state, setState] = useState<LoadState<MemberCommunity[]>>({ status: 'loading' });
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +34,7 @@ export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, swi
       const user = await getDoc(doc(db, 'users', uid));
       if (!user.exists()) throw new Error('Missing account');
       const tenantId = user.data().tenantId;
-      if (tenantId == null) return [];
+      if (tenantId == null || (accountTenantId && tenantId === accountTenantId)) return [];
       if (typeof tenantId !== 'string' || !tenantId || tenantId.includes('/')) throw new Error('Invalid account');
       const tenant = await getDoc(doc(db, 'tenants', tenantId));
       if (!tenant.exists()) throw new Error('Missing community');
@@ -45,7 +45,7 @@ export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, swi
     setState({ status: 'loading' });
     load().then(data => { if (!cancelled) setState({ status: 'ready', data }); }).catch(() => { if (!cancelled) setState({ status: 'error', message: 'Could not load your communities. Please try again later.' }); });
     return () => { cancelled = true; };
-  }, [uid, currentTenantId]);
+  }, [uid, currentTenantId, accountTenantId]);
   if (switcher) return <CommunitySwitcher {...switcher} state={state} onEnter={onEnter} onDiscover={onDiscover} />;
   return <CommunitiesView state={state} onEnter={onEnter} onDiscover={onDiscover} />;
 }

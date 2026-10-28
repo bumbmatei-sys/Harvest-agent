@@ -160,6 +160,101 @@
       "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
       "digest": "5ea5a93b4b54318895543d680945367f1e53bb170646e1887845adcc39cf447f",
       "why": "#557 provisions Free with an internal identity and no subdomain, activates that identity on upgrade, and guards the corresponding routing and provisioning behavior."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "9f7ec9351d36da0ca9dedf952c87214a155e4cb5c5773162738cd15c4cc0b564",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "119e3d25d4af2100bde623a5796467b01d29f760c3ef898208b6560c5a18a19a",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.tsx",
+      "digest": "5b403358af56771ef79f2652dd8d782399ce4e1953e203be0f9eeac4ff0f8a2a",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.test.tsx",
+      "digest": "28dda813b22a3d154205ec280b6e9647ef3a35de1cb0fc01e57f1cd3699ac05a",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "0ef1818eca4885937488856f1df7a6c821287b1450a6fcfab8f3d33b8f015036",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "594a51657ff9fde0faa34605726fc696ca1d3533b1dc5ecc4efbe757302bcb7e",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/layout/nav-icons.ts",
+      "digest": "78b48196ad9572c8f1ea4ab19e3f98cce443080e0d9d066a6fcbbd1afcb15d36",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/utils/plan-features.ts",
+      "digest": "a41e58a79582091a0fe066b990171d52036af94508a91f31bef7c50d635d444a",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/utils/__tests__/plan-flag-surface-guard.test.ts",
+      "digest": "ab41797f1bfd0b1f2e27b37a2271598e64fa502cb2b5209a8a2571b291587b1f",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.free-tier.test.ts",
+      "digest": "3d2dfad871a951bbfc1acc3c1071483cde0cf979e577666f5052d328eaefa594",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.news-feed.test.ts",
+      "digest": "f14d3dec26dccadf70c6826e259d52609758b2e120f31918c9a813e72d0d1f0d",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "8ddd0a3709fa8f0976dfac173a3bb1d0a86bc38c3f680d2e541d8e71232e809f",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.free-shell.test.tsx",
+      "digest": "fcde4163bbba86e9cdc090bcd12fb9381586ff1711e8eb13396eae5072adefa7",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "cfe9dad90114cfe4983677adb55e69b899fca981cc8367576bd1473f9e8e0084",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "25c139964319e82fc3e055f11c5f375c841318ada8531348dc2455ade144af01",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "6fa44657c2c2570d1750c855d07e99a1b978e07a30289f267a94c432e5c703fa",
+      "why": "#557 introduces the Free member shell and apex routing, and records the corresponding plan, navigation and exact-digest guard updates while retaining the paid experience."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "22bf4e30dabd194a25b1c2f689421160fc7b1a7472ec9a93135e0098f2d7270e",
+      "why": "#557 records the completed Free shell routing coverage and exact accepted guard digests, preserving all earlier recorded versions and paid tenant routing."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "81ca7890fefe0ec4eda9207120ffa4359c2230211c22a9932c8af8ebbfde2a61",
+      "why": "#557 records the completed Free shell routing coverage and exact accepted guard digests, preserving all earlier recorded versions and paid tenant routing."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "232a63ea8b8cfde7f499b8dec1ebc9cfffef6afee7bb36c07da1a04026bfa991",
+      "why": "#557 tests that a Free account identity is not presented as a community while preserving the existing read failure and paid community checks."
     }
   ]
 }

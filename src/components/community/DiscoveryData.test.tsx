@@ -17,6 +17,12 @@ describe('community data', () => {
     expect(mocks.getDoc.mock.calls.map(call => call[0])).toEqual(['users/u', 'tenants/one']);
     expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
   });
+  it('does not treat the Free account identity as a community', async () => {
+    mocks.getDoc.mockResolvedValue(snap({ tenantId: 'free-id' }));
+    await act(async () => root.render(<CommunitiesData uid="u" currentTenantId={null} accountTenantId="free-id" onEnter={() => {}} onDiscover={() => {}} />));
+    expect(mocks.getDoc.mock.calls.map(call => call[0])).toEqual(['users/u']);
+    expect(host.textContent).toContain('You have no communities yet.');
+  });
   it('surfaces a failed account read', async () => {
     mocks.getDoc.mockRejectedValue(new Error('offline'));
     await act(async () => root.render(<CommunitiesData uid="u" currentTenantId="one" onEnter={() => {}} onDiscover={() => {}} />));

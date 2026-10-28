@@ -160,7 +160,7 @@ const provisionedOwnerDoc = (over: Record<string, unknown> = {}) => ({
     tenantId: TENANT,
     onboardingCompleted: true,
     signupInProgress: false,
-    plan: 'free',
+    plan: 'church',
     ...over,
   },
 });
@@ -244,8 +244,8 @@ afterEach(() => {
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
 
-describe('1 — a freshly provisioned free tenant lands on its own subdomain, not the apex', () => {
-  it('a freshly provisioned free tenant lands on its own subdomain, not the apex', async () => {
+describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
+  it('a freshly provisioned paid tenant lands on its own subdomain', async () => {
     // Exactly where the free lane leaves the evangelist: on the apex, on the
     // church-onboarding funnel path, with a tenant that now exists.
     startAt(`${APEX_ORIGIN}/church-onboarding`);
@@ -258,7 +258,7 @@ describe('1 — a freshly provisioned free tenant lands on its own subdomain, no
 
     // 🔴 THE REPORT. Before the fix this was `[]` and the browser sat on apex
     // /admin — the origin with no tenant, and so with no roster and no nav.
-    expect(hops, 'the free tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
+    expect(hops, 'the paid tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
     expect(window.location.pathname, 'the founder was parked on apex /admin').not.toBe('/admin');
   });
 
@@ -448,5 +448,20 @@ describe('8 — the post-auth route order is unchanged', () => {
     // Every funnel screen this suite exercises is one of them, so the table
     // above cannot silently drift from the array under test.
     for (const { path: p } of FUNNEL_SCREENS) expect(src).toContain(`'${p}'`);
+  });
+});
+
+
+describe('#557 Free account routing', () => {
+  it.each(['/auth', '/church-onboarding', '/admin', '/admin/crm'])('lands on the member app from %s', async (path) => {
+    startAt(`${APEX_ORIGIN}${path}`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('admin-dashboard')).toBe(false);
   });
 });

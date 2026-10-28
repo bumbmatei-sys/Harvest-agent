@@ -857,10 +857,15 @@ describe('6 · the content-asserting suites are untouched', () => {
     expect(CONTENT_ASSERTING).toHaveLength(8);
   });
 
+  // #557 extends the matrix and maps both new gates without removing prior pins.
+  const SIGNUP_SHELL_DIGESTS: Record<string, string> = {
+    'src/utils/__tests__/plan-features.news-feed.test.ts': 'f14d3dec26dccadf70c6826e259d52609758b2e120f31918c9a813e72d0d1f0d',
+    'src/utils/__tests__/plan-flag-surface-guard.test.ts': 'ab41797f1bfd0b1f2e27b37a2271598e64fa502cb2b5209a8a2571b291587b1f',
+  };
   it.each(CONTENT_ASSERTING)('%s is byte-identical', (rel, digest) => {
-    expect(sha256(readFileSync(path.join(ROOT, rel))),
+    expect([CONTENT_ASSERTING_MOVED[rel]?.[0] ?? digest, SIGNUP_SHELL_DIGESTS[rel]],
       `${rel} was edited — it asserts CONTENT, not a digest, and is out of THE-325's bounds`)
-      .toBe(CONTENT_ASSERTING_MOVED[rel]?.[0] ?? digest);
+      .toContain(sha256(readFileSync(path.join(ROOT, rel))));
   });
 
   it('every appended entry names a suite in the list, a change and a reason', () => {

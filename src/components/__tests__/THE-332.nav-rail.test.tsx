@@ -421,8 +421,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
     // Community setup adds one destination to both the group and the named set.
-    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 25 tabs').toBe(25);
-    expect(named.size).toBe(27);
+    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 26 tabs').toBe(26);
+    expect(named.size).toBe(28);
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
@@ -660,6 +660,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '518972cccc987e39db39beb341f7cb4c1a54abb32160dfd92a0b76541ee4ee25',
       // Community setup joins the Ministry group on both admin shells.
       '7e69678e0050a76e47ca27d143afc0648b5d69c9900fe4a6d2ac103725ae1e5e',
+      // #557 adds sign-up pages to both admin navigation groups.
+      '6767295c665173c1d92e0f25d1bcda302e0f7514854d9d1989d288827a13690c',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {

@@ -29,7 +29,7 @@ import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
-import { AFFILIATE_PROGRAM_ENABLED } from './utils/plan-features';
+import { AFFILIATE_PROGRAM_ENABLED, getEffectiveFeatures } from './utils/plan-features';
 import { canonicalPlanId } from './utils/plan-id';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { SavedItemsProvider } from './contexts/SavedItemsContext';
@@ -328,7 +328,8 @@ const AppInner: React.FC = () => {
               // A deep link (e.g. /admin/crm) on refresh is left intact so the user
               // stays on the page they were on.
               const hasAdminRole = isTenantAdminRole(role) || isSuperAdminEmail(user?.email);
-              const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
+              const isFreeAccount = canonicalPlanId(data.plan) === 'free';
+              const homeBase = !isFreeAccount && (isAdminDomain || hasAdminRole) ? '/admin' : '/';
 
               // One-shot intent flag: when an admin taps "Go to User App", the admin
               // dashboard sets sessionStorage.intentionalUserView before navigating to
@@ -383,7 +384,8 @@ const AppInner: React.FC = () => {
               // confirmation included.
               const wantsHome =
                 FUNNEL_PATHS.includes(path)
-                || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView);
+                || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView)
+                || (isFreeAccount && path.startsWith('/admin'));
               if (wantsHome) {
                 // If the user belongs to a real tenant but is currently on the apex
                 // (e.g. they clicked a "buy a plan" link while already signed in), send
@@ -397,7 +399,7 @@ const AppInner: React.FC = () => {
                 // time they sign in — hopping them across an origin is a change
                 // to member sign-in that this ticket does not make. With the
                 // guard they keep `navigate(homeBase)` ('/'), byte-for-byte.
-                if (data.tenantId && !onSubdomain && (isAdminDomain || hasAdminRole)) {
+                if (!isFreeAccount && data.tenantId && !onSubdomain && (isAdminDomain || hasAdminRole)) {
                   // Before hard-redirecting to the tenant's subdomain, confirm the
                   // tenant still exists. An orphaned user doc (tenantId pointing at a
                   // deleted tenant) would otherwise bounce the user to a dead
@@ -568,8 +570,9 @@ const AppInner: React.FC = () => {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
+  const dashboardAllowed = !tenantPlan || getEffectiveFeatures(tenantPlan).adminDashboard;
   const adminElement = (
-    <RequireAdmin isAdmin={isAdmin}>
+    <RequireAdmin isAdmin={isAdmin && dashboardAllowed}>
       <ErrorBoundary>
         <AdminDashboard onNavigate={handleNavigate} />
         {/* THE-255. The add-to-home-screen step, at the END of onboarding.
@@ -638,7 +641,7 @@ const AppInner: React.FC = () => {
                   Hiding the dashboard must not re-open that. */}
               {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
-                : <MainApp onNavigate={handleNavigate} isAdminPreview={isAdmin} />}
+                : <MainApp onNavigate={handleNavigate} isAdminPreview={isAdmin} accountTenantId={userTenantId} />}
               {/* THE-292 — the same prompt on the member surface. Coverage is a
                   TENANT SETTING, not a funnel property: `Onboarding` pushes its
                   location step only when `default_country`/`default_city` is in
