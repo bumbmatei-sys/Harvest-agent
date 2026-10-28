@@ -48,6 +48,8 @@ describe('community access', () => {
     const admin = (await fullAdmin()).firestore();
     const base = { tenantId: TENANT_A, authorId: MEMBER_UID, type: 'post', content: 'hello', imageUrl: '', imageUrls: [], isPinned: false };
     await assertSucceeds(m.doc('community_posts/plain').set(base));
+    await assertSucceeds(m.doc('community_posts/legacy').set({ tenantId: TENANT_A, authorId: MEMBER_UID, content: 'legacy' }));
+    await assertSucceeds(m.doc('community_posts/legacy').update({ content: 'edited' }));
     await assertSucceeds(m.doc('community_posts/plain').update({ content: 'edited' }));
     for (const [key, value] of Object.entries({ imageUrl: 'https://example.com/a', imageUrls: ['a'], tags: ['x'], embed: { id: 'x' }, attachment: {}, pollOptions: [], eventDetails: {}, type: 'poll', content: 'x'.repeat(501), isPinned: true })) {
       await assertFails(m.doc(`community_posts/bad-${key}`).set({ ...base, [key]: value }));

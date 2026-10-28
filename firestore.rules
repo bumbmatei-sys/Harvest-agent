@@ -274,7 +274,7 @@ service cloud.firestore {
     // A member post is plain text; rich post fields are reserved for authors
     // holding createPosts. Empty image fields match the existing composer.
     function plainCommunityPost(data) {
-      return data.get('type', '') == 'post' && data.get('content', null) is string &&
+      return data.get('type', 'post') == 'post' && data.get('content', null) is string &&
         data.content.size() <= 500 && data.get('imageUrl', '') == '' &&
         data.get('imageUrls', []) == [] && data.get('tags', []) == [] &&
         !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']) &&

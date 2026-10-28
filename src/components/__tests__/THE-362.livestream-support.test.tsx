@@ -177,7 +177,7 @@ describe('9 - the support button leads to the donation page', () => {
     // Not merely a similar one. Two hand-written jumps at one destination is
     // how the two would drift; both set the same two pieces of tab state.
     const app = code(MAIN_APP);
-    expect(app).toMatch(/onGoToPartner=\{hasGiving \? \(\) => \{ setActiveBottomTab\('home'\); setActiveTopTab\('partner'\); \}/);
+    expect(app).toMatch(/onGoToPartner=\{modules\.give && hasGiving \? \(\) => \{ setActiveBottomTab\('home'\); setActiveTopTab\('partner'\); \}/);
     const handler = app.slice(app.indexOf('<LivestreamView'), app.indexOf('/>', app.indexOf('<LivestreamView')));
     expect(handler).toContain("setActiveBottomTab('home')");
     expect(handler).toContain("setActiveTopTab('partner')");
@@ -199,7 +199,7 @@ describe('10 - it is not shown on a plan without it', () => {
   it('MainApp gates the prop on `hasGiving`, and passes `undefined` - not a no-op', () => {
     const app = code(MAIN_APP);
     const handler = app.slice(app.indexOf('<LivestreamView'), app.indexOf('/>', app.indexOf('<LivestreamView')));
-    expect(handler, 'the donate jump is ungated').toMatch(/onDonate=\{hasGiving \?/);
+    expect(handler, 'the donate jump is ungated').toMatch(/onDonate=\{modules\.give && hasGiving \?/);
     expect(handler, 'a no-op was passed instead of undefined - the button would still draw')
       .toMatch(/:\s*undefined/);
   });

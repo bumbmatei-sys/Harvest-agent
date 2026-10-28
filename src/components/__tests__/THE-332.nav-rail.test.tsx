@@ -1008,5 +1008,7 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '60a43ca453f322d7b0a14aa2c574ccfa539259bf4ffc37a4db2cdd7be09a680f',
     // Community step 1 adds audience-scoped groups and gates member replies.
     '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150',
+    // Community group selection and direct message layout.
+    '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
   ],
 };
