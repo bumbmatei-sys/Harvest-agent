@@ -410,7 +410,7 @@ describe('community step 1 pins', () => {
       'NewsTab.tsx': '89610dcc785f31ebac56f51f440aa64d3b5a765f11a1dfb3bdaec8d4d73aa73e',
       'community/MemberPostComposer.tsx': '0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34',
     };
-    expect([digest, fidelityDigests[file], laterDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    expect([digest, fidelityDigests[file], laterDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {

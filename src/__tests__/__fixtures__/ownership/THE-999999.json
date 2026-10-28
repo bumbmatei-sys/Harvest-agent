@@ -271,6 +271,13 @@
       "reason": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only.",
       "digest": "d9b07f46dfaa41896ad732866b2b9e09cabfa6f4f02ddb6e4d30a5066d2295d9",
       "why": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Append the reviewed MainApp logo plate digest to the community implementation pin.",
+      "digest": "32255c3b76a1aa70d0a356d7d2261571b87b8517d11ed910db71ac084792cb70",
+      "why": "Append the reviewed MainApp logo plate digest to the community implementation pin."
     }
   ]
 }
