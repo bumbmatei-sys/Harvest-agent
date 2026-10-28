@@ -85,6 +85,21 @@
       "file": "src/__tests__/the-272-shadcn-batch-b.test.ts",
       "digest": "664a54cac53491cb0e7110521bd4449520494e96ed6344f11749adfae1db5e03",
       "why": "#557 appends the sign-up page components to the existing shadcn adopter inventory; all earlier entries and assertions remain in place."
+    },
+    {
+      "file": "src/components/signup-pages/SignupPagesScreen.tsx",
+      "digest": "93c1a5430a4a8f6d5b36ddd5feed12f96a9802029aee8bfbfb9b6d822f045679",
+      "why": "#557 permits a fixture request in the excluded local sign-up preview while retaining authenticated requests by default."
+    },
+    {
+      "file": "src/components/signup-pages/SignupPageBuilder.tsx",
+      "digest": "8a4c18506a671c9ca07ae0ff5373748b5ffd7e1218a29e825331d9294aec0e82",
+      "why": "#557 permits a fixture request in the excluded local sign-up preview while retaining authenticated requests by default."
+    },
+    {
+      "file": "src/components/signup-pages/SubmissionsTable.tsx",
+      "digest": "1ccfc40784a7567dea2b836d204b6601f621e5c0333d41bcc58d0238cc522945",
+      "why": "#557 permits a fixture request in the excluded local sign-up preview while retaining authenticated requests by default."
     }
   ]
 }

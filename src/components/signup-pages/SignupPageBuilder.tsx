@@ -12,7 +12,7 @@ import { authFetch } from '@/utils/auth-fetch';
 export const fieldLabels = { name: 'Name', email: 'Email', phone: 'Phone', prayerRequest: 'Prayer request' } as const;
 export const defaultFields: SignupFieldSettings = { name: { enabled: true, required: true }, email: { enabled: true, required: true }, phone: { enabled: false, required: false }, prayerRequest: { enabled: false, required: false } };
 export type Page = SignupPageInput & { id: string; active: boolean };
-export function SignupPageBuilder({ page, onSaved, onCancel }: { page?: Page; onSaved: () => void; onCancel: () => void }) {
+export function SignupPageBuilder({ page, onSaved, onCancel, request = authFetch }: { page?: Page; onSaved: () => void; onCancel: () => void; request?: typeof authFetch }) {
   const [title, setTitle] = useState(page?.title ?? '');
   const [message, setMessage] = useState(page?.message ?? '');
   const [handle, setHandle] = useState(page?.handle ?? '');
@@ -26,7 +26,7 @@ export function SignupPageBuilder({ page, onSaved, onCancel }: { page?: Page; on
     if (!input) { setError('Enter a title, a valid lowercase handle (3–50 letters, numbers or hyphens), and at least one field.'); return; }
     setSaving(true); setError('');
     try {
-      const response = await authFetch('/api/signup-pages', { method: page ? 'PATCH' : 'POST', body: JSON.stringify(page ? { ...input, pageId: page.id, active } : input) });
+      const response = await request('/api/signup-pages', { method: page ? 'PATCH' : 'POST', body: JSON.stringify(page ? { ...input, pageId: page.id, active } : input) });
       if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Could not save page'); }
       onSaved();
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not save page'); } finally { setSaving(false); }
