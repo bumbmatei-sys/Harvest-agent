@@ -80,6 +80,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * three again, and chart.tsx is exactly as quiet as it was before.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
 
 const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
@@ -265,6 +268,7 @@ const REMOVED_SINCE_MAIN: readonly string[] = [
  *  package this app did not have. Named here rather than the assertion below
  *  being loosened, so the next addition still has to come back and say so. */
 const ADDED_SINCE_MAIN: readonly string[] = [
+  'embla-carousel-react', // THE-555 — shadcn Carousel gallery
   '@tanstack/react-table', // phase-1 — the admin home data table, outside src/components/ui
   'cmdk', // THE-274 — command.tsx
   'date-fns', // THE-274 — react-day-picker's peer, reached by calendar.tsx
@@ -415,7 +419,7 @@ describe("sidebar's token classes all resolve", () => {
     // because it looked at nothing. 43 files after THE-274 installed Batches
     // C, D and E, and sidebar.tsx is still the largest primitive in the
     // directory by class count.
-    expect(audit.classesByFile.size).toBe(43);
+    expect(audit.classesByFile.size).toBe(43 + THE_555_PRIMITIVES.length);
     const basenames = [...audit.classesByFile.keys()].map((f) => path.basename(f));
     expect(basenames).toContain('sidebar.tsx');
     const counts = Object.fromEntries(
@@ -570,7 +574,7 @@ describe('all 21 pre-existing primitives are byte-identical', () => {
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), 'sidebar.tsx', ...BATCH_CDE].sort());
+    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), 'sidebar.tsx', ...BATCH_CDE, ...THE_555_PRIMITIVES].sort());
   });
 
   it('sidebar.tsx exists and is the CLI’s output, not a hand-written copy', () => {

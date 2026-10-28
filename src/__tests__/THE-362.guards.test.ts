@@ -15,6 +15,9 @@ import { rulesDigestFailure, rulesDigestFailureFor } from './__fixtures__/firest
  * branch's own diff, and not one byte of the four files that must not move.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const code = (rel: string) => stripComments(read(rel));
@@ -66,7 +69,7 @@ describe('19 - every element that has a primitive uses it', () => {
       .filter((e) => e.isFile() && e.name.endsWith('.tsx'))
       .map((e) => e.name.replace(/\.tsx$/, ''))
       .sort();
-    expect(present, 'the primitive set changed size').toHaveLength(43);
+    expect(present, 'the primitive set changed size').toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(present, 'accordion appeared - it was the one absent primitive').not.toContain('accordion');
     for (const needed of ['alert', 'dialog']) {
       expect(present, `${needed} is missing - the refusal has nothing to render in`)
@@ -328,7 +331,7 @@ describe('21 - the four untouchable files are byte-identical', () => {
 
   it('no dependency was added - the lockfile is still exactly its pinned length', () => {
     // THE-274 pins it by EXACT LENGTH, and THE-345 asserts the same number.
-    expect([590202, 591367]).toContain(statSync(path.join(ROOT, 'package-lock.json')).size);
+    expect([590202, 591367, 592674, 592877 /* THE-555: Embla carousel, cn removed */]).toContain(statSync(path.join(ROOT, 'package-lock.json')).size);
   });
 
   it('and no new token was minted', () => {

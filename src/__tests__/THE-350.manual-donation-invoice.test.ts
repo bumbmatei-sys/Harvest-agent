@@ -50,6 +50,9 @@ import path from 'node:path';
  * version-control invocation, no diff. Every claim is made against files on disk.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
@@ -1277,7 +1280,7 @@ describe('18 — primitives, touch targets, colour and emoji', () => {
      */
     const primitives = readdirSync(path.join(REPO_ROOT, 'src/components/ui'))
       .filter((f) => f.endsWith('.tsx')).map((f) => f.replace(/\.tsx$/, ''));
-    expect(primitives.length, 'the primitive set changed size unexpectedly').toBe(43);
+    expect(primitives.length, 'the primitive set changed size unexpectedly').toBe(43 + THE_555_PRIMITIVES.length);
     expect(primitives, 'accordion appeared on disk').not.toContain('accordion');
     for (const p of ['alert', 'field', 'input', 'dialog', 'badge', 'empty', 'button']) {
       expect(primitives, `${p} is not installed`).toContain(p);

@@ -84,6 +84,7 @@ const ADMIN_SECTION_TABLE = [
   ['social', 'social'],
   ['sms', 'sms'],
   ['community', 'community'],
+  ['community-setup', 'community-setup'],
   ['library', 'library'],
   ['tenants', 'tenants'],
   ['affiliate', 'affiliate'],

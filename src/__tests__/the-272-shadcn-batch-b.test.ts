@@ -78,6 +78,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * --chart-1..5 were already there and are unmoved (section 5).
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
 
 const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
@@ -286,7 +289,7 @@ describe("each new primitive's token classes resolve", () => {
     const counts = Object.fromEntries(
       [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
     );
-    expect(audit.classesByFile.size).toBe(43);
+    expect(audit.classesByFile.size).toBe(43 + THE_555_PRIMITIVES.length);
     for (const file of NEW_PRIMITIVES) {
       expect(existsSync(path.join(UI_DIR, file)), `${file} was never written`).toBe(true);
       expect(counts[file], `the audit never opened ${file}`).toBeGreaterThan(0);
@@ -463,7 +466,7 @@ describe('the CLI rewrote nothing it should not have', () => {
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
     ).toEqual(
-      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'sidebar.tsx', ...BATCH_CDE].sort(),
+      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'sidebar.tsx', ...BATCH_CDE, ...THE_555_PRIMITIVES].sort(),
     );
   });
 

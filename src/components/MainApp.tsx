@@ -1,7 +1,17 @@
 "use client";
+
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const MEMBER_NAV_BUTTON = 'flex items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all shrink-0 data-[visibility=desktop]:hidden lg:data-[visibility=desktop]:flex data-[visibility=mobile]:flex-col lg:data-[visibility=mobile]:hidden data-[visibility=both]:flex-col lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 lg:data-[collapsed=true]:w-11 lg:data-[collapsed=true]:h-11 lg:data-[collapsed=true]:p-0 data-[active=true]:lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] data-[active=false]:text-faint data-[active=false]:hover:text-muted data-[active=false]:lg:text-muted data-[active=false]:lg:hover:text-strong data-[active=false]:lg:hover:bg-surface-sunken';
+const MEMBER_SIDEBAR_COLLAPSE = 'flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken justify-start data-[collapsed=true]:justify-center';
+const MEMBER_TOP_TAB = 'min-h-11 whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start data-[active=false]:text-muted data-[active=false]:hover:text-body';
+import { Button } from '@/components/ui/button';
+import { communityBrandStyle } from '@/lib/community/branding';
+import './community/branding.css';
 import { authFetch } from '@/utils/auth-fetch';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { doc, getDoc } from 'firebase/firestore';
@@ -34,6 +44,12 @@ import LivestreamView from './LivestreamView';
 import { DesktopContainer } from './layout/DesktopLayout';
 import { visibleNavGroups } from './layout/nav-groups';
 import { useMemberPhoto, memberInitial } from '../hooks/useMemberPhoto';
+import { useCommunitySettings, useCommunityMember } from '../lib/community/use-community';
+import { needsCommunityEntry, type CommunityModule } from '../lib/community/settings';
+import { CommunityEntryDialog } from './community/CommunityEntryDialog';
+import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
+import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
+import UserEvents from './UserEvents';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -46,6 +62,8 @@ const getServerTenantLogo = (): string | null =>
   typeof document !== 'undefined' ? document.body?.dataset?.tenantLogo || null : null;
 
 // Icons for the former top-tabs, now also surfaced as desktop-only sidebar items (Phase 1.5).
+const TOP_TAB_MODULES: Record<string, CommunityModule> = { news: 'news', blog: 'blog', courses: 'courses', messages: 'messages', prayer: 'prayer', partner: 'give' };
+
 const TOP_TAB_ICONS: Record<string, any> = {
   news: Newspaper,
   blog: FileText,
@@ -79,13 +97,18 @@ const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
 interface MainAppProps {
   onNavigate: (page: string) => void;
+  isAdminPreview?: boolean;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false }) => {
   const { tenantPlan, currentUser } = useAppStore();
   // THE-141 - the member's own photo, from the Firestore user document.
   const { photoURL: memberPhotoURL } = useMemberPhoto();
   const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, tenantAddons, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
+  const community = useCommunitySettings(tenantId);
+  const modules = community.settings.modules;
+  const entryEnabled = !isAdminPreview && (community.settings.rules.enabled || community.settings.questions.enabled);
+  const entry = useCommunityMember(tenantId, currentUser?.uid, entryEnabled);
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
@@ -107,6 +130,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return words[0] || 'Harvest';
   })();
   const askLabel = `Ask ${askBrandName}`;
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -122,7 +147,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * DISCOVERED by four measured suites and interpolating into it broke all
    * four. This nav is a different element in a different shell: its class
    * string is already a template literal, no guard discovers it, and it
-   * already carries `activeBottomTab === 'map' ? 'max-lg:translate-y-full'` —
+   * already carries `effectiveBottomTab === 'map' ? 'max-lg:translate-y-full'` —
    * a nav-hiding condition, shipped, for exactly this purpose. Adding a term
    * to it introduces NO element, so MainApp's element-tree pin is untouched.
    *
@@ -316,19 +341,19 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     // 🔴 WAS AN UNCONDITIONAL LITERAL, exactly as `messages` was before THE-162.
     // The feed is every tier's Home, so this is the entry whose absence moves
     // where a free member lands — see `homeTabId` below.
-    hasNewsFeed && { id: 'news', label: 'News' },
-    (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
+    modules.news && hasNewsFeed && { id: 'news', label: 'News' },
+    modules.blog && (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
-    coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    modules.courses && coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     productsStatus === 'present' && { id: 'products', label: 'Products' },
-    hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
-    { id: 'prayer', label: 'Prayer' },        // all plans, all users
+    modules.messages && hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
+    modules.prayer && { id: 'prayer', label: 'Prayer' },        // all plans, all users
     // Give — plan-gated. A free tenant has `fundraising: false` and the donate
     // route refuses it server-side (THE-202), so an always-on Give tab would be
     // a member-facing link to a 403. See `hasGiving` above: the tab entry is
     // only one of the three ways this screen is reached, and it was for a while
     // the only one that asked.
-    hasGiving && { id: 'partner', label: 'Give' },
+    modules.give && hasGiving && { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
   /**
@@ -354,7 +379,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     topTabs.find((t) => t.id === 'news')?.id
     ?? topTabs.find((t) => t.id === 'courses')?.id
     ?? topTabs[0]?.id
-    ?? 'news';
+    ?? 'home-empty';
 
   /**
    * The tab actually RENDERED. `activeTopTab` is what the member last selected;
@@ -377,7 +402,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * downgrade lands on Home — the feed's exact precedent, one line above.
    */
   const effectiveTopTab =
-    (activeTopTab === 'news' && !hasNewsFeed) || (activeTopTab === 'partner' && !hasGiving)
+    (TOP_TAB_MODULES[activeTopTab] && !modules[TOP_TAB_MODULES[activeTopTab]]) || (activeTopTab === 'news' && !hasNewsFeed) || (activeTopTab === 'partner' && !hasGiving) || (activeTopTab === 'blog' && !(isMainSite || (isPlanReady && features?.blog === true)))
       ? homeTabId
       : activeTopTab;
 
@@ -391,15 +416,31 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'bible', label: 'Bible', icon: BookOpen },
+    modules.bible && { id: 'bible', label: 'Bible', icon: BookOpen },
     (isMainSite || (isPlanReady && features?.aiChat === true)) && { id: 'chat', label: 'Chat', icon: MessageCircle },
-    (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
+    modules.map && (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
+  const effectiveBottomTab = (activeBottomTab === 'bible' && !modules.bible) || (activeBottomTab === 'events' && !modules.events) || (activeBottomTab === 'map' && (!modules.map || !(isMainSite || (isPlanReady && features?.map === true)))) ? 'home' : activeBottomTab;
+  useEffect(() => {
+    if (activeBottomTab !== effectiveBottomTab) setActiveBottomTab('home');
+    if (TOP_TAB_MODULES[activeTopTab] && !modules[TOP_TAB_MODULES[activeTopTab]]) setActiveTopTab(homeTabId);
+    if ((fullScreenView.type === 'all-news' && !modules.news) ||
+        (fullScreenView.type === 'article' && !modules.blog) ||
+        (fullScreenView.type === 'course' && !modules.courses) ||
+        (fullScreenView.type === 'livestream' && !modules.livestream)) setFullScreenView({ type: 'none' });
+  }, [activeBottomTab, effectiveBottomTab, activeTopTab, homeTabId, modules, fullScreenView.type]);
   // 'home' is always the unconditional first entry above — desktop's grouped
   // sidebar replaces it with the "Home" alias of whichever top-tab `homeTabId`
   // resolves to (see below), so only the rest are looked up by id for the
   // desktop groups.
+  const mobileTabs: MobileTab[] = enabledMobileTabs([
+    ...topTabs.map(tab => ({ id: tab.id, label: tab.id === 'news' ? 'Feed' : tab.id === 'messages' ? 'Groups' : tab.label, icon: TOP_TAB_ICONS[tab.id], active: effectiveBottomTab === 'home' && effectiveTopTab === tab.id, onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); } })),
+    ...(modules.livestream && (isMainSite || features?.livestream === true) ? [{ id: 'livestream', label: 'Livestream', icon: Play, active: false, onClick: () => setFullScreenView({ type: 'livestream' }) }] : []),
+    ...(modules.events ? [{ id: 'events', label: 'Events', icon: CalendarDays, active: effectiveBottomTab === 'events', onClick: () => setActiveBottomTab('events') }] : []),
+    ...bottomTabs.filter(tab => tab.id !== 'home' && tab.id !== 'profile').map(tab => ({ ...tab, active: effectiveBottomTab === tab.id, onClick: () => setActiveBottomTab(tab.id) })),
+  ], modules);
+  mobileTabs.sort((a, b) => ['news', 'courses', 'events', 'messages'].indexOf(a.id) === -1 ? (['news', 'courses', 'events', 'messages'].indexOf(b.id) === -1 ? 0 : 1) : (['news', 'courses', 'events', 'messages'].indexOf(b.id) === -1 ? -1 : ['news', 'courses', 'events', 'messages'].indexOf(a.id) - ['news', 'courses', 'events', 'messages'].indexOf(b.id)));
   const [, ...restBottomTabs] = bottomTabs;
 
   // Desktop sidebar groups (Phase 1.6) — FEED / COMMUNITY / SUPPORT US. Resolves
@@ -411,6 +452,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const desktopTopTabItem = (id: string): DesktopNavItem | null => {
     const tab = topTabs.find(t => t.id === id);
+    if (!tab && id === 'home-empty') return { id: 'desktop-home-empty', label: 'Home', icon: Home, isActive: effectiveBottomTab === 'home', onClick: () => setActiveBottomTab('home') };
     if (!tab) return null;
     // Whichever top-tab IS Home for this tier is the desktop sidebar's "Home"
     // entry point (mobile's own label inside the Home top-tabs is untouched).
@@ -422,7 +464,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       id: `desktop-${tab.id}`,
       label: isHome ? 'Home' : tab.label,
       icon: isHome ? Home : TOP_TAB_ICONS[tab.id],
-      isActive: activeBottomTab === 'home' && effectiveTopTab === tab.id,
+      isActive: effectiveBottomTab === 'home' && effectiveTopTab === tab.id,
       onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
     };
   };
@@ -435,7 +477,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       // Chat is branded "Ask {ministry}" on desktop; mobile keeps "Chat".
       label: tab.id === 'chat' ? askLabel : tab.label,
       icon: tab.icon,
-      isActive: activeBottomTab === tab.id,
+      isActive: effectiveBottomTab === tab.id,
       onClick: () => setActiveBottomTab(tab.id),
     };
   };
@@ -485,10 +527,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   );
 
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
-  const desktopTitle = activeBottomTab === 'home'
+  const desktopTitle = effectiveBottomTab === 'home'
     ? (effectiveTopTab === homeTabId ? 'Home' : (topTabs.find(t => t.id === effectiveTopTab)?.label ?? 'Home'))
-    : (activeBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
-  const showDesktopDate = activeBottomTab === 'home' && effectiveTopTab === homeTabId;
+    : (effectiveBottomTab === 'communities' ? 'Communities' : effectiveBottomTab === 'discover' ? 'Discover' : effectiveBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
+  const showDesktopDate = effectiveBottomTab === 'home' && effectiveTopTab === homeTabId;
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
   useEffect(() => {
@@ -625,23 +667,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     onClick: () => void,
     visibility: 'both' | 'mobile' | 'desktop' = 'both'
   ) => {
-    const visibilityClassName =
-      visibility === 'mobile' ? 'flex flex-col lg:hidden' :
-      visibility === 'desktop' ? 'hidden lg:flex' :
-      'flex flex-col';
     return (
-      <button
+      <Button variant="ghost"
         key={id}
         onClick={onClick}
-        className={`${visibilityClassName} items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
-          isSidebarCollapsed
-            ? 'lg:w-11 lg:h-11 lg:p-0 w-16 h-12'
-            : 'lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 w-16 h-12'
-        } ${
-          isActive
-            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)]'
-            : 'text-faint hover:text-muted lg:text-muted lg:hover:text-strong lg:hover:bg-surface-sunken'
-        }`}
+        data-visibility={visibility}
+        data-collapsed={isSidebarCollapsed}
+        data-active={isActive}
+        className={MEMBER_NAV_BUTTON}
         style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         title={isSidebarCollapsed ? label : undefined}
       >
@@ -653,7 +686,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         <span className={`text-[10px] lg:text-[13px] lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
           {label}
         </span>
-      </button>
+      </Button>
     );
   };
 
@@ -663,28 +696,35 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     </div>
   );
 
+  if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
+  if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
+  if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
+    return <CommunityEntryDialog communityName={tenantName || 'the community'} logoUrl={community.settings.logoUrl || branding?.logo} settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
+  }
+
   // The ROUTE, gated as well as its entry point — the same reasoning written on
   // the Messages route below. `onOpenAllNews` lives inside NewsTab, which a
   // tier without the feed never mounts, so this state should be unreachable
   // there; "should be unreachable" is exactly what THE-193 assumed about a
   // hidden screen. AllNews opens its own `/community_posts` listeners, so it is
   // refused here rather than merely unlinked.
-  if (fullScreenView.type === 'all-news' && hasNewsFeed) {
+  if (fullScreenView.type === 'all-news' && hasNewsFeed && modules.news) {
     return (
       <AllNews
+        eventsEnabled={modules.events}
         onBack={() => setFullScreenView({type: 'none'})}
         onOpenMessages={() => { setFullScreenView({type: 'none'}); setActiveBottomTab('home'); setActiveTopTab('messages'); }}
       />
     );
   }
 
-  if (fullScreenView.type === 'article' && fullScreenView.data) {
+  if (fullScreenView.type === 'article' && fullScreenView.data && modules.blog && (isMainSite || (isPlanReady && features?.blog === true))) {
     return (
       <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />
     );
   }
 
-  if (fullScreenView.type === 'course' && fullScreenView.data) {
+  if (fullScreenView.type === 'course' && fullScreenView.data && modules.courses) {
     return (
       <CourseExperience
         initialCourseId={fullScreenView.data.courseId}
@@ -694,7 +734,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     );
   }
 
-  if (fullScreenView.type === 'livestream') {
+  if (fullScreenView.type === 'livestream' && modules.livestream && (isMainSite || features?.livestream === true)) {
     return (
       <LivestreamView
         tenantId={tenantId}
@@ -706,7 +746,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
            `PartnerWithUsTab` renders and the one `?giving=1` exists to reach.
            `undefined` when there is no Give page — LivestreamView then draws no
            button, rather than one that lands on Home. */
-        onDonate={hasGiving ? () => {
+        onDonate={modules.give && hasGiving ? () => {
           setFullScreenView({ type: 'none' });
           setActiveBottomTab('home');
           setActiveTopTab('partner');
@@ -715,17 +755,19 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     );
   }
 
+  const logoSrc = community.settings.logoUrl || displayLogo;
+
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <div style={communityBrandStyle(community.settings.brandColor)} className="community-brand-scope flex flex-col lg:flex-row h-dvh max-lg:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
             <img
-              src={displayLogo}
+              src={logoSrc}
               alt={displayName}
               className="logo-plate w-9 h-9 object-contain shrink-0"
             />
@@ -739,17 +781,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             )}
           </div>
 
-          {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
-          {bottomTabs.map((tab) =>
-            renderNavButton(
-              tab.id,
-              tab.label,
-              tab.icon,
-              activeBottomTab === tab.id,
-              () => setActiveBottomTab(tab.id),
-              'mobile'
-            )
-          )}
+          {/* Mobile tabs share the shell's safe area and scroll translation. */}
+          <MobileCommunityTabs onCommunities={() => setActiveBottomTab('communities')} onDiscover={() => setActiveBottomTab('discover')} homeActive={effectiveBottomTab === 'home'} onHome={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onChat={modules.messages && hasCommunityGroups ? () => { setActiveBottomTab('home'); setActiveTopTab('messages'); } : undefined} onNotifications={() => setActiveBottomTab('profile')} onProfile={() => setMobileProfileOpen(true)} photo={memberPhotoURL} initial={memberInitial(currentUser?.displayName)} />
+
+          <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
+            {renderNavButton('desktop-communities', 'Communities', NAV_ICONS.communities, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
+            {renderNavButton('desktop-discover', 'Discover', NAV_ICONS.discover, effectiveBottomTab === 'discover', () => setActiveBottomTab('discover'), 'desktop')}
+          </div>
 
           {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
           {desktopNavGroups.map((group, groupIndex) => (
@@ -777,20 +815,26 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-5 mt-auto">
-            <button
+            <Button variant="ghost"
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               data-collapsed={isSidebarCollapsed}
+               className={MEMBER_SIDEBAR_COLLAPSE}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
                {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
                {!isSidebarCollapsed && <span className="text-[13px] font-medium">Collapse</span>}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
+
+
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-dvh relative bg-surface overflow-hidden min-w-0">
+        <div className="sticky top-0 z-20 hidden shrink-0 max-lg:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
+        <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} name={currentUser?.displayName || 'Member'} photo={memberPhotoURL} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
+        {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
             left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
@@ -819,9 +863,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 So the data source is fixed here and the primitive adoption is
                 reported as its own ticket: same markup, same classes, different
                 FIELD. See hooks/useMemberPhoto.ts. */}
-            <button
+            <Button variant="ghost"
               onClick={() => setActiveBottomTab('profile')}
-              className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
+              className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
               data-testid="member-header-avatar"
             >
@@ -830,30 +874,29 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               ) : (
                 <span>{memberInitial(currentUser?.displayName)}</span>
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
-        {activeBottomTab === 'home' && (
-          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
+        {effectiveBottomTab === 'home' && (
+          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-lg:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
-                <button
+                <Button variant="ghost"
                   key={tab.id}
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
-                  className={`whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start ${
-                    effectiveTopTab === tab.id ? '' : 'text-muted'
-                  }`}
+                  data-active={effectiveTopTab === tab.id}
+                  className={MEMBER_TOP_TAB}
                   style={effectiveTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 >
                   {tab.label}
                   {effectiveTopTab === tab.id && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
                   )}
-                </button>
+                </Button>
               ))}
             </div>
             </DesktopContainer>
@@ -862,8 +905,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
-          {activeBottomTab === 'home' ? (
+        <div className={`flex-1 min-h-0 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px] max-lg:pb-[calc(61px+env(safe-area-inset-bottom))]'} lg:pb-0` : 'overflow-y-auto pb-24 max-lg:pb-[calc(61px+env(safe-area-inset-bottom))] lg:pb-0'}`} onScroll={handleScroll}>
+          {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData currentTenantId={tenantId} /> : effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -880,9 +923,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   }}
                   drag={enableSwipe ? "x" : false}
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: effectiveTopTab === topTabs[0].id ? 0 : 1 }}
+                  dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1]?.id ? 0 : 1, right: effectiveTopTab === topTabs[0]?.id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
-                  className="absolute w-full h-full p-4 space-y-6 lg:space-y-4"
+                  className="absolute w-full h-full p-4 space-y-6 max-lg:relative max-lg:h-auto max-lg:min-h-full lg:space-y-4"
                 >
                   {/* Content based on effectiveTopTab */}
                   {/* 🔴 `hasNewsFeed &&` is NOT redundant with `effectiveTopTab`.
@@ -897,15 +940,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       {/* Live banner is mobile-only — on desktop the right rail's
                           "Live Now" card already surfaces the live stream, so the
                           full-width banner would be redundant. */}
-                      <div className="lg:hidden">
+                      {modules.livestream && (isMainSite || features?.livestream === true) && <div className="lg:hidden">
                         <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
-                      </div>
+                      </div>}
                       <NewsTab
+                        eventsEnabled={modules.events}
                         tenantId={tenantId}
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
-                        onOpenLivestream={() => setFullScreenView({ type: 'livestream' })}
-                        onGoToPartner={hasGiving ? () => setActiveTopTab('partner') : undefined}
+                        onOpenLivestream={modules.livestream && (isMainSite || features?.livestream === true) ? () => setFullScreenView({ type: 'livestream' }) : undefined}
+                        onGoToPartner={modules.give && hasGiving ? () => setActiveTopTab('partner') : undefined}
                         onOpenMessages={() => setActiveTopTab('messages')}
                       />
                     </>
@@ -956,14 +1000,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   )}
                   {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'products' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-faint">
-                      <p>{topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.</p>
+                      <p>{effectiveTopTab === 'home-empty' ? 'No community modules are available.' : `${topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.`}</p>
                     </div>
                   )}
                 </motion.div>
               </AnimatePresence>
             </div>
             </DesktopContainer>
-          ) : activeBottomTab === 'profile' ? (
+          ) : effectiveBottomTab === 'events' && modules.events ? (
+            <UserEvents onBack={() => setActiveBottomTab('home')} />
+          ) : effectiveBottomTab === 'profile' ? (
             <div className="w-full">
               <Profile
                 onNavigate={onNavigate}
@@ -973,27 +1019,27 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                    straight back Home — a button that visibly does nothing,
                    which is the THE-193 dead end rather than a gate. Profile
                    hides the CTA when this prop is absent. */
-                onGoToPartner={hasGiving ? () => { setActiveBottomTab('home'); setActiveTopTab('partner'); } : undefined}
+                onGoToPartner={modules.give && hasGiving ? () => { setActiveBottomTab('home'); setActiveTopTab('partner'); } : undefined}
                 onGoToMap={() => setActiveBottomTab('map')}
                 onOpenSavedBlog={openSavedBlog}
                 onOpenSavedLesson={openSavedLesson}
                 onOpenSavedPost={openSavedPost}
               />
             </div>
-          ) : activeBottomTab === 'chat' ? (
+          ) : effectiveBottomTab === 'chat' ? (
              // Wider than the other bottom-tab views so the desktop chat can fit
              // its 280px history rail alongside a readable ~800px message column.
              <div className="w-full h-full">
               <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
-          ) : activeBottomTab === 'map' ? (
+          ) : effectiveBottomTab === 'map' ? (
              <div className="w-full h-full">
               <ChurchMap 
                 onBack={() => setActiveBottomTab('home')} 
                 onMapInteraction={(interacting) => setIsNavVisible(!interacting)} 
               />
              </div>
-          ) : activeBottomTab === 'bible' ? (
+          ) : effectiveBottomTab === 'bible' ? (
              <div className="w-full h-full">
               <BiblePage />
              </div>

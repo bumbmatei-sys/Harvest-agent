@@ -41,8 +41,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isSuperAdmin() ||
         request.auth.token.get('admin', false) == true ||
-        userRole() == 'admin' ||
-        userRole() == 'super_admin'
+        userRole() in ['admin', 'super_admin']
       );
     }
 
@@ -63,7 +62,7 @@ service cloud.firestore {
     function isTenantAdmin(tenantId) {
       return isAuthenticated() && (
         isSuperAdmin() ||
-        (isAdmin() && userTenantId() == tenantId) ||
+        ((isAdmin() || userRole() == 'church_admin') && userTenantId() == tenantId) ||
         inTenantAdminEmails(tenantId)
       );
     }
@@ -169,6 +168,11 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(emailConsentKeys());
     }
 
+    match /discovery_listings/{tenantId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
     //
     // newsletterOptIn / newsletterOptInAt / newsletterOptInSource: platform
@@ -185,6 +189,8 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == userId &&
         (!request.resource.data.keys().hasAny(['role']) ||
          request.resource.data.role == 'user') &&
+        (!request.resource.data.keys().hasAny(['email']) ||
+          request.resource.data.email == tokenEmail()) &&
         newsletterConsentOnCreate();
 
       allow update: if isAuthenticated() && (
@@ -219,6 +225,13 @@ service cloud.firestore {
           ]) &&
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions']) ||
            hasPermission('manageAdmins', resource.data.tenantId))) ||
+        isSuperAdmin()
+      ) && (
+        // Bind future profile email changes to Auth. Legacy stored emails may
+        // still be forged, so profile email is never an admin identity source.
+        // Admin corrections to another user's email go through the server.
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email']) ||
+        (request.auth.uid == userId && request.resource.data.get('email', null) == tokenEmail()) ||
         isSuperAdmin()
       ) && (
         // Owner protection: the tenant owner's role & permissions are immutable within
@@ -266,6 +279,57 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // A member post is plain text; rich post fields are reserved for authors
+    // holding createPosts. Empty image fields match the existing composer.
+    function plainCommunityPost(data) {
+      return data.get('type', 'post') == 'post' && data.get('content', null) is string &&
+        data.content.size() <= 500 && data.get('imageUrl', '') == '' &&
+        data.get('imageUrls', []) == [] && data.get('tags', []) == [] &&
+        !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']);
+    }
+
+    // Counterpart claims cannot be read from another user's Auth token. Only
+    // protected uid-keyed roles and tenant ownership identify an admin here.
+    // Legacy profile emails may be forged, even with future writes Auth-bound.
+    // Email-only roster/platform admins are recognised as CALLERS through
+    // isTenantAdmin and their token email, never as counterparts by profile email.
+    // Never trust participantRoles from the creator.
+    // Repeated exists/get calls share cached documents: a member send needs at
+    // most five distinct docs (caller, counterpart, tenant, private roster, DM).
+    function uidIsTenantAdmin(uid, tenantId) {
+      let path = /databases/$(database)/documents/users/$(uid);
+      return isTenantOwner(uid, tenantId) || (exists(path) && (
+        get(path).data.get('role', 'user') == 'super_admin' ||
+        (get(path).data.get('tenantId', null) == tenantId &&
+          get(path).data.get('role', 'user') in ['admin', 'church_admin'])
+      ));
+    }
+
+    // Recheck existing threads too: participantRoles is untrusted and legacy
+    // member-to-member threads must not bypass the current DM creation policy.
+    function dmHasAdminCounterpart(participants, tenantId) {
+      return isTenantAdmin(tenantId) || (participants.size() == 2 && uidIsTenantAdmin(
+        participants[0] == request.auth.uid ? participants[1] : participants[0], tenantId));
+    }
+
+    function memberPostByline(post) {
+      return post.get('authorName', '') ==
+          (userDocExists() && userData().get('displayName', '') != ''
+            ? userData().displayName : request.auth.token.get('name', 'Member')) &&
+        post.get('authorPhoto', '') in ['', userDocExists() ? userData().get('photoURL', '') : ''] &&
+        // The member composer writes no level; only privileged post writers may.
+        !post.keys().hasAny(['authorLevel']);
+    }
+
+    function channelMemberAccess(channel) {
+      return channel.get('audience', '') == 'all' || request.auth.uid in channel.get('members', []);
+    }
+
+    function channelAccess(channel, tenantId) {
+      return isTenantAdmin(tenantId) || channel.get('audience', '') == 'all' ||
+        request.auth.uid in channel.get('members', []);
+    }
+
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
@@ -273,15 +337,22 @@ service cloud.firestore {
 
       allow create: if isAuthenticated() &&
         request.resource.data.authorId == request.auth.uid &&
-        requestHasCorrectTenant();
+        requestHasCorrectTenant() &&
+        (hasPermission('createPosts', request.resource.data.tenantId) ||
+          (plainCommunityPost(request.resource.data) && memberPostByline(request.resource.data) &&
+           request.resource.data.get('isPinned', false) == false));
 
       // Members may only touch likes/polls/RSVPs or their own posts; cross-
       // author moderation (edit/delete/pin) is the Posts screen → createPosts.
       allow update: if isAuthenticated() && belongsToTenant(resource.data.tenantId) &&
         (
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['likes', 'pollOptions', 'eventDetails']) ||
-          resource.data.authorId == request.auth.uid ||
+          (request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'pollOptions', 'eventDetails']) &&
+           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['pollOptions']) || 'pollOptions' in resource.data) &&
+           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventDetails']) || 'eventDetails' in resource.data)) ||
+          (resource.data.authorId == request.auth.uid &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'type', 'imageUrl', 'imageUrls', 'embed', 'pollOptions']) &&
+           plainCommunityPost(request.resource.data)) ||
           hasPermission('createPosts', resource.data.tenantId)
         );
 
@@ -293,10 +364,14 @@ service cloud.firestore {
         allow read: if isAuthenticated() &&
           belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''));
         allow create: if isAuthenticated() &&
+          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) &&
+          request.resource.data.tenantId == get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '') &&
+          request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
+          request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
           request.resource.data.authorId == request.auth.uid &&
+          memberPostByline(request.resource.data) &&
           request.resource.data.content is string &&
-          request.resource.data.content.size() <= 280 &&
-          request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']);
+          request.resource.data.content.size() <= 280;
         allow delete: if isAuthenticated() &&
           resource.data.authorId == request.auth.uid;
         allow update: if false;
@@ -602,7 +677,22 @@ service cloud.firestore {
       // become an ungoverned write surface.
       match /settings/{settingId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if hasPermission('manageSettings', tenantId);
+        allow write: if settingId != 'community' && hasPermission('manageSettings', tenantId);
+      }
+
+      match /settings/community/reviews/{uid} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if false;
+      }
+
+      match /communityMembers/{uid} {
+        allow read: if belongsToTenant(tenantId) && (request.auth.uid == uid || isTenantAdmin(tenantId));
+        allow create, update: if belongsToTenant(tenantId) && request.auth.uid == uid &&
+          request.resource.data.keys().hasOnly(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          request.resource.data.keys().hasAll(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          request.resource.data.rulesAcceptedVersion is int && request.resource.data.rulesAcceptedVersion >= 0 &&
+          request.resource.data.answers is map && request.resource.data.answers.size() <= 100 &&
+          request.resource.data.answeredAt is timestamp;
       }
 
       // NOTE: a tenants/{t}/members subcollection block used to live here, but
@@ -702,12 +792,19 @@ service cloud.firestore {
         // (UserMessages) already filters `members array-contains uid`, so this
         // only adds the server-side guarantee.
         allow read: if belongsToTenant(tenantId) &&
-          (isTenantAdmin(tenantId) || request.auth.uid in resource.data.get('members', []));
+          channelAccess(resource.data, tenantId);
         // Channel management (create/roster/edit) is the Community screen.
         allow write: if hasPermission('manageCommunity', tenantId);
+        // Setup may create only the fixed default group, without managing other groups.
+        allow create: if channelId == 'all-members' && hasPermission('manageSettings', tenantId) &&
+          request.resource.data.keys().hasOnly(['name', 'description', 'audience', 'members', 'createdAt', 'createdBy', 'type']) &&
+          request.resource.data.get('name', '') == 'All members' && request.resource.data.get('description', null) == '' &&
+          request.resource.data.get('audience', '') == 'all' && request.resource.data.get('members', null) == [] &&
+          request.resource.data.get('createdAt', null) == request.time && request.resource.data.get('createdBy', '') == request.auth.uid &&
+          request.resource.data.get('type', '') == 'announcement';
         // Members may update only the last-message preview fields when they post.
         allow update: if belongsToTenant(tenantId) &&
-          request.auth.uid in resource.data.get('members', []) &&
+          channelAccess(resource.data, tenantId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']);
       }
 
@@ -715,13 +812,15 @@ service cloud.firestore {
         // Community admins read/write everything; members read AND post only
         // in channels they belong to (that branch must stay permission-free).
         allow read: if belongsToTenant(tenantId) && (
-          isTenantAdmin(tenantId) ||
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data.get('members', [])
+          channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data, tenantId)
         );
-        allow create: if belongsToTenant(tenantId) && (
-          hasPermission('manageCommunity', tenantId) ||
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data.get('members', [])
-        );
+        allow create: if belongsToTenant(tenantId) &&
+          request.resource.data.get('senderId', '') == request.auth.uid &&
+          request.resource.data.get('senderName', '') == (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '') != '' ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName : request.auth.token.get('name', 'Member')) &&
+          (request.resource.data.get('senderRole', '') == 'user' ||
+            (request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId))) &&
+          (hasPermission('manageCommunity', tenantId) ||
+            channelMemberAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data));
         allow update, delete: if hasPermission('manageCommunity', tenantId);
       }
 
@@ -733,7 +832,13 @@ service cloud.firestore {
       match /directMessages/{dmId} {
         allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) || request.auth.uid in resource.data.get('participants', []));
         // Creator must include themselves — you can't open a thread you're not in.
-        allow create: if belongsToTenant(tenantId) && request.auth.uid in request.resource.data.get('participants', []);
+        allow create: if belongsToTenant(tenantId) &&
+          request.resource.data.get('participants', []) is list &&
+          request.resource.data.participants.size() == 2 &&
+          request.auth.uid in request.resource.data.participants &&
+          request.resource.data.participants[0] is string && request.resource.data.participants[1] is string &&
+          request.resource.data.participants[0] != request.resource.data.participants[1] &&
+          dmHasAdminCounterpart(request.resource.data.participants, tenantId);
         // A moderator (or super admin) may edit/delete freely; a participant reply
         // may bump ONLY the lastMessage preview. Fencing the participant branch to
         // those two fields (as the channels member-update is fenced) keeps
@@ -744,6 +849,7 @@ service cloud.firestore {
         allow update: if canModerateDMs(tenantId) || (
           belongsToTenant(tenantId) &&
           request.auth.uid in resource.data.get('participants', []) &&
+          dmHasAdminCounterpart(resource.data.get('participants', []), tenantId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']));
         allow delete: if canModerateDMs(tenantId) || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
       }
@@ -758,7 +864,8 @@ service cloud.firestore {
         allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) ||
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
         allow create: if belongsToTenant(tenantId) && request.resource.data.senderId == request.auth.uid &&
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []);
+          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []) &&
+          dmHasAdminCounterpart(get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []), tenantId);
         // Moderators (canModerateDMs) may edit/delete for safety. Otherwise a
         // recipient may mark a message they DIDN'T send as read (only the `read`
         // flag) — this is what lets a member's DM read-receipt write succeed.

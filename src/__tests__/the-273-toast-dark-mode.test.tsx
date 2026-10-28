@@ -75,6 +75,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * cannot change the result.
  */
 
+// THE-555: shadcn Carousel, pinned by ds-primitives.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = path.resolve(__dirname, '../..');
 const SRC = path.join(ROOT, 'src');
 const GLOBALS_CSS = readFileSync(path.join(ROOT, 'src/app/globals.css'), 'utf8');
@@ -882,7 +885,7 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     const present = readdirSync(path.join(SRC, 'components/ui'))
       .filter((e) => /\.tsx$/.test(e))
       .sort();
-    expect(present).toEqual([...Object.keys(UNCHANGED), 'sonner.tsx', ...BATCH_CDE].sort());
+    expect(present).toEqual([...Object.keys(UNCHANGED), 'sonner.tsx', ...BATCH_CDE, ...THE_555_PRIMITIVES].sort());
   });
 
   /**
@@ -968,7 +971,7 @@ describe('9 — all 22 other primitives are byte-identical', () => {
       .map((rel) => path.basename(rel))
       .filter((base) => !known.has(base))
       .sort();
-    expect(arrivals).toEqual([...BATCH_CDE].sort());
+    expect(arrivals).toEqual([...BATCH_CDE, ...THE_555_PRIMITIVES].sort());
   });
 });
 

@@ -313,6 +313,15 @@ function editedRows(baseline: readonly string[], key: keyof typeof EDITED_SINCE_
     ).toEqual([...e.remove]);
     rows.splice(e.at, e.remove.length, ...e.insert);
   }
+  // THE-555: lucide-react 0.453.0 -> 0.577.0 keeps Star's SVG size and
+  // currentColor but replaces its polygon with a rounded path. Keep THE-305's
+  // historical edit above intact, then apply only this dependency-owned row.
+  if (key === 'infoMobileBoxes') {
+    const at = rows.indexOf('svg\tlucide lucide-star');
+    expect(at, 'the recorded featured-course Star disappeared').toBeGreaterThan(-1);
+    expect(rows[at + 1], 'the historical Star was not a polygon').toBe('polygon\t');
+    rows[at + 1] = 'path\t';
+  }
   return indexed ? rows.map((r, i) => `${i}\t${r}`) : rows;
 }
 

@@ -21,6 +21,9 @@ import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-commen
  * NO LINE NUMBER IS PINNED ANYWHERE IN THIS FILE.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
@@ -55,7 +58,7 @@ describe('every element that has a primitive uses it', () => {
       .map((f) => f.replace(/\.tsx$/, ''))
       .sort();
 
-    expect(present.length, 'the primitive count').toBe(43);
+    expect(present.length, 'the primitive count').toBe(43 + THE_555_PRIMITIVES.length);
     expect(present).toContain('skeleton');
     expect(present).toContain('avatar');
     expect(present).not.toContain('accordion');

@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -582,8 +582,12 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // Local community previews are ignored and may be absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/community/page.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/page.tsx')) ? ['src/app/dev/community/page.tsx'] : []),
       // The social scheduler screenshot harness. The stand-in account button
       // uses min-h-11. It is not a product screen, and it 404s in production.
+      // The local development harness is ignored and may be absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
@@ -595,6 +599,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // band Rule 4 governs. The disclaimer's TEXT is unchanged — the fold is
       // the whole edit.
       'src/components/AdminCRM.tsx',
+      // PR 554 reviewer-requested shadcn controls: 44px phone floors on community actions.
+      'src/components/AdminCommunity.tsx',
       // APPENDED BY THE-345, NOTHING BELOW REMOVED OR REWRITTEN. It sits second
       // because this list is the sweep's own sorted order, not the order tickets
       // arrived in.
@@ -634,6 +640,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminDocs.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
+      'src/components/AllNews.tsx', // Post actions and comment send control use the phone floor.
       /**
        * APPENDED for the campaign banner sheet. Nothing around it removed or
        * rewritten. Both files sit here because this list is the sweep's sorted
@@ -659,6 +666,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        */
       'src/components/CoursePage.tsx',
       'src/components/EmbedCard.tsx',
+      'src/components/KebabMenu.tsx', // PR 554: portal menu trigger has a phone touch floor.
+      'src/components/MainApp.tsx', // THE-555: mobile tabs and profile control use the phone floor.
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order
@@ -694,6 +703,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        * which asserts BOTH floors, so this divergence cannot rot silently.
        */
       'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
+      'src/components/NewsTab.tsx', // Mobile composer, post actions and comment send controls.
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order
@@ -751,6 +761,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // mounts only from lg, where the floor is 38px and 2.75rem at the 14.5px
       // root is 39.875px, inside that band. The preview copies the old rail
       // button classes so the before shot still measures them.
+      'src/components/admin-shell/AdminContentBar.tsx', // THE-555: shadcn breadcrumb Button phone floor.
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminHome.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
@@ -801,6 +812,18 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/blog/BlogScheduleFields.tsx',
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
+      // THE-555: shadcn admin composer controls state their mobile touch floor.
+      // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
+      'src/components/community/AdminPostComposer.tsx',
+      'src/components/community/CommunityEntryDialog.tsx',
+      'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
+      'src/components/community/CommunitySettingsEditor.tsx',
+      'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
+      'src/components/community/GroupList.tsx',
+      'src/components/community/MemberPostComposer.tsx',
+      'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
+      'src/components/community/NewGroupDialog.tsx',
+      'src/components/community/PostPresentation.tsx', // The post text expansion control uses the phone floor.
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',
       'src/components/courses/CoursePlayer.tsx',
@@ -1107,7 +1130,13 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
     // The count is the assertion: a new runtime or dev dependency moves it, and
     // `alert` is an already-installed FILE in this repo, not a package.
     // Phase 1 is the approved exception: @tanstack/react-table, and nothing else.
-    expect(Object.keys(pkg.dependencies)).toHaveLength(70);
+    // The installed Base UI and carousel packages are recorded by the primitive inventory.
+    // THE-555: main's 70 runtime dependencies plus the approved Carousel package.
+    expect(Object.keys(pkg.dependencies)).toHaveLength(70 + 1);
+    expect(pkg.dependencies['cn']).toBeUndefined();
+    expect(pkg.dependencies['lucide-react']).toBe('^0.577.0');
+    expect(pkg.dependencies['@base-ui/react']).toBe('^1.5.0');
+    expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(Object.keys(pkg.devDependencies)).toHaveLength(20);
   });

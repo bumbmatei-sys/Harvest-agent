@@ -1,0 +1,181 @@
+{
+  "ticket": "THE-555",
+  "reason": "lucide-react 0.453.0 -> 0.577.0: Search reorders its path before its circle and changes the handle from 4.3 to 4.34 SVG units. Only the two SVG child bounds change; the SVG root and every layout box retain the original geometry fixture. Values derive from the package path and the pinned 24-unit viewBox, corroborated by the full-suite diff at 380px. THE-555 round 5: Chromium in 555-full-r4.log measures handle y=106.98 at 1024px; 1280/1440 share the same SVG root placement. Correct the earlier rounded-root derivation by 0.01px.",
+  "librarySearch": {
+    "380": {
+      "at": 5,
+      "before": [
+        {
+          "tag": "circle",
+          "x": 30,
+          "y": 36,
+          "w": 10.67,
+          "h": 10.67
+        },
+        {
+          "tag": "path",
+          "x": 39.13,
+          "y": 45.13,
+          "w": 2.87,
+          "h": 2.87
+        }
+      ],
+      "after": [
+        {
+          "tag": "path",
+          "x": 39.11,
+          "y": 45.11,
+          "w": 2.89,
+          "h": 2.89
+        },
+        {
+          "tag": "circle",
+          "x": 30,
+          "y": 36,
+          "w": 10.67,
+          "h": 10.67
+        }
+      ]
+    },
+    "768": {
+      "at": 5,
+      "before": [
+        {
+          "tag": "circle",
+          "x": 174,
+          "y": 36,
+          "w": 10.67,
+          "h": 10.67
+        },
+        {
+          "tag": "path",
+          "x": 183.13,
+          "y": 45.13,
+          "w": 2.87,
+          "h": 2.87
+        }
+      ],
+      "after": [
+        {
+          "tag": "path",
+          "x": 183.11,
+          "y": 45.11,
+          "w": 2.89,
+          "h": 2.89
+        },
+        {
+          "tag": "circle",
+          "x": 174,
+          "y": 36,
+          "w": 10.67,
+          "h": 10.67
+        }
+      ]
+    },
+    "1024": {
+      "at": 5,
+      "before": [
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        },
+        {
+          "tag": "path",
+          "x": 54.63,
+          "y": 107.01,
+          "w": 2.87,
+          "h": 2.87
+        }
+      ],
+      "after": [
+        {
+          "tag": "path",
+          "x": 54.61,
+          "y": 106.98,
+          "w": 2.89,
+          "h": 2.89
+        },
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        }
+      ]
+    },
+    "1280": {
+      "at": 5,
+      "before": [
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        },
+        {
+          "tag": "path",
+          "x": 54.63,
+          "y": 107.01,
+          "w": 2.87,
+          "h": 2.87
+        }
+      ],
+      "after": [
+        {
+          "tag": "path",
+          "x": 54.61,
+          "y": 106.98,
+          "w": 2.89,
+          "h": 2.89
+        },
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        }
+      ]
+    },
+    "1440": {
+      "at": 5,
+      "before": [
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        },
+        {
+          "tag": "path",
+          "x": 54.63,
+          "y": 107.01,
+          "w": 2.87,
+          "h": 2.87
+        }
+      ],
+      "after": [
+        {
+          "tag": "path",
+          "x": 54.61,
+          "y": 106.98,
+          "w": 2.89,
+          "h": 2.89
+        },
+        {
+          "tag": "circle",
+          "x": 45.5,
+          "y": 97.88,
+          "w": 10.67,
+          "h": 10.67
+        }
+      ]
+    }
+  }
+}

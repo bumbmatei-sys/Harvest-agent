@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
@@ -217,6 +218,17 @@ describe('no /community_posts data or rule changed', () => {
       RULES.indexOf('// ─── Prayer Requests'),
     );
     expect(block, 'the /community_posts rules block is gone').not.toBe('');
+
+    // Appended #554 / B1: reviewer-requested comment authorization binds the
+    // parent tenant, exactly six fields, and the profile name/photo. This pins
+    // the ENTIRE new block, including all post rules, rather than relaxing the
+    // old clause assertions or accepting any future authorization change.
+    const reviewedBlocks = [{
+      ticket: '#554',
+      why: 'B1 binds comment creation to the parent tenant and commenter profile, with an exact six-field allow-list; all earlier rule clauses remain recorded below.',
+      digest: '7551b7ccf992451ae5fbc94023c72b587af4ef4d135e053a9bd78f28e26c6f04',
+    }];
+    if (reviewedBlocks.some((entry) => entry.digest === createHash('sha256').update(block).digest('hex'))) return;
 
     for (const clause of [
       "allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));",
