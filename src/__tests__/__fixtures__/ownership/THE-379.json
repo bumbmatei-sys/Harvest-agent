@@ -67,6 +67,41 @@
       "file": "src/app/api/my-registrations/route.ts",
       "digest": "051e1e33c4b9a7a292444ec3ed608690d2c8cd723acb078a2f8c3655afaedb48",
       "why": "APPENDED, NOT SUBSTITUTED — THE-351's own entry for this file stays accepted. A PURE APPEND to the event join this route already performs: `endMillis`, `onlineLink` and `description`, read off the SAME event document this route already fetches by the SAME eventId, for UserEvents.tsx's 'Add to calendar' and 'Join' link (see that file's own appended entry). No new query, no new collection and no change to the dual userId/email matching, the SHOWABLE_STATUSES filter or the payOptions resolution — every existing field this route returns is byte-identical."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "869341aa98b1a38cde4899ca4e01d47f82b25d3608758ee45c8fb8da32ab37a3",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — this guard file. Neither parent's own recorded digest survives a merge that touches a file both sides edited, so the combined state is recorded here rather than left unrecorded. Nothing in THE-379's own branch edited this file directly; the merge driver combined main's incoming edits with whatever state this file was already at on this branch. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "fc03a58909d479f4071747af5aa066a6a9b494ad17b55863f391e7d01e8f1bbd",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — same reason as the adjacent entry above: this guard file's combined post-merge state is recorded because neither parent's own accepted digest matches a three-way merge, not because THE-379's own branch work edited it. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "758d02aa607460cf62a411e3673891c3db5cab2c0e8a45de6ce69fca6dcfa64b",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-379's own prior digest for this file (cc13a592..., recording EventListCalendar.tsx as a RECORDED_ADOPTERS entry) stays accepted; main's incoming community-related adopters landed in the same file at the same time, so the merged content matches neither parent alone. Recorded here as the union, with every earlier accepted value on both sides intact."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "51319540371ca2bbe893a5f2917005cebe921a7b1864e9e18bfe55d0add4696a",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-555's recorded digest for this file stays accepted; this branch's own HANDLE_SAVE_ACCEPTED/submit-route/emptyForm appends from earlier in THE-379 (recorded by literal in the guard file itself, not here) combine with THE-555's edit into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "de2f9239af8020e32b35cfbf30021c5d4ebfa90f9b13ac18edea37a20b7da764",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-555's recorded digest for this file stays accepted; this branch's own colour-literal reorder/append for AdminEvents.tsx (recorded by literal in the guard file itself, not here) combines with THE-555's edit into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "1dc9b2be03ad5ac2a98d57263aa6771d18f788ff7a83ac9f0690f88fa05c8de2",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — the ONE real conflict this merge produced, resolved by keeping BOTH sides' ALLOWED_ADDITIONS entries: THE-379's THE_379_MOBILE_TOKENS/LIST_REDESIGN_MOBILE_TOKENS spreads (the admin event detail's tabs/header and the events-list redesign) and #554/THE-555's lucide-react 0.577 upgrade entries (lucide-link-2, lucide-trash-2, the canonical aliases the new version also emits). Every #554/THE-555-recorded digest above stays accepted as a valid PRIOR state; this is the merged HEAD state, recorded because a three-way merge matches neither parent's own pin."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2d3cbb67ac17ab2c13879f0fdaf83ac346c2ea8f1637e99aab68ccc0d13f452f",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — #554/THE-555's recorded digests for this file stay accepted; this branch's own AdminEvents.tsx accepted-digest appends (recorded by literal in the guard file itself, not here) combine with #554/THE-555's community/navigation edits into a state neither side alone produced. No accepted value on either parent is removed or reworded."
     }
   ]
 }
