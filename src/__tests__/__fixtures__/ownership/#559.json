@@ -1,0 +1,15 @@
+{
+  "ticket": "#559",
+  "entries": [
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "8a4d6028b15550f584dad4e02ea64128cbe2d60ddd6a8247256bdc1a8279f546",
+      "why": "PR #559 updated the pinned DEFAULT_PROSE_CLASS string and comments after the editor prose cap; AdminDocs itself is unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "4c4efca5b539d2eed1628a98090428fe1a88f589c235dbb0ad4f6d289b7eb351",
+      "why": "PR #559 narrowed the RichTextEditor guard to exempt only comment lines and the exact DEFAULT_PROSE_CLASS declaration, with a table test proving other edits still fail."
+    }
+  ]
+}

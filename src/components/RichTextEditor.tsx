@@ -21,13 +21,26 @@ import { auth } from '../firebase';
 import RichTextToolbar, { type ToolbarItem } from './editor/RichTextToolbar';
 
 /**
- * The prose ramp every editor in the app has had, unchanged.
+ * The prose ramp every editor in the app has had, capped at `lg:prose-lg` and
+ * pinned to a true 18px at `lg`.
  *
- * `xl:prose-2xl` is a 1.5rem base above 1280px, which is a deliberate reading
- * size for long-form writing and the wrong one for a dense screen. Named so the
- * default is a value with a reason rather than a string nobody can question.
+ * The cap is the point: the editor body tops out at 18px, the size the
+ * published article renders at (the blog article pins its body the same way,
+ * `lg:text-[18px]` in `src/app/blog/[id]/page.tsx`), so a piece is written at
+ * the size it is read. The dropped `xl:prose-2xl` ran past that — a 1.5rem
+ * base above 1280px, a deliberate reading size for long-form writing and the
+ * wrong one for a dense screen.
+ *
+ * `lg:prose-lg` alone does NOT reach 18px: the desktop rem trim (:root 14.5px
+ * at 1024px in globals.css) lands its 1.125rem at ~16.3px. The `lg:text-[18px]`
+ * pin is px for exactly that reason, and it out-ranks `lg:prose-lg`: both
+ * compile into the utilities layer and the text utility is emitted after the
+ * typography block, so from 1024px up the body holds 18px exactly. Below `lg`
+ * the ramp is unchanged — `prose-sm` on a phone, `sm:prose` between. Named so
+ * the default is a value with a reason rather than a string nobody can
+ * question.
  */
-export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl';
+export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg lg:text-[18px]';
 
 /**
  * A document-sized body, for screens that are not documents.
@@ -46,11 +59,10 @@ interface RichTextEditorProps {
   /**
    * The prose classes on the editor body.
    *
-   * Defaults to the responsive ramp every caller has always had. That ramp ends
-   * at `xl:prose-2xl`, whose base is 1.5rem — fine for a blog post being written
-   * at reading size, far too big for a notes app, where it rendered the body and
-   * its placeholder at 24px on any monitor. A caller whose measure is not a
-   * document's passes its own instead of every screen inheriting one screen's.
+   * Defaults to the shared responsive ramp: capped at `lg:prose-lg` and pinned
+   * to a true 18px at `lg`, so the body tops out at the size the published
+   * article renders at. A caller whose measure is not a document's passes its
+   * own instead of every screen inheriting one screen's.
    */
   proseClass?: string;
 }
