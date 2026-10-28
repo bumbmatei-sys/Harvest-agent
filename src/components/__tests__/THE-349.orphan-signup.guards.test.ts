@@ -33,6 +33,9 @@ import { googleAuthFailureMessage, homeScreenGoogleMessage } from '../../utils/a
  * TypeScript parse, which is the only thing that knows it is inside JSX.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 /** 🔴 The only spelling of "the source" used for a content claim in this file. */
@@ -90,7 +93,7 @@ describe('1 · 🔴 there is no auth REDIRECT, so there is no hop to lose the te
       expect(body, `${f} reads a redirect result — the hypothesis in the brief is now live`)
         .not.toMatch(/\bgetRedirectResult\b/);
     }
-  }, 30000);
+  }, 30_000);
 
   it('the auth screen uses the POP-UP, which cannot move the opener’s hostname', () => {
     const body = code(AUTH_PAGE);
@@ -175,7 +178,7 @@ describe('3 · the new error state composes the installed `alert` primitive', ()
     .sort();
 
   it('43 primitives are on disk, and `accordion` is the one that is not', () => {
-    expect(PRIMITIVES.length, `the primitive set changed: ${PRIMITIVES.join(', ')}`).toBe(43);
+    expect(PRIMITIVES.length, `the primitive set changed: ${PRIMITIVES.join(', ')}`).toBe(43 + THE_555_PRIMITIVES.length);
     expect(PRIMITIVES, 'accordion was installed — this ticket adds no dependency').not.toContain('accordion');
     expect(PRIMITIVES, 'the primitive this ticket composes is gone').toContain('alert');
   });
@@ -200,10 +203,16 @@ describe('3 · the new error state composes the installed `alert` primitive', ()
     expect([
       '1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2',
       '50d490d35bf3a2dbb72efce29dbf954ee53d913b906e932c130dc8bcf33f8c7a',
+      'a05233586eb8cdcc2b7356ee29dd0041b51167b39136ee221a05990c9390ce40',
+      '836df3b3e7200f43238c39260f861b44a3bd11edb90c7661d801a5521ccbecb4', // THE-555: approved lucide-react upgrade; Embla is the only new dependency
+      // THE-555: embla-carousel-react, no cn artefact
     ], 'package.json changed — a dependency was added or moved').toContain(sha('package.json'));
     expect([
       'da626030b980aab1bcbe9ec608c563ca92ceda7970f416ea4f4ed6eeb86b8b84',
       'fd0a9097e9f397d9a76d446c37acb68800f249e1e6d0497c099a337d4bf2ecc0',
+      '39ba0d4cf0d6017641e94616af6a7f562930e203ac09506355e67471369a5fbf',
+      '1441f60c7db6d6ebf2c8e71a17077bdc92d3fae55d79a3b55ed184b97a5cec33', // THE-555: approved lucide-react upgrade; Embla is the only new dependency
+      // THE-555: the three Embla packages
     ], 'the lockfile moved — THE-274 pins it to an exact length').toContain(sha('package-lock.json'));
   });
 });

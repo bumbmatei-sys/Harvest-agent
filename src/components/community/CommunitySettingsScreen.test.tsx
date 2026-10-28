@@ -4,29 +4,27 @@ import { describe, expect, it, vi } from 'vitest';
 import { defaultCommunitySettings } from '@/lib/community/settings';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-const fx = vi.hoisted(() => ({ groupExists: false, writes: [] as any[], save: null as any }));
-vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'admin' } } }));
+const fx = vi.hoisted(() => ({ save: null as any }));
+vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'admin', getIdToken: async () => 'token' } } }));
 vi.mock('firebase/firestore', () => ({
-  doc: (_db: unknown, ...path: string[]) => path.join('/'), serverTimestamp: () => 'time',
+  doc: (_db: unknown, ...path: string[]) => path.join('/'),
   onSnapshot: (_ref: string, next: (s: any) => void) => { next({ exists: () => false }); return () => {}; },
-  runTransaction: async (_db: unknown, fn: (tx: any) => Promise<void>) => fn({
-    get: async (ref: string) => ({ exists: () => ref.endsWith('all-members') && fx.groupExists, data: () => undefined }),
-    set: (ref: string, data: unknown) => fx.writes.push([ref, data]),
-  }),
 }));
 vi.mock('./CommunitySettingsEditor', () => ({ CommunitySettingsEditor: ({ onSave }: any) => { fx.save = onSave; return null; } }));
 import { CommunitySettingsScreen } from './CommunitySettingsScreen';
 
-describe('community setup group bootstrap', () => {
-  it('creates the default group during setup save only when absent', async () => {
+describe('community settings save', () => {
+  it('sends settings to the authenticated server transaction', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true } as Response);
     const root = createRoot(document.createElement('div'));
     await act(async () => root.render(<CommunitySettingsScreen tenantId="tenant" available={{} as any} />));
     const settings = defaultCommunitySettings();
     await act(async () => fx.save(settings, settings));
-    expect(fx.writes).toContainEqual(['tenants/tenant/channels/all-members', expect.objectContaining({ audience: 'all', members: [], createdBy: 'admin' })]);
-    fx.writes = []; fx.groupExists = true;
-    await act(async () => fx.save(settings, settings));
-    expect(fx.writes.map(([path]) => path)).toEqual(['tenants/tenant/settings/community']);
+    expect(fetchMock).toHaveBeenCalledWith('/api/community/settings', expect.objectContaining({
+      method: 'POST', headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+      body: JSON.stringify({ tenantId: 'tenant', next: settings, previous: settings }),
+    }));
     await act(async () => root.unmount());
+    fetchMock.mockRestore();
   });
 });

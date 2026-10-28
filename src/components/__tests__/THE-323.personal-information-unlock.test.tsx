@@ -667,6 +667,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/CoursePage.tsx',
       'src/components/EmbedCard.tsx',
       'src/components/KebabMenu.tsx', // PR 554: portal menu trigger has a phone touch floor.
+      'src/components/MainApp.tsx', // THE-555: mobile tabs and profile control use the phone floor.
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order
@@ -702,7 +703,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        * which asserts BOTH floors, so this divergence cannot rot silently.
        */
       'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
-      'src/components/NewsTab.tsx', // Post actions and comment send control use the phone floor.
+      'src/components/NewsTab.tsx', // Mobile composer, post actions and comment send controls.
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order
@@ -760,6 +761,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // mounts only from lg, where the floor is 38px and 2.75rem at the 14.5px
       // root is 39.875px, inside that band. The preview copies the old rail
       // button classes so the before shot still measures them.
+      'src/components/admin-shell/AdminContentBar.tsx', // THE-555: shadcn breadcrumb Button phone floor.
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminHome.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
@@ -810,12 +812,16 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/blog/BlogScheduleFields.tsx',
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
+      // THE-555: shadcn admin composer controls state their mobile touch floor.
       // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
       'src/components/community/AdminPostComposer.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
+      'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
+      'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       'src/components/community/GroupList.tsx',
       'src/components/community/MemberPostComposer.tsx',
+      'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',
       'src/components/community/PostPresentation.tsx', // The post text expansion control uses the phone floor.
       'src/components/courses/ClassroomTab.tsx',
@@ -1124,7 +1130,13 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
     // The count is the assertion: a new runtime or dev dependency moves it, and
     // `alert` is an already-installed FILE in this repo, not a package.
     // Phase 1 is the approved exception: @tanstack/react-table, and nothing else.
-    expect(Object.keys(pkg.dependencies)).toHaveLength(70);
+    // The installed Base UI and carousel packages are recorded by the primitive inventory.
+    // THE-555: main's 70 runtime dependencies plus the approved Carousel package.
+    expect(Object.keys(pkg.dependencies)).toHaveLength(70 + 1);
+    expect(pkg.dependencies['cn']).toBeUndefined();
+    expect(pkg.dependencies['lucide-react']).toBe('^0.577.0');
+    expect(pkg.dependencies['@base-ui/react']).toBe('^1.5.0');
+    expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(Object.keys(pkg.devDependencies)).toHaveLength(20);
   });

@@ -14,6 +14,7 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { MemberAvatar, PostHeader, PostText, relativeCommentTime, CommentActivity } from './community/PostPresentation';
 import { Card } from './ui/card';
 import { usePostComments } from './community/usePostComments';
@@ -92,6 +93,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Comments state
+  const [mobileCommunity, setMobileCommunity] = useState(false);
+  const [detailPost, setDetailPost] = useState<string | null>(null);
+  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
@@ -502,7 +506,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
         ) : posts.length === 0 ? (
           <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
-          posts.map((post, index) => (
+          posts.map((post, index) => {
+            const card =
             <Card key={post.id} className="gap-0 rounded-none border-x-0 border-b border-line bg-surface-raised p-4 shadow-none ring-0 lg:rounded-[var(--ds-radius-card)] lg:border lg:shadow-[var(--ds-sh-sm)]">
               <PostHeader name={post.authorName} photo={post.authorPhoto} level={post.authorLevel} createdAt={post.createdAt} category={post.category} pinned={post.isPinned} actions={<KebabMenu
                   ariaLabel="Post options"
@@ -619,7 +624,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                   <span className="font-medium">{post.likes.length}</span>
                 </Button>
                 <Button type="button" variant="ghost"
-                  onClick={() => toggleComments(post.id)}
+                  onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}
                   style={{ color: commentsOpen[post.id] ? 'var(--brand-color)' : undefined }}
                   className="min-h-11 h-auto px-0 flex items-center gap-1.5 text-xs transition-colors sm:min-h-0 text-muted hover:text-gold"
                 >
@@ -698,8 +703,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages, eventsEnabled
                   )}
                 </div>
               )}
-            </Card>
-          ))
+            </Card>;
+            return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;
+          })
         )}
       </div>
 

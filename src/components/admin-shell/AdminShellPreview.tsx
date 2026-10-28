@@ -1,5 +1,11 @@
 'use client';
 
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const ADMIN_MOBILE_NAV_TAB = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative data-[active=false]:text-faint';
+import { Button } from '@/components/ui/button';
+
 import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Church,
@@ -52,7 +58,9 @@ const PREVIEW_TABS = new Map<string, ShellTabRef>([
   ['crm', { id: 'crm', label: 'CRM', icon: Church }],
   ['signups', { id: 'signups', label: 'Signups', icon: Church }],
   ['churches', { id: 'churches', label: 'Campuses', icon: Church }],
-  ['community', { id: 'community', label: 'Community', icon: Church }],
+  ['community', { id: 'community', label: 'Community', icon: NAV_ICONS.communities }],
+  ['community-setup', { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities }],
+  ['newsletter', { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter }],
   ['services', { id: 'services', label: 'Services', icon: Church }],
   ['docs', { id: 'docs', label: 'Notes', icon: FileText }],
   ['forms', { id: 'forms', label: 'Forms', icon: FileText }],
@@ -77,21 +85,21 @@ function MobileBar({ className }: { className: string }) {
             const Icon = tab.icon;
             const active = tab.id === 'dashboard';
             return (
-              <button
+              <Button variant="ghost"
                 key={tab.id}
                 type="button"
-                className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl ${active ? '' : 'text-faint'}`}
+                data-active={active} className={ADMIN_MOBILE_NAV_TAB}
                 style={active ? { color: 'var(--brand-color, #C9963A)' } : undefined}
               >
                 <Icon size={22} strokeWidth={active ? 2.5 : 2} />
                 <span className="text-[10px] font-medium">{tab.label}</span>
-              </button>
+              </Button>
             );
           })}
-          <button type="button" className="flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl text-faint">
+          <Button variant="ghost" type="button" className="flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl text-faint">
             <MoreHorizontal size={22} />
             <span className="text-[10px] font-medium">More</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -104,35 +112,37 @@ function BeforeChrome() {
       <div className="flex h-[100dvh] bg-surface font-sans" data-preview-view="before">
         <div data-nav-shell className={BEFORE_SHELL}>
           <div className="flex lg:flex-col justify-around lg:justify-start items-center w-full lg:gap-2">
-            <button type="button" className="hidden lg:flex items-center mb-6 shrink-0 justify-center w-full">
+            <div className="hidden lg:contents">
+            <Button variant="ghost" type="button" className="min-h-11 flex items-center mb-6 shrink-0 justify-center w-full">
               <img src={LOGO} alt="Harvest" className="w-9 h-9 object-contain" />
-            </button>
+            </Button>
+            </div>
             <div className="flex lg:hidden justify-around items-center w-full">
               {MOBILE_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = tab.id === 'dashboard';
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={tab.id}
                     type="button"
-                    className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl ${active ? '' : 'text-faint'}`}
+                    data-active={active} className={ADMIN_MOBILE_NAV_TAB}
                     style={active ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                   >
                     <Icon size={22} />
                     <span className="text-[10px] font-medium">{tab.label}</span>
-                  </button>
+                  </Button>
                 );
               })}
-              <button type="button" className="flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl text-faint">
+              <Button variant="ghost" type="button" className="flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl text-faint">
                 <MoreHorizontal size={22} />
                 <span className="text-[10px] font-medium">More</span>
-              </button>
+              </Button>
             </div>
             <div className="hidden lg:flex lg:flex-col lg:items-center lg:w-full lg:flex-1 lg:min-h-0 lg:gap-0.5">
-              <button type="button" data-nav-rail-tab="dashboard" className="flex flex-col items-center justify-center gap-1 rounded-xl min-h-11 w-full py-2 text-muted">
+              <Button variant="ghost" type="button" data-nav-rail-tab="dashboard" className="flex flex-col items-center justify-center gap-1 rounded-xl min-h-11 w-full py-2 text-muted">
                 <LayoutDashboard size={20} />
                 <span className="text-[10px] font-medium leading-none">Home</span>
-              </button>
+              </Button>
               {BEFORE_GROUPS.map((group) => {
                 const Icon = DESKTOP_GROUP_ICONS[group.label];
                 return (
@@ -149,9 +159,9 @@ function BeforeChrome() {
                       triggerClassName="flex flex-col items-center justify-center gap-1 rounded-xl min-h-11 w-full py-2 text-muted"
                     >
                       {group.items.map((item) => (
-                        <button key={item.id} type="button" className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-[13px]">
+                        <Button variant="ghost" key={item.id} type="button" className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-[13px]">
                           {item.label}
-                        </button>
+                        </Button>
                       ))}
                     </NavRailFlyout>
                   </div>
@@ -242,7 +252,7 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
               onNavigate={() => {}}
               onPlaceholder={() => {}}
               accountMenu={(
-                <button
+                <Button variant="ghost"
                   type="button"
                   data-nav-rail-account=""
                   aria-label="My account"
@@ -250,7 +260,7 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
                   className="flex size-11 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground"
                 >
                   <User />
-                </button>
+                </Button>
               )}
             />
           )}

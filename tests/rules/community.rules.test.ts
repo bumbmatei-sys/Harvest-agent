@@ -20,6 +20,32 @@ beforeAll(async () => {
 afterAll(teardownEnv);
 
 describe('community access', () => {
+  it('allows public listing reads but no client listing writes', async () => {
+    await seedDoc(`discovery_listings/${TENANT_A}`, { tenantId: TENANT_A, name: 'Public' });
+    const anonymous = (await getEnv()).unauthenticatedContext().firestore();
+    const admin = (await fullAdmin()).firestore();
+    await assertSucceeds(anonymous.collection('discovery_listings').get());
+    await assertSucceeds(anonymous.doc(`discovery_listings/${TENANT_A}`).get());
+    await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).set({ name: 'Changed' }));
+    await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).delete());
+  });
+  it('allows tenant members to read reviews and denies all client writes', async () => {
+    const path = sub(`settings/community/reviews/${MEMBER_UID}`);
+    await seedDoc(path, { uid: MEMBER_UID, rating: 5, text: 'Good' });
+    await seedDoc(sub('settings/community'), { ratingSum: 5, ratingCount: 1, ratingAvg: 5 });
+    const m = (await member()).firestore();
+    const foreign = (await adminB()).firestore();
+    const admin = (await fullAdmin()).firestore();
+    await assertSucceeds(m.collection(sub('settings/community/reviews')).get());
+    await assertFails(foreign.doc(path).get());
+    await assertFails(m.doc(path).set({ uid: MEMBER_UID, rating: 4, text: 'Edit' }));
+    await assertFails(m.doc(path).update({ rating: 3 }));
+    await assertFails(m.doc(path).delete());
+    await assertFails(admin.doc(path).set({ uid: FULL_ADMIN_UID, rating: 5, text: 'Good' }));
+    await assertFails(m.doc(sub(`settings/community/reviews/${MEMBER2_UID}`)).set({ uid: MEMBER2_UID, rating: 5, text: 'Good' }));
+    await assertFails(admin.doc(sub('settings/community')).update({ ratingSum: 0, ratingCount: 0, ratingAvg: 0 }));
+    await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).set({ ratingSum: 5, ratingCount: 1, ratingAvg: 5 }));
+  });
   it('keeps email logs platform-admin only while preserving scoped church admin access', async () => {
     const churchAdmin = (await asUid('church-admin')).firestore();
     await assertFails(churchAdmin.collection('email_log').get());
@@ -102,7 +128,7 @@ describe('community access', () => {
     const admin = (await fullAdmin()).firestore();
     const manager = (await asUid('community-manager')).firestore();
     const foreign = (await adminB()).firestore();
-    await assertSucceeds(manager.doc(sub('settings/community')).set({ isPublic: false }));
+    await assertFails(manager.doc(sub('settings/community')).set({ isPublic: false }));
     await assertFails(manager.doc(sub('settings/other')).set({ value: true }));
     await assertSucceeds(m.doc(sub('settings/community')).get());
     await assertFails(m.doc(sub('settings/community')).set({ isPublic: true }));

@@ -143,6 +143,51 @@
     },
     {
       "file": "firestore.rules",
+      "digest": "8d1a0406d3923c3eea99965de80328ed5b49a7c2a87d3e52802ae559e56bb83e",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsScreen.tsx",
+      "digest": "4fe78fbfd9be0cbb0690e791986dee4171d9e27c517f2079f8cca81e3cd4b551",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "71b9c310d4f6cf8d1fa4654fa1e3aebc69ebd76e0c898f66d78c87def153c56b",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "84f779761c8443ffb981eae9ec317f46610da015e330ea2619e98fce3a2218d3",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "2cb1047dc210534849d80e0f967de1b81144e07806c872c8562f2aa94633bef2",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "4b2210805c6aff18fc0350987a45700abccd30998fbaf36e9400c2759e4efd31",
+      "why": "Records the merged community and discovery implementation while retaining the prior reviewed digests."
+    },
+    {
+      "file": "firestore.rules",
       "digest": "61296bbac3873511c66776f8eb9674eff6361a0af35b7ec058ea388a4759f1a5",
       "why": "Round two limits the global admin helper and restores community permission or membership for channel message creation, retaining sender identity checks."
     },
@@ -175,6 +220,36 @@
       "file": "src/components/AdminCommunity.tsx",
       "digest": "10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d",
       "why": "Round two extracts the scoped user query for a regression test; explicit tenant values are filtered before each ordered limit."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "0bfc431a0dd40f4122a5b060f20e52de70d1005d2c60297d8a91af1f4dac5bb8",
+      "why": "Records the automatic merge of PR 554 admin and channel authorization with PR 555 public discovery and server-owned reviews; no additional rule edits were made during conflict resolution."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d",
+      "why": "Records the combined member shell with PR 554 community settings loading and event gates alongside PR 555 Communities, Discover, mobile navigation and scoped branding."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1",
+      "why": "Records the automatic merge of PR 554 bounded comment activity, event gating and member pin preservation with PR 555 mobile composer and post detail sheets."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640",
+      "why": "Resolves the import conflict by retaining PR 555 mobile post sheets and PR 554 shared comment activity, bounded comments, event gating and post card presentation."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "b9ce065b04e1ebd1a9c1e05fefabf43e1a6196901863baa8a9ca31a7faf55d79",
+      "why": "Unions both branches of the reviewed source pins and appends the combined feed digests while retaining historical pins, community inventories and re-anchored layout checks."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "ed820427c5913a6dce0bef1fe3a62df0cd5d8361fa37b71d0c60702b3f36ec34",
+      "why": "Retains the PR 554 dropdown trigger and PR 555 discovery touch inventories, recording that the mobile header touch targets now reside in MobileCommunityNav instead of MainApp."
     },
     {
       "file": "src/components/AllNews.tsx",
@@ -430,6 +505,66 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "7fe277c49816bb3b232a8ade1f5a45054ca9a3930d65f5570cfac18e125d86f8",
       "why": "PR 554 Bugbot follow-up stamps comments with the parent post tenant, including an apex super admin viewing another ministry. Invalid parent tenants fail visibly without writing. Payload regressions cover both feeds and Enter submission; prior accepted digests and hardened rules remain unchanged."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "9f0ae0f5906787dda1efb23857c260a7f320593b8f8e52daf9059fb546fb879b",
+      "why": "Records the automatic merge of PR 554 parent-tenant, exact-six-field and profile-bound comment creation rules with THE-555 public discovery and server-owned reviews. No rule was edited during conflict resolution; production deployment still requires the founder go."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "f09d6d80cf702475750d7a0784af85671e1a28e58d7ab04b9a35430f0e03d789",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 member feed presentation and controls; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "0f35277381e9c90d01a4c8e0ef6f20948963f87052318b9e73f9ebbba5e6128c",
+      "why": "Retains PR 554 shadcn ghost Button group rows and THE-555 left alignment, full-width wrapping, Badge unread count and min-h-11 touch floor; removes the duplicate Button import introduced by the merge."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "24158b4a9053e644c340e4fabee39c6a4f2fb8b4c30e53bd8e89c0e5f2d4f83f",
+      "why": "Unions both branches explanations for the composer touch floor and preserves the full exact min-h-11 sweep inventory, including THE-555 MainApp and AdminContentBar entries; no sweep assertion is removed."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "4f6697ef288d4cb3f9f9863fd31b8991b4e0d805f99bb9fff4815f2100696861",
+      "why": "Merges PR 554 parent-tenant comment writes, profile-bound bylines and removal of comment level badges with THE-555 mobile post sheet; preserves every earlier source pin."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "e369cefd12a60cda0c00fcd6f232a87a0f3d7e26e6ac92aaf83f12b4d5f1f1f0",
+      "why": "Unions both branches source pins and historical Messages fixture checks, appends final merged source and fixture digests and retains THE-555 discovery shell normalization, group alignment and touch-floor comparisons."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "0a0e8181e6f44f579b55695119f5404d295514e23d52e670320ba50bbafdd4ec",
+      "why": "Records the automatically merged admin community and sidebar source pins from PR 554 and THE-555; no assertion or source inventory was changed while resolving the four explicit conflicts."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "ffa40f6cc08c5769ba21bc249ed3f8bcf70df0d949aaed221f11cbe25b018ee6",
+      "why": "Records the automatic union of PR 554 shadcn UserMessages Input accepted values with THE-555 community navigation pins; every prior accepted value and navigation authorization assertion remains intact."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "fa13f2ce126264e307d82a139ec68e204016e6e5cbfd1a644337fcc89a27efc8",
+      "why": "Records the automatic union of PR 554 comment tenant, field allowlist, byline and authorization regressions with THE-555 public discovery and server-owned review rules tests. No emulator test was edited during conflict resolution."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "8858c0abe8888a61f0b4ce6a9e6ab92d2c4bc62284be15c40a583591fed61f47",
+      "why": "Records the automatic merge retaining PR 554 exact-six-field parent-tenant comment authorization and UID-only counterpart guards with THE-555 shared safe-area navigation and sender identity protections."
+    },
+    {
+      "file": "src/components/community/AdminPostComposer.tsx",
+      "digest": "93be868227068983706af5fc0aa4fbb51163088a1d769c43bab7283ff5b1b6e8",
+      "why": "Combines PR 554 ghost Button, Input and Textarea controls and responsive intrinsic sizing with THE-555 Avatar, ToggleGroup, DropdownMenu, named pin states and THE-346 avatar/paperclip anchors; retains 44px mobile targets."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/member-screens-THE-555-mobile.json",
+      "digest": "61ca93feb1ea61cb3d3fbf13f713f56a0cef8f4d4b5a85e8b0ab63485e58e38b",
+      "why": "Merges only PR 554 shadcn group-search Input class, height and colour records into the two THE-555 Messages surfaces; retains the left-aligned group Button row and the NewsTab/MainApp records byte for byte."
     },
     {
       "file": "src/components/community/CommunitySettingsEditor.tsx",

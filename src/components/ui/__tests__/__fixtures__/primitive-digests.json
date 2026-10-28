@@ -7,6 +7,7 @@
   "src/components/ui/button.tsx": "91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d",
   "src/components/ui/calendar.tsx": "0ea3d4bd2cf7b8edef5bd5a724518d94d609b15f2f4f42e489c63f532706e55c",
   "src/components/ui/card.tsx": "d8113cbf964f8d1aadf2649d2944d8bbc6e3cfd49d36746f76868cbc4dde3cfe",
+  "src/components/ui/carousel.tsx": "bb2fb1ec0e14eb2e8ca17f429d8e2631bf15298b46aea139a1c2a4f9e1ff2521",
   "src/components/ui/chart.tsx": "0060b7708d85a5fffc914dcd1ee4753b5acfe83db7ba634b4cea280bd9f19c8f",
   "src/components/ui/checkbox.tsx": "7221fec06ed8f697d03157cec8e668f84fcc6706391f487a90773b7fe4fc762d",
   "src/components/ui/collapsible.tsx": "ead4349ff7b01d696ef89294a81d18ee1d3f732321398896462c834ab9b9e065",

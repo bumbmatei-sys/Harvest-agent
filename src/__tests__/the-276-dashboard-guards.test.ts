@@ -317,6 +317,9 @@ describe('no new token was defined', () => {
  */
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
+    ['ae4e68fb90925f00c315a3e3d4f00cf2cf1883ea6b8993e5d7cc997d53b008d2', 'THE-555 round 5: Lucide nav icon swap (Mailbox and ToolCase), shadcn controls and existing plan/permission gates retained; the desktop logo visibility moves to a wrapper so the Button keeps its min-h-11 floor when measured independently.'],
+    ['7f79e7ab917d72cea7dddc84f5a943ec5c7e89d7fa6c1ee15383ac5c503e09a1', 'THE-555 review F1: Community setup navigation and render gates now require hasFullAccess || perms.manageCommunity, matching the settings API permission. A manageSettings-only admin cannot reach the screen; a manageCommunity-only admin can.'],
+    ['fea3a3f8e57136a8b521a434c29bb2a95b93f82795d651ac150f9da324a96b6d', 'THE-555 review F1 follow-up: Shares canCommunity across Community navigation and Community setup navigation/direct rendering. The predicate requires full access or manageCommunity, matching the settings API and excluding manageSettings-only access. The exact permission inventory remains unchanged; all earlier digests are retained.'],
     ['0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7', 'main at 5e06c67, where this branch started'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at d13c7d4 — THE-277 (#422) added the Signups nav entry'],
     // THE-291 removed the dead `onChangePlan` / `onCancelPlan` props from the
@@ -443,6 +446,8 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da', 'Palette content search (#548) - AdminDashboard.tsx. go() takes an optional item id and the sidebar gets a search prop. No nav array, entitlement, plan check, permission term, query or write path changed.'],
     ['3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f', 'Two-plan repricing - AdminDashboard.tsx. The plan is read through canonicalPlanId, the Check-In withholding keys off church (the cheapest paid tier) instead of plus, and the Accounting entry is labelled Giving records. No route, permission term, plan gate cell or write path moved. (THE-378)'],
     ['1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158', 'Community setup adds its settings screen and navigation entry while retaining the existing permission gate.'],
+    // APPENDED BY THE-555; earlier digests and reasons are retained.
+    ['d124151bc5a895cb4117c7e396e175fc7db04734d29b7ceb73558d8fd42db69e', 'THE-555 - Lucide nav icon swap: Newsletter uses Mailbox and Community uses ToolCase through NAV_ICONS. Retains the required shadcn Button conversions, names their state classes locally, and preserves phone touch floors. No nav array structure, route, permission, entitlement or screen mount changed.'],
   ],
 };
 

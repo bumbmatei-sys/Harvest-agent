@@ -124,6 +124,16 @@
     },
     {
       "file": "firestore.rules",
+      "digest": "bd4fc9325fb27c76654171fce4419f78bec16f2ca247b28668ed3506e2272cc9",
+      "why": "Community step 2 adds discovery_listings public read / no client write and closes client writes on tenants/{tenantId}/settings/community; not deployed by this PR."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "435294253af118ca2048f9e6ee5b6b1cebc3bf009e7f3e0e5c10b5ab522c5da9",
+      "why": "Add Communities and Discover desktop navigation and render their member views while preserving existing module and entry gates."
+    },
+    {
+      "file": "firestore.rules",
       "digest": "c3cf91cbc331360778228bf0ed14b2cfa001aaffaf6bc63e9cb894c9aa6d9d0f",
       "why": "Allow legacy text posts without a type while retaining member rich-content restrictions."
     },
@@ -158,6 +168,46 @@
       "why": "Record the phone touch floors added to the group creation dialog buttons in the preceding community CI fix."
     },
     {
+      "file": "firestore.rules",
+      "digest": "bd7b6101c0e42ae4ddbcfc408c9e3009f3ec5ddcd5378c0a04cb3d7e7aad67ab",
+      "why": "Record the combined community and discovery branch changes after merge da19db1f."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "f7204995a62210c2dee47e5d0f7020202764e2d1f09bd0aa9f83c22755407831",
+      "why": "Record the combined community and discovery branch changes after merge da19db1f."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "e330db0c53c9aa65936fc6c944778fc607d46f680f2d08909e71176b04d7ef68",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "89610dcc785f31ebac56f51f440aa64d3b5a765f11a1dfb3bdaec8d4d73aa73e",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "2b31b562210170e7ef7a98ae17da9f015feb81285494041e7171a97081fee88c",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "2407df50cf100157363148bcde5950aa02b551b6222e7ab70fac6f6d762bf245",
+      "why": "Filter the mobile community sections through the tenant module switches, while preserving the existing plan gates and desktop navigation."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "fbbb5f3f7713b885c52891c0ca4acf097f09557b3d58d4ae47c7ade4aba72656",
+      "why": "Record the shell element inventory after adding the mobile community header, switcher and bottom navigation."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "60aab9c86ad4b7e1d42a3923ee827c108d324679470d5613e8d0fb627fcab1c7",
+      "why": "Open post details in a full-screen sheet on mobile in the full news list, preserving its desktop cards."
+    },
+    {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "ba30cde12ae7fef224065a3401c520a759aefcf90a2acf4840e616a173aba7e0",
       "why": "Record the combined community and digital products primitive adopter changes after merging main, retaining both sets of existing adopters."
@@ -171,6 +221,63 @@
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "222efce52690bdd8b5b379f1a12f60317ec6773657f4477b7938b1cae52b55e0",
       "why": "Record the combined community touch-floor and digital products assertions after merging main, preserving both sets of checks."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "3a3d20bbd8169d08e573eaf1958e162eae524dbe97e1f60097150b5a54cef6a7",
+      "why": "Record the combined community navigation, discovery shell and digital products changes while retaining both features."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "7f8f2daa34515178f94f97e5fa062465496b2c2a1621947394727b4d87303027",
+      "why": "Record the touch-target inventory after merging the community discovery shell and digital products controls."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "e911777ef302dc0a4e42f1e17634eb65b0792cf841c911c52301cfaf61311dc8",
+      "why": "Record the navigation and safe-area inventory after merging the community discovery shell and digital products changes."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "ticket": "THE-999999",
+      "reason": "Record the community discovery loading cards as a Skeleton adopter while preserving separate error and empty states.",
+      "digest": "358591d5eb2b8abf9961269abe21ab40cfea75aa8891868a9ce944e28f16a1dc",
+      "why": "Record the community discovery loading cards as a Skeleton adopter while preserving separate error and empty states."
+    },
+    {
+      "file": "src/app/discover/page.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Keep coverage for public discover routing and tenant-host rejection without reserving a tenant subdomain.",
+      "digest": "fe5c29995867ee0b75007d7a28dd15f6da9db75d4ba2668c3eead72648394cac",
+      "why": "Keep coverage for public discover routing and tenant-host rejection without reserving a tenant subdomain."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "ticket": "THE-999999",
+      "reason": "Apply the existing tenant logo plate to the mobile community switcher so logos remain legible in dark themes.",
+      "digest": "64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3",
+      "why": "Apply the existing tenant logo plate to the mobile community switcher so logos remain legible in dark themes."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Record the exact mobile post detail sheet changes while retaining the full pre-existing source comparison for AllNews.",
+      "digest": "4b959745f4e2ccb244d4b859ce506ac0adfda87f19bf4d3dabb40893390ea057",
+      "why": "Record the exact mobile post detail sheet changes while retaining the full pre-existing source comparison for AllNews."
+    },
+    {
+      "file": "src/utils/non-tenant-subdomains.ts",
+      "ticket": "THE-999999",
+      "reason": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only.",
+      "digest": "d9b07f46dfaa41896ad732866b2b9e09cabfa6f4f02ddb6e4d30a5066d2295d9",
+      "why": "Restore the shared tenant resolver subdomain set to its original bytes; discover remains a public path only."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "ticket": "THE-999999",
+      "reason": "Append the reviewed MainApp logo plate digest to the community implementation pin.",
+      "digest": "32255c3b76a1aa70d0a356d7d2261571b87b8517d11ed910db71ac084792cb70",
+      "why": "Append the reviewed MainApp logo plate digest to the community implementation pin."
     }
   ]
 }

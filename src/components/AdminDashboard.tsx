@@ -1,7 +1,13 @@
 "use client";
+
+import { NAV_ICONS } from '@/components/layout/nav-icons';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const ADMIN_MOBILE_NAV_TAB = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative data-[active=false]:text-faint';
+const ADMIN_MOBILE_NAV_MORE = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all data-[active=false]:text-faint';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -687,6 +693,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
   const canSettings = hasFullAccess || !!perms.manageSettings;
 
+  // Community setup shares the community settings API's permission, including
+  // on direct navigation. Settings access alone does not grant community access.
+  const canCommunity = hasFullAccess || !!perms.manageCommunity;
+
   // The desktop Settings popup owns Plan & billing and Campus & branding. On a
   // phone (no popup) the Billing & Payments overlay and the Branding tab remain.
   // The sidebar account menu drops its Billing row only while this popup is the
@@ -790,7 +800,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     NEWSLETTER_FEATURE_ENABLED &&
       navAllows(features?.newsletterAutomation) &&
       (hasFullAccess || perms.manageNewsletter) &&
-      { id: 'newsletter', label: 'Newsletter', icon: Mail },
+      { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
     // Fundraising campaigns
     navAllows(features?.fundraising) &&
       (hasFullAccess || perms.manageFundraising) &&
@@ -911,9 +921,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
     navAllows(features?.communityGroups) &&
-      (hasFullAccess || perms.manageCommunity) &&
-      { id: 'community', label: 'Community', icon: MessageSquare },
-    canSettings && { id: 'community-setup', label: 'Community setup', icon: MessageSquare },
+      canCommunity &&
+      { id: 'community', label: 'Community', icon: NAV_ICONS.communities },
+    canCommunity && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
     isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
@@ -1034,10 +1044,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     const Icon = tab.icon;
     const isActive = activeTab === tab.id;
     return (
-      <button
+      <Button variant="ghost"
         key={tab.id}
         onClick={() => go(tab.id)}
-        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-surface-sunken active:bg-surface-sunken"
+        className="min-h-11 w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-surface-sunken active:bg-surface-sunken"
         style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
         <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-surface-sunken flex items-center justify-center">
@@ -1055,7 +1065,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </span>
         )}
         <ChevronRight size={16} className="text-faint shrink-0" />
-      </button>
+      </Button>
     );
   };
 
@@ -1217,9 +1227,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
               the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
-          <button
+          <div className="hidden lg:contents">
+          <Button variant="ghost"
             onClick={() => go('dashboard')}
-            className="hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
+            className="min-h-11 flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
           >
             <img
               src={displayLogo}
@@ -1232,7 +1243,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 truncating it to noise. The mark itself stays, and it is still
                 the member-app entry point. The tenant name is not lost — the
                 top bar carries it, and a white-label tenant's mark is its own. */}
-          </button>
+          </Button>
+          </div>
 
           {/* Mobile: primary tabs + More button */}
           <div className="flex lg:hidden justify-around items-center w-full">
@@ -1240,12 +1252,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <Button variant="ghost"
                   key={tab.id}
                   onClick={() => go(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
-                    isActive ? '' : 'text-faint'
-                  }`}
+                  data-active={isActive}
+                  className={ADMIN_MOBILE_NAV_TAB}
                   style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 >
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
@@ -1253,19 +1264,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   {tab.id === 'churches' && pendingChurchesCount > 0 && (
                     <span className="absolute top-1 right-2 bg-red-500 rounded-full border-2 border-white w-3 h-3"></span>
                   )}
-                </button>
+                </Button>
               );
             })}
-            <button
+            <Button variant="ghost"
               onClick={() => setShowMoreSheet(!showMoreSheet)}
-              className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
-                showMoreSheet ? '' : 'text-faint'
-              }`}
+              data-active={showMoreSheet}
+              className={ADMIN_MOBILE_NAV_MORE}
               style={showMoreSheet ? { color: 'var(--brand-color, #C9963A)' } : undefined}
             >
               <MoreHorizontal size={22} strokeWidth={2} />
               <span className="text-[10px] font-medium">More</span>
-            </button>
+            </Button>
           </div>
 
         </div>
@@ -1497,7 +1507,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : planAllows(features?.smsAutomation)
                 ? <div className="p-4 lg:p-0"><AdminSms /></div>
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'community-setup' && canSettings ? (
+          ) : activeTab === 'community-setup' && canCommunity ? (
             <CommunitySettingsScreen tenantId={tenantId} available={{
               news: planAllows(features?.newsFeed), blog: planAllows(features?.blog),
               courses: true, events: true, messages: planAllows(features?.communityGroups),
@@ -1662,13 +1672,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {showProfile && (
         <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
           <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
-            <button
+            <Button variant="ghost"
               onClick={() => setShowProfile(false)}
               aria-label="Close profile"
-              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
+              className="min-h-11 min-w-11 p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
-            </button>
+            </Button>
             <span className="text-sm font-bold text-strong">My Profile</span>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -1702,13 +1712,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {showBilling && billingAccess === 'yes' && (
         <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
           <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
-            <button
+            <Button variant="ghost"
               onClick={() => setShowBilling(false)}
               aria-label="Close billing"
-              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
+              className="min-h-11 min-w-11 p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
-            </button>
+            </Button>
             <span className="text-sm font-bold text-strong">Billing &amp; Payments</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 lg:p-6">

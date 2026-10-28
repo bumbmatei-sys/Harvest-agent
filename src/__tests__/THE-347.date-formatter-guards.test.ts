@@ -32,6 +32,9 @@ import { tsMillis } from '../utils/query-helpers';
  * card 86bbxkawp records an inherited stripper that ate ~150 lines.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('hex');
@@ -394,7 +397,7 @@ describe('every element that has a primitive uses it', () => {
 
   it('there are 43 of them and `accordion` is the absent one', () => {
     const names = primitives();
-    expect(names, 'the primitive count moved').toHaveLength(43);
+    expect(names, 'the primitive count moved').toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(names, '`accordion` appeared').not.toContain('accordion');
     for (const named of ['alert', 'badge', 'empty']) {
       expect(names, `${named} is missing`).toContain(named);

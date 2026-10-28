@@ -1,18 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/firebase';
 import { readCommunitySettings, type CommunityModule, type CommunitySettings } from '@/lib/community/settings';
 import { CommunitySettingsEditor } from './CommunitySettingsEditor';
-
-function settingsFingerprint(settings: CommunitySettings): string {
-  return JSON.stringify([
-    Object.keys(settings.modules).sort().map(key => [key, settings.modules[key as CommunityModule]]),
-    settings.isPublic, settings.rules.enabled, settings.rules.items, settings.rules.version,
-    settings.questions.enabled, settings.questions.items.map(q => [q.id, q.type, q.label, q.options, q.required]),
-  ]);
-}
 
 export function CommunitySettingsScreen({ tenantId, available }: {
   tenantId: string | null;
@@ -32,18 +24,17 @@ export function CommunitySettingsScreen({ tenantId, available }: {
   if (error) return <p role="alert" className="p-4">{error}</p>;
   if (!settings || !tenantId) return <p className="p-4">Loading community settings…</p>;
   return <><CommunitySettingsEditor key={tenantId} settings={settings} available={available}
-    onSave={(next, previous) => runTransaction(db, async transaction => {
-      const ref = doc(db, 'tenants', tenantId, 'settings', 'community');
-      const groupRef = doc(db, 'tenants', tenantId, 'channels', 'all-members');
-      const [snapshot, group] = await Promise.all([transaction.get(ref), transaction.get(groupRef)]);
-      const current = readCommunitySettings(snapshot.exists() ? snapshot.data() : undefined);
-      if (settingsFingerprint(current) !== settingsFingerprint(previous)) {
-        throw new Error('Community settings changed elsewhere. Reload this page before saving.');
+    onSave={async (next, previous) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Sign in to save community settings.');
+      const token = await user.getIdToken();
+      const response = await fetch('/api/community/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId, next, previous }),
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Could not save community settings.');
       }
-      if (!group.exists()) {
-        if (!auth.currentUser) throw new Error('Sign in to save community settings.');
-        transaction.set(groupRef, { name: 'All members', description: '', audience: 'all', members: [], createdAt: serverTimestamp(), createdBy: auth.currentUser.uid, type: 'announcement' });
-      }
-      transaction.set(ref, next);
-    })} /></>;
+    }} /></>;
 }

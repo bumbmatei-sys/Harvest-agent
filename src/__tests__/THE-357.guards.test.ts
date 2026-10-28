@@ -97,6 +97,9 @@ import { ownershipFailure } from './__fixtures__/ownership-register';
  * that takes it inherits the list rather than rediscovering it.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 /** 🔴 THE PARSER-BASED STRIPPER (#496), IMPORTED AND NEVER COPIED. The regex one
@@ -880,12 +883,13 @@ describe('9 · no colour hardcoded, no emoji added, no new token or dependency',
     const pkg = JSON.parse(read('package.json')) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
     // 89 was the tree before phase 1. The one addition is @tanstack/react-table.
     expect(Object.keys(pkg.dependencies).length + Object.keys(pkg.devDependencies).length,
-      'a dependency was added').toBe(90);
+      'a dependency was added').toBe(90 + 1); // THE-555: embla-carousel-react
+    expect(pkg.dependencies['embla-carousel-react']).toBe('^8.6.0');
     expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     // No primitive was installed, and none was adopted that is not already
     // recorded — AdminSms's ten are unchanged and `accordion` is still absent.
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).filter((f) => f.endsWith('.tsx')),
-      'a primitive was installed or removed').toHaveLength(43);
+      'a primitive was installed or removed').toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).includes('accordion.tsx'),
       'accordion appeared').toBe(false);
     // Rule 4's tokens are adopted, not extended: no new density name exists.

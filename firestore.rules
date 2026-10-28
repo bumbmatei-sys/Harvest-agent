@@ -168,6 +168,11 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(emailConsentKeys());
     }
 
+    match /discovery_listings/{tenantId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
     //
     // newsletterOptIn / newsletterOptInAt / newsletterOptInSource: platform
@@ -672,8 +677,12 @@ service cloud.firestore {
       // become an ungoverned write surface.
       match /settings/{settingId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if hasPermission('manageSettings', tenantId) ||
-          (settingId == 'community' && hasPermission('manageCommunity', tenantId));
+        allow write: if settingId != 'community' && hasPermission('manageSettings', tenantId);
+      }
+
+      match /settings/community/reviews/{uid} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if false;
       }
 
       match /communityMembers/{uid} {

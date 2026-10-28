@@ -1,10 +1,16 @@
 "use client";
+import { Button } from '@/components/ui/button';
+
+// THE-555: named classes let the touch-floor guard resolve every state.
+const COMPOSER_PIN_BUTTON = 'h-auto min-h-11 sm:min-h-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors data-[pinned=true]:bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] data-[pinned=true]:text-gold data-[pinned=false]:text-muted data-[pinned=false]:hover:bg-surface-sunken';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import React from 'react';
 import Image from 'next/image';
 import { Paperclip, Pin, Send, X } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUpload } from '../ImageUpload';
 import { EmbedComposerChip, type PostEmbed, type EmbedType } from '../EmbedCard';
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
@@ -27,40 +33,20 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (
-            <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-3 w-fit">
-              <Button variant="ghost"
-                type="button"
-                onClick={() => setComposerMode('post')}
-                aria-pressed={composerMode === 'post'}
-                className="h-auto min-h-11 sm:min-h-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors text-faint aria-pressed:bg-surface-raised aria-pressed:shadow-xs aria-pressed:text-strong"
-              >
-                Post
-              </Button>
-              <Button variant="ghost"
-                type="button"
-                onClick={() => {
-                  // Poll is mutually exclusive with images/embeds — clear them.
-                  setComposerMode('poll');
-                  setComposerImages([]);
-                  setShowImageAttach(false);
-                  setComposerEmbed(null);
-                  setAttachMenuOpen(false);
-                }}
-                aria-pressed={composerMode === 'poll'}
-                className="h-auto min-h-11 sm:min-h-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors text-faint aria-pressed:bg-surface-raised aria-pressed:shadow-xs aria-pressed:text-strong"
-              >
-                Poll
-              </Button>
-            </div>
+            <ToggleGroup value={[composerMode]} onValueChange={values => {
+              const mode = values[values.length - 1];
+              if (mode === 'post') setComposerMode('post');
+              if (mode === 'poll') {
+                setComposerMode('poll'); setComposerImages([]); setShowImageAttach(false);
+                setComposerEmbed(null); setAttachMenuOpen(false);
+              }
+            }} className="mb-3 w-fit">
+              <ToggleGroupItem value="post" className="min-h-11">Post</ToggleGroupItem>
+              <ToggleGroupItem value="poll" className="min-h-11">Poll</ToggleGroupItem>
+            </ToggleGroup>
           )}
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
-              {user.photoURL ? (
-                <Image src={user.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                (user.displayName || 'Y').charAt(0)
-              )}
-            </div>
+            <Avatar className="size-9 shrink-0"><AvatarImage src={user.photoURL || undefined} alt="You" referrerPolicy="no-referrer" /><AvatarFallback>{(user.displayName || 'Y').charAt(0)}</AvatarFallback></Avatar>
             <Textarea
               value={composerText}
               onChange={(e) => setComposerText(e.target.value)}
@@ -87,7 +73,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                       type="button"
                       onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
                       aria-label={`Remove option ${index + 1}`}
-                      className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 text-faint hover:text-red-500 transition-colors"
+                      className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 text-faint hover:text-destructive transition-colors"
                     >
                       <X size={16} />
                     </Button>
@@ -116,7 +102,7 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                     type="button"
                     onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
                     aria-label={`Remove image ${i + 1}`}
-                    className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                    className="h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                   >
                     <X size={12} />
                   </Button>
@@ -178,57 +164,16 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
             <div className="flex items-center gap-1">
               {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
               {composerMode === 'post' && (
-                <div className="relative" ref={attachMenuRef}>
-                  <Button variant="ghost"
-                    type="button"
-                    onClick={() => setAttachMenuOpen(o => !o)}
-                    aria-label="Add attachment"
-                    aria-haspopup="menu"
-                    aria-expanded={attachMenuOpen}
-                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors h-auto min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
-                  >
-                    <Paperclip size={18} />
-                  </Button>
-                  {attachMenuOpen && (
-                    <div
-                      role="menu"
-                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
-                    >
-                      <Button variant="ghost"
-                        type="button"
-                        role="menuitem"
-                        disabled={!canPostImages}
-                        onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                        className="h-auto min-h-11 sm:min-h-0 w-full justify-start text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {canPostImages ? 'Add image' : 'Max 3 images'}
-                      </Button>
-                      <Button variant="ghost"
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                        className="h-auto min-h-11 sm:min-h-0 w-full justify-start text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add blog article
-                      </Button>
-                      <Button variant="ghost"
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                        className="h-auto min-h-11 sm:min-h-0 w-full justify-start text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add fundraising
-                      </Button>
-                      <Button variant="ghost"
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                        className="h-auto min-h-11 sm:min-h-0 w-full justify-start text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add event
-                      </Button>
-                    </div>
-                  )}
+                <div ref={attachMenuRef}>
+                  <DropdownMenu open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
+                    <DropdownMenuTrigger aria-label="Add attachment" className="p-2 -ml-2 text-muted hover:bg-surface-sunken hover:text-gold rounded-full min-h-11 min-w-11"><Paperclip size={18} /></DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start" className="min-w-44">
+                      <DropdownMenuItem className="min-h-11" disabled={!canPostImages} onClick={() => setShowImageAttach(true)}>{canPostImages ? 'Add image' : 'Max 3 images'}</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('blog')}>Add blog article</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('fundraising')}>Add fundraising</DropdownMenuItem>
+                      <DropdownMenuItem className="min-h-11" onClick={() => setEmbedPicker('event')}>Add event</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
@@ -238,14 +183,15 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                 onClick={() => setComposerPinned(p => !p)}
                 aria-pressed={composerPinned}
                 aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className="h-auto min-h-11 sm:min-h-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors text-muted aria-pressed:bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] aria-pressed:text-gold aria-[pressed=false]:hover:bg-surface-sunken"
+                data-pinned={composerPinned}
+                className={COMPOSER_PIN_BUTTON}
               >
                 <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
                 {composerPinned ? 'Pinned' : 'Pin'}
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="min-h-11 flex items-center gap-2">
               {editingPostId && (
                 <Button variant="ghost"
                   type="button"
@@ -255,11 +201,11 @@ export function AdminPostComposer({ user, editingPostId, composerMode, setCompos
                   Cancel
                 </Button>
               )}
-              <Button
+              <Button variant="ghost"
                 type="button"
                 onClick={handleSubmitPost}
                 disabled={isPosting || !composerCanSubmit}
-                className="h-auto min-h-11 sm:min-h-0 flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-auto min-h-11 sm:min-h-0 flex items-center gap-2 px-5 py-1.5 bg-gold text-[var(--brand-foreground)] rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={16} />
                 {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}
