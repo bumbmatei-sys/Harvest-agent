@@ -1401,6 +1401,177 @@ const THE_379_PRIMITIVE_CLASSES: readonly string[] = [
 ];
 
 /**
+ * The events LIST redesign (Eden layout #1: a mini calendar, Upcoming/Drafts
+ * /Past, Eden-style rows) — `calendar` adopted on `AdminEvents.tsx`'s own
+ * JSX for the first time. THE-308 already adopted it for the MONTH tab, but
+ * that is `EventMonthView.tsx`'s file, hashed separately; this is the first
+ * time this screen's own source reaches it, via the lazily-mounted
+ * `EventListCalendar`. Same provenance and proof as THE_379_PRIMITIVE_CLASSES
+ * above: every token appears verbatim in `ui/calendar.tsx`, verified below,
+ * and resolves through a theme token rather than a hardcoded colour or
+ * numbered shade.
+ */
+const CALENDAR_PRIMITIVE_CLASSES: readonly string[] = [
+  'aria-selected:text-muted-foreground',
+  'border-0',
+  'border-collapse',
+  'data-[range-end=true]:bg-primary',
+  'data-[range-end=true]:text-primary-foreground',
+  'data-[range-middle=true]:bg-muted',
+  'data-[range-middle=true]:text-foreground',
+  'data-[range-start=true]:bg-primary',
+  'data-[range-start=true]:text-primary-foreground',
+  'data-[selected-single=true]:bg-primary',
+  'data-[selected-single=true]:text-primary-foreground',
+  'group-data-[focused=true]/day:border-ring',
+  'group-data-[focused=true]/day:ring-[3px]',
+  'group-data-[focused=true]/day:ring-ring/50',
+  'in-data-[slot=card-content]:bg-transparent',
+  'in-data-[slot=popover-content]:bg-transparent',
+  'text-center',
+  'text-foreground',
+];
+
+/**
+ * Every colour-bearing class the list redesign's `default` view gains, PER
+ * VIEW rather than through a blanket `excluded`/`recorded` set the way
+ * `THE_379_PRIMITIVE_CLASSES` is: `calendar`'s own generic utilities —
+ * `text-center`, `border-0` and the rest of `CALENDAR_PRIMITIVE_CLASSES` —
+ * are common enough that a screen-wide exclusion would also hide a
+ * PRE-EXISTING, unrelated use of one of them on this screen's OTHER views
+ * (`attendees` legitimately spells `text-center` of its own, for instance),
+ * which a scoped-to-`default` list cannot. `bg-gold` is the ONE class this
+ * ticket actually hand-writes — `EventListCalendar`'s own dot marker on a day
+ * that carries an event — and it is the same token `AdminEvents.tsx`'s own
+ * online-event `Toggle` already spends on this screen (`bg-gold` IS
+ * `var(--brand-color)`), so it is a new SPOT for an existing token, not new
+ * vocabulary.
+ */
+const LIST_REDESIGN_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminEvents: { default: [...CALENDAR_PRIMITIVE_CLASSES, 'bg-gold'] },
+};
+
+/**
+ * The unprefixed heights the list redesign contributes that THE-308's own
+ * `TABS_UNPREFIXED_HEIGHTS`/`THE_379_UNPREFIXED_HEIGHTS` do not already
+ * cover. `h-(--cell-size)` and `h-full` are both verbatim in `ui/calendar.tsx`
+ * — the latter is the day CELL filling its grid row, not the day BUTTON
+ * inside it, which carries its own `--cell-size` floor. `size-(--cell-size)`
+ * is not matched by the sweep's own `/(?:^|:)h-/` pattern, so it needs no
+ * entry. `h-12` is the ONE height this ticket spells itself — the desktop
+ * row's date block, a fixed 48px DECORATION beside the row, never the row's
+ * own tap target (the row itself, `hidden lg:flex items-center gap-4 ...
+ * p-4`, carries none of its own and is sized by its content) — so it cannot
+ * shrink one.
+ */
+const LIST_REDESIGN_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'h-(--cell-size)',
+  'h-full',
+  'h-12',
+];
+
+/**
+ * The events LIST redesign — every token the mobile-layer sweep sees,
+ * because `calendar` and the new row markup render inside this screen's own
+ * JSX and the sweep does not distinguish a `lg:`-only surface from one a
+ * phone actually shows: `EventListCalendar` is Suspense-resolved under test
+ * regardless of viewport. None of it is a tap-target floor moving DOWN —
+ * section 2's own height sweep is what would catch that, and it stays green.
+ */
+const LIST_REDESIGN_MOBILE_REASON =
+  "The events LIST redesign (events remodel, Eden layout #1) — a mini calendar (`EventListCalendar`, lazy-mounted, same as `EventMonthView`) plus Upcoming/Drafts/Past and Eden-style rows reach the phone layer because they render inside this screen's own JSX, Suspense-resolved under test. Verbatim-sourced from `ui/calendar.tsx` (see CALENDAR_PRIMITIVE_CLASSES and the verbatim proof beside it) except the date block, the dot marker and the icon classes this ticket spells directly, which are structural/non-colour except `bg-gold`, proved in LIST_REDESIGN_ADDED_COLOURS.";
+const LIST_REDESIGN_MOBILE_TOKENS: readonly string[] = [
+  '[--cell-radius:var(--radius-md)]',
+  '[--cell-size:32px]',
+  'group/calendar',
+  'in-data-[slot=card-content]:bg-transparent',
+  'in-data-[slot=popover-content]:bg-transparent',
+  'p-0',
+  'rdp-root',
+  'rtl:**:[.rdp-button\\_next>svg]:rotate-180',
+  'rtl:**:[.rdp-button\\_previous>svg]:rotate-180',
+  'rdp-months',
+  'inset-x-0',
+  'rdp-nav',
+  'top-0',
+  'has-data-[icon=inline-end]:pr-3',
+  'has-data-[icon=inline-start]:pl-3',
+  'rdp-button_previous',
+  'size-(--cell-size)',
+  'lucide-chevron-left',
+  'rdp-chevron',
+  'rdp-button_next',
+  'lucide-chevron-right',
+  'rdp-month',
+  'h-(--cell-size)',
+  'px-(--cell-size)',
+  'rdp-month_caption',
+  'rdp-caption_label',
+  'border-collapse',
+  'rdp-month_grid',
+  'rdp-weekdays',
+  'font-normal',
+  'rdp-weekday',
+  'rounded-(--cell-radius)',
+  'text-[0.8rem]',
+  'rdp-weeks',
+  'rdp-week',
+  '[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)',
+  '[&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)',
+  'aria-selected:text-muted-foreground',
+  'aspect-square',
+  'group/day',
+  'h-full',
+  'invisible',
+  'rdp-day',
+  'rdp-hidden',
+  'rdp-outside',
+  'text-center',
+  '[&>span]:opacity-70',
+  '[&>span]:text-xs',
+  'border-0',
+  'data-[range-end=true]:bg-primary',
+  'data-[range-end=true]:rounded-(--cell-radius)',
+  'data-[range-end=true]:rounded-r-(--cell-radius)',
+  'data-[range-end=true]:text-primary-foreground',
+  'data-[range-middle=true]:bg-muted',
+  'data-[range-middle=true]:rounded-none',
+  'data-[range-middle=true]:text-foreground',
+  'data-[range-start=true]:bg-primary',
+  'data-[range-start=true]:rounded-(--cell-radius)',
+  'data-[range-start=true]:rounded-l-(--cell-radius)',
+  'data-[range-start=true]:text-primary-foreground',
+  'data-[selected-single=true]:bg-primary',
+  'data-[selected-single=true]:text-primary-foreground',
+  'group-data-[focused=true]/day:border-ring',
+  'group-data-[focused=true]/day:relative',
+  'group-data-[focused=true]/day:ring-[3px]',
+  'group-data-[focused=true]/day:ring-ring/50',
+  'group-data-[focused=true]/day:z-10',
+  'isolate',
+  'min-w-(--cell-size)',
+  'rdp-day_button',
+  'size-auto',
+  'z-10',
+  'data-[selected=true]:rounded-none',
+  'rdp-today',
+  'text-foreground',
+  // EventListCalendar's own dot marker, and AdminEvents' own new date block.
+  '-translate-x-1/2',
+  'bg-gold',
+  'bottom-0.5',
+  'left-1/2',
+  'size-1',
+  'space-y-4',
+  'lucide-users',
+  'h-12',
+  'w-12',
+  'text-[9px]',
+  'tracking-wide',
+  'mt-0.5',
+];
+
+/**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
  *
  * Same provenance and the same proof as the heights above: every one appears
@@ -1702,6 +1873,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 
   const ALLOWED_ADDITIONS: Record<string, string> = {
     ...Object.fromEntries(THE_379_MOBILE_TOKENS.map((t) => [t, THE_379_MOBILE_REASON])),
+    ...Object.fromEntries(LIST_REDESIGN_MOBILE_TOKENS.map((t) => [t, LIST_REDESIGN_MOBILE_REASON])),
     /* ─── THE-368 — the giving documentation link, APPENDED to the list below ──
        Two entries, both from ONE element: the money-flow link this ticket puts
        under the campaigns header. Added here rather than by re-recording
@@ -2052,7 +2224,7 @@ describe('no touch target got smaller', () => {
     // that adopts it, recorded and provenance-checked above. Every other
     // screen, and every other token, is asserted exactly as before: a FIFTH
     // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
-    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS, ...PAGE_HEADER_UNPREFIXED_HEIGHTS, ...THE_379_UNPREFIXED_HEIGHTS]);
+    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS, ...PAGE_HEADER_UNPREFIXED_HEIGHTS, ...THE_379_UNPREFIXED_HEIGHTS, ...LIST_REDESIGN_UNPREFIXED_HEIGHTS]);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
@@ -2589,8 +2761,34 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     // of the `bg-gold` class (which already resolves to `var(--brand-color)`) every other
     // button on this screen uses. Swapped to `bg-gold`; no className count or line moved,
     // and no price, fee or checkout call moved.
-    strippedSha: '355bde1e6dd10a404a8c8f5537f60b9366d62cffb0b46dc2b60c5698ed48e125',
-    strippedLines: 1526,
+    //
+    // RE-RECORDED AGAIN by the events LIST redesign (Eden layout #1, 28 Oct).
+    // Previous value kept here:
+    //   strippedSha:   355bde1e6dd10a404a8c8f5537f60b9366d62cffb0b46dc2b60c5698ed48e125
+    //   strippedLines: 1526
+    // WHAT MOVED: the list view gained a left-panel mini calendar
+    // (`EventListCalendar`, lazy-mounted the same way `EventMonthView` is)
+    // marking days that carry an event and filtering the list to a clicked
+    // day; the Upcoming/Drafts/Past filter moved into a vertical nav beside
+    // it (plain buttons, not `tabs` — see the comment on that markup for why);
+    // "Upcoming"/"Drafts"/"Past" (or the selected day) now reads beside a
+    // second "New event" button, Eden's own list-header line; each event row
+    // became Eden's layout — a date block, the weekday/time range, where,
+    // capacity (never a live registration count: no Firestore path moved,
+    // see firestorePathsOf below) and a recurring event's own next runs
+    // (`expandRuns`, the same pure function the create form and the submit
+    // route use) — read left to right instead of a card's stacked blocks.
+    // Phone keeps the existing card, with the same new time-range/capacity/
+    // runs lines added. CALENDAR_PRIMITIVE_CLASSES, LIST_REDESIGN_ADDED_COLOURS,
+    // LIST_REDESIGN_MOBILE_TOKENS and LIST_REDESIGN_UNPREFIXED_HEIGHTS above
+    // are the full accounting of what that touches on the colour and
+    // mobile-layer sweeps. `firestorePathsOf` below is unchanged — the
+    // calendar's marked days and the row's capacity figure both come from
+    // reads this screen already made (`useMonthEvents` and the event's own
+    // stored fields); no new collection, read or write was added, and no
+    // price, fee or checkout call moved.
+    strippedSha: '890474356cafce33b863e4e773bef038c962c31760d19fd4c896039bcd2f0a3c',
+    strippedLines: 1684,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
@@ -2875,6 +3073,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
           ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
           ...(THE_379_ADDED_COLOURS[name]?.[view] ?? []),
+          ...(LIST_REDESIGN_ADDED_COLOURS[name]?.[view] ?? []),
         ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
           .toEqual(expected);
@@ -2900,6 +3099,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           if (name === 'AdminEvents' && recorded.has(t)) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           if ((THE_379_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
+          if ((LIST_REDESIGN_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           added.add(`${name}/${view}:${t}`);
         }
       }
@@ -2973,6 +3173,21 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     // through tokens already on this screen's baseline (`bg-surface-raised`,
     // `shadow-xs`), carrying no literal colour of their own.
     for (const t of [...THE_379_ADDED_COLOURS.AdminEvents!.form]) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+    }
+    // The events LIST redesign — the same proof for `calendar`, the one
+    // primitive it adopts on this screen's own JSX for the first time.
+    const calendarSrc = readFileSync(path.join(SRC, 'ui/calendar.tsx'), 'utf8');
+    for (const t of CALENDAR_PRIMITIVE_CLASSES) {
+      expect(calendarSrc.includes(t), `${t} is recorded as a ui/calendar.tsx class but is not in ui/calendar.tsx`).toBe(true);
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+    }
+    // And the one class this redesign actually hand-wrote: already on this
+    // screen's own baseline as `text-gold` (the Toggle, the Registration-open
+    // label), so `bg-gold` is a new spot for an existing token, not a new one.
+    for (const t of [...LIST_REDESIGN_ADDED_COLOURS.AdminEvents!.default]) {
       expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
     }
   });

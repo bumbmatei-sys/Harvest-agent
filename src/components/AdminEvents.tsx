@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
   Check, Download, Search, ChevronRight, Globe, X, Pin, QrCode, Copy,
-  Ticket, Tag, ArrowUp, ArrowDown, Link2,
+  Ticket, Tag, ArrowUp, ArrowDown, Link2, Repeat,
 } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -66,7 +67,15 @@ import { confirmPaymentClaim } from './inbox/payment-claims-client';
  * ticket does not touch, under full-suite load and not in isolation.
  */
 const EventMonthView = React.lazy(() => import('./events/EventMonthView'));
+/**
+ * The list's own mini calendar is lazy for the identical reason, and is a
+ * SEPARATE component rather than an inline `<Calendar>` so the LIST — this
+ * screen's default tab — stays out of `calendar`'s module graph until this
+ * one Suspense boundary actually renders it.
+ */
+const EventListCalendar = React.lazy(() => import('./events/EventListCalendar'));
 import { useMonthEvents } from '../hooks/queries/useMonthEvents';
+import { dayKey } from './events/month-view';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -120,6 +129,63 @@ const fmtDateInput = (ts: Timestamp | null) => {
 const toTimestamp = (v: string): Timestamp | null => {
   if (!v) return null;
   return Timestamp.fromDate(new Date(v));
+};
+
+/** "Thursday, Oct 23" — a list row's weekday/date line. */
+const fmtWeekdayDate = (ts: Timestamp | null) => {
+  if (!ts) return null;
+  return ts.toDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+};
+
+/** "5:00 PM" or "5:00 PM – 6:00 PM" — a list row's time line. No end time, no dash. */
+const fmtTimeRange = (start: Timestamp | null, end: Timestamp | null) => {
+  if (!start) return null;
+  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  const startStr = start.toDate().toLocaleTimeString('en-US', opts);
+  return end ? `${startStr} – ${end.toDate().toLocaleTimeString('en-US', opts)}` : startStr;
+};
+
+/**
+ * A row's capacity figure, from data this screen already holds — never a
+ * live registration count. That count lives behind the detail view's own
+ * `useEventRegistrations`, a per-event read; firestorePathsOf pins this
+ * file's read set against a pre-PR baseline that admits none here, and a
+ * live count on every visible row would be exactly that new read, paid once
+ * per row instead of once per detail open.
+ */
+const eventCapacityLabel = (ev: Event): string | null => {
+  if (ev.ticketTypes && ev.ticketTypes.length > 0) {
+    if (ev.ticketTypes.some((t) => t.capacity == null)) return null;
+    const sum = ev.ticketTypes.reduce((n, t) => n + (t.capacity ?? 0), 0);
+    return `Capacity ${sum}`;
+  }
+  return ev.capacity != null ? `Capacity ${ev.capacity}` : null;
+};
+
+const RECURRENCE_FREQ_LABEL: Record<RecurrenceRule['freq'], string> = {
+  weekly: 'Weekly',
+  every_2_weeks: 'Every 2 weeks',
+  monthly: 'Monthly',
+};
+
+/**
+ * A recurring event's own runs, named on its row with the SAME `expandRuns`
+ * the create form and the submit route use, so the list can never claim a
+ * date neither of them would honour.
+ */
+const eventRunsLabel = (ev: Event, now: Date): string | null => {
+  if (!ev.recurrence || !ev.startDate || !ev.endDate) return null;
+  const horizon = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+  const runs = expandRuns(
+    { startDate: ev.startDate.toDate(), endDate: ev.endDate.toDate(), timeZone: ev.timeZone, recurrence: ev.recurrence },
+    now,
+    horizon,
+  );
+  const freq = RECURRENCE_FREQ_LABEL[ev.recurrence.freq];
+  if (runs.length <= 1) return freq;
+  const dates = runs.slice(0, 3).map((r) => r.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  const more = runs.length > 3 ? ` +${runs.length - 3} more` : '';
+  return `${freq} · ${dates.join(', ')}${more}`;
 };
 
 const emptyForm = {
@@ -229,6 +295,10 @@ const AdminEvents: React.FC = () => {
   // Eden list filter: Upcoming (default) / Drafts / Past. Independent of the
   // List/Month tab above — the month grid shows everything on its own terms.
   const [listFilter, setListFilter] = useState<'upcoming' | 'drafts' | 'past'>('upcoming');
+  // The mini calendar's own filter: a day clicked there narrows the list to
+  // that day alone, independent of (and clearing) the Upcoming/Drafts/Past
+  // split above — a specific day is a more precise question than any bucket.
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const { data: monthRead, isLoading: monthLoading } = useMonthEvents(tenantId, isAuthReady);
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -1494,6 +1564,17 @@ const AdminEvents: React.FC = () => {
   const pastEvents = events.filter(ev => isPastEvent(ev));
   const upcomingEvents = events.filter(ev => ev.status !== 'draft' && !isPastEvent(ev));
   const visibleEvents = listFilter === 'drafts' ? draftEvents : listFilter === 'past' ? pastEvents : upcomingEvents;
+  // A day clicked on the mini calendar narrows the list to that day alone,
+  // ACROSS every bucket above — a specific day answers a more precise
+  // question than "upcoming" or "past" does, so it is not ANDed with them.
+  const rowsToShow = selectedDay
+    ? events.filter((ev) => ev.startDate && dayKey(ev.startDate.toDate()) === dayKey(selectedDay))
+    : visibleEvents;
+  const selectedDayLabel = selectedDay
+    ? selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+    : null;
+  const listHeading = selectedDayLabel
+    ?? (listFilter === 'drafts' ? 'Drafts' : listFilter === 'past' ? 'Past' : 'Upcoming');
   return (
     <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
       <AdminPageHeader
@@ -1566,32 +1647,95 @@ const AdminEvents: React.FC = () => {
           </EmptyContent>
         </Empty>
       ) : (
-        <>
-        <PageTabs
-          label="Events filter"
-          value={listFilter}
-          onValueChange={setListFilter}
-          items={[
-            { value: 'upcoming', label: `Upcoming${upcomingEvents.length ? ` (${upcomingEvents.length})` : ''}` },
-            { value: 'drafts', label: `Drafts${draftEvents.length ? ` (${draftEvents.length})` : ''}` },
-            { value: 'past', label: 'Past' },
-          ]}
-        />
-        {visibleEvents.length === 0 ? (
+        <div className="lg:flex lg:items-start lg:gap-6">
+          {/*
+            Eden's left panel — the mini calendar plus Upcoming/Drafts/Past,
+            `lg` and up. `calendar` (react-day-picker) stays out of the LIST's
+            own chunk: `EventListCalendar` is lazy, exactly as `EventMonthView`
+            is above, and for the identical reason.
+          */}
+          <aside className="hidden lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:gap-4">
+            <div className="rounded-2xl border border-line bg-surface-raised p-2" data-events-mini-calendar>
+              <React.Suspense fallback={<Skeleton className="h-[260px] w-full" />}>
+                <EventListCalendar
+                  read={monthRead}
+                  selected={selectedDay}
+                  onSelect={(d) => setSelectedDay((prev) => (prev && d && dayKey(prev) === dayKey(d) ? undefined : d))}
+                />
+              </React.Suspense>
+            </div>
+            {/*
+              Plain buttons, not `tabs` — THE-308's own guard pins this file's
+              source against a hand-sized TabsList tag ever coming back for the
+              List/Month pill (now `PageTabs`' own), and a second, legitimate
+              use of that same tag here would still trip that literal check.
+              This filter has no associated tabpanel either; the mobile
+              `PageTabs` row below already carries the one with real tab
+              semantics.
+            */}
+            <div className="flex flex-col gap-1">
+              {([
+                { value: 'upcoming' as const, label: `Upcoming${upcomingEvents.length ? ` (${upcomingEvents.length})` : ''}` },
+                { value: 'drafts' as const, label: `Drafts${draftEvents.length ? ` (${draftEvents.length})` : ''}` },
+                { value: 'past' as const, label: 'Past' },
+              ]).map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  aria-pressed={listFilter === item.value}
+                  onClick={() => { setListFilter(item.value); setSelectedDay(undefined); }}
+                  className={`min-h-11 rounded-lg px-3 text-left text-sm font-semibold transition-colors ${listFilter === item.value ? 'bg-surface-sunken text-strong' : 'text-muted hover:bg-surface-sunken'}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <div className="min-w-0 flex-1 space-y-4">
+            {/* Phone/tablet keep the horizontal filter — the sidebar is lg-only. */}
+            <div className="lg:hidden">
+              <PageTabs
+                label="Events filter"
+                value={listFilter}
+                onValueChange={(v) => { setListFilter(v); setSelectedDay(undefined); }}
+                items={[
+                  { value: 'upcoming', label: `Upcoming${upcomingEvents.length ? ` (${upcomingEvents.length})` : ''}` },
+                  { value: 'drafts', label: `Drafts${draftEvents.length ? ` (${draftEvents.length})` : ''}` },
+                  { value: 'past', label: 'Past' },
+                ]}
+              />
+            </div>
+
+            {/* Eden's list header: the active filter's name and "New event", one line. */}
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-lg font-medium text-strong">{listHeading}</h2>
+              <AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>New event</AdminPrimaryButton>
+            </div>
+            {selectedDay && (
+              <button
+                onClick={() => setSelectedDay(undefined)}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-sunken px-3 text-xs font-semibold text-muted hover:bg-surface-raised sm:min-h-0 sm:py-1"
+              >
+                {selectedDayLabel} <X size={12} />
+              </button>
+            )}
+
+        {rowsToShow.length === 0 ? (
           <Empty data-events-filter-empty className="py-10">
             <EmptyHeader>
               <EmptyMedia variant="icon"><CalendarCheck aria-hidden="true" /></EmptyMedia>
               <EmptyTitle>
-                {listFilter === 'drafts' ? 'No drafts' : listFilter === 'past' ? 'No past events' : 'Nothing upcoming'}
+                {selectedDay ? 'Nothing that day' : listFilter === 'drafts' ? 'No drafts' : listFilter === 'past' ? 'No past events' : 'Nothing upcoming'}
               </EmptyTitle>
             </EmptyHeader>
           </Empty>
         ) : (
         <div className="space-y-3">
-          {visibleEvents.map(ev => (
+          {rowsToShow.map(ev => (
             <React.Fragment key={ev.id}>
               {/* Mobile card — mockup design: hero band (cover, else navy→gold gradient),
-                  status pill overlay, meta row, actions. Same handlers as the desktop card. */}
+                  status pill overlay, meta row, actions. Same handlers as the desktop row. */}
               <div
                 role="button"
                 tabIndex={0}
@@ -1617,7 +1761,11 @@ const AdminEvents: React.FC = () => {
                 <div className="p-3.5">
                   <div className="font-display text-[15px] font-medium text-strong leading-snug">{ev.title}</div>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted">
-                    {ev.startDate && <span className="flex items-center gap-1"><Clock size={11} /> {fmtDate(ev.startDate)}</span>}
+                    {ev.startDate && (
+                      <span className="flex items-center gap-1">
+                        <Clock size={11} /> {[fmtWeekdayDate(ev.startDate), fmtTimeRange(ev.startDate, ev.endDate)].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
                     {ev.isOnline ? (
                       <span className="flex items-center gap-1"><Globe size={11} /> Online</span>
                     ) : ev.location ? (
@@ -1634,7 +1782,15 @@ const AdminEvents: React.FC = () => {
                       <span className={ev.price > 0 ? 'font-semibold text-muted' : 'font-semibold text-field-600'}>{eventPriceLabel(ev.price)}</span>
                     )}
                   </div>
-                  {ev.registrationEnabled && <div className="text-xs font-semibold text-gold mt-2">Registration open</div>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted">
+                    {ev.registrationEnabled && <span className="font-semibold text-gold">Registration open</span>}
+                    {eventCapacityLabel(ev) && (
+                      <span className="flex items-center gap-1"><Users size={11} /> {eventCapacityLabel(ev)}</span>
+                    )}
+                    {eventRunsLabel(ev, new Date(now)) && (
+                      <span className="flex items-center gap-1"><Repeat size={11} /> {eventRunsLabel(ev, new Date(now))}</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-line">
                     <button onClick={e => { e.stopPropagation(); togglePin(ev); }} className="p-1.5 rounded-lg hover:bg-wheat-50 transition-colors" title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}>
                       <Pin size={13} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-faint'} />
@@ -1649,29 +1805,35 @@ const AdminEvents: React.FC = () => {
                 </div>
               </div>
 
-              {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
+              {/*
+                Desktop row — Eden's layout #1: a date block, the title, the
+                time range, where, registrations/capacity and the status
+                badge, read left to right instead of a card's stacked blocks.
+              */}
               <div
-                className="hidden lg:block bg-surface-raised rounded-2xl p-4 border border-line shadow-xs cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
+                role="button"
+                tabIndex={0}
                 onClick={() => openDetail(ev)}
-            >
-              {ev.coverImage && (
-                <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
-                  <img src={ev.coverImage} alt={ev.title} className="w-full h-full object-cover" />
+                className="hidden lg:flex items-center gap-4 bg-surface-raised rounded-2xl p-4 border border-line shadow-xs cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
+              >
+                <div className="flex w-12 h-12 shrink-0 flex-col items-center justify-center rounded-xl bg-surface-sunken">
+                  <span className="text-[9px] font-bold uppercase leading-none tracking-wide text-gold">
+                    {ev.startDate ? ev.startDate.toDate().toLocaleDateString('en-US', { month: 'short' }) : '—'}
+                  </span>
+                  <span className="mt-0.5 text-base font-bold leading-none text-strong">
+                    {ev.startDate ? ev.startDate.toDate().getDate() : '–'}
+                  </span>
                 </div>
-              )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="font-display text-lg font-medium text-strong truncate">{ev.title}</h3>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-display text-base font-medium text-strong truncate">{ev.title}</h3>
                     <AdminBadge tone={statusTone(ev.status)}>{ev.status}</AdminBadge>
                     {ev.registrationEnabled && <AdminBadge tone="sky">Registration</AdminBadge>}
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                    {ev.startDate && (
-                      <span className="flex items-center gap-1 text-xs text-muted">
-                        <Clock size={11} /> {fmtDate(ev.startDate)}
-                      </span>
-                    )}
+                  <div className="mt-0.5 text-xs text-muted">
+                    {[fmtWeekdayDate(ev.startDate), fmtTimeRange(ev.startDate, ev.endDate)].filter(Boolean).join(' · ') || '—'}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                     {ev.isOnline ? (
                       <span className="flex items-center gap-1 text-xs text-muted">
                         <Globe size={11} /> Online
@@ -1681,15 +1843,25 @@ const AdminEvents: React.FC = () => {
                         <MapPin size={11} /> {ev.location}
                       </span>
                     ) : null}
-                    {/* THE-345 - same quote, same gate, on the lg card. */}
+                    {eventCapacityLabel(ev) && (
+                      <span className="flex items-center gap-1 text-xs text-muted">
+                        <Users size={11} /> {eventCapacityLabel(ev)}
+                      </span>
+                    )}
+                    {/* THE-345 - same quote, same gate, on the lg row. */}
                     {eventPriceLabel(ev.price) && (
                       <span className="flex items-center gap-1 text-xs text-muted">
                         <DollarSign size={11} /> {eventPriceLabel(ev.price)}
                       </span>
                     )}
+                    {eventRunsLabel(ev, new Date(now)) && (
+                      <span className="flex items-center gap-1 text-xs text-muted">
+                        <Repeat size={11} /> {eventRunsLabel(ev, new Date(now))}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-1">
                   <button
                     onClick={e => { e.stopPropagation(); togglePin(ev); }}
                     className="p-2 rounded-xl hover:bg-wheat-50 transition-colors"
@@ -1707,12 +1879,12 @@ const AdminEvents: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </div>
             </React.Fragment>
           ))}
         </div>
         )}
-        </>
+          </div>
+        </div>
       )}
         </TabsContent>
       </Tabs>

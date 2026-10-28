@@ -963,6 +963,17 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        `bg-gold`, which already reads `var(--brand-color)`. NO NAV, TAB ID,
        READ, WRITE OR PERMISSION GATE MOVED. */
     '2b0e4f06072644399fd6cd283b3adb667a46a81f7843d7c49032ff1e13cf8351',
+    /* APPENDED BY the events LIST redesign (Eden layout #1), nothing above
+       removed or rewritten. A left-panel mini calendar (lazy-mounted) marks
+       days with events and filters the list to a clicked day; Upcoming/
+       Drafts/Past moved into a vertical nav beside it; the list header reads
+       the active filter's name beside a second "New event" button; each row
+       became Eden's layout — date block, time range, where, capacity and a
+       recurring event's own runs. NO NAV, TAB ID, READ, WRITE OR PERMISSION
+       GATE MOVED, which is what THE-332 pins this file for: the calendar's
+       marked days and the row's capacity figure both come from reads this
+       screen already made. */
+    '9216849e598ab4ca252d77d49e1debde5330867f89f24f48718335c17f673d5b',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */
