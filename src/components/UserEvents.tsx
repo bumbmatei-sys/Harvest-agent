@@ -11,6 +11,7 @@ import ShareButton from './ShareButton';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { CONTROL_DENSITY } from './layout/form-layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { claimPaymentSent } from './inbox/payment-claims-client';
 import {
   MEMBER_CLAIM_BUTTON, MEMBER_UNPAID_BADGE, TICKET_QR_WAITING_TITLE,
@@ -78,6 +79,11 @@ interface UserEventsProps {
 
 const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   const [rows, setRows] = useState<EventRow[]>([]);
+  // THE-379 (events remodel) — every ticket this member holds, regardless of
+  // date, so the "Past" tab can list one without a second fetch. `rows`
+  // above stays UPCOMING-only, exactly as it always has.
+  const [allTickets, setAllTickets] = useState<ApiTicket[]>([]);
+  const [tab, setTab] = useState<'upcoming' | 'going' | 'past'>('upcoming');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ticketView, setTicketView] = useState<EventRow | null>(null);
@@ -187,6 +193,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           });
 
         setRows(list);
+        setAllTickets(tickets);
       } catch (e) {
         console.error('My Events load failed:', e);
         if (!cancelled) setError('Could not load your events. Please try again.');
@@ -202,6 +209,27 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
     // opinion about what "paid" means.
   }, [reloadKey]);
 
+  // THE-379 (events remodel) — Eden-style Upcoming / Going / Past. "Going" is
+  // the existing upcoming list narrowed to a held ticket; "Past" is built
+  // from `allTickets` directly (every ticket this member ever held),
+  // independent of the upcoming `eventsSnap` read above.
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const todayMs = startOfToday.getTime();
+  const goingRows = rows.filter((r) => !!r.ticket);
+  const pastRows: EventRow[] = allTickets
+    .filter((t) => t.eventId && t.event?.startMillis != null && t.event.startMillis < todayMs)
+    .map((t) => ({
+      id: t.eventId!,
+      title: t.event?.title || 'Event',
+      startMillis: t.event?.startMillis ?? null,
+      location: t.event?.location || null,
+      isOnline: !!t.event?.isOnline,
+      registrationEnabled: false,
+      ticket: t,
+    }))
+    .sort((a, b) => (b.startMillis ?? 0) - (a.startMillis ?? 0));
+  const visibleRows = tab === 'going' ? goingRows : tab === 'past' ? pastRows : rows;
+
   return (
     <div className="flex flex-col min-h-full h-full bg-surface overflow-y-auto">
       <div className="sticky top-0 z-10 bg-surface-raised border-b border-line">
@@ -210,6 +238,15 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
             <ArrowLeft size={18} className="text-muted" />
           </button>
           <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">My Events</h2>
+        </div>
+        <div className="px-4 pb-3 lg:max-w-[760px] lg:mx-auto">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+            <TabsList>
+              <TabsTrigger value="upcoming" data-events-tab="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="going" data-events-tab="going">Going</TabsTrigger>
+              <TabsTrigger value="past" data-events-tab="past">Past</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
@@ -224,15 +261,19 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{error}</p>
           </div>
-        ) : rows.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div className="text-center py-16 text-faint">
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No upcoming events</p>
-            <p className="text-sm mt-1">Events you can join will show up here.</p>
+            <p className="font-medium">
+              {tab === 'going' ? "You're not going to anything yet" : tab === 'past' ? 'No past events' : 'No upcoming events'}
+            </p>
+            <p className="text-sm mt-1">
+              {tab === 'going' ? 'Register for an event and it will show up here.' : tab === 'past' ? 'Events you attended will show up here.' : 'Events you can join will show up here.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {rows.map((r) => {
+            {visibleRows.map((r) => {
               const ticketed = !!r.ticket;
               const time = fmtTime(r.startMillis);
               return (
