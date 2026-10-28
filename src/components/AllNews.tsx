@@ -14,6 +14,7 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { READING_MEASURE } from './layout/form-layout';
 
 interface Comment {
@@ -82,6 +83,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Comments state
+  const [mobileCommunity, setMobileCommunity] = useState(false);
+  const [detailPost, setDetailPost] = useState<string | null>(null);
+  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
@@ -517,8 +521,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
         ) : posts.length === 0 ? (
           <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
-          posts.map((post, index) => (
-            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-xs border border-line ">
+          posts.map((post, index) => {
+            const card = <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-xs border border-line ">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-surface-chip text-muted flex items-center justify-center font-bold overflow-hidden relative">
@@ -662,7 +666,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   <span className="font-medium">{post.likes.length}</span>
                 </button>
                 <button
-                  onClick={() => toggleComments(post.id)}
+                  onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
                     commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
                   }`}
@@ -745,8 +749,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   )}
                 </div>
               )}
-            </div>
-          ))
+            </div>;
+            return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;
+          })
         )}
       </div>
 

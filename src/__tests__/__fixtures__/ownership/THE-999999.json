@@ -166,6 +166,46 @@
       "file": "src/components/community/NewGroupDialog.tsx",
       "digest": "569e3a239f260c54a27dca0785503a84956e3d7da312534540a50879bac00bb6",
       "why": "Record the phone touch floors added to the group creation dialog buttons in the preceding community CI fix."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "bd7b6101c0e42ae4ddbcfc408c9e3009f3ec5ddcd5378c0a04cb3d7e7aad67ab",
+      "why": "Record the combined community and discovery branch changes after merge da19db1f."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "f7204995a62210c2dee47e5d0f7020202764e2d1f09bd0aa9f83c22755407831",
+      "why": "Record the combined community and discovery branch changes after merge da19db1f."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "e330db0c53c9aa65936fc6c944778fc607d46f680f2d08909e71176b04d7ef68",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "89610dcc785f31ebac56f51f440aa64d3b5a765f11a1dfb3bdaec8d4d73aa73e",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "2b31b562210170e7ef7a98ae17da9f015feb81285494041e7171a97081fee88c",
+      "why": "Add the mobile community shell and update the touch-target inventory for the new controls."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "2407df50cf100157363148bcde5950aa02b551b6222e7ab70fac6f6d762bf245",
+      "why": "Filter the mobile community sections through the tenant module switches, while preserving the existing plan gates and desktop navigation."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "fbbb5f3f7713b885c52891c0ca4acf097f09557b3d58d4ae47c7ade4aba72656",
+      "why": "Record the shell element inventory after adding the mobile community header, switcher and bottom navigation."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "60aab9c86ad4b7e1d42a3923ee827c108d324679470d5613e8d0fb627fcab1c7",
+      "why": "Open post details in a full-screen sheet on mobile in the full news list, preserving its desktop cards."
     }
   ]
 }

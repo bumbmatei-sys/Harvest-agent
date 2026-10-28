@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake, CalendarDays, Bell, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { doc, getDoc } from 'firebase/firestore';
@@ -36,6 +36,8 @@ import { useCommunitySettings, useCommunityMember } from '../lib/community/use-c
 import { needsCommunityEntry, type CommunityModule } from '../lib/community/settings';
 import { CommunityEntryDialog } from './community/CommunityEntryDialog';
 import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
+import { MobileCommunityTabs, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
+import UserEvents from './UserEvents';
 import { CommunityIcon } from './icons/CommunityIcon';
 import { DiscoverIcon } from './icons/DiscoverIcon';
 
@@ -117,6 +119,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     return words[0] || 'Harvest';
   })();
   const askLabel = `Ask ${askBrandName}`;
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -387,7 +390,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
     modules.map && (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
-  const effectiveBottomTab = (activeBottomTab === 'bible' && !modules.bible) || (activeBottomTab === 'map' && (!modules.map || !(isMainSite || (isPlanReady && features?.map === true)))) ? 'home' : activeBottomTab;
+  const effectiveBottomTab = (activeBottomTab === 'bible' && !modules.bible) || (activeBottomTab === 'events' && !modules.events) || (activeBottomTab === 'map' && (!modules.map || !(isMainSite || (isPlanReady && features?.map === true)))) ? 'home' : activeBottomTab;
   useEffect(() => {
     if (activeBottomTab !== effectiveBottomTab) setActiveBottomTab('home');
     if (TOP_TAB_MODULES[activeTopTab] && !modules[TOP_TAB_MODULES[activeTopTab]]) setActiveTopTab(homeTabId);
@@ -400,6 +403,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   // sidebar replaces it with the "Home" alias of whichever top-tab `homeTabId`
   // resolves to (see below), so only the rest are looked up by id for the
   // desktop groups.
+  const mobileTabs: MobileTab[] = enabledMobileTabs([
+    ...topTabs.map(tab => ({ id: tab.id, label: tab.id === 'news' ? 'Feed' : tab.id === 'messages' ? 'Groups' : tab.label, icon: TOP_TAB_ICONS[tab.id], active: effectiveBottomTab === 'home' && effectiveTopTab === tab.id, onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); } })),
+    ...(modules.livestream && (isMainSite || features?.livestream === true) ? [{ id: 'livestream', label: 'Livestream', icon: Play, active: false, onClick: () => setFullScreenView({ type: 'livestream' }) }] : []),
+    ...(modules.events ? [{ id: 'events', label: 'Events', icon: CalendarDays, active: effectiveBottomTab === 'events', onClick: () => setActiveBottomTab('events') }] : []),
+    ...bottomTabs.filter(tab => tab.id !== 'home' && tab.id !== 'profile').map(tab => ({ ...tab, active: effectiveBottomTab === tab.id, onClick: () => setActiveBottomTab(tab.id) })),
+  ], modules);
+  mobileTabs.sort((a, b) => ['news', 'courses', 'events', 'messages'].indexOf(a.id) === -1 ? (['news', 'courses', 'events', 'messages'].indexOf(b.id) === -1 ? 0 : 1) : (['news', 'courses', 'events', 'messages'].indexOf(b.id) === -1 ? -1 : ['news', 'courses', 'events', 'messages'].indexOf(a.id) - ['news', 'courses', 'events', 'messages'].indexOf(b.id)));
   const [, ...restBottomTabs] = bottomTabs;
 
   // Desktop sidebar groups (Phase 1.6) — FEED / COMMUNITY / SUPPORT US. Resolves
@@ -749,7 +759,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
           </div>
 
           {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
-          {bottomTabs.map((tab) =>
+          <div className="contents max-[768px]:hidden">{bottomTabs.map((tab) =>
             renderNavButton(
               tab.id,
               tab.label,
@@ -758,7 +768,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               () => setActiveBottomTab(tab.id),
               'mobile'
             )
-          )}
+          )}</div>
+          <div className="hidden w-full max-[768px]:flex"><MobileCommunityTabs tabs={mobileTabs} /></div>
 
           <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
             {renderNavButton('desktop-communities', 'Communities', CommunityIcon, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
@@ -805,6 +816,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
+        <div className="hidden max-[768px]:flex items-center justify-between gap-2 border-b border-line bg-surface-raised px-4 pt-[env(safe-area-inset-top)]">
+          <button className="flex min-h-11 min-w-0 items-center gap-2" onClick={() => setSwitcherOpen(true)} aria-label="Switch community"><img src={displayLogo} alt="" className="size-8 object-contain" /><span className="truncate font-display font-semibold">{displayName}</span><ChevronDown size={16} /></button>
+          <div className="flex items-center"><button className="flex size-11 items-center justify-center" aria-label="Notification settings" onClick={() => setActiveBottomTab('profile')}><Bell size={20} /></button><button className="flex size-11 items-center justify-center" aria-label="My Profile" onClick={() => setActiveBottomTab('profile')}>{memberPhotoURL ? <img src={memberPhotoURL} alt="" className="size-8 rounded-full object-cover" /> : <span className="flex size-8 items-center justify-center rounded-full bg-surface-sunken">{memberInitial(currentUser?.displayName)}</span>}</button></div>
+        </div>
+        {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
             left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
@@ -850,7 +866,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
         {effectiveBottomTab === 'home' && (
-          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
+          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden max-[768px]:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
@@ -976,6 +992,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               </AnimatePresence>
             </div>
             </DesktopContainer>
+          ) : effectiveBottomTab === 'events' && modules.events ? (
+            <UserEvents onBack={() => setActiveBottomTab('home')} />
           ) : effectiveBottomTab === 'profile' ? (
             <div className="w-full">
               <Profile

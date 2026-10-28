@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
+import { CommunitySwitcher } from './MobileCommunityNav';
 import { CommunitiesView, DiscoverView, type Listing, type LoadState, type MemberCommunity } from './DiscoveryViews';
 
 function validSlug(value: unknown): value is string {
@@ -27,7 +28,7 @@ export function DiscoverData() {
   }, []);
   return <DiscoverView state={state} />;
 }
-export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover }: { uid?: string; currentTenantId: string | null; onEnter: () => void; onDiscover: () => void }) {
+export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, switcher }: { uid?: string; currentTenantId: string | null; onEnter: () => void; onDiscover: () => void; switcher?: { open: boolean; onOpenChange: (open: boolean) => void } }) {
   const [state, setState] = useState<LoadState<MemberCommunity[]>>({ status: 'loading' });
   useEffect(() => {
     let cancelled = false;
@@ -48,5 +49,6 @@ export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover }: {
     load().then(data => { if (!cancelled) setState({ status: 'ready', data }); }).catch(() => { if (!cancelled) setState({ status: 'error', message: 'Could not load your communities. Please try again later.' }); });
     return () => { cancelled = true; };
   }, [uid, currentTenantId]);
+  if (switcher) return <CommunitySwitcher {...switcher} state={state} onEnter={onEnter} onDiscover={onDiscover} />;
   return <CommunitiesView state={state} onEnter={onEnter} onDiscover={onDiscover} />;
 }

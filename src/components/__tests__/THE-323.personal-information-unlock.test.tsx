@@ -695,7 +695,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        * Measured at five widths in `THE-358.account-menu.layout.test.tsx`,
        * which asserts BOTH floors, so this divergence cannot rot silently.
        */
+      'src/components/MainApp.tsx', // Mobile community header touch targets.
       'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
+      'src/components/NewsTab.tsx', // Mobile composer trigger.
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order
@@ -805,8 +807,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/boards/BoardGrid.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
       'src/components/community/CommunitySettingsEditor.tsx',
+      'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       'src/components/community/GroupList.tsx',
       'src/components/community/MemberPostComposer.tsx',
+      'src/components/community/MobileCommunityNav.tsx', // Mobile navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',

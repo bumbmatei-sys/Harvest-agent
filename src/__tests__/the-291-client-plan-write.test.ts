@@ -619,8 +619,8 @@ describe('5 · the money path is byte-identical', () => {
      * Joining a mailing list is not an entitlement. The Dodo webhook remains the
      * single writer of `plan`.
      */
-    // Community's counterpart lookup is read-only and cannot grant entitlements.
-    expect(routes.length, 'an API route was added or removed').toBe(141);
+    // Community's counterpart lookup is read-only; settings saves cannot change entitlements.
+    expect(routes.length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -661,6 +661,7 @@ describe('5 · the money path is byte-identical', () => {
       // APPENDED BY the newsletter launch-blockers follow-up — see the note on the count above.
       'app/api/email/webhook/route.ts',
       'app/api/community/dm-counterpart/route.ts',
+      'app/api/community/settings/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),

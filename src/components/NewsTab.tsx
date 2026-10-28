@@ -28,6 +28,7 @@ import { FeedEmbedCard, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
 import { AdminPostComposer } from './community/AdminPostComposer';
 import { MemberPostComposer } from './community/MemberPostComposer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { eventPriceLabel } from '../lib/paid-events-feature';
 
 interface Comment {
@@ -136,6 +137,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Comments state
+  const [mobileCommunity, setMobileCommunity] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [detailPost, setDetailPost] = useState<string | null>(null);
+  useEffect(() => { const media = window.matchMedia('(max-width: 768px)'); const update = () => setMobileCommunity(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
@@ -256,6 +261,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   };
 
   const beginEditPost = (post: CommunityPost) => {
+    if (mobileCommunity) { setDetailPost(null); setComposerOpen(true); }
     setEditingPostId(post.id);
     setComposerText(post.content || '');
     setComposerPinned(!!post.isPinned);
@@ -372,6 +378,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         sendPushNotification('New Community Post', text.slice(0, 100));
       }
       resetComposer();
+      setComposerOpen(false);
     } catch (error) {
       try { handleFirestoreError(error, OperationType.WRITE, 'community_posts'); } catch (e) { console.error(e); }
       setErrorMessage("Couldn't post. Please try again.");
@@ -932,8 +939,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     <div className="space-y-4 lg:space-y-3 w-full">
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
+      {mobileCommunity && auth.currentUser ? <><button className="min-h-11 w-full rounded-2xl border border-line bg-surface-raised p-4 text-left text-muted" onClick={() => setComposerOpen(true)}>Share an update with the community…</button><Sheet open={composerOpen} onOpenChange={setComposerOpen}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>{editingPostId ? 'Edit post' : 'Create post'}</SheetTitle></SheetHeader>      {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
+      {canManage && auth.currentUser && <AdminPostComposer user={auth.currentUser} editingPostId={editingPostId} composerMode={composerMode} setComposerMode={setComposerMode} composerText={composerText} setComposerText={setComposerText} composerImages={composerImages} setComposerImages={setComposerImages} composerEmbed={composerEmbed} setComposerEmbed={setComposerEmbed} showImageAttach={showImageAttach} setShowImageAttach={setShowImageAttach} attachMenuOpen={attachMenuOpen} setAttachMenuOpen={setAttachMenuOpen} attachMenuRef={attachMenuRef} pollOptions={pollOptions} setPollOptions={setPollOptions} scopeTenantId={scopeTenantId} setEmbedPicker={setEmbedPicker} composerPinned={composerPinned} setComposerPinned={setComposerPinned} resetComposer={resetComposer} handleSubmitPost={handleSubmitPost} isPosting={isPosting} composerCanSubmit={composerCanSubmit} canPostImages={canPostImages} />}</SheetContent></Sheet></> : <>
       {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
       {canManage && auth.currentUser && <AdminPostComposer user={auth.currentUser} editingPostId={editingPostId} composerMode={composerMode} setComposerMode={setComposerMode} composerText={composerText} setComposerText={setComposerText} composerImages={composerImages} setComposerImages={setComposerImages} composerEmbed={composerEmbed} setComposerEmbed={setComposerEmbed} showImageAttach={showImageAttach} setShowImageAttach={setShowImageAttach} attachMenuOpen={attachMenuOpen} setAttachMenuOpen={setAttachMenuOpen} attachMenuRef={attachMenuRef} pollOptions={pollOptions} setPollOptions={setPollOptions} scopeTenantId={scopeTenantId} setEmbedPicker={setEmbedPicker} composerPinned={composerPinned} setComposerPinned={setComposerPinned} resetComposer={resetComposer} handleSubmitPost={handleSubmitPost} isPosting={isPosting} composerCanSubmit={composerCanSubmit} canPostImages={canPostImages} />}
+      </>}
 
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
@@ -990,8 +1000,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {posts.length === 0 ? (
         <div className="text-center py-12 text-muted">No news yet.</div>
       ) : (
-        posts.map((post, index) => (
-          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+        posts.map((post, index) => {
+          const card = <div key={post.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center font-bold text-muted relative">
@@ -1138,7 +1148,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 <span>{post.likes.length} Likes</span>
               </button>
               <button
-                onClick={() => toggleComments(post.id)}
+                onClick={() => { if (mobileCommunity) { setDetailPost(post.id); setCommentsOpen(prev => ({ ...prev, [post.id]: true })); } else toggleComments(post.id); }}
                 className={`flex items-center gap-1.5 text-xs transition-colors ${
                   commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
                 }`}
@@ -1237,8 +1247,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 )}
               </div>
             )}
-          </div>
-        ))
+          </div>;
+          return mobileCommunity && detailPost === post.id ? <Sheet key={post.id} open onOpenChange={open => { if (!open) { setDetailPost(null); setCommentsOpen(prev => ({ ...prev, [post.id]: false })); } }}><SheetContent side="bottom" className="h-[100dvh] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"><SheetHeader><SheetTitle>Post</SheetTitle></SheetHeader>{card}</SheetContent></Sheet> : card;
+        })
       )}
 
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
