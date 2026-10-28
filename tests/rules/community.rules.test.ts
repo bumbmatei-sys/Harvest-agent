@@ -11,7 +11,7 @@ beforeAll(async () => {
   await seedDoc('users/settings-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageSettings') });
   await seedDoc('users/community-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageCommunity') });
   await seedDoc('users/church-admin', { role: 'church_admin', tenantId: TENANT_A, displayName: 'Church admin' });
-  await seedDoc('users/spoofer', { role: 'user', tenantId: TENANT_A, email: 'owner-a@test.com' });
+  await seedDoc('users/spoofer', { role: 'user', tenantId: TENANT_A, email: 'spoofer@test.com' });
   await seedDoc(sub('channels/everyone'), { audience: 'all', members: [] });
   await seedDoc(sub('channels/admins'), { audience: 'admins', members: [FULL_ADMIN_UID] });
   await seedDoc(sub('channels/private'), { members: [MEMBER_UID] });
@@ -123,6 +123,9 @@ describe('community access', () => {
   it('requires a real tenant admin as the other DM participant', async () => {
     const m = (await member()).firestore();
     const admin = (await fullAdmin()).firestore();
+    // Profile email is now a roster identity: a member cannot forge one, even
+    // though ordinary profile updates remain allowed.
+    await assertFails((await asUid('spoofer')).firestore().doc('users/spoofer').update({ email: 'owner-a@test.com' }));
     await assertSucceeds(m.doc(sub('directMessages/admin')).set({ participants: [MEMBER_UID, FULL_ADMIN_UID] }));
     await assertSucceeds(m.doc(sub('directMessages/church-admin')).set({ participants: [MEMBER_UID, 'church-admin'] }));
     await assertFails(m.doc(sub('directMessages/spoofer')).set({ participants: [MEMBER_UID, 'spoofer'] }));

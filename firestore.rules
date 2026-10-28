@@ -184,6 +184,8 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == userId &&
         (!request.resource.data.keys().hasAny(['role']) ||
          request.resource.data.role == 'user') &&
+        (!request.resource.data.keys().hasAny(['email']) ||
+          request.resource.data.email == tokenEmail()) &&
         newsletterConsentOnCreate();
 
       allow update: if isAuthenticated() && (
@@ -218,6 +220,13 @@ service cloud.firestore {
           ]) &&
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions']) ||
            hasPermission('manageAdmins', resource.data.tenantId))) ||
+        isSuperAdmin()
+      ) && (
+        // DM counterpart checks use the profile email for the private admin
+        // roster. Clients may only write their own authenticated email; admin
+        // corrections to another user's identity must go through the server.
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email']) ||
+        (request.auth.uid == userId && request.resource.data.get('email', null) == tokenEmail()) ||
         isSuperAdmin()
       ) && (
         // Owner protection: the tenant owner's role & permissions are immutable within
@@ -274,15 +283,23 @@ service cloud.firestore {
         !data.keys().hasAny(['attachment', 'attachments', 'embed', 'pollOptions', 'eventDetails']);
     }
 
-    // Other-party identity is taken from the server-controlled user record,
-    // never the participantRoles supplied by the thread creator.
+    // Counterpart claims cannot be read from another user's Auth token. Their
+    // persisted role, Auth-bound profile email and tenant ownership cover the
+    // caller's admin shapes; never trust participantRoles from the creator.
+    // Repeated exists/get calls share cached documents: a member send needs at
+    // most five distinct docs (caller, counterpart, tenant, private roster, DM).
     function uidIsTenantAdmin(uid, tenantId) {
       let path = /databases/$(database)/documents/users/$(uid);
-      return exists(path) && (
+      let rosterPath = /databases/$(database)/documents/tenant_private/$(tenantId);
+      return isTenantOwner(uid, tenantId) || (exists(path) && (
+        get(path).data.get('role', 'user') == 'super_admin' ||
         (get(path).data.get('tenantId', null) == tenantId &&
-          get(path).data.get('role', 'user') in ['admin', 'church_admin', 'super_admin']) ||
-        isTenantOwner(uid, tenantId)
-      );
+          get(path).data.get('role', 'user') in ['admin', 'church_admin']) ||
+        (get(path).data.get('email', '') is string && get(path).data.get('email', '') != '' && (
+          get(path).data.email in ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'] ||
+          (exists(rosterPath) && get(path).data.email in get(rosterPath).data.get('adminEmails', []))
+        ))
+      ));
     }
 
     // Recheck existing threads too: participantRoles is untrusted and legacy

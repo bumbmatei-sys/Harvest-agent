@@ -1,11 +1,13 @@
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import { assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
-  seedBase, seedDoc, teardownEnv,
+  seedBase, seedDoc, teardownEnv, getEnv,
   superAdmin, owner, fullAdmin, rosterAdmin, member, member2, adminB, asUid,
   permsOnly,
-  TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID,
+  TENANT_A, TENANT_B, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID,
+  ROSTER_ADMIN_UID, OWNER_UID,
 } from './helpers';
+import { SUPER_ADMIN_EMAILS } from '../../src/utils/super-admins';
 
 /**
  * Private messaging isolation — channels are visible only to their members
@@ -200,6 +202,96 @@ describe('DM isolation: participants + community moderators (admin moderation)',
 // ─── DM messages (inherit parent thread's participants) ──────────────────────────
 
 describe('dmMessages isolation: scoped to the parent thread participants', () => {
+  it('allows a member to reply and update the preview of a roster-only admin-created thread atomically', async () => {
+    const adminDb = (await rosterAdmin()).firestore();
+    await assertSucceeds(adminDb.doc(sub('directMessages/roster-started')).set({
+      participants: [ROSTER_ADMIN_UID, MEMBER_UID],
+      participantRoles: { [ROSTER_ADMIN_UID]: 'user', [MEMBER_UID]: 'user' },
+      lastMessage: 'Hello', lastMessageAt: 1,
+    }));
+    const db = (await member()).firestore();
+    // The app writes both records together; exercise the batch read budget too.
+    const batch = db.batch();
+    batch.set(db.doc(sub('dmMessages/roster-reply')), {
+      dmId: 'roster-started', senderId: MEMBER_UID, content: 'Reply',
+    });
+    batch.update(db.doc(sub('directMessages/roster-started')), {
+      lastMessage: 'Reply', lastMessageAt: 2,
+    });
+    await assertSucceeds(batch.commit());
+    // A same-tenant outsider still cannot inject either write.
+    const outsider = (await member2()).firestore();
+    await assertFails(outsider.doc(sub('dmMessages/roster-inject')).set({
+      dmId: 'roster-started', senderId: MEMBER2_UID, content: 'Injected',
+    }));
+    await assertFails(outsider.doc(sub('directMessages/roster-started')).update({ lastMessage: 'Injected' }));
+  });
+
+  it.each([ROSTER_ADMIN_UID, OWNER_UID, FULL_ADMIN_UID])('allows member-created threads, replies and previews with admin %s', async (counterpart) => {
+    const db = (await member()).firestore();
+    const dmId = `member-started-${counterpart}`;
+    await assertSucceeds(db.doc(sub(`directMessages/${dmId}`)).set({ participants: [MEMBER_UID, counterpart], lastMessage: '' }));
+    await assertSucceeds(db.doc(sub(`dmMessages/${dmId}`)).set({ dmId, senderId: MEMBER_UID, content: 'Hello' }));
+    await assertSucceeds(db.doc(sub(`directMessages/${dmId}`)).update({ lastMessage: 'Hello', lastMessageAt: 2 }));
+  });
+
+  it.each([
+    { uid: 'platform-role', role: 'super_admin', email: 'platform@test.com' },
+    ...SUPER_ADMIN_EMAILS.map((email, i) => ({ uid: `platform-email-${i}`, role: 'user', email })),
+  ])('allows member replies and previews to platform admin $uid with a different stored tenant', async ({ uid, role, email }) => {
+    await seedDoc(`users/${uid}`, { role, email, tenantId: TENANT_B });
+    const db = (await member()).firestore();
+    await assertSucceeds(db.doc(sub(`directMessages/${uid}`)).set({ participants: [uid, MEMBER_UID], lastMessage: '' }));
+    await assertSucceeds(db.doc(sub(`dmMessages/${uid}`)).set({ dmId: uid, senderId: MEMBER_UID, content: 'Hello' }));
+    await assertSucceeds(db.doc(sub(`directMessages/${uid}`)).update({ lastMessage: 'Hello', lastMessageAt: 2 }));
+  });
+
+  it('recognises tenant ownership even without a counterpart user document', async () => {
+    const tenantId = 'dm-owner-only';
+    const dmId = 'owner-thread';
+    const path = (rest: string) => `tenants/${tenantId}/${rest}`;
+    await seedDoc(`tenants/${tenantId}`, { ownerId: 'owner-without-profile' });
+    const env = await getEnv();
+    const db = env.authenticatedContext(MEMBER_UID, { tenantId, email: 'member@test.com' }).firestore();
+    await assertSucceeds(db.doc(path(`directMessages/${dmId}`)).set({ participants: [MEMBER_UID, 'owner-without-profile'] }));
+    await assertSucceeds(db.doc(path(`dmMessages/${dmId}`)).set({ dmId, senderId: MEMBER_UID }));
+    await assertSucceeds(db.doc(path(`directMessages/${dmId}`)).update({ lastMessage: 'Hello' }));
+  });
+
+  it('uses the private roster independently of the profile tenant and ignores the public roster', async () => {
+    const tenantId = 'dm-private-roster';
+    const path = (rest: string) => `tenants/${tenantId}/${rest}`;
+    await seedDoc(`tenants/${tenantId}`, { ownerId: 'other-owner', adminEmails: ['public-only@test.com'] });
+    await seedDoc(`tenant_private/${tenantId}`, { adminEmails: ['private-only@test.com'] });
+    const env = await getEnv();
+    const db = env.authenticatedContext(MEMBER_UID, { tenantId, email: 'member@test.com' }).firestore();
+    for (const [uid, allowed] of [['private-only', true], ['public-only', false]] as const) {
+      await seedDoc(`users/${uid}`, { role: 'user', email: `${uid}@test.com`, tenantId: TENANT_B });
+      const thread = db.doc(path(`directMessages/${uid}`));
+      const data = { participants: [MEMBER_UID, uid], lastMessage: '' };
+      if (allowed) await assertSucceeds(thread.set(data));
+      else await assertFails(thread.set(data));
+      await seedDoc(path(`directMessages/${uid}`), data);
+      const message = db.doc(path(`dmMessages/${uid}`)).set({ dmId: uid, senderId: MEMBER_UID });
+      if (allowed) await assertSucceeds(message);
+      else await assertFails(message);
+      const preview = thread.update({ lastMessage: 'Reply', lastMessageAt: 2 });
+      if (allowed) await assertSucceeds(preview);
+      else await assertFails(preview);
+    }
+  });
+
+  it.each([MEMBER2_UID, ADMIN_B_UID, 'missing-profile'])('blocks member sends and previews to ineligible counterpart %s despite forged role labels', async (counterpart) => {
+    const db = (await member()).firestore();
+    const dmId = `ineligible-${counterpart}`;
+    const data = { participants: [MEMBER_UID, counterpart], participantRoles: { [counterpart]: 'admin' }, lastMessage: '' };
+    await assertFails(db.doc(sub(`directMessages/${dmId}`)).set(data));
+    // Existing threads cannot bypass the current policy either.
+    await seedDoc(sub(`directMessages/${dmId}`), data);
+    await assertFails(db.doc(sub(`dmMessages/${dmId}`)).set({ dmId, senderId: MEMBER_UID, content: 'Blocked' }));
+    await assertFails(db.doc(sub(`directMessages/${dmId}`)).update({ lastMessage: 'Blocked', lastMessageAt: 2 }));
+  });
+
   it('a participant reads, sends, and marks received messages read', async () => {
     const db = (await member()).firestore();
     // Read the thread's messages (scoped query by dmId).

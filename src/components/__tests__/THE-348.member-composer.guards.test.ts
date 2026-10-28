@@ -122,6 +122,36 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
       .not.toMatch(/attachments/);
   });
 
+  it('DM counterpart checks include private-roster admins as well as role, owner and platform identities', () => {
+    const start = RULES.indexOf('function uidIsTenantAdmin(');
+    expect(start).toBeGreaterThan(-1);
+    const end = RULES.indexOf('\n    function ', start + 1);
+    expect(end).toBeGreaterThan(start);
+    const counterpart = RULES.slice(start, end);
+    expect(counterpart).toContain('isTenantOwner(uid, tenantId)');
+    expect(counterpart).toContain("get(path).data.get('role', 'user') == 'super_admin'");
+    expect(counterpart).toContain("get(path).data.get('tenantId', null) == tenantId");
+    expect(counterpart).toContain("in ['admin', 'church_admin']");
+    expect(counterpart).toContain('/documents/tenant_private/$(tenantId)');
+    expect(counterpart).toContain("get(path).data.email in get(rosterPath).data.get('adminEmails', [])");
+    // Both functions must recognise exactly the same platform email identities.
+    const caller = RULES.match(/function isSuperAdmin\(\)[\s\S]*?\n    }/);
+    expect(caller).not.toBeNull();
+    const platformEmails = caller![0].match(/tokenEmail\(\) in (\[[^\]]+\])/);
+    expect(platformEmails).not.toBeNull();
+    expect(counterpart).toContain(`get(path).data.email in ${platformEmails![1]}`);
+    expect(counterpart).not.toContain('participantRoles');
+  });
+
+  it('profile email writes cannot forge a roster or platform counterpart identity', () => {
+    const users = ruleBlock('users');
+    expect(createClause(users)).toContain('request.resource.data.email == tokenEmail()');
+    const update = users.match(/allow update:([\s\S]*?);/);
+    expect(update).not.toBeNull();
+    expect(update![1]).toContain("!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email'])");
+    expect(update![1]).toContain("request.auth.uid == userId && request.resource.data.get('email', null) == tokenEmail()");
+  });
+
   it('channelMessages create binds sender identity and checks membership without a field allowlist', () => {
     const clause = createClause(ruleBlock('channelMessages'));
     expect(clause).toContain('channelMemberAccess(get(');
