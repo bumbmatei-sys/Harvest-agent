@@ -41,6 +41,14 @@ export const rateLimiters = {
     prefix: 'rl:auth',
   }) : null,
 
+  // Public sign-up submissions have a separate per-IP budget from login.
+  signupSubmit: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, '60 s'),
+    analytics: true,
+    prefix: 'rl:signup-submit',
+  }) : null,
+
   // Stripe checkout: 10 requests per minute
   stripe: redis ? new Ratelimit({
     redis,

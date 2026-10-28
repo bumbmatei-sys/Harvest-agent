@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
-const mocks = vi.hoisted(() => ({ requireAuth: vi.fn(), requireTenantPermission: vi.fn(), collection: vi.fn(), transaction: vi.fn(), checkRateLimit: vi.fn(), rateLimiters: { auth: {} as object | null } }));
+const mocks = vi.hoisted(() => ({ requireAuth: vi.fn(), requireTenantPermission: vi.fn(), collection: vi.fn(), transaction: vi.fn(), checkRateLimit: vi.fn(), rateLimiters: { auth: {} as object | null, signupSubmit: {} as object | null } }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mocks.requireAuth, requireTenantPermission: mocks.requireTenantPermission }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: mocks.collection, runTransaction: mocks.transaction } }));
 vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: mocks.checkRateLimit, rateLimiters: mocks.rateLimiters }));
@@ -22,6 +22,7 @@ let writes: string[];
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.rateLimiters.auth = {};
+  mocks.rateLimiters.signupSubmit = {};
   mocks.requireAuth.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
   mocks.requireTenantPermission.mockResolvedValue(NextResponse.json({ error: 'Denied' }, { status: 403 }));
   mocks.checkRateLimit.mockResolvedValue(null);
@@ -48,6 +49,7 @@ describe('signup page routes', () => {
   });
   it('reserves a unique handle with the page atomically', async () => {
     const input = { handle: 'fresh', title: 'Title', message: '', fields };
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
     expect((await create(request('POST', input))).status).toBe(201);
     expect(writes).toEqual(['create:signup_handles/fresh', 'create:signup_pages/new']);
     expect((await create(request('POST', { ...input, handle: 'hello' }))).status).toBe(409);
@@ -67,7 +69,10 @@ describe('signup page routes', () => {
     expect((await publicPage(request('GET'), { params: { handle: 'hello' } })).status).toBe(404);
   });
   it('rate limits, validates and stores submissions; traps honeypots', async () => {
-    expect((await submit(request('POST', { handle: 'hello', website: '', answers: { name: 'A' } }))).status).toBe(201);
+    mocks.rateLimiters.auth = null;
+    const req = request('POST', { handle: 'hello', website: '', answers: { name: 'A' } });
+    expect((await submit(req)).status).toBe(201);
+    expect(mocks.checkRateLimit).toHaveBeenCalledWith(req, 'signupSubmit');
     expect(writes).toContain('create:signup_pages/page/submissions/new');
     writes = [];
     expect((await submit(request('POST', { handle: 'hello', website: 'spam', answers: {} }))).status).toBe(200);
@@ -75,7 +80,7 @@ describe('signup page routes', () => {
     expect((await submit(request('POST', { handle: 'hello', website: '', answers: { email: 'x' } }))).status).toBe(400);
     mocks.checkRateLimit.mockResolvedValueOnce(new Response(null, { status: 429 }));
     expect((await submit(request('POST', {}))).status).toBe(429);
-    mocks.rateLimiters.auth = null;
+    mocks.rateLimiters.signupSubmit = null;
     expect((await submit(request('POST', {}))).status).toBe(503);
   });
   it('restricts submissions and exports and escapes spreadsheet formulas', async () => {

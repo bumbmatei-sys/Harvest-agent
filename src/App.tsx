@@ -287,6 +287,7 @@ const AppInner: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setIsAuthReady(false);
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -316,7 +317,7 @@ const AppInner: React.FC = () => {
               //    super admin browsing a tenant would be gated by their (wrong) plan.
               //  - Off a subdomain (apex/admin domain), fall back to the user doc plan.
               const onSubdomain = getTenantIdFromHost() !== null;
-              if (!onSubdomain && isAdminDomain) {
+              if (!onSubdomain) {
                 const userPlan = canonicalPlanId(data.plan) ?? undefined;
                 if (userPlan) {
                   setTenantPlan(userPlan);

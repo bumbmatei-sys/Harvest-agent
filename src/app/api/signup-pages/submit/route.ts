@@ -6,8 +6,8 @@ import { fromStoredFields, validId } from '@/lib/signup-pages/server';
 
 export async function POST(request: NextRequest) {
   try {
-    if (!rateLimiters.auth) return NextResponse.json({ error: 'Submission temporarily unavailable' }, { status: 503 });
-    const limited = await checkRateLimit(request, 'auth');
+    if (!rateLimiters.signupSubmit) return NextResponse.json({ error: 'Submission temporarily unavailable' }, { status: 503 });
+    const limited = await checkRateLimit(request, 'signupSubmit');
     if (limited) return limited;
     const body = await request.json();
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).sort().join(',') !== 'answers,handle,website' || !isValidSignupHandle(body.handle) || typeof body.website !== 'string') return NextResponse.json({ error: 'Invalid submission' }, { status: 400 });

@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
     if (!validId(user.tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 403 });
+    const permitted = await requireTenantPermission(request, user.tenantId, 'manageForms');
+    if (permitted instanceof NextResponse) return permitted;
     const input = parseSignupPageInput(await request.json());
     if (!input) return NextResponse.json({ error: 'Invalid page' }, { status: 400 });
     const ref = adminDb.collection('signup_pages').doc();

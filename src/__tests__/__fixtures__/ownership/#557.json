@@ -515,6 +515,31 @@
       "file": "src/components/__tests__/THE-334.nav-rail-coordination.test.tsx",
       "digest": "6071ebeed7185bb608ae437a12c7b4456a656158c233220a2ca79f81a6459d7f",
       "why": "#557 appends the drawer digest for the Sign-up pages navigation entry while preserving existing guards."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "ae1ec7a8aa9bea4e719dedb9b67fc03e21f2f7d45c8ebe70226587508deda5fe",
+      "why": "#557 resolves the signed-in account plan on apex and denies dashboard access while the plan is unknown."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "0381518181977dd7e60c35ce337f5708f60181a89def50148c1a64a9138b9aff",
+      "why": "#557 verifies apex Free account plan resolution and denies the dashboard for an unknown plan while preserving existing assertions."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "2a443851788ade8a730d5eb7ded9999de7faee25339ab3c66af14b539f8186f2",
+      "why": "#557 keeps unknown-plan dashboard access on the loading screen to prevent a post-auth redirect loop."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "85950096b41417bc9fd45f17c6a4f357788534f4b60845bc33e13aec3572b53c",
+      "why": "#557 preserves resolved unknown-plan admin access while enforcing known Free entitlements and testing the loading and routing behavior."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "4245fa893e8b354920a08ca51bc62ea0746e342ced66b697044c704becca390a",
+      "why": "#557 preserves resolved unknown-plan admin access while enforcing known Free entitlements and testing the loading and routing behavior."
     }
   ]
 }

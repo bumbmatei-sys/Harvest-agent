@@ -49,6 +49,7 @@ const state = vi.hoisted(() => ({
   authListeners: [] as Array<(u: unknown) => void>,
   /** Every tenant id the app looked up, in order. A super admin must look up none. */
   tenantLookups: [] as unknown[],
+  userDocWait: null as Promise<void> | null,
 }));
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
@@ -74,6 +75,7 @@ vi.mock('firebase/auth', () => ({
 vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, col: string, id: string) => ({ col, id, path: `${col}/${id}` }),
   getDoc: async (ref: { col: string; id: unknown }) => {
+    if (ref.col === 'users' && state.userDocWait) await state.userDocWait;
     if (ref.col === 'tenants') state.tenantLookups.push(ref.id);
     const d = ref.col === 'users' ? state.userDoc : state.tenantDoc;
     return { exists: () => !!d?.exists, data: () => d?.data };
@@ -220,6 +222,7 @@ beforeEach(() => {
   state.tenantDoc = null;
   state.authListeners.length = 0;
   state.tenantLookups.length = 0;
+  state.userDocWait = null;
   tenantCtx.tenantId = null;
   tenantCtx.isAdminDomain = false;
   hops = [];
@@ -462,6 +465,42 @@ describe('#557 Free account routing', () => {
     expect(hops).toEqual([]);
     expect(window.location.pathname).toBe('/');
     expect(rendered('main-app')).toBe(true);
+    expect(useAppStore.getState().tenantPlan).toBe('free');
     expect(rendered('admin-dashboard')).toBe(false);
+  });
+
+  it('shows loading until the user document resolves, then allows an admin with no plan', async () => {
+    startAt(`${APEX_ORIGIN}/admin/crm`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: undefined });
+    let resolveRead!: () => void;
+    state.userDocWait = new Promise<void>((resolve) => { resolveRead = resolve; });
+    mount();
+    await flush();
+    expect(container.querySelector('.animate-spin')).not.toBeNull();
+    expect(rendered('admin-dashboard')).toBe(false);
+    await act(async () => { resolveRead(); });
+    await flush();
+    expect(useAppStore.getState().tenantPlan).toBeNull();
+    expect(container.querySelector('.animate-spin')).toBeNull();
+    expect(rendered('admin-dashboard')).toBe(true);
+    expect(window.location.pathname).toBe('/admin/crm');
+  });
+
+  it('denies a Free user navigating back to admin without a redirect loop', async () => {
+    startAt(`${APEX_ORIGIN}/`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    act(() => {
+      window.history.pushState({}, '', '/admin');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await flush();
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('.animate-spin')).toBeNull();
   });
 });
