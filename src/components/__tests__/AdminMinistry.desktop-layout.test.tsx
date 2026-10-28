@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * Batch F — the five admin ministry screens (Community, Events, Fundraising,
@@ -190,6 +191,12 @@ vi.mock('firebase/firestore', () => ({
   documentId: () => '__name__',
   startAfter: (...a: unknown[]) => a,
   getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  // Community setup ensures the default group transactionally. This fixture
+  // represents an existing group, and records any attempted transaction write.
+  runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<void>) => fn({
+    get: async () => ({ exists: () => true }),
+    set: (r: { __path?: string }) => { writes.push(`set:${r?.__path}`); },
+  }),
   addDoc: async (r: { __path?: string }) => { writes.push(`add:${r?.__path}`); return { id: 'x' }; },
   updateDoc: async (r: { __path?: string }) => { writes.push(`update:${r?.__path}`); },
   deleteDoc: async (r: { __path?: string }) => { writes.push(`delete:${r?.__path}`); },
@@ -1941,6 +1948,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   const ALLOWED_ADDITIONS: Record<string, string> = {
     ...Object.fromEntries(THE_379_MOBILE_TOKENS.map((t) => [t, THE_379_MOBILE_REASON])),
     ...Object.fromEntries(LIST_REDESIGN_MOBILE_TOKENS.map((t) => [t, LIST_REDESIGN_MOBILE_REASON])),
+    // THE-555 upgrades lucide-react: numeric icon aliases now also emit their canonical class.
+    'lucide-link-2': 'THE-555: canonical identifier emitted alongside lucide-link2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
+    'lucide-trash-2': 'THE-555: canonical identifier emitted alongside lucide-trash2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
+
     /* ─── THE-368 — the giving documentation link, APPENDED to the list below ──
        Two entries, both from ONE element: the money-flow link this ticket puts
        under the campaigns header. Added here rather than by re-recording
@@ -2607,7 +2618,18 @@ describe('no community query or write path changed', () => {
 
   it('reads and writes the same four collections, spelled the same way', () => {
     const after = read('AdminCommunity.tsx');
-    expect(firestorePathsOf(after)).toEqual(THE_331_COMMUNITY.firestorePaths());
+    // Community step 1 ensures the default group and loads the group roster.
+    const expected = THE_331_COMMUNITY.firestorePaths();
+    const channelList = expected.indexOf("'tenants', tenantId, 'channels'");
+    expected.splice(channelList, 0, "'tenants', tenantId, 'channels', 'all-members'");
+    // PR 554 extracts both user collection reads into loadScopedUserDocs.
+    // Remove exactly those two paths; every other path must retain its order.
+    expect(expected.filter(p => p === "'users'")).toHaveLength(2);
+    for (let i = 0; i < 2; i += 1) expected.splice(expected.indexOf("'users'"), 1);
+    expect(firestorePathsOf(stripComments(after))).toEqual(expected);
+    const loader = stripComments(readFileSync(path.join(REPO, 'src/components/community/loadScopedUserDocs.ts'), 'utf8'));
+    expect(firestorePathsOf(loader)).toEqual(["'users'"]);
+    expect(loader).toContain("where('tenantId', '==', value), orderBy(documentId()), limit(max)");
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 
@@ -2624,15 +2646,21 @@ describe('no community query or write path changed', () => {
     ).toContain(moved);
   });
 
-  it('changes nothing in AdminCommunity outside a className', () => {
+  it('pins AdminCommunity outside presentation after community step 1', () => {
     const now = stripPresentation(read('AdminCommunity.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(
-      THE_331_COMMUNITY.strippedLines,
-    );
-    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe(THE_331_COMMUNITY.strippedSha);
+    // Community step 1 changes group creation and exposes onboarding answers.
+    // PR 554 bounds the group picker and uses the shared sender-name fallback.
+    expect([
+      [1285, '260913648f9e957b8bec6fbce8f9ade5e41bb6119907a0f005fef7d374c329ec'],
+      [1280, '76881812af03d7c3baaf7e5b212de85809436fdba90246e8a70431507a710c8a'],
+      // THE-555 merge retains PR 554's extracted, tenant-scoped user picker.
+      [1259, 'ef2d02cbd289c2dee02399a92acdcd3125c1d26f91c30bfb5db92807731582aa'],
+      // PR 554 final review adopts shadcn for the member and onboarding actions.
+      [1260, 'f5dad168ccab0e90c653baa24cab8f420774a7e1be14a14ebf16ac4e04fc5837'],
+    ], DIFF_HINT('AdminCommunity')).toContainEqual([now.split('\n').length, sha(now)]);
   });
 
-  it('writes nothing while the screen is merely rendered', async () => {
+  it('writes nothing on render when the default group already exists', async () => {
     await screen('AdminCommunity');
     expect(writes).toEqual([]);
   });

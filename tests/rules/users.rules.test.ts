@@ -6,7 +6,7 @@ import {
   seedBase, seedAdmin, teardownEnv,
   superAdmin, owner, fullAdmin, member, adminB, asUid,
   permsOnly, permsAllBut, permsFull,
-  TENANT_A, TENANT_B, MEMBER_UID, OWNER_UID, FULL_ADMIN_UID,
+  TENANT_A, TENANT_B, MEMBER_UID, OWNER_UID, OWNER_EMAIL, FULL_ADMIN_UID,
 } from './helpers';
 
 const serverNow = () => firebase.firestore.FieldValue.serverTimestamp();
@@ -141,9 +141,35 @@ describe('users: owner protection', () => {
 });
 
 describe('users: create/read regressions', () => {
+  it('binds profile email to Auth on create, including roster and platform addresses', async () => {
+    const db = (await asUid('email-create')).firestore();
+    for (const email of [OWNER_EMAIL, 'bumbmatei@proton.me', 'someone-else@test.com']) {
+      await assertFails(db.doc('users/email-create').set({ role: 'user', tenantId: TENANT_A, email }));
+    }
+    await assertSucceeds(db.doc('users/email-create').set({ role: 'user', tenantId: TENANT_A, email: 'email-create@test.com' }));
+  });
+
+  it('refuses forged email updates through both the self and tenant-admin paths', async () => {
+    const db = (await member()).firestore();
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ email: OWNER_EMAIL }));
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ email: 'bumbmatei@proton.me' }));
+    await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({ email: 'member@test.com', displayName: 'Member' }));
+    const admin = (await fullAdmin()).firestore();
+    await assertFails(admin.doc(`users/${FULL_ADMIN_UID}`).update({ email: OWNER_EMAIL }));
+    await assertFails(admin.doc(`users/${MEMBER_UID}`).update({ email: OWNER_EMAIL }));
+    await assertFails(admin.doc(`users/${MEMBER_UID}`).update({ email: 'full-admin@test.com' }));
+    await assertSucceeds(admin.doc(`users/${MEMBER_UID}`).update({ email: 'member@test.com', displayName: 'Edited' }));
+    await assertSucceeds((await superAdmin()).firestore().doc(`users/${MEMBER_UID}`).update({ email: 'corrected@test.com' }));
+  });
+
+  it('lets a member resync their profile after an Auth email change', async () => {
+    const db = (await asUid(MEMBER_UID)).firestore();
+    await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({ email: `${MEMBER_UID}@test.com` }));
+  });
+
   it('self-create with role user is allowed; role admin is not', async () => {
     const dbNew = (await asUid('brand-new-user')).firestore();
-    await assertSucceeds(dbNew.doc('users/brand-new-user').set({ role: 'user', tenantId: TENANT_A, email: 'n@t.com' }));
+    await assertSucceeds(dbNew.doc('users/brand-new-user').set({ role: 'user', tenantId: TENANT_A, email: 'brand-new-user@test.com' }));
     const dbNew2 = (await asUid('brand-new-admin')).firestore();
     await assertFails(dbNew2.doc('users/brand-new-admin').set({ role: 'admin', tenantId: TENANT_A }));
   });
@@ -171,12 +197,12 @@ describe('users: newsletter consent', () => {
   it('self-create with the three fields succeeds for both true and false', async () => {
     const optedIn = (await asUid('consent-in')).firestore();
     await assertSucceeds(optedIn.doc('users/consent-in').set({
-      role: 'user', email: 'in@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-in@test.com', tenantId: TENANT_A,
       ...consent(true, 'signup-email'),
     }));
     const optedOut = (await asUid('consent-out')).firestore();
     await assertSucceeds(optedOut.doc('users/consent-out').set({
-      role: 'user', email: 'out@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-out@test.com', tenantId: TENANT_A,
       ...consent(false, 'signup-google'),
     }));
   });
@@ -184,14 +210,14 @@ describe('users: newsletter consent', () => {
   it('create without the three fields still succeeds', async () => {
     const db = (await asUid('consent-absent')).firestore();
     await assertSucceeds(db.doc('users/consent-absent').set({
-      role: 'user', email: 'absent@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-absent@test.com', tenantId: TENANT_A,
     }));
   });
 
   it('create with a non-bool, a client timestamp, or a bad source fails', async () => {
     const badBool = (await asUid('consent-bad-bool')).firestore();
     await assertFails(badBool.doc('users/consent-bad-bool').set({
-      role: 'user', email: 'b@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-bad-bool@test.com', tenantId: TENANT_A,
       newsletterOptIn: 'yes',
       newsletterOptInAt: serverNow(),
       newsletterOptInSource: 'signup-email',
@@ -199,7 +225,7 @@ describe('users: newsletter consent', () => {
 
     const badTime = (await asUid('consent-bad-time')).firestore();
     await assertFails(badTime.doc('users/consent-bad-time').set({
-      role: 'user', email: 't@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-bad-time@test.com', tenantId: TENANT_A,
       newsletterOptIn: true,
       newsletterOptInAt: firebase.firestore.Timestamp.fromDate(new Date('2020-01-15T00:00:00Z')),
       newsletterOptInSource: 'signup-email',
@@ -207,7 +233,7 @@ describe('users: newsletter consent', () => {
 
     const badSource = (await asUid('consent-bad-source')).firestore();
     await assertFails(badSource.doc('users/consent-bad-source').set({
-      role: 'user', email: 's@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-bad-source@test.com', tenantId: TENANT_A,
       newsletterOptIn: true,
       newsletterOptInAt: serverNow(),
       newsletterOptInSource: 'signup',
@@ -217,46 +243,46 @@ describe('users: newsletter consent', () => {
   it('a partial set of the three fields is refused on create (all or none)', async () => {
     const optInTrue = (await asUid('consent-partial-true')).firestore();
     await assertFails(optInTrue.doc('users/consent-partial-true').set({
-      role: 'user', email: 'pt@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-true@test.com', tenantId: TENANT_A,
       newsletterOptIn: true,
     }));
 
     const optInFalse = (await asUid('consent-partial-false')).firestore();
     await assertFails(optInFalse.doc('users/consent-partial-false').set({
-      role: 'user', email: 'pf@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-false@test.com', tenantId: TENANT_A,
       newsletterOptIn: false,
     }));
 
     const noSource = (await asUid('consent-partial-no-source')).firestore();
     await assertFails(noSource.doc('users/consent-partial-no-source').set({
-      role: 'user', email: 'ns@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-no-source@test.com', tenantId: TENANT_A,
       newsletterOptIn: true,
       newsletterOptInAt: serverNow(),
     }));
 
     const noAt = (await asUid('consent-partial-no-at')).firestore();
     await assertFails(noAt.doc('users/consent-partial-no-at').set({
-      role: 'user', email: 'na@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-no-at@test.com', tenantId: TENANT_A,
       newsletterOptIn: true,
       newsletterOptInSource: 'signup-email',
     }));
 
     const noOptIn = (await asUid('consent-partial-no-optin')).firestore();
     await assertFails(noOptIn.doc('users/consent-partial-no-optin').set({
-      role: 'user', email: 'no@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-no-optin@test.com', tenantId: TENANT_A,
       newsletterOptInAt: serverNow(),
       newsletterOptInSource: 'signup-google',
     }));
 
     const sourceOnly = (await asUid('consent-partial-source')).firestore();
     await assertFails(sourceOnly.doc('users/consent-partial-source').set({
-      role: 'user', email: 'so@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-source@test.com', tenantId: TENANT_A,
       newsletterOptInSource: 'signup-email',
     }));
 
     const atOnly = (await asUid('consent-partial-at')).firestore();
     await assertFails(atOnly.doc('users/consent-partial-at').set({
-      role: 'user', email: 'ao@t.com', tenantId: TENANT_A,
+      role: 'user', email: 'consent-partial-at@test.com', tenantId: TENANT_A,
       newsletterOptInAt: serverNow(),
     }));
   });

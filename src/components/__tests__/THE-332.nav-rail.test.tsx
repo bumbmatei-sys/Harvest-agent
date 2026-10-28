@@ -420,8 +420,9 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        menu at the rail's floor, so the nav names 26 destinations in all. 24 of them are reachable today — `affiliate` is
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
-    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 24 tabs').toBe(24);
-    expect(named.size).toBe(26);
+    // Community setup adds one destination to both the group and the named set.
+    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 25 tabs').toBe(25);
+    expect(named.size).toBe(27);
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
@@ -657,6 +658,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '8b0789543891a489d0de9001ecd2326d248809111c4f1f1baf61b3ebddd4f0bd',
       // 🔴 APPENDED BY UI polish, 23 Oct (THE-377) - the Products tab joins the CONTENT group after Courses, on BOTH shells, so the drawer reaches the new Products page. No other id moved and the two arrays stay element-for-element equal.
       '518972cccc987e39db39beb341f7cb4c1a54abb32160dfd92a0b76541ee4ee25',
+      // Community setup joins the Ministry group on both admin shells.
+      '7e69678e0050a76e47ca27d143afc0648b5d69c9900fe4a6d2ac103725ae1e5e',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
@@ -867,6 +870,16 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        pane alone. No nav, tab id, read, write or permission gate moved, which is
        what THE-332 pins this file for. */
     'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
+    // Community step 1 adds groups and onboarding answers to this screen.
+    'eca86542f3f017f35dc9fca7da43e44a42b0afc4de33d9e9846dbb5551c2a055',
+    // PR 554 bounds group reads and binds sender identity.
+    '86215cbfe8a82a6960aaf06ddb19089efc3e6864ff5f37e862f311c301879b2c',
+    // THE-555 merge retains PR 554's explicit tenant filters before picker caps.
+    '4731b86b68aa60f38fe8d71b519121cb1582c9059d361179e55115a9e5b5144e',
+    // PR 554 extracts roster reads into the shared tenant-scoped loader.
+    '10f3340e8023569e202e9ec5c96c43a6aa09e138809f09eede4a942c67c0815d',
+    // PR 554 final review replaces member and onboarding actions with shadcn Buttons.
+    '6c9bc5697460e05528193829bbaf889de85c1effe244f6f2378d4ad1041616c7',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
@@ -1046,5 +1059,16 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     // APPENDED BY THE-348 - the fixed composer, the shared attach menu and the
     // admin gate. Measured in Chromium at five widths.
     '60a43ca453f322d7b0a14aa2c574ccfa539259bf4ffc37a4db2cdd7be09a680f',
+    // Community step 1 adds audience-scoped groups and gates member replies.
+    '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150',
+    // Community group selection and direct message layout.
+    '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
+    // PR 554 bounds group reads and binds sender identity.
+    'ce58e5ae3704e111f5d41170f0f776a38063d5333f68f0fd6663da2fa961d65f',
+    // PR 554 final review uses the shared Input for group search with its phone touch floor.
+    '5459c1e1ce026c3b7d86c09a63b44bb3b1e9e5bff89ea56c4f5001f5c3dc75b3',
+    // APPENDED BY PR 554 review: the group search uses shadcn Input with h-auto
+    // so its 44px phone touch floor applies; no nav rail or permission gate moved.
+    '12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d',
   ],
 };

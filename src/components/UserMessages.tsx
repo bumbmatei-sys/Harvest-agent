@@ -8,6 +8,8 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { Input } from './ui/input';
+import { GroupList } from './community/GroupList';
 import { sortByTime } from '../utils/query-helpers';
 import { getOrCreateDm } from '../lib/dm';
 import { READING_MEASURE } from './layout/form-layout';
@@ -113,7 +115,7 @@ const SEND_TAP_TARGET = 'min-h-11 min-w-11 sm:min-h-0 sm:min-w-0';
 interface DirectMessage {
   id: string;
   participants: string[];
-  participantRoles: Record<string, string>;
+  participantRoles?: Record<string, string>;
   participantNames?: Record<string, string>;
   lastMessage: string;
   lastMessageAt: Timestamp | null;
@@ -136,6 +138,7 @@ interface Channel {
   name: string;
   description: string;
   members?: string[];
+  audience?: 'all' | 'selected' | 'admins';
   lastMessage?: string;
   lastMessageAt?: Timestamp | null;
 }
@@ -286,7 +289,9 @@ const DmThread: React.FC<{
   isAdmin: boolean;
   /** Whether attachable records include the legacy null-tenant set. */
   includeNull: boolean;
-}> = ({ dm, tenantId, currentUser, otherName, onBack, isAdmin, includeNull }) => {
+  replyAllowed: boolean;
+  replyStatus: string;
+}> = ({ dm, tenantId, currentUser, otherName, onBack, isAdmin, includeNull, replyAllowed, replyStatus }) => {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -327,7 +332,7 @@ const DmThread: React.FC<{
   }, [messages]);
 
   const send = async () => {
-    if ((!text.trim() && attachments.length === 0) || sending) return;
+    if (!replyAllowed || (!text.trim() && attachments.length === 0) || sending) return;
     setSending(true);
     try {
       const content = text.trim();
@@ -406,7 +411,7 @@ const DmThread: React.FC<{
                   );
                 }
                 const senderRole = dm.participantRoles?.[m.senderId || ''];
-                const isAdminSender = ADMIN_ROLES.includes(senderRole);
+                const isAdminSender = ADMIN_ROLES.includes(senderRole || '');
                 return (
                   <div key={m.id} className="flex gap-2.5 items-end">
                     {isFirst ? (
@@ -440,7 +445,7 @@ const DmThread: React.FC<{
           the bottom nav, and inside a conversation the nav is now HIDDEN, so
           the composer is the bottom-most chrome and reserves the inset itself.
           Above `lg` there is no bottom nav to defer to in the first place. */}
-      <div data-composer className={`bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3 ${FIXED_COMPOSER} ${COMPOSER_PAD}`}>
+      {!replyAllowed ? <p role="status" className="p-4 text-sm text-muted">{replyStatus}</p> : <div data-composer className={`bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3 ${FIXED_COMPOSER} ${COMPOSER_PAD}`}>
         {attachments.length > 0 && (
           <div className={`flex flex-wrap gap-2 mb-2 lg:w-full ${READING_MEASURE}`}>
             {attachments.map((a, i) => (
@@ -492,25 +497,29 @@ const DmThread: React.FC<{
             <Send size={15} className="text-white" />
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 };
 
 // ─── Read-only Channel View (members can read, not post) ──────────────────────
 
-const ChannelView: React.FC<{
+export const ChannelView: React.FC<{
   channel: Channel;
   tenantId: string;
   currentUser: { uid: string; name: string };
   onBack: () => void;
-}> = ({ channel, tenantId, currentUser, onBack }) => {
-  const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  previewMessages?: ChannelMessage[];
+}> = ({ channel, tenantId, currentUser, onBack, previewMessages }) => {
+  const [messages, setMessages] = useState<ChannelMessage[]>(previewMessages || []);
+  const [channelError, setChannelError] = useState('');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setChannelError('');
+    if (previewMessages) { setMessages(previewMessages); return; }
     // Single-field filter only (channelId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'channelMessages'),
@@ -519,13 +528,14 @@ const ChannelView: React.FC<{
     );
     return onSnapshot(q, snap => {
       setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage), 'createdAt', 'asc'));
-    }, () => {});
-  }, [channel.id, tenantId]);
+      setChannelError('');
+    }, () => { setChannelError('Could not load messages. Please reopen this group to try again.'); });
+  }, [channel.id, tenantId, previewMessages]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const send = async () => {
-    if (!text.trim() || sending) return;
+    if (!text.trim() || sending || previewMessages) return;
     setSending(true);
     try {
       const content = text.trim();
@@ -558,7 +568,7 @@ const ChannelView: React.FC<{
           <Hash size={16} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-strong text-sm truncate">#{channel.name}</p>
+          <p className="font-bold text-strong text-sm truncate"># {channel.name}{channel.audience !== 'all' && channel.members ? ` · ${channel.members.length} members` : ''}</p>
           {channel.description && <p className="text-xs text-faint truncate">{channel.description}</p>}
         </div>
       </div>
@@ -566,7 +576,8 @@ const ChannelView: React.FC<{
       {/* Rule 6 — a channel is the same reading surface as a DM, so it takes
           the same measure. Was unbounded here too. */}
       <div data-thread-scroller className={`flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3 lg:w-full ${COMPOSER_BAND} ${READING_MEASURE}`}>
-        {messages.length === 0 && (
+        {channelError && <p role="alert" className="text-sm text-destructive">{channelError}</p>}
+        {!channelError && messages.length === 0 && (
           <div className="text-center py-12 text-faint">
             <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No messages yet</p>
@@ -617,7 +628,7 @@ const ChannelView: React.FC<{
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
-            placeholder={`Message #${channel.name}`}
+            placeholder={`Message # ${channel.name}`}
             className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
@@ -664,9 +675,14 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const [currentUser, setCurrentUser] = useState<{ uid: string; name: string } | null>(null);
   const [dms, setDms] = useState<DirectMessage[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [groupError, setGroupError] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
+  const [replyCheck, setReplyCheck] = useState<{ id: string; status: 'loading' | 'allowed' | 'disabled' | 'error' }>({ id: '', status: 'loading' });
+  const replyStatus = openDm && replyCheck.id === openDm.id ? replyCheck.status : 'loading';
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
+  const initialChannelChosen = useRef(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false); // desktop conversation-list collapse
   const [admins, setAdmins] = useState<AdminContact[]>([]);
@@ -706,8 +722,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       const { getDoc } = await import('firebase/firestore');
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       const name = userDoc.exists()
-        ? (userDoc.data().displayName || auth.currentUser.displayName || 'You')
-        : (auth.currentUser.displayName || 'You');
+        ? (userDoc.data().displayName || auth.currentUser.displayName || 'Member')
+        : (auth.currentUser.displayName || 'Member');
       const role = userDoc.exists() ? (userDoc.data().role || 'user') : 'user';
       if (cancelled) return;
       setCurrentUser({ uid: auth.currentUser.uid, name });
@@ -731,21 +747,54 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage);
       rows.sort((a, b) => (b.lastMessageAt?.toMillis() || 0) - (a.lastMessageAt?.toMillis() || 0));
       setDms(rows);
-    }, () => {});
-  }, [tenantId, currentUser]);
+    }, () => setGroupError('Could not load direct messages. Please try again.'));
+  }, [tenantId, currentUser, isAdmin]);
 
-  // Channels the user is a member of (array-contains needs no composite index).
+  useEffect(() => {
+    if (initialChannelChosen.current || !channels.length) return;
+    initialChannelChosen.current = true;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setOpenChannel(channels.find(channel => channel.id === 'all-members') || channels[0]);
+    }
+  }, [channels]);
+
+  // Rules are not filters: each member query must prove its audience access.
   useEffect(() => {
     if (!tenantId || !currentUser) return;
-    const q = query(
-      collection(db, 'tenants', tenantId, 'channels'),
-      where('members', 'array-contains', currentUser.uid),
-      limit(50)
-    );
-    return onSnapshot(q, snap => {
-      setChannels(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel));
-    }, () => {});
-  }, [tenantId, currentUser]);
+    setGroupError('');
+    setChannels([]);
+    const source = collection(db, 'tenants', tenantId, 'channels');
+    const queries = isAdmin ? [query(source)] : [
+      query(source, where('audience', '==', 'all')),
+      query(source, where('members', 'array-contains', currentUser.uid)),
+    ];
+    const parts: Channel[][] = queries.map(() => []);
+    const unsubscribes = queries.map((q, index) => onSnapshot(q, snap => {
+      parts[index] = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel);
+      const merged = Array.from(new Map(parts.flat().filter(channel => isAdmin || channel.audience !== 'admins').map(channel => [channel.id, channel])).values());
+      merged.sort((a, b) => Number(b.id === 'all-members') - Number(a.id === 'all-members') || a.name.localeCompare(b.name));
+      setChannels(merged);
+    }, () => setGroupError('Could not load groups. Please try again.')));
+    return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+  }, [tenantId, currentUser, isAdmin]);
+
+  useEffect(() => {
+    if (!openDm || !tenantId || !currentUser) return;
+    if (isAdmin) { setReplyCheck({ id: openDm.id, status: 'allowed' }); return; }
+    let cancelled = false;
+    setReplyCheck({ id: openDm.id, status: 'loading' });
+    const check = async () => {
+      try {
+        const token = await auth.currentUser!.getIdToken();
+        const response = await fetch(`/api/community/dm-counterpart?tenantId=${encodeURIComponent(tenantId)}&dmId=${encodeURIComponent(openDm.id)}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error('Could not check conversation');
+        const result = await response.json();
+        if (!cancelled) setReplyCheck({ id: openDm.id, status: result.isAdmin ? 'allowed' : 'disabled' });
+      } catch { if (!cancelled) setReplyCheck({ id: openDm.id, status: 'error' }); }
+    };
+    void check();
+    return () => { cancelled = true; };
+  }, [openDm, tenantId, currentUser, isAdmin]);
 
   /**
    * 🔴 THE CLEANUP IS THE POINT — see `onConversationOpenChange`'s doc comment.
@@ -871,7 +920,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const selectedThread = openChannel && tenantId && currentUser ? (
     <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} />
   ) : openDm && tenantId && currentUser ? (
-    <DmThread dm={openDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openDm)} onBack={() => setOpenDm(null)} isAdmin={isAdmin} includeNull={includeNullTenant} />
+    <DmThread dm={openDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openDm)} onBack={() => setOpenDm(null)} isAdmin={isAdmin} includeNull={includeNullTenant} replyAllowed={replyStatus === 'allowed'} replyStatus={replyStatus === 'disabled' ? 'Direct messages between members are turned off' : replyStatus === 'error' ? 'Could not check this conversation. Please reopen it to try again.' : 'Checking conversation…'} />
   ) : null;
   const hasOpen = !!selectedThread;
 
@@ -917,7 +966,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       )}
 
       <div className="flex-1 p-4 lg:overflow-y-auto lg:min-h-0">
-        {dms.length === 0 && channels.length === 0 ? (
+        <label className="sr-only" htmlFor="group-search">Search groups</label>
+        <Input id="group-search" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Search groups" className="mb-4 h-auto min-h-[44px] sm:min-h-0 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm" />
+        {groupError && <p role="alert" className="mb-3 text-destructive">{groupError}</p>}
+        {!groupError && dms.length === 0 && channels.length === 0 ? (
           <div className="text-center py-16 text-faint">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
@@ -929,29 +981,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
           </div>
         ) : (
           <>
-            {channels.length > 0 && (
-              <div className="mb-5">
-                <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Channels</p>
-                <div className="space-y-2">
-                  {channels.map(ch => (
-                    <button
-                      key={ch.id}
-                      onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
-                    >
-                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
-                        <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-strong truncate">#{ch.name}</p>
-                        <p className="text-xs text-faint truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p>
-                      </div>
-                      {ch.lastMessageAt && <span className="text-[10px] text-faint flex-shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <GroupList channels={channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase()))} selectedId={openChannel?.id} onSelect={channel => { setOpenDm(null); setOpenChannel(channel); }} renderTime={ch => ch.lastMessageAt ? fmtTime(ch.lastMessageAt) : null} />
             {dms.length > 0 && (
               <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Direct Messages</p>
             )}
@@ -959,7 +989,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
             {dms.map(dm => (
               <button
                 key={dm.id}
-                onClick={() => setOpenDm(dm)}
+                onClick={() => { setOpenChannel(null); setOpenDm(dm); }}
                 className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"

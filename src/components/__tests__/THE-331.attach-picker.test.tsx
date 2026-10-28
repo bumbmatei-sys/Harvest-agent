@@ -411,7 +411,7 @@ describe('🔴 this ticket adds NO npm dependency at all', () => {
     };
     // 1825 was the count before phase 1. The two added keys are
     // @tanstack/react-table and @tanstack/table-core.
-    expect(Object.keys(lock.packages).filter(Boolean)).toHaveLength(1827);
+    expect(Object.keys(lock.packages).filter(Boolean)).toHaveLength(1827 + 3); // THE-555: embla-carousel, embla-carousel-react, embla-carousel-reactive-utils
   });
 
   it('🔴 windowing is pinned OFF, not left to a flag that only half-works', async () => {

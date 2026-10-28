@@ -207,8 +207,14 @@ setUpOrFail(async () => {
    * few px with nothing having changed. A geometry guard that is not
    * deterministic is not a guard.
    */
+  // THE-555: this static harness never mounts next/font. The original fixture
+  // used Linux's DejaVu Sans fallback before Inter was installed on the runner.
+  // Pin that family here: resolving the globals.css token to a newly installed
+  // local Inter changes every text width without any course CSS changing.
+  // Keep every original geometry value; do not regenerate the fixture.
+  const BASELINE_FONT = 'html{--font-sans:"DejaVu Sans";}';
   const FREEZE = '*,*::before,*::after{transition:none!important;animation:none!important;}';
-  writeFileSync(file, `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${body}</body></html>`);
+  writeFileSync(file, `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${BASELINE_FONT}${FREEZE}</style></head><body>${body}</body></html>`);
 
   browser = new MeasuringBrowser();
   await browser.open(`file://${file}`);
@@ -248,7 +254,16 @@ describe('4 — no measured geometry moved', () => {
       throw new Error('fixture written — unset THE_311_WRITE_FIXTURE and rerun');
     }
     const pinned = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Record<number, Shot>;
+    // THE-555 appends Lucide's glyph-only geometry; the original fixture is
+    // retained byte-for-byte. Assert the old child boxes before replacing them,
+    // so an amendment cannot silently consume a different surface.
+    const lucide = JSON.parse(readFileSync(path.join(__dirname, '__fixtures__', 'the-311-lucide-0.577-geometry.json'), 'utf8')) as {
+      librarySearch: Record<number, { at: number; before: Fingerprint[]; after: Fingerprint[] }>;
+    };
     for (const v of VIEWPORTS) {
+      const edit = lucide.librarySearch[v];
+      expect(pinned[v].library.slice(edit.at, edit.at + edit.before.length)).toEqual(edit.before);
+      pinned[v].library.splice(edit.at, edit.before.length, ...edit.after);
       for (const key of SCREENS) {
         expect(shots['classic-light'][v][key], `${key} moved at ${v}px`).toEqual(pinned[v][key]);
       }

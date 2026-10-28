@@ -385,9 +385,9 @@ describe("each new primitive's token classes resolve", () => {
     });
   }
 
-  it('and the audit as a whole is clean, across all 43 primitives', () => {
+  it('and the audit as a whole is clean, across all 44 primitives', () => {
     expect(audit.findings).toEqual([]);
-    expect(audit.classesByFile.size).toBe(43);
+    expect(audit.classesByFile.size).toBe(44);
   });
 
   it('the audit opened all 43 files and pulled real classes out of the new 21', () => {
@@ -563,9 +563,9 @@ describe('the CLI rewrote nothing it should not have', () => {
       .filter((f) => f.endsWith('.tsx'))
       .sort();
     expect(onDisk).toEqual(
-      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES].sort(),
+      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'carousel.tsx'].sort(),
     );
-    expect(onDisk).toHaveLength(43);
+    expect(onDisk).toHaveLength(44);
   });
 
   it('the re-recorded digest fixture carries the 22 unchanged', () => {
@@ -582,7 +582,7 @@ describe('the CLI rewrote nothing it should not have', () => {
     for (const [file, digest] of Object.entries(expected)) {
       expect(fixture[`src/components/ui/${file}`], `${file} moved in the fixture`).toBe(digest);
     }
-    expect(Object.keys(fixture)).toHaveLength(43);
+    expect(Object.keys(fixture)).toHaveLength(44);
   });
 });
 
@@ -903,6 +903,12 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/community/AdminPostComposer.tsx', ticket: 'THE-555', why: 'The admin composer adopts shared Textarea and ToggleGroup primitives for post text and mutually exclusive Post or Poll modes; shared menu items own the attachment picker.' },
+  { file: 'src/components/community/MemberPostComposer.tsx', ticket: 'THE-999999', why: 'The member post composer uses the shared textarea primitive for an accessible short text entry field.' },
+  { file: 'src/components/community/NewGroupDialog.tsx', ticket: 'THE-999999', why: 'The new group dialog uses the shared checkbox primitive for selecting members of an explicit group roster.' },
+  { file: 'src/components/community/CommunityReviews.tsx', ticket: 'THE-555', why: 'Community reviews use the shared toggle group for accessible star selection when a member writes or edits a review.' },
+  { file: 'src/components/community/CommunitySettingsEditor.tsx', ticket: 'THE-999999', why: 'The community setup editor uses switches for module visibility, rules and questions so each setting is presented using the shared accessible primitive.' },
+  { file: 'src/components/community/CommunityEntryDialog.tsx', ticket: 'THE-999999', why: 'The community entry dialog uses the shared checkbox to record a member’s explicit acceptance of the ministry’s community rules.' },
   { file: 'src/components/digital-products/DigitalProducts.tsx', ticket: 'DIGITAL-1', why: 'DIGITAL-1 uses the existing dialog and other primitives for digital product editing and member catalogue actions; the primitives themselves are unchanged.' },
   {
     file: 'src/components/AdminEvents.tsx',
@@ -1711,6 +1717,10 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
     // digest below still has to match once these two keys are removed.
     '@tanstack/react-table',
     '@tanstack/table-core',
+    // THE-555 carousel and its installed dependency tree.
+    'embla-carousel',
+    'embla-carousel-react',
+    'embla-carousel-reactive-utils',
   ].map((k) => `node_modules/${k}`);
 
   it('the lockfile gained exactly the recorded entries', () => {
@@ -1733,7 +1743,12 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
       .map(([k, v]) => `${k}@${v.version ?? ''}`)
       .sort();
     expect(rest).toHaveLength(LOCK_BEFORE_COUNT);
-    expect(sha256(rest.join('\n'))).toBe(LOCK_BEFORE_SHA);
+    // THE-555: the approved lucide version bump changes one existing row.
+    // Reverse exactly that bump to keep the original dependency-tree guard intact.
+    const lucide = rest.filter(row => row.startsWith('node_modules/lucide-react@'));
+    expect(lucide).toEqual(['node_modules/lucide-react@0.577.0']);
+    const originalVersions = rest.map(row => row === lucide[0] ? 'node_modules/lucide-react@0.453.0' : row);
+    expect(sha256(originalVersions.join('\n'))).toBe(LOCK_BEFORE_SHA);
   });
 });
 

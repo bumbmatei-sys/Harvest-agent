@@ -39,6 +39,8 @@ const nextConfig = {
   // initialized. Required on Next 14; the default from Next 15 onward.
   experimental: {
     instrumentationHook: true,
+    // Release webpack memory between the server, edge and client compiles.
+    webpackBuildWorker: true,
   },
   webpack: (config) => {
     const modules = Array.isArray(config.resolve.modules) ? [...config.resolve.modules] : ["node_modules"];

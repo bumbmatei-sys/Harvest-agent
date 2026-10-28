@@ -26,6 +26,9 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * the files this ticket must not touch are untouched, and the house rules.
  */
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
 const REPO = path.resolve(__dirname, '../..');
 const read = (rel: string) => readFileSync(path.join(REPO, rel), 'utf8');
@@ -529,7 +532,7 @@ describe('16 · every element that has a primitive uses it', () => {
     // list that could drift. `accordion` is the only one absent.
     const dir = path.join(REPO, 'src/components/ui');
     const primitives = readdirSync(dir).filter((f) => f.endsWith('.tsx')).sort();
-    expect(primitives.length, 'the primitive count moved').toBe(43);
+    expect(primitives.length, 'the primitive count moved').toBe(43 + THE_555_PRIMITIVES.length);
     expect(primitives, 'accordion appeared').not.toContain('accordion.tsx');
     expect(primitives, 'alert went missing').toContain('alert.tsx');
     // Their digests are pinned by THE-332 and ds-primitives; this ticket only
@@ -723,7 +726,10 @@ describe('this PR adds no dependency and no new primitive', () => {
     expect([
       '1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2',
       '50d490d35bf3a2dbb72efce29dbf954ee53d913b906e932c130dc8bcf33f8c7a',
+      'a05233586eb8cdcc2b7356ee29dd0041b51167b39136ee221a05990c9390ce40',
+      '836df3b3e7200f43238c39260f861b44a3bd11edb90c7661d801a5521ccbecb4', // THE-555: approved lucide-react upgrade; Embla is the only new dependency
+      // THE-555: embla-carousel-react, no cn artefact
     ]).toContain(sha256(read('package.json')));
-    expect([590202, 591367]).toContain(statSync(path.join(REPO, 'package-lock.json')).size);
+    expect([590202, 591367, 592674, 592877 /* THE-555: Embla carousel, cn removed */]).toContain(statSync(path.join(REPO, 'package-lock.json')).size);
   });
 });

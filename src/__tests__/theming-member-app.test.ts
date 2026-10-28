@@ -301,7 +301,7 @@ const MAP: Pair = {
 };
 
 const ALL_NEWS: Pair = {
-  target: 'All news — author avatar', state: 'initial letter (brought in line with Home)',
+  target: 'All news — comment composer avatar', state: 'initial letter',
   ink: TEXT_MUTED, bg: SURFACE_CHIP, ground: SURFACE,
 };
 
@@ -342,7 +342,7 @@ const ACCOUNT_SETTINGS_SCREENS: ScreenKey[] = ['personalInfo', 'saved'];
 // would otherwise pass on a stale assumption.
 const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   shell: ['bg-surface font-sans overflow-hidden', 'text-strong truncate'],
-  home: ['bg-surface-raised rounded-2xl shadow-xs border border-line p-4'],
+  home: ['border-line bg-surface-raised p-4 shadow-none', '<PostHeader name={post.authorName}'],
   blog: ['bg-surface-raised rounded-xl shadow-xs border border-line'],
   prayer: ["className=\"bg-surface-raised rounded-2xl border border-line p-4\""],
   /*
@@ -359,12 +359,15 @@ const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   bible: ['color: hlColor ? "var(--earth)" : undefined', 'HIGHLIGHT_COLORS'],
   aiChat: ['style.color = "rgb(var(--ink-danger-strong))"', 'style.background = "rgb(var(--c-danger-tint))"'],
   messages: ["'text-muted bg-surface-chip'"],
-  allNews: ['bg-surface-chip text-muted'],
+  allNews: ['bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted'],
   personalInfo: ['!bg-surface-sunken !border-transparent !text-strong'],
   saved: ["text-[14px] font-bold text-strong line-clamp-2", '12%, transparent'],
 };
 
 describe('every pair is anchored to real source (guards the guard)', () => {
+  it('Home post author ink is supplied by the shared post header', () => {
+    expect(read('components/community/PostPresentation.tsx')).toContain('font-bold text-strong text-sm');
+  });
   for (const [key, needles] of Object.entries(SOURCE_NEEDLES) as [ScreenKey, string[]][]) {
     it.each(needles.map((n) => [n] as const))(`${key}: source still contains %s`, (needle) => {
       expect(SOURCES[key], `${FILES[key]} no longer contains the code this pair describes`).toContain(needle);
@@ -663,7 +666,8 @@ describe('no hex, rgb() or inline colour is introduced', () => {
       // comment "per #104 feedback", an issue number that was never a colour.
     ],
     home: [
-      'rgba(0,0,0,0.12)', // dropdown-menu elevation shadow
+      // THE-555: the custom attachment menu was replaced by shadcn DropdownMenu,
+      // whose elevation comes from theme tokens; no raw shadow literal remains.
       // THE-348 removed both '#147's here — see `literals` above. They were
       // the comments "(the #147 fix: ...)" and "mirrors the post path's #147
       // fix": issue numbers, never colours.
@@ -702,7 +706,7 @@ describe('no hex, rgb() or inline colour is introduced', () => {
 
   it.each(Object.keys(FILES) as ScreenKey[])('%s introduces no colour literal beyond its baseline', (key) => {
     expect(
-      literals(SOURCES[key]),
+      key === 'home' ? [...literals(SOURCES.home), ...literals(read('components/community/AdminPostComposer.tsx'))].sort() : literals(SOURCES[key]),
       `${FILES[key]}'s colour literals changed — a new one here opts that surface out of theming`,
     ).toEqual([...BASELINE[key]].sort());
   });
@@ -792,7 +796,7 @@ describe('no pre-auth surface gained a dark treatment', () => {
 
 describe('a value that is deliberately dark in both themes is unchanged', () => {
   it('NewsTab: the attached-image remove button is a black scrim on arbitrary user photos (control-over-media, not a page surface)', () => {
-    expect(SOURCES.home).toContain('rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors');
+    expect(read('components/community/AdminPostComposer.tsx')).toContain('rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors');
   });
 
   it('ChurchMap: the church marker pin is a fixed vivid colour with a white outline, legible on either basemap by design (like every map app\'s pins)', () => {

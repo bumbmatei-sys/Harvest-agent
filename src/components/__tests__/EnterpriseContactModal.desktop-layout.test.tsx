@@ -41,6 +41,9 @@ const { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY, FIELD_WIDTHS, CONTROL_DENSI
 const ROOT = path.resolve(__dirname, '../../..');
 const SRC = path.join(ROOT, 'src');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
+// THE-555: re-recorded Lucide-only rows for lucide-react 0.453.0 -> 0.577.0.
+// Building2 adds lucide-building-2 and merges seven paths into five.
+// Every non-SVG class row and control size remains unchanged.
 const MOBILE_FIXTURE = JSON.parse(
   readFileSync(path.join(__dirname, '__fixtures__/EnterpriseContactModal.mobile-layer.json'), 'utf8'),
 ) as string[];

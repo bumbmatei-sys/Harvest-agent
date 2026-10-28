@@ -484,6 +484,8 @@ describe('5 — no new token was defined', () => {
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // THE-555: the new shadcn gallery primitive, recorded in ds-primitives.
+      'src/components/ui/carousel.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changed('src/components/ui/')), 'a primitive or its digest ledger was touched').toEqual([]);
@@ -500,7 +502,8 @@ describe('5 — no new token was defined', () => {
       '@tanstack/react-query-devtools',
       '@tanstack/react-table',
     ]);
-    expect(deps).toHaveLength(70);
+    expect(deps).toContain('embla-carousel-react'); // THE-555 gallery
+    expect(deps).toHaveLength(70 + 1);
   });
 });
 

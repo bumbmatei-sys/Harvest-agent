@@ -35,6 +35,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
+// THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
+const THE_555_PRIMITIVES = ['carousel.tsx'];
+
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -116,7 +119,7 @@ describe('3 · the 18 primitives the block depended on are untouched', () => {
     // An overwrite is not the only way the CLI damages a reviewed tree: it also
     // ADDS. 43 primitives + the __tests__ directory is what `main` carries.
     const entries = readdirSync(path.join(REPO_ROOT, 'src/components/ui')).sort();
-    expect(entries.filter((e) => e.endsWith('.tsx'))).toHaveLength(43);
+    expect(entries.filter((e) => e.endsWith('.tsx'))).toHaveLength(43 + THE_555_PRIMITIVES.length);
     expect(entries).toContain('__tests__');
   });
 });

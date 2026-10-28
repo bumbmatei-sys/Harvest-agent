@@ -325,6 +325,9 @@ const SCREENS: { name: string; file: string; open: () => Promise<HTMLDivElement>
 //       src/components/__tests__/admin-data-screens.desktop-layout.test.tsx
 // ─────────────────────────────────────────────────────────────────────────────
 const FIXTURES = path.join(__dirname, '__fixtures__');
+// THE-555: re-recorded only package-owned SVG rows for lucide-react
+// 0.453.0 -> 0.577.0 (Building2, Sparkles, Search, Upload and Trash2).
+// Non-SVG rows, source baselines, colour tokens and measurements are unchanged.
 const FIXTURE = path.join(FIXTURES, 'admin-data-screens-mobile.json');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 
@@ -1141,6 +1144,17 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       + 'adoption, plan cap or count moved: every query, the exact-count aggregation and the '
       + 'cap arithmetic are the lines they were.',
   },
+  {
+    file: 'AdminDashboard.tsx',
+    ticket: 'THE-555',
+    why:
+      'Review F1 aligns Community setup navigation and direct rendering with the settings API: '
+      + 'both require manageCommunity or full access, rather than manageSettings. The Community '
+      + 'entry and both setup gates share canCommunity, so the permission multiset below stays '
+      + 'exactly as pinned, including one manageCommunity and one manageSettings term. A '
+      + 'settings-only admin cannot reach setup; a community-only admin can. Both cases are '
+      + 'rendered in AdminDashboard.tier-nav-gating.test.tsx. No shell wrapper or padding changed.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -1158,6 +1172,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
       'THE-275 AdminDocs.tsx',
       'THE-331 AdminBlog.tsx',
       'UI-POLISH AdminCourses.tsx',
+      'THE-555 AdminDashboard.tsx',
     ]);
   });
 
@@ -1193,6 +1208,9 @@ describe("the admin shell's container is unchanged", () => {
     // would let one of them be deleted silently. The list is a literal rather
     // than a re-read of the pre-PR file, so it cannot become a comparison of
     // the file with itself.
+    // THE-555 F1: canCommunity shares the existing community permission across
+    // Community and setup's nav/render gates. The exact inventory stays intact;
+    // the settings-only/community-only access cases have rendered coverage.
     const permTerms = [...readSrc('AdminDashboard.tsx').matchAll(/perms\.(\w+)/g)]
       .map((m) => m[1]).sort();
     expect(permTerms).toEqual([
