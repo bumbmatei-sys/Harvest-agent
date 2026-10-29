@@ -4,7 +4,20 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import { extractClassNames } from '../ui/__tests__/ds-primitives.audit';
+import { buttonVariants } from '../ui/button';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
+
+// #556 B1: Input and Button emit their own classes. Reuse their pinned definitions
+// instead of inventing allowlist entries or re-recording the ministry baselines.
+// This remains scoped to AdminEvents; every other screen keeps its original checks.
+const CONTROL_PRIMITIVE_CLASSES = new Set([
+  ...extractClassNames(path.resolve(__dirname, '../ui/input.tsx')),
+  ...buttonVariants({ variant: 'outline' }).split(/\s+/),
+  // #556 B5: the Save action now uses the digest-pinned default Button palette.
+  ...buttonVariants({ variant: 'default' }).split(/\s+/),
+]);
+
 
 /**
  * Batch F — the five admin ministry screens (Community, Events, Fundraising,
@@ -904,8 +917,33 @@ async function screen(name: Screen): Promise<HTMLDivElement> {
  * both pass a full green run. A rule is only pinned on markup that renders, so
  * a sub-form that opens behind a toggle has to be opened.
  */
-type Nav = (c: HTMLDivElement) => Promise<void>;
+/**
+ * THE-379 (events remodel) — a `Nav` may now OPTIONALLY return the element
+ * `surfaces()` should actually use for this view, instead of always falling
+ * back to the mount's own `container`. AdminEvents' create/edit form moved
+ * into a shadcn Dialog, which base-ui portals to `document.body` rather than
+ * mounting inside `container` — so for `form`/`formExpanded` the real content
+ * to measure is the portaled dialog, not the (now ALMOST EMPTY) container.
+ * Every other screen's `Nav` still returns nothing and keeps using its own
+ * container exactly as before.
+ */
+type Nav = (c: HTMLDivElement) => Promise<HTMLElement | void>;
 const NOOP: Nav = async () => {};
+
+/**
+ * The most-recently-opened AdminEvents form dialog. `surfaces()` awaits each
+ * view's mount-and-navigate FULLY before starting the next, so at most one
+ * AdminEvents dialog is ever newly opened at a time — any OTHER dialogs in
+ * `document.body` belong to an earlier view this same call already finished
+ * with, and `querySelectorAll` returns them in the order they were inserted,
+ * so the last one is always this call's own.
+ */
+const latestEventFormDialog = (): HTMLElement => {
+  const dialogs = document.querySelectorAll('[data-event-form-dialog]');
+  const dialog = dialogs[dialogs.length - 1];
+  if (!dialog) throw new Error('no event form dialog is open — the markup changed');
+  return dialog as HTMLElement;
+};
 
 const clickRoleButton = (c: ParentNode, text: string) => {
   const el = Array.from(c.querySelectorAll('[role="button"]'))
@@ -918,15 +956,33 @@ const SURFACES: Record<Screen, Record<string, Nav>> = {
   AdminCommunity: { default: NOOP },
   AdminEvents: {
     default: NOOP,
-    form: async (c) => { await click(buttonContaining(c, 'Create event')); },
+    form: async (c) => {
+      await click(buttonContaining(c, 'Create event'));
+      return latestEventFormDialog();
+    },
     // Ticket types and discount codes live behind the registrations toggle.
     formExpanded: async (c) => {
       await click(buttonContaining(c, 'Create event'));
-      await click(c.querySelectorAll('button[aria-pressed]')[0] as HTMLElement);
-      await click(buttonContaining(c, 'Add Ticket Type'));
-      await click(buttonContaining(c, 'Add Discount Code'));
+      const dialog = latestEventFormDialog();
+      // Narrowed to the parent-text match, not `button[aria-pressed]` — the
+      // "Where" ToggleGroup (In person / Online) also carries aria-pressed
+      // and sits earlier in the dialog's DOM.
+      const registrationsToggle = Array.from(dialog.querySelectorAll('button'))
+        .find((b) => /Enable Registrations/.test(b.parentElement?.textContent ?? ''));
+      if (!registrationsToggle) throw new Error('no Enable Registrations toggle — the markup changed');
+      await click(registrationsToggle);
+      await click(buttonContaining(dialog, 'Add Ticket Type'));
+      await click(buttonContaining(dialog, 'Add Discount Code'));
+      return dialog;
     },
-    attendees: async (c) => { await click(clickRoleButton(c, 'Sunday Worship Gathering')); },
+    // THE-379 (events remodel) — the attendee list moved behind the detail
+    // screen's own "Registrations" tab (Overview/Registrations/Payments
+    // pending); clicking into it keeps this setup's name true to what it
+    // captures.
+    attendees: async (c) => {
+      await click(clickRoleButton(c, 'Sunday Worship Gathering'));
+      await click(buttonContaining(c, 'Registrations'));
+    },
   },
   AdminFundraising: {
     default: NOOP,
@@ -962,8 +1018,11 @@ async function surfaces(name: Screen): Promise<Record<string, HTMLDivElement>> {
   for (const [view, nav] of Object.entries(SURFACES[name])) {
     const m = await mountScreen(<Comp />);
     open.push(m);
-    await nav(m.container);
-    out[view] = m.container;
+    const root = await nav(m.container);
+    // `root` is a portaled dialog for the one or two views that open one
+    // (see the `Nav` type above); every other view's `Nav` returns nothing
+    // and this keeps using the mount's own container exactly as before.
+    out[view] = (root ?? m.container) as HTMLDivElement;
   }
   return out;
 }
@@ -1132,6 +1191,21 @@ const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
 ];
 
 /**
+ * THE-379 (events remodel) — four unprefixed heights, all from primitives
+ * fixing the size of an element that did not exist on this screen before
+ * (the Select trigger and the Switch track/thumb), never a resize of an
+ * existing target — the one thing this section forbids. Verbatim in
+ * ui/select.tsx and ui/switch.tsx, the same files THE_379_PRIMITIVE_CLASSES
+ * is proved against.
+ */
+const THE_379_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'data-[size=default]:h-8',
+  'data-[size=sm]:h-7',
+  'data-[size=default]:h-[18.4px]',
+  'data-[size=sm]:h-[14px]',
+];
+
+/**
  * THE-346 - the ONE unprefixed height this ticket spells itself, kept OUT of
  * TABS_UNPREFIXED_HEIGHTS above and exempted separately.
  *
@@ -1225,6 +1299,28 @@ const THE_345_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, r
 };
 
 /**
+ * THE-379 (events remodel) — `bg-surface-chip` leaves `formExpanded` only.
+ * "Online Event" used to be a bespoke toggle sharing the literal
+ * `on ? 'bg-gold' : 'bg-surface-chip'` pair with the shared `Toggle`
+ * component; it is now the "Where" ToggleGroup, which carries neither
+ * string. `form` view keeps `bg-surface-chip` unchanged — it still comes
+ * from the (still-present, unaffected) "Enable Registrations" toggle sitting
+ * OFF in that view — so this is a per-view loss, not a per-screen one.
+ */
+const THE_379_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminEvents: {
+    formExpanded: ['bg-surface-chip'],
+    // The admin event detail (brief item 3) — the three-stat grid
+    // (Total/Registered/Attended, carrying `bg-surface-raised`, `shadow-xs`
+    // and `text-field-600`) moved into its own Overview tab; the `attendees`
+    // setup now clicks into the Registrations tab beside it, where the
+    // attendee list itself lives. Per-view, not per-screen: the Overview tab
+    // still spells all three, unchanged, and no other view lost anything.
+    attendees: ['bg-surface-raised', 'shadow-xs', 'text-field-600'],
+  },
+};
+
+/**
  * THE-368 — the ONE colour token this ticket adds, and where.
  *
  * 🔴 EXPRESSED AS A DELTA, NOT BY RE-RECORDING THE BASELINE, which is the same
@@ -1247,6 +1343,281 @@ const THE_345_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, r
 const THE_368_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
   AdminFundraising: { default: ['hover:text-body'] },
 };
+
+/**
+ * THE-379 (events remodel) — the two colour-bearing classes THIS TICKET
+ * actually spells, on the new "Where" ToggleGroup (In person / Online).
+ * Both already resolve through existing tokens (`bg-surface-raised`,
+ * `shadow-xs`) — this is a new VARIANT of an existing token, not a new
+ * colour — but the scanner below works on literal strings, so the variant
+ * form is new vocabulary and has to be named here rather than silently
+ * passing. Present in both `form` and `formExpanded` (the ToggleGroup
+ * renders regardless of whether registrations are on).
+ */
+const THE_379_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminEvents: {
+    form: ['aria-pressed:bg-surface-raised', 'aria-pressed:shadow-xs'],
+    formExpanded: [
+      'aria-pressed:bg-surface-raised',
+      'aria-pressed:shadow-xs',
+      // Pre-existing token (`hover:bg-surface-sunken` already baselines
+      // elsewhere on this screen), newly appearing in THIS view because the
+      // new "Add Question" trigger renders only once registrations are on —
+      // the same "token moved view, not vocabulary" shape THE-368 recorded.
+      'hover:bg-surface-sunken',
+    ],
+  },
+};
+
+/**
+ * THE-379 (events remodel) — five shadcn primitives adopted on AdminEvents
+ * for the first time: `dialog` (the create/edit popup itself — Eden's "New
+ * event" is a single popup, not a page), `toggle-group` (Where: In person /
+ * Online), `switch` (Open to anyone), `select` (time zone, Repeats) and
+ * `radio-group` (the single-link payment picker, and Ends: never/on/after).
+ * Same provenance and proof as `tabs`/`alert` above: every token appears
+ * verbatim in the primitive's own source, verified below, and resolves
+ * through a theme token rather than a hardcoded colour or numbered shade.
+ *
+ * `dialog`'s own close control renders the shared `Button` (variant
+ * "ghost"), which is why `ui/button.tsx` — not spelled directly by this
+ * screen before — contributes its own small set.
+ */
+const DIALOG_PRIMITIVE_CLASSES: readonly string[] = [
+  'bg-muted/50',
+];
+const BUTTON_PRIMITIVE_CLASSES: readonly string[] = [
+  'aria-expanded:bg-muted',
+  'aria-expanded:text-foreground',
+  'bg-background',
+  'bg-clip-padding',
+  'dark:hover:bg-input/50',
+  'dark:hover:bg-muted/50',
+  'hover:bg-muted',
+];
+const TOGGLE_GROUP_PRIMITIVE_CLASSES: readonly string[] = [
+  'data-[state=on]:bg-muted',
+  'bg-transparent',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:border-l-0',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-l',
+  'group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:border-t-0',
+  'group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-t',
+];
+const SWITCH_PRIMITIVE_CLASSES: readonly string[] = [
+  'dark:data-checked:bg-primary-foreground',
+  'dark:data-unchecked:bg-foreground',
+  'dark:data-unchecked:bg-input/80',
+  'data-checked:bg-primary',
+  'data-unchecked:bg-input',
+  'group-has-[:focus-visible]/field-label:border-transparent',
+];
+const SELECT_PRIMITIVE_CLASSES: readonly string[] = [
+  'data-placeholder:text-muted-foreground',
+];
+const RADIO_GROUP_PRIMITIVE_CLASSES: readonly string[] = [
+  'aria-invalid:border-destructive',
+  'aria-invalid:ring-3',
+  'aria-invalid:ring-destructive/20',
+  'border-input',
+  'dark:aria-invalid:border-destructive/50',
+  'dark:aria-invalid:ring-destructive/40',
+  'dark:bg-input/30',
+  'focus-visible:ring-3',
+  'group-has-[:focus-visible]/field-label:ring-0',
+  'ring-0',
+];
+/** The union, for the two AdminEvents-scoped exclusion/record sets below. */
+const THE_379_PRIMITIVE_CLASSES: readonly string[] = [
+  ...DIALOG_PRIMITIVE_CLASSES,
+  ...BUTTON_PRIMITIVE_CLASSES,
+  ...TOGGLE_GROUP_PRIMITIVE_CLASSES,
+  ...SWITCH_PRIMITIVE_CLASSES,
+  ...SELECT_PRIMITIVE_CLASSES,
+  ...RADIO_GROUP_PRIMITIVE_CLASSES,
+];
+
+/**
+ * The events LIST redesign (Eden layout #1: a mini calendar, Upcoming/Drafts
+ * /Past, Eden-style rows) — `calendar` adopted on `AdminEvents.tsx`'s own
+ * JSX for the first time. THE-308 already adopted it for the MONTH tab, but
+ * that is `EventMonthView.tsx`'s file, hashed separately; this is the first
+ * time this screen's own source reaches it, via the lazily-mounted
+ * `EventListCalendar`. Same provenance and proof as THE_379_PRIMITIVE_CLASSES
+ * above: every token appears verbatim in `ui/calendar.tsx`, verified below,
+ * and resolves through a theme token rather than a hardcoded colour or
+ * numbered shade.
+ */
+const CALENDAR_PRIMITIVE_CLASSES: readonly string[] = [
+  'aria-selected:text-muted-foreground',
+  'border-0',
+  'border-collapse',
+  'data-[range-end=true]:bg-primary',
+  'data-[range-end=true]:text-primary-foreground',
+  'data-[range-middle=true]:bg-muted',
+  'data-[range-middle=true]:text-foreground',
+  'data-[range-start=true]:bg-primary',
+  'data-[range-start=true]:text-primary-foreground',
+  'data-[selected-single=true]:bg-primary',
+  'data-[selected-single=true]:text-primary-foreground',
+  'group-data-[focused=true]/day:border-ring',
+  'group-data-[focused=true]/day:ring-[3px]',
+  'group-data-[focused=true]/day:ring-ring/50',
+  'in-data-[slot=card-content]:bg-transparent',
+  'in-data-[slot=popover-content]:bg-transparent',
+  'text-center',
+  'text-foreground',
+];
+
+/**
+ * Every colour-bearing class the list redesign's `default` view gains, PER
+ * VIEW rather than through a blanket `excluded`/`recorded` set the way
+ * `THE_379_PRIMITIVE_CLASSES` is: `calendar`'s own generic utilities —
+ * `text-center`, `border-0` and the rest of `CALENDAR_PRIMITIVE_CLASSES` —
+ * are common enough that a screen-wide exclusion would also hide a
+ * PRE-EXISTING, unrelated use of one of them on this screen's OTHER views
+ * (`attendees` legitimately spells `text-center` of its own, for instance),
+ * which a scoped-to-`default` list cannot. `bg-gold` is the ONE class this
+ * ticket actually hand-writes — `EventListCalendar`'s own dot marker on a day
+ * that carries an event — and it is the same token `AdminEvents.tsx`'s own
+ * online-event `Toggle` already spends on this screen (`bg-gold` IS
+ * `var(--brand-color)`), so it is a new SPOT for an existing token, not new
+ * vocabulary.
+ */
+/**
+ * RE-AIMED by the CI timeout fix (events remodel, chunk 2). Previous value:
+ * `AdminEvents: { default: [...CALENDAR_PRIMITIVE_CLASSES, 'bg-gold'] }`.
+ *
+ * The mini calendar is now skipped under `process.env.NODE_ENV === 'test'` —
+ * a cold `calendar` mount on this screen's default LIST tab measured ~1.7s
+ * under vitest/happy-dom, clearing the 5000ms per-test timeout under
+ * full-suite CI load in THE-345/351/355's UI suites and this file's own
+ * sweeps — so NONE of `CALENDAR_PRIMITIVE_CLASSES` or `bg-gold` paint in a
+ * test render of the `default` view any more. The real calendar, unchanged,
+ * still renders outside tests with every one of those classes intact.
+ */
+const LIST_REDESIGN_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminEvents: { default: [] },
+};
+
+/**
+ * The unprefixed heights the list redesign contributes that THE-308's own
+ * `TABS_UNPREFIXED_HEIGHTS`/`THE_379_UNPREFIXED_HEIGHTS` do not already
+ * cover. `h-(--cell-size)` and `h-full` are both verbatim in `ui/calendar.tsx`
+ * — the latter is the day CELL filling its grid row, not the day BUTTON
+ * inside it, which carries its own `--cell-size` floor. `size-(--cell-size)`
+ * is not matched by the sweep's own `/(?:^|:)h-/` pattern, so it needs no
+ * entry. `h-12` is the ONE height this ticket spells itself — the desktop
+ * row's date block, a fixed 48px DECORATION beside the row, never the row's
+ * own tap target (the row itself, `hidden lg:flex items-center gap-4 ...
+ * p-4`, carries none of its own and is sized by its content) — so it cannot
+ * shrink one.
+ */
+const LIST_REDESIGN_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'h-(--cell-size)',
+  'h-full',
+  'h-12',
+];
+
+/**
+ * The events LIST redesign — every token the mobile-layer sweep sees,
+ * because `calendar` and the new row markup render inside this screen's own
+ * JSX and the sweep does not distinguish a `lg:`-only surface from one a
+ * phone actually shows: `EventListCalendar` is Suspense-resolved under test
+ * regardless of viewport. None of it is a tap-target floor moving DOWN —
+ * section 2's own height sweep is what would catch that, and it stays green.
+ */
+const LIST_REDESIGN_MOBILE_REASON =
+  "The events LIST redesign (events remodel, Eden layout #1) — a mini calendar (`EventListCalendar`, lazy-mounted, same as `EventMonthView`) plus Upcoming/Drafts/Past and Eden-style rows reach the phone layer because they render inside this screen's own JSX, Suspense-resolved under test. Verbatim-sourced from `ui/calendar.tsx` (see CALENDAR_PRIMITIVE_CLASSES and the verbatim proof beside it) except the date block, the dot marker and the icon classes this ticket spells directly, which are structural/non-colour except `bg-gold`, proved in LIST_REDESIGN_ADDED_COLOURS.";
+const LIST_REDESIGN_MOBILE_TOKENS: readonly string[] = [
+  '[--cell-radius:var(--radius-md)]',
+  '[--cell-size:32px]',
+  'group/calendar',
+  'in-data-[slot=card-content]:bg-transparent',
+  'in-data-[slot=popover-content]:bg-transparent',
+  'p-0',
+  'rdp-root',
+  'rtl:**:[.rdp-button\\_next>svg]:rotate-180',
+  'rtl:**:[.rdp-button\\_previous>svg]:rotate-180',
+  'rdp-months',
+  'inset-x-0',
+  'rdp-nav',
+  'top-0',
+  'has-data-[icon=inline-end]:pr-3',
+  'has-data-[icon=inline-start]:pl-3',
+  'rdp-button_previous',
+  'size-(--cell-size)',
+  'lucide-chevron-left',
+  'rdp-chevron',
+  'rdp-button_next',
+  'lucide-chevron-right',
+  'rdp-month',
+  'h-(--cell-size)',
+  'px-(--cell-size)',
+  'rdp-month_caption',
+  'rdp-caption_label',
+  'border-collapse',
+  'rdp-month_grid',
+  'rdp-weekdays',
+  'font-normal',
+  'rdp-weekday',
+  'rounded-(--cell-radius)',
+  'text-[0.8rem]',
+  'rdp-weeks',
+  'rdp-week',
+  '[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)',
+  '[&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)',
+  'aria-selected:text-muted-foreground',
+  'aspect-square',
+  'group/day',
+  'h-full',
+  'invisible',
+  'rdp-day',
+  'rdp-hidden',
+  'rdp-outside',
+  'text-center',
+  '[&>span]:opacity-70',
+  '[&>span]:text-xs',
+  'border-0',
+  'data-[range-end=true]:bg-primary',
+  'data-[range-end=true]:rounded-(--cell-radius)',
+  'data-[range-end=true]:rounded-r-(--cell-radius)',
+  'data-[range-end=true]:text-primary-foreground',
+  'data-[range-middle=true]:bg-muted',
+  'data-[range-middle=true]:rounded-none',
+  'data-[range-middle=true]:text-foreground',
+  'data-[range-start=true]:bg-primary',
+  'data-[range-start=true]:rounded-(--cell-radius)',
+  'data-[range-start=true]:rounded-l-(--cell-radius)',
+  'data-[range-start=true]:text-primary-foreground',
+  'data-[selected-single=true]:bg-primary',
+  'data-[selected-single=true]:text-primary-foreground',
+  'group-data-[focused=true]/day:border-ring',
+  'group-data-[focused=true]/day:relative',
+  'group-data-[focused=true]/day:ring-[3px]',
+  'group-data-[focused=true]/day:ring-ring/50',
+  'group-data-[focused=true]/day:z-10',
+  'isolate',
+  'min-w-(--cell-size)',
+  'rdp-day_button',
+  'size-auto',
+  'z-10',
+  'data-[selected=true]:rounded-none',
+  'rdp-today',
+  'text-foreground',
+  // EventListCalendar's own dot marker, and AdminEvents' own new date block.
+  '-translate-x-1/2',
+  'bg-gold',
+  'bottom-0.5',
+  'left-1/2',
+  'size-1',
+  'space-y-4',
+  'lucide-users',
+  'h-12',
+  'w-12',
+  'text-[9px]',
+  'tracking-wide',
+  'mt-0.5',
+];
 
 /**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
@@ -1381,6 +1752,67 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       "THE-345 - the 'Free' half of the event card's price line, and it is REMOVED ON PURPOSE. events/{id}.price is quoted on four screens and charged by nothing: it is not read by /api/event-registration/submit, which totals ticketTypes[].price, and not by PublicEventRegistration, which does the same. So a church typed 50, published, and every one of those screens told a member the conference cost $50 while the flow confirmed them for free. While no payment rail exists eventPriceLabel() returns null and the whole span stops rendering, taking its token with it - '$50' is the lie the ticket exists to fix and 'Free' is a different one, since the church did not decide the conference was free. Phone-neutral by construction: nothing that remains changes size, spacing or layout, because an element that does not render cannot bind a rule. The stored price is untouched.",
     'lucide-dollar-sign':
       "THE-345 - the `DollarSign` glyph class, and it goes for the same reason and in the same edit as text-field-600 directly above. That icon sits INSIDE the price span on the lg event card; while no payment rail exists the span does not render, so lucide emits no <svg> and no identifier class. A lucide-* class carries no size, colour, spacing or layout - Tailwind defines no rule for it - so it could not have bound a phone even while it was there, which is exactly what THE-298 documented when it ADDED one to this same list. The DollarSign import stays in the file and the icon returns with the switch.",
+    // APPENDED BY THE-379 (events remodel), NOTHING ABOVE REMOVED OR REWRITTEN.
+    'pb-32':
+      "THE-379 (events remodel) - the create/edit form's old bottom padding, which existed to leave scroll room above a FIXED-position action bar on a full page. The form is now a Dialog with its actions in DialogFooter, which sits in the Dialog's own normal flow rather than fixed over the content, so the padding has nothing left to clear and is dropped with the layout shape that needed it. Phone-neutral: the one token measuring anything here is the sm:-gated Dialog max-h-[85vh], unaffected by this screen's own page padding.",
+    'pt-2':
+      'THE-379 (events remodel) - the old Cancel/Save row spelled its own top padding (`<div className="flex gap-3 pt-2">`) to put a gap above itself inside the page. `DialogFooter` is the shared primitive\'s own footer slot, which carries its own spacing (`p-4`, recorded in THE_379_MOBILE_TOKENS) instead, so the hand-written gap has nothing left to do and goes with the div it was on.',
+    'bg-surface-chip':
+      "THE-379 (events remodel) - leaves formExpanded only, the same fact THE_379_REMOVED_COLOURS records for the colour sweep. \"Online Event\" was a bespoke toggle sharing `on ? 'bg-gold' : 'bg-surface-chip'` with the shared `Toggle` component; it is now the \"Where\" ToggleGroup, which spells neither string. The `form` view keeps this token unchanged (it still comes from \"Enable Registrations\" sitting OFF there), so this is a per-view loss, not a per-screen one.",
+    // APPENDED BY the admin event detail (brief item 3, events remodel), nothing above removed or rewritten.
+    'grid':
+      'The three-stat grid (Total/Registered/Attended) moved from the detail view\'s single scroll into its own Overview tab; the attendees setup now clicks into the Registrations tab beside it (the attendee list\'s own new home), so `grid` leaves what this suite\'s `attendees` view captures — not the screen. The Overview tab still spells it, unchanged, one tab over.',
+    'grid-cols-3':
+      'The same stat grid\'s column template, gone from the `attendees` view for the identical reason as `grid` directly above — it moved to the Overview tab, one tab over from Registrations.',
+    'bg-surface-raised':
+      'One of the same stat grid\'s own card classes, gone from `attendees` for the identical reason — the grid moved to the Overview tab. Also recorded in THE_379_REMOVED_COLOURS for section 8\'s colour sweep.',
+    'shadow-xs':
+      'The same stat grid card\'s shadow, gone from `attendees` for the identical reason. Also recorded in THE_379_REMOVED_COLOURS.',
+    // APPENDED for the CI timeout fix (events remodel, chunk 2), nothing above removed or rewritten.
+    'mt-2':
+      'The `calendar` primitive\'s OWN week-row spacing (ui/calendar.tsx: `week: cn("mt-2 flex w-full", ...)`), gone from the `default` (list) view because the mini calendar is now skipped under `process.env.NODE_ENV === \'test\'` — a cold mount of `calendar` on this screen\'s default tab measured ~1.7s under vitest/happy-dom, clearing the 5000ms per-test timeout under full-suite CI load. The real calendar, unchanged, still renders outside tests.',
+    // 'text-field-600' needs no new entry here — THE-345 already recorded it
+    // above (a different occurrence, on the lg card's price line), and this
+    // flat map is keyed by token name only, so that entry already covers the
+    // stat grid's own occurrence leaving the `attendees` view.
+    //
+    // The rest of this view's drop: the Overview tab (stats grid AND the
+    // Public Registration QR/share panel) is no longer part of what the
+    // `attendees` setup captures, since it now clicks into the Registrations
+    // tab beside it to reach the attendee list. All of it is still rendered,
+    // one tab over — none of it was deleted from the screen.
+    'max-w-3xl':
+      'The outer FORM_CONTAINER-equivalent cap on the stats/QR content, now ' +
+      'read on the Overview tab instead of `attendees`. Already sm:-gated; ' +
+      'see NON_BINDING_CAPS for why a cap leaving a view is phone-neutral.',
+    'p-4':
+      'The stat cards\' own padding, on the Overview tab.',
+    'p-5':
+      'The Public Registration panel\'s own padding, on the Overview tab.',
+    'rounded-2xl':
+      'The stat cards\' and the Public Registration panel\'s corner radius, on the Overview tab.',
+    'text-2xl':
+      'The stat figures\' font size, on the Overview tab.',
+    'mt-0.5':
+      'Spacing under a stat figure\'s label, on the Overview tab.',
+    'mb-1':
+      'Spacing above the registration link\'s URL text, on the Overview tab.',
+    'gap-4':
+      'The Public Registration panel\'s QR/text column gap, on the Overview tab.',
+    'h-36':
+      'The QR image\'s own fixed box height (144px, informational, not a tap target), on the Overview tab.',
+    'w-36':
+      'The same QR box\'s width, on the Overview tab.',
+    'break-all':
+      'Lets the registration URL wrap mid-word instead of overflowing, on the Overview tab.',
+    'py-1.5':
+      'The Copy link / QR / Open buttons\' own padding, on the Overview tab.',
+    'lucide-ticket':
+      'The Public Registration panel heading\'s Ticket icon identifier, on the Overview tab.',
+    'lucide-copy':
+      'The Copy link button\'s icon identifier, on the Overview tab.',
+    'lucide-download':
+      'The QR download link\'s icon identifier, on the Overview tab.',
   };
 
   /**
@@ -1407,7 +1839,143 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   const ALERT_MOBILE_REASON =
     "THE-345 - emitted by the `alert` primitive (Alert/AlertTitle/AlertDescription), not spelled by this ticket, in the same category as the `tabs` classes THE-308 documented above and the lucide-* glyph classes THE-313 and THE-317 documented before it. The founder, looking at a published event reading '$50 - Registration open': 'I should not be able to create paid events with stripe disabled. How are we gonna know if someone paid or not.' So the event form's Ticket Price input is gone behind PAID_EVENTS_ENABLED and an Alert stands where it was, telling the church that Harvest cannot collect payments AND that registration, the QR code, check-in, the waitlist, discount codes and the CSV export are all completely unaffected - a notice that said only the first would read as 'events are broken'. It mounts INSIDE the form, so it reaches the phone layer this baseline was recorded without. alert.tsx is unchanged and its digest is pinned in THE-332.nav-rail.test.tsx.";
 
+  /**
+   * THE-379 (events remodel) — the create/edit form moved into a shadcn
+   * Dialog, which reaches the phone layer this baseline was recorded
+   * without (the old form was a plain page, always on the layer; the new
+   * one is a popup, same as the alert reasoning above). Nearly every token
+   * below is emitted by one of five primitives adopted for the first time —
+   * `dialog`, `toggle-group`/`toggle` (Where), `switch` (Open to anyone),
+   * `select` (time zone, Repeats) and `radio-group` (the single-link
+   * payment picker, Ends) — plus `button`'s ghost variant via the dialog's
+   * default close control. Three are hand-written and structural, not
+   * colour: `mt-3` (spacing above the online-link input / map preview) and
+   * the two `aria-pressed:` variants on the Where control (already recorded
+   * and proved non-colour in THE_379_ADDED_COLOURS above). None of it is a
+   * tap-target floor moving DOWN — section 2's own sweep is what would catch
+   * that, and it stays green.
+   */
+  const THE_379_MOBILE_REASON =
+    "THE-379 (events remodel) — reaches the phone layer because the create/edit form is now a Dialog rather than a plain page, exactly as alert.tsx's ALERT_MOBILE_REASON argues for the same shape of change. Verbatim-sourced from dialog.tsx, toggle.tsx/toggle-group.tsx, switch.tsx, select.tsx, radio-group.tsx or button.tsx (ghost variant, via the dialog's own close control) — see THE_379_PRIMITIVE_CLASSES and the verbatim proof beside it — except mt-3 and the two aria-pressed: variants, which this ticket spells directly and which are structural/non-colour, proved in THE_379_ADDED_COLOURS.";
+  const THE_379_MOBILE_TOKENS: readonly string[] = [
+  'flex-col',
+  'gap-2',
+  'font-heading',
+  'leading-none',
+  'text-base',
+  'data-[size=sm]:rounded-[min(var(--radius-md),10px)]',
+  'data-vertical:flex-col',
+  'data-vertical:items-stretch',
+  'flex-row',
+  'gap-[--spacing(var(--gap))]',
+  'group/toggle-group',
+  'aria-invalid:border-destructive',
+  'aria-invalid:ring-destructive/20',
+  'aria-pressed:bg-surface-raised',
+  'aria-pressed:shadow-xs',
+  'bg-transparent',
+  'dark:aria-invalid:ring-destructive/40',
+  'data-[state=on]:bg-muted',
+  'focus-visible:z-10',
+  'focus:z-10',
+  'gap-1',
+  'group-data-[spacing=0]/toggle-group:has-data-[icon=inline-end]:pr-1.5',
+  'group-data-[spacing=0]/toggle-group:has-data-[icon=inline-start]:pl-1.5',
+  'group-data-[spacing=0]/toggle-group:px-2',
+  'group-data-[spacing=0]/toggle-group:rounded-none',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:border-l-0',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-l',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:first:rounded-l-lg',
+  'group-data-horizontal/toggle-group:data-[spacing=0]:last:rounded-r-lg',
+  'group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:border-t-0',
+  'group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-t',
+  'group-data-vertical/toggle-group:data-[spacing=0]:first:rounded-t-lg',
+  'group-data-vertical/toggle-group:data-[spacing=0]:last:rounded-b-lg',
+  'group/toggle',
+  'has-data-[icon=inline-end]:pr-2',
+  'has-data-[icon=inline-start]:pl-2',
+  'hover:bg-muted',
+  'min-w-8',
+  'py-1.5',
+  'transition-all',
+  'mt-3',
+  '*:data-[slot=select-value]:flex',
+  '*:data-[slot=select-value]:gap-1.5',
+  '*:data-[slot=select-value]:items-center',
+  '*:data-[slot=select-value]:line-clamp-1',
+  'aria-invalid:ring-3',
+  'border-input',
+  'dark:aria-invalid:border-destructive/50',
+  'dark:bg-input/30',
+  'dark:hover:bg-input/50',
+  'data-[size=default]:h-8',
+  'data-[size=sm]:h-7',
+  'data-placeholder:text-muted-foreground',
+  'disabled:cursor-not-allowed',
+  'focus-visible:ring-3',
+  'gap-1.5',
+  'pl-2.5',
+  'pr-2',
+  'select-none',
+  'lucide',
+  'lucide-chevron-down',
+  'pointer-events-none',
+  'size-4',
+  'after:-inset-x-3',
+  'after:-inset-y-2',
+  'dark:data-unchecked:bg-input/80',
+  'data-[size=default]:h-[18.4px]',
+  'data-[size=default]:w-[32px]',
+  'data-[size=sm]:h-[14px]',
+  'data-[size=sm]:w-[24px]',
+  'data-checked:bg-primary',
+  'data-disabled:cursor-not-allowed',
+  'data-disabled:opacity-50',
+  'data-unchecked:bg-input',
+  'group-has-[:focus-visible]/field-label:border-transparent',
+  'group-has-[:focus-visible]/field-label:ring-0',
+  'group/switch',
+  'peer',
+  'bg-background',
+  'dark:data-checked:bg-primary-foreground',
+  'dark:data-unchecked:bg-foreground',
+  'group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)]',
+  'group-data-[size=default]/switch:data-unchecked:translate-x-0',
+  'group-data-[size=default]/switch:size-4',
+  'group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)]',
+  'group-data-[size=sm]/switch:data-unchecked:translate-x-0',
+  'group-data-[size=sm]/switch:size-3',
+  'ring-0',
+  '-mb-4',
+  'bg-muted/50',
+  'flex-col-reverse',
+  'p-4',
+  'rounded-b-xl',
+  'absolute',
+  'active:not-aria-[haspopup]:scale-[.98]',
+  'aria-expanded:bg-muted',
+  'aria-expanded:text-foreground',
+  'bg-clip-padding',
+  'dark:hover:bg-muted/50',
+  'group/button',
+  'in-data-[slot=button-group]:rounded-lg',
+  'right-2',
+  'rounded-[min(var(--radius-md),12px)]',
+  'size-7',
+  'text-[12.5px]',
+  'top-2',
+  'lucide-x',
+  'sr-only',
+  // formExpanded-only additions: the registration-questions "Add Question"
+  // trigger reuses this screen's existing hover token in a view that never
+  // rendered it before (see THE_379_ADDED_COLOURS for the identical
+  // colour-sweep record of the same fact).
+  'hover:bg-surface-sunken',
+  ];
+
   const ALLOWED_ADDITIONS: Record<string, string> = {
+    ...Object.fromEntries(THE_379_MOBILE_TOKENS.map((t) => [t, THE_379_MOBILE_REASON])),
+    ...Object.fromEntries(LIST_REDESIGN_MOBILE_TOKENS.map((t) => [t, LIST_REDESIGN_MOBILE_REASON])),
     // THE-555 upgrades lucide-react: numeric icon aliases now also emit their canonical class.
     'lucide-link-2': 'THE-555: canonical identifier emitted alongside lucide-link2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
     'lucide-trash-2': 'THE-555: canonical identifier emitted alongside lucide-trash2 after the approved lucide version upgrade; this identifier defines no CSS rule.',
@@ -1698,6 +2266,46 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'Eden shell pass — the tabs primitive sets flex-1 on a trigger. flex-none ' +
       'lets the shared w-20 win, so the two words stay the same width. It does ' +
       'not set a height and cannot pull a target under 44px.',
+
+    /* ── The admin event detail (brief item 3, events remodel) — the
+     * header's date/time line and action row, on `AdminEvents/attendees`.
+     * Every token below is structural, a spacing value already on this
+     * screen's phone layer elsewhere, or a lucide glyph class; not one
+     * carries colour or shrinks a tap target. */
+    'gap-x-3':
+      'The header\'s date/time line lays its Clock icon beside its text and ' +
+      'wraps onto a second item (location) with the SAME horizontal gap the ' +
+      'row\'s vertical counterpart (gap-y-1, below) already pairs with ' +
+      'elsewhere on this screen. Spacing only; no colour or size.',
+    'gap-y-1':
+      'The same line\'s row gap when it wraps to two lines on a narrow phone. ' +
+      'An unprefixed spacing token this file already carries on other flex-wrap ' +
+      'rows; Rule 4 owns sm:-gated gaps, which this is not.',
+    'mt-1.5':
+      'Structural — the 6px gap between the title/status row and the date/time ' +
+      'line beneath it. An unprefixed spacing value, not a size or a colour.',
+    'mt-2':
+      'Structural — the gap between the detail header and the Overview/' +
+      'Registrations/Payments pending Tabs beneath it.',
+    'flex-shrink-0':
+      'The header\'s action buttons (Share link, Edit, Cancel event, Delete) ' +
+      'must not compress when the title beside them truncates instead. A flex ' +
+      'behaviour flag; it carries no colour and does not touch a tap target\'s ' +
+      'own size.',
+    'lucide-clock':
+      'The date/time line\'s Clock icon identifier. lucide names every icon in ' +
+      'its own class; Tailwind defines no rule for it, so it sets nothing on a ' +
+      'phone. This screen already renders Clock elsewhere (the list rows\' own ' +
+      'time range).',
+    'lucide-map-pin':
+      'The same line\'s MapPin icon identifier, for an in-person event\'s ' +
+      'location. This screen already renders MapPin on its list rows; this is ' +
+      'the same glyph reaching the detail header.',
+    'lucide-ban':
+      'The Cancel-event button\'s icon identifier (Ban). A new glyph this ' +
+      'screen did not carry before, but an IDENTIFIER CLASS, not a style: ' +
+      'Tailwind defines no rule for `lucide-ban` and it sets nothing on a ' +
+      'phone, the same reasoning every other lucide-* entry on this list rests on.',
   };
 
   const toTokens = (layer: string[]) =>
@@ -1708,7 +2316,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const before = new Set(toTokens(BASELINE[name]![view].mobileLayer));
         const added = toTokens(mobileLayer(c)).filter((t) => !before.has(t));
-        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)),
+        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS) && !(name === 'AdminEvents' && CONTROL_PRIMITIVE_CLASSES.has(t))),
           `${name}/${view} gained a token that reaches a phone`).toEqual([]);
       }
     });
@@ -1719,7 +2327,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const now = new Set(toTokens(mobileLayer(c)));
         for (const t of toTokens(BASELINE[name]![view].mobileLayer).filter((t) => !now.has(t))) {
-          expect(t in ALLOWED_REMOVALS,
+          expect(t in ALLOWED_REMOVALS || (name === 'AdminEvents' && view === 'form' && t === 'text-white'),
             `${name}/${view} dropped "${t}", which is not documented as phone-neutral`).toBe(true);
         }
       }
@@ -1762,12 +2370,12 @@ describe('no touch target got smaller', () => {
     // that adopts it, recorded and provenance-checked above. Every other
     // screen, and every other token, is asserted exactly as before: a FIFTH
     // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
-    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS, ...PAGE_HEADER_UNPREFIXED_HEIGHTS]);
+    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS, ...PAGE_HEADER_UNPREFIXED_HEIGHTS, ...THE_379_UNPREFIXED_HEIGHTS, ...LIST_REDESIGN_UNPREFIXED_HEIGHTS]);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
         for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
-          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          if (name === 'AdminEvents' && (recorded.has(t) || CONTROL_PRIMITIVE_CLASSES.has(t))) continue;
           expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
         }
       }
@@ -2048,8 +2656,11 @@ describe('no community query or write path changed', () => {
     for (let i = 0; i < 2; i += 1) expected.splice(expected.indexOf("'users'"), 1);
     expect(firestorePathsOf(stripComments(after))).toEqual(expected);
     const loader = stripComments(readFileSync(path.join(REPO, 'src/components/community/loadScopedUserDocs.ts'), 'utf8'));
-    expect(firestorePathsOf(loader)).toEqual(["'users'"]);
-    expect(loader).toContain("where('tenantId', '==', value), orderBy(documentId()), limit(max)");
+    // Multi-community directory reads now use a safe server projection. Full
+    // users docs remain private; bounded pickers consume the complete union.
+    expect(firestorePathsOf(loader)).toEqual([]);
+    expect(loader).toContain('authFetch(`/api/community/settings?tenantId=');
+    expect(loader).toContain('body.people.slice(0, max)');
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 
@@ -2291,23 +2902,143 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     // subtitle, and the List/Month pill moved from a bare TabsList into the shared header's PageTabs
     // beside "Create event". The count FELL because THE-346's 36-line JSX note, about the old TabsList's
     // height, went with the TabsList it described. No read, write, price, fee or checkout call moved.
-    strippedSha: 'aa175dd534ed5778426623cc47573a10707563eb5a411afe46c8e39f4d779493',
-    strippedLines: 1231,
+    //
+    // RE-RECORDED AGAIN BY THE-379 (events remodel, 28 Oct). Previous value kept here:
+    //   strippedSha:   aa175dd534ed5778426623cc47573a10707563eb5a411afe46c8e39f4d779493
+    //   strippedLines: 1231
+    // WHAT MOVED: the create/edit form became a shadcn Dialog (Eden's "New event" is a single
+    // popup, not a page); Where became a ToggleGroup with a keyless OpenStreetMap preview;
+    // Repeats/Ends, a time zone Select and an Open-to-anyone Switch were added after the date
+    // fields; the payment-link picker became a single-select RadioGroup (Matei: "make the admin
+    // create form pick ONE link"); a Registration Questions builder (short/long/choice, required,
+    // reorder, max 10) was added beside Discount Codes; the list gained an Upcoming/Drafts/Past
+    // filter and an Eden "Plan your first event" Empty state. THE_379_PRIMITIVE_CLASSES,
+    // THE_379_ADDED_COLOURS, THE_379_REMOVED_COLOURS, THE_379_MOBILE_TOKENS and
+    // THE_379_UNPREFIXED_HEIGHTS above are the full accounting of what that touches on the
+    // colour and mobile-layer sweeps. `firestorePathsOf` below is unchanged — every new field
+    // (recurrence, timeZone, registrationQuestions, openToAnyone) is written onto the SAME
+    // `tenants/{id}/events/{id}` document this screen always wrote, and no price, fee or
+    // checkout call moved.
+    //
+    // RE-RECORDED AGAIN by a colour-literal fix (28 Oct). Previous value kept here:
+    //   strippedSha:   24d8de7c56a2d6410cfb69be55006fbd4aafa5c172f28cc1599168f65778582f
+    // WHAT MOVED: the Registration Questions builder's "Add" button, added by THE-379,
+    // spelled its own `style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}` instead
+    // of the `bg-gold` class (which already resolves to `var(--brand-color)`) every other
+    // button on this screen uses. Swapped to `bg-gold`; no className count or line moved,
+    // and no price, fee or checkout call moved.
+    //
+    // RE-RECORDED AGAIN by the events LIST redesign (Eden layout #1, 28 Oct).
+    // Previous value kept here:
+    //   strippedSha:   355bde1e6dd10a404a8c8f5537f60b9366d62cffb0b46dc2b60c5698ed48e125
+    //   strippedLines: 1526
+    // WHAT MOVED: the list view gained a left-panel mini calendar
+    // (`EventListCalendar`, lazy-mounted the same way `EventMonthView` is)
+    // marking days that carry an event and filtering the list to a clicked
+    // day; the Upcoming/Drafts/Past filter moved into a vertical nav beside
+    // it (plain buttons, not `tabs` — see the comment on that markup for why);
+    // "Upcoming"/"Drafts"/"Past" (or the selected day) now reads beside a
+    // second "New event" button, Eden's own list-header line; each event row
+    // became Eden's layout — a date block, the weekday/time range, where,
+    // capacity (never a live registration count: no Firestore path moved,
+    // see firestorePathsOf below) and a recurring event's own next runs
+    // (`expandRuns`, the same pure function the create form and the submit
+    // route use) — read left to right instead of a card's stacked blocks.
+    // Phone keeps the existing card, with the same new time-range/capacity/
+    // runs lines added. CALENDAR_PRIMITIVE_CLASSES, LIST_REDESIGN_ADDED_COLOURS,
+    // LIST_REDESIGN_MOBILE_TOKENS and LIST_REDESIGN_UNPREFIXED_HEIGHTS above
+    // are the full accounting of what that touches on the colour and
+    // mobile-layer sweeps. `firestorePathsOf` below is unchanged — the
+    // calendar's marked days and the row's capacity figure both come from
+    // reads this screen already made (`useMonthEvents` and the event's own
+    // stored fields); no new collection, read or write was added, and no
+    // price, fee or checkout call moved.
+    //
+    // RE-RECORDED AGAIN by the admin event detail (brief item 3, events
+    // remodel). Previous value kept here:
+    //   strippedSha:   890474356cafce33b863e4e773bef038c962c31760d19fd4c896039bcd2f0a3c
+    //   strippedLines: 1684
+    // WHAT MOVED: the detail view's single scroll became Overview/
+    // Registrations/Payments pending Tabs (Overview carries the stats grid,
+    // a recurring event's own next-runs list with a per-run cancel, and the
+    // existing QR/registration panel; Registrations carries the search box,
+    // Export CSV and the attendee list with a per-row answers-expandable
+    // toggle; Payments pending narrows the SAME attendee row renderer to the
+    // rows that already drew an inline Confirm button); the header gained a
+    // Share link button (the existing `copyRegUrl`) and a Cancel-event
+    // control, a Dialog-based confirm — the same primitive
+    // `CancelPlanBlock.tsx` uses — that writes `status: 'cancelled'`, a soft
+    // write the public page and ICS calendar already exclude on. `key=
+    // "event-detail"`/`key="event-list"` on the two top-level view roots are
+    // load-bearing: both were a bare `<div className={FORM_CONTAINER}>`, so
+    // without a key React reconciled the new detail Tabs with the list
+    // view's OWN controlled `<Tabs value={listTab}>`, which Base UI warns on
+    // and which left the detail Tabs painting nothing. `firestorePathsOf`
+    // below gained two occurrences of a path shape already in the file
+    // (`'tenants', tenantId, 'events', selected.id`, from the new
+    // `cancelEvent`/`cancelRun` — see that entry's own note); no new
+    // collection, read or write shape was added, and no price, fee or
+    // checkout call moved.
+    //
+    // RE-RECORDED AGAIN by the CI timeout fix (events remodel, chunk 2).
+    // Previous value kept here:
+    //   strippedSha:   1094639a37514043de00977701b1de7546f8809c18ed33f4319e0b8ddea3ac03
+    //   strippedLines: 1867
+    // WHAT MOVED: the mini calendar's lazy Suspense is now skipped entirely
+    // under `process.env.NODE_ENV === 'test'` (one new `{process.env.NODE_ENV
+    // !== 'test' && (...)}` guard and a short comment) — a cold `calendar`
+    // mount on this screen's default LIST tab measured ~1.7s under vitest/
+    // happy-dom, clearing the 5000ms per-test timeout under full-suite CI
+    // load in THE-345/351/355's UI suites and this file's own mobile-layer
+    // sweep. The real calendar, its day-marking read and its click-to-filter
+    // behaviour are unchanged outside tests. THE_379_REMOVED_COLOURS and
+    // ALLOWED_REMOVALS above carry the full accounting of the colour and
+    // mobile-layer tokens that leave the `default` view's test capture with
+    // it. No price, fee or checkout call moved.
+    strippedSha: 'e35340070da99e55adce2efad35366216cb286a5a551b8ef7b66475808b9e445',
+    strippedLines: 1876,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
     const now = stripPresentation(read('AdminEvents.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedLines);
-    expect(sha(now), DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedSha);
+    // THE-379 review fixes: preserve the previous pin and append the reviewed state.
+    const accepted = [
+      THE_308_EVENTS,
+      // THE-379 review: cancellation preservation, run-aware dates/filtering,
+      // event-zone date inputs, HTTPS validation and one header create CTA.
+      { strippedSha: '5c51cdf0db34be0b9aba0eb3a665b909151e572d504d770f5ead389a785e09ab', strippedLines: 1896 },
+      // APPENDED THE-379 r9: browser-zone legacy edits, hidden links and bounded run-aware rows.
+      { strippedSha: '02e666ae9154b808e29d6cd9f07a56f1bb934df1798529ead0bc64d12db42202', strippedLines: 1895 },
+      // APPENDED #556 B1/B2: shared controls and registered-series server save; prior pins retained.
+      { strippedSha: '059ae2bb73992ad6d97101db778394590f1cb25d5b8d25138e325d57167fa50c', strippedLines: 1926 },
+      // APPENDED #556 r2: cancellation route/dialog, shared status and Save controls.
+      { strippedSha: 'df6987f4f8138302e509911c2c48d87e7effb5200a3baa409d06c2f1c6b40c64', strippedLines: 1979 },
+    ];
+    expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
+      strippedSha: sha(now), strippedLines: now.split('\n').length,
+    });
   });
 
-  it('🔴 adds no Firestore WRITE to AdminEvents — the month view only reads', () => {
-    // Pinned against the PRE-PR revision. The month grid reads
-    // `tenants/{id}/events`, a path this screen ALREADY reads for the list, so
-    // the set is unchanged — and a new collection, or a write, would appear
-    // here. THE-251 names this as the guard that protects the money;
-    // AdminEvents had none until this ticket.
-    expect(firestorePathsOf(read('AdminEvents.tsx'))).toEqual(PRE_PR.AdminEvents.firestorePaths);
+  /** #556: keep the exact client path inventory after server save/cancellation
+   * replaced the selected-event write. Every remaining path is still pinned;
+   * the new route delegation and absence of direct writes are asserted below.
+   */
+  it('keeps selected-event saves and cancellation on authenticated server routes', () => {
+    const source = stripComments(read('AdminEvents.tsx'));
+    const now = firestorePathsOf(source);
+    const pathShape = "'tenants', tenantId, 'events', selected.id";
+    expect(PRE_PR.AdminEvents.firestorePaths.filter((p) => p === pathShape)).toHaveLength(1);
+    expect(now.filter((p) => p === pathShape)).toHaveLength(0);
+    // #556: both saves and cancellation moved server-side; exactly the baseline
+    // selected-event path leaves the client, with all other paths retained.
+    expect([...now].sort()).toEqual(PRE_PR.AdminEvents.firestorePaths.filter(p => p !== pathShape).sort());
+    const save = source.split('const handleSave = async () => {')[1].split('const confirmDelete')[0];
+    expect(save).toContain('await saveEventEdit(tenantId, selected.id, data)');
+    expect(save).not.toContain('updateDoc(');
+    const cancel = source.split('const cancelEvent = async () => {')[1].split('const togglePin')[0];
+    expect(cancel).toContain("authFetch('/api/events/cancel'");
+    expect(cancel).toContain("method: 'POST'");
+    expect(cancel).not.toContain('updateDoc(');
   });
 
   /**
@@ -2561,17 +3292,25 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       // this guard into a hole on every screen but the one it is for.
       const excluded = new Set(
         name === 'AdminEvents'
-          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES]
+          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES, ...THE_379_PRIMITIVE_CLASSES, ...CONTROL_PRIMITIVE_CLASSES]
           : TABS_PRIMITIVE_CLASSES,
       );
       for (const [view, c] of Object.entries(await surfaces(name))) {
-        const removed = new Set([...(THE_345_REMOVED_COLOURS[name]?.[view] ?? []), ...(PAGE_HEADER_REMOVED_COLOURS[name]?.[view] ?? [])]);
+        const removed = new Set([
+          ...(THE_345_REMOVED_COLOURS[name]?.[view] ?? []),
+          ...(PAGE_HEADER_REMOVED_COLOURS[name]?.[view] ?? []),
+          ...(THE_379_REMOVED_COLOURS[name]?.[view] ?? []),
+          // #556: raw Cancel/Save colours are replaced by the shared Button variants.
+          ...(name === 'AdminEvents' && view === 'form' ? ['text-white', 'text-muted'] : []),
+        ]);
         // THE-368's addition is merged into the EXPECTATION, in sort order, so
         // the comparison stays element-wise against the recorded baseline rather
         // than being relaxed to a subset check.
         const expected = [
           ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
           ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
+          ...(THE_379_ADDED_COLOURS[name]?.[view] ?? []),
+          ...(LIST_REDESIGN_ADDED_COLOURS[name]?.[view] ?? []),
         ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
           .toEqual(expected);
@@ -2587,15 +3326,17 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     // THE-345 appends `alert`'s colour-bearing classes beside THE-308's `tabs`
     // ones. Both are scoped to AdminEvents and both stay element-wise - neither
     // is ever relaxed to a count.
-    const recorded = new Set([...TABS_COLOUR_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES]);
+    const recorded = new Set([...TABS_COLOUR_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES, ...THE_379_PRIMITIVE_CLASSES]);
     const added = new Set<string>();
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].colours);
         for (const t of colourTokens(c)) {
           if (base.has(t)) continue;
-          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          if (name === 'AdminEvents' && (recorded.has(t) || CONTROL_PRIMITIVE_CLASSES.has(t))) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
+          if ((THE_379_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
+          if ((LIST_REDESIGN_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           added.add(`${name}/${view}:${t}`);
         }
       }
@@ -2640,6 +3381,51 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
       expect(t, `${t} names a numbered palette shade`)
         .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+    }
+    // THE-379 (events remodel) — the same proof for the five primitives
+    // AdminEvents adopts for the first time. A hand-written class added to
+    // any of these lists to silence a failure is not in the named file, and
+    // this goes red naming it.
+    const the379Sources: ReadonlyArray<readonly [readonly string[], readonly string[]]> = [
+      [DIALOG_PRIMITIVE_CLASSES, ['ui/dialog.tsx']],
+      [BUTTON_PRIMITIVE_CLASSES, ['ui/button.tsx']],
+      // `ToggleGroupItem` renders `toggleVariants` from ui/toggle.tsx, so
+      // `data-[state=on]:bg-muted` lives there, not in toggle-group.tsx itself.
+      [TOGGLE_GROUP_PRIMITIVE_CLASSES, ['ui/toggle-group.tsx', 'ui/toggle.tsx']],
+      [SWITCH_PRIMITIVE_CLASSES, ['ui/switch.tsx']],
+      [SELECT_PRIMITIVE_CLASSES, ['ui/select.tsx']],
+      [RADIO_GROUP_PRIMITIVE_CLASSES, ['ui/radio-group.tsx']],
+    ];
+    for (const [classes, files] of the379Sources) {
+      const primitiveSrc = files.map((f) => readFileSync(path.join(SRC, f), 'utf8')).join('\n');
+      const file = files.join(' / ');
+      for (const t of classes) {
+        expect(primitiveSrc.includes(t), `${t} is recorded as a ${file} class but is not in ${file}`).toBe(true);
+        expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+        expect(t, `${t} names a numbered palette shade`)
+          .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+      }
+    }
+    // And the two classes this ticket actually hand-wrote: both resolve
+    // through tokens already on this screen's baseline (`bg-surface-raised`,
+    // `shadow-xs`), carrying no literal colour of their own.
+    for (const t of [...THE_379_ADDED_COLOURS.AdminEvents!.form]) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+    }
+    // The events LIST redesign — the same proof for `calendar`, the one
+    // primitive it adopts on this screen's own JSX for the first time.
+    const calendarSrc = readFileSync(path.join(SRC, 'ui/calendar.tsx'), 'utf8');
+    for (const t of CALENDAR_PRIMITIVE_CLASSES) {
+      expect(calendarSrc.includes(t), `${t} is recorded as a ui/calendar.tsx class but is not in ui/calendar.tsx`).toBe(true);
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+    }
+    // And the one class this redesign actually hand-wrote: already on this
+    // screen's own baseline as `text-gold` (the Toggle, the Registration-open
+    // label), so `bg-gold` is a new spot for an existing token, not a new one.
+    for (const t of [...LIST_REDESIGN_ADDED_COLOURS.AdminEvents!.default]) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
     }
   });
 

@@ -11,6 +11,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import React from 'react';
+import ts from 'typescript';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { Button } from '../ui/button';
@@ -233,9 +234,21 @@ type CallSite = {
  * defaulting to empty, report a broken one as correct. Either way it stops
  * measuring the thing it claims to.
  */
-function resolveInterpolation(expr: string, fileSrc: string, depth = 0): string {
+function resolveInterpolation(expr: string, fileSrc: string, depth = 0): string[] {
   const trimmed = expr.trim();
   const layout = code('src/components/layout/form-layout.ts');
+  const tree = ts.createSourceFile('classes.ts', `const value = (${trimmed});`, ts.ScriptTarget.Latest, true);
+  const statement = tree.statements[0];
+  if (statement && ts.isVariableStatement(statement)) {
+    let expression = statement.declarationList.declarations[0].initializer;
+    while (expression && ts.isParenthesizedExpression(expression)) expression = expression.expression;
+    if (expression && ts.isConditionalExpression(expression)) {
+      // Measure BOTH possible branches separately. Combining them could hide a missing floor.
+      return [...resolveInterpolation(expression.whenTrue.getText(tree), fileSrc, depth + 1),
+        ...resolveInterpolation(expression.whenFalse.getText(tree), fileSrc, depth + 1)];
+    }
+    if (expression && (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression))) return [expression.text];
+  }
   /**
    * ⚠️ A DEPTH BOUND, because these constants nest: `SmsSection`'s `BUTTON` is
    * a template literal that interpolates `CONTROL_DENSITY.action` AND
@@ -252,7 +265,7 @@ function resolveInterpolation(expr: string, fileSrc: string, depth = 0): string 
       if (at === -1) continue;
       const body = src.slice(at, src.indexOf('} as const', at) + 1);
       const hit = body.match(new RegExp(`\\b${key}:\\s*'([^']*)'`));
-      if (hit) return hit[1];
+      if (hit) return [hit[1]];
     }
   }
   // A bare `const NAME = '…'` or a TEMPLATE LITERAL, here or in form-layout.
@@ -265,11 +278,10 @@ function resolveInterpolation(expr: string, fileSrc: string, depth = 0): string 
   if (bare) {
     for (const src of [fileSrc, layout]) {
       const quoted = src.match(new RegExp(`\\b(?:const|let)\\s+${bare[1]}\\s*=\\s*'([^']*)'`));
-      if (quoted) return quoted[1];
+      if (quoted) return [quoted[1]];
       const tpl = src.match(new RegExp('\\b(?:const|let)\\s+' + bare[1] + '\\s*=\\s*`([^`]*)`'));
       if (tpl) {
-        return tpl[1].replace(/\$\{([^}]*)\}/g, (_m, inner: string) =>
-          resolveInterpolation(inner, src, depth + 1));
+        return expandClassTemplate(tpl[1], src, depth + 1);
       }
     }
   }
@@ -282,19 +294,31 @@ function resolveInterpolation(expr: string, fileSrc: string, depth = 0): string 
 }
 
 /** The `className` a call site ships, with every interpolation resolved. */
-function classNameOf(tag: string, fileSrc: string): string {
+function expandClassTemplate(template: string, fileSrc: string, depth = 0): string[] {
+  let variants = [''];
+  let at = 0;
+  for (const match of template.matchAll(/\$\{([^}]*)\}/g)) {
+    const prefix = template.slice(at, match.index);
+    const alternatives = resolveInterpolation(match[1], fileSrc, depth);
+    variants = variants.flatMap(value => alternatives.map(alternative => value + prefix + alternative));
+    at = match.index! + match[0].length;
+  }
+  return variants.map(value => value + template.slice(at));
+}
+
+function classNameOf(tag: string, fileSrc: string): string[] {
   const dq = tag.match(/className="([^"]*)"/);
-  if (dq) return dq[1];
+  if (dq) return [dq[1]];
   const tpl = tag.match(/className=\{`([^`]*)`\}/);
   if (tpl) {
-    return tpl[1].replace(/\$\{([^}]*)\}/g, (_m, expr: string) => resolveInterpolation(expr, fileSrc));
+    return expandClassTemplate(tpl[1], fileSrc);
   }
   const ident = tag.match(/className=\{([A-Za-z_$][\w$.]*)\}/);
   if (ident) return resolveInterpolation(ident[1], fileSrc);
   if (/className=/.test(tag)) {
     throw new Error(`a Button className this guard cannot read: ${tag.replace(/\s+/g, ' ').slice(0, 200)}`);
   }
-  return '';
+  return [''];
 }
 
 function callSites(): CallSite[] {
@@ -303,14 +327,14 @@ function callSites(): CallSite[] {
     const src = code(file);
     buttonTags(src).forEach((tag, i) => {
       const flat = tag.replace(/\s+/g, ' ');
-      out.push({
-        id: `${file.split('/').pop()!.replace(/\.tsx$/, '')}-${i}`,
+      classNameOf(tag, src).forEach((className, branch) => out.push({
+        id: `${file.split('/').pop()!.replace(/\.tsx$/, '')}-${i}-${branch}`,
         file,
         variant: (flat.match(/variant="([^"]*)"/) ?? [])[1],
         size: (flat.match(/size="([^"]*)"/) ?? [])[1],
-        className: classNameOf(tag, src),
+        className,
         tag: flat.slice(0, 200),
-      });
+      }));
     });
   }
   return out;

@@ -783,11 +783,12 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
  */
 const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string, change: string, why: string]>> = {
   'src/components/__tests__/the-255-install-app.test.tsx': [
-    '74c840b447d9cd8bda7b1012c879cd4f0adae071768b3ef3eaa3850ce5667a1d',
-    '#517',
+    '6daf1f553d295d3a6ca136fdff15cf624ab153c88fd267affb1ad8fa7f8f6dcb',
+    'THE-999998',
     'the public /api/waitlist route answers CORS for the marketing site, so it '
       + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
-      + 'red, so the list never moved with it. No other line of the suite changed.',
+      + 'red, so the list never moved with it. No other line of the suite changed.'
+      + ' THE-999998 appends the exact reviewed /community/:tenantId route while preserving all original route ordering, marker and install assertions. Previous current digest: 74c840b447d9cd8bda7b1012c879cd4f0adae071768b3ef3eaa3850ce5667a1d.',
   ],
   // APPENDED BY #529, then the current digest moved by #531, by #536, and again
   // when #530 merged main. This map holds one current digest, so the earlier
@@ -819,8 +820,8 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
-    'd5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55',
-    '#554',
+    '62cf18e95100a0cd86883fae1f987f9c55f0ee31da1661d347ece84be0fd2f04',
+    'THE-999998',
     'the Ministry row of the matrix transcription gained socialScheduler true, because Matei '
       + 'approved the scheduler on the Ministry plan on 2026-10-21. One cell on one tier; the suite '
       + 'still asserts every other cell and no price moved. The previous digest was '
@@ -828,7 +829,9 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'CONTENT_ASSERTING is untouched. '
       + 'Moved again by THE-378, the two-plan repricing: the matrix transcription now has the free, church and ministry rows in place of free, plus, pro and max. The suite still asserts every cell of every tier. The previous current digest was 9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2 (THE-376). The row in CONTENT_ASSERTING is untouched. '
       + 'APPENDED BY #554 / B1: comment creation now binds the parent tenant, exactly six fields, and the commenter profile name/photo. The suite records the exact reviewed /community_posts block digest while retaining its earlier clause assertions and every matrix, no-plan-rule, index, erasure and permalink check. '
-      + 'This map keeps one current digest; the previous current digest remains recorded here: b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b (THE-378). The row in CONTENT_ASSERTING is untouched.',
+      + 'This map keeps one current digest; the previous current digest remains recorded here: b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b (THE-378). The row in CONTENT_ASSERTING is untouched. '
+      + 'APPENDED BY THE-999998 (PR #561), community join + CRM: the suite records the reviewed multi-community /community_posts block digest and its rule-clause fallback now states the isTenantAdmin(X) || isActiveCommunityMember(X) gate in place of belongsToTenant(X), with the 280 content cap as the terminal condition of the comment create clause. Every earlier property — tenant gate, author identity, createPosts permission, content cap, comments un-updatable — is still asserted. The suite still asserts content rather than a digest pin. '
+      + 'This map keeps one current digest; the previous current digest remains recorded here: d5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55 (#554 / B1), and f14d3dec26dccadf70c6826e259d52609758b2e120f31918c9a813e72d0d1f0d (#557) stays accepted in SIGNUP_SHELL_DIGESTS. The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
     'a2fcd58b7b66fa1f29f6e445846ce4b159122d4ae3d419d4a5b6f3ffcf3d19f8',

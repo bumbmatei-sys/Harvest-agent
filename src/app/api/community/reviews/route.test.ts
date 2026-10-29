@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
 const h = vi.hoisted(() => ({ member: vi.fn(), admin: vi.fn(), docs: new Map<string, Record<string, unknown>>(), writes: [] as string[] }));
-vi.mock('@/lib/api-auth', () => ({ requireTenantMember: h.member, requireTenantAdmin: h.admin }));
+vi.mock('@/lib/api-auth', () => ({ requireCommunityMember: h.member, requireTenantAdmin: h.admin }));
 vi.mock('@/lib/firebase-admin', () => {
   const ref = (path: string): any => ({ path, doc: (id: string) => ref(`${path}/${id}`), collection: (name: string) => ref(`${path}/${name}`), get: async () => snap(path), orderBy: () => ref(path), offset: () => ref(path), limit: () => ref(path) });
   const snap = (path: string) => path.endsWith('/reviews') ? { docs: [...h.docs.entries()].filter(([key]) => key.startsWith(`${path}/`)).map(([key]) => ({ id: key.split('/').pop(), data: () => h.docs.get(key) })) } : { exists: h.docs.has(path), data: () => h.docs.get(path) };
@@ -54,6 +54,15 @@ describe('community reviews API', () => {
     expect(await (await mine()).json()).toEqual({ canReview: false, review: null });
     h.member.mockResolvedValueOnce(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     expect((await mine()).status).toBe(403);
+  });
+  it('allows an active joined admin from another tenant to review, then refuses an explicit leave', async () => {
+    h.docs.set('users/u', { tenantId: 'other', role: 'admin', displayName: 'Jane Doe' });
+    h.docs.set('tenants/a/communityMembers/u', { status: 'active' });
+    expect((await POST(req({ tenantId: 'a', rating: 5, text: 'Joined' }))).status).toBe(200);
+    expect(await (await GET(new NextRequest('http://localhost/api/community/reviews?tenantId=a&mine=1'))).json()).toMatchObject({ canReview: true });
+    h.docs.set('tenants/a/communityMembers/u', { status: 'left' });
+    expect((await POST(req({ tenantId: 'a', rating: 5, text: 'Left' }))).status).toBe(403);
+    expect((await GET(new NextRequest('http://localhost/api/community/reviews?tenantId=a&mine=1'))).status).toBe(403);
   });
   it('projects public reviews without uid or email', async () => {
     h.docs.set(review, { uid: 'u', authorName: 'Jane Doe', email: 'jane@example.com', rating: 5, text: 'Great' });

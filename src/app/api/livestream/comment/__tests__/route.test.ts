@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
-const { mockRequireAuth } = vi.hoisted(() => ({ mockRequireAuth: vi.fn() }));
+const { mockRequireAuth, mockMembership } = vi.hoisted(() => ({ mockRequireAuth: vi.fn(), mockMembership: vi.fn() }));
 
 const { mockDocGet, mockDocSet, mockAdd } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
@@ -21,6 +21,7 @@ function makeDocRef(): any {
 
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
 // Identity comes from the verified token via requireAuth — never the body.
+vi.mock('@/lib/community-membership-server', () => ({ isActiveCommunityMember: mockMembership }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
@@ -44,6 +45,7 @@ const baseBody = { tenantId: 't1', name: 'Sam', text: 'Amen 🙏' };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMembership.mockResolvedValue(true);
   mockDocSet.mockResolvedValue(undefined);
   mockAdd.mockResolvedValue({ id: 'c1' });
   // Default: authenticated viewer.
@@ -58,6 +60,13 @@ describe('POST /api/livestream/comment', () => {
     expect(res.status).toBe(401);
     expect(mockAdd).not.toHaveBeenCalled();
     expect(mockDocGet).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-member or explicit leave before reading or writing chat', async () => {
+    mockMembership.mockResolvedValue(false);
+    expect((await POST(makeRequest(baseBody))).status).toBe(403);
+    expect(mockDocGet).not.toHaveBeenCalled();
+    expect(mockAdd).not.toHaveBeenCalled();
   });
 
   it('rejects with 410 when no stream is active', async () => {

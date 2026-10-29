@@ -1,3 +1,4 @@
+import type { CommunityContactFields } from '../../components/community/CommunityContactBadge';
 import { useQuery } from '@tanstack/react-query';
 import {
   collection, query, where, getDocs, getDoc, doc, limit, getCountFromServer,
@@ -59,7 +60,7 @@ export const resolvePipelineStage = (totalDonated?: number | null): PipelineStag
   return given >= CHAMPION_THRESHOLD_DOLLARS ? 'champion' : 'giving';
 };
 
-export interface Contact {
+export interface Contact extends CommunityContactFields {
   id: string;
   firstName: string;
   lastName: string;

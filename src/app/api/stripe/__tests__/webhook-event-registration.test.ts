@@ -24,8 +24,11 @@ function makeCollRef(): any {
   return coll;
 }
 function makeDocRef(): any {
+  let snapshot: any;
   return {
-    get: mockDocGet, set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
+    get: async () => { snapshot = await mockDocGet(); return snapshot; },
+    transactionGet: () => snapshot,
+    set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
     collection: vi.fn(() => makeCollRef()),
   };
 }
@@ -42,7 +45,14 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: vi.fn(() => makeCollRef()) },
+  adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const writes: any[] = [];
+      const result = await work({ get: async (ref: any) => ref.transactionGet(), update: (_ref: any, data: any) => writes.push(data) });
+      for (const data of writes) await mockDocUpdate(data);
+      return result;
+    },
+  },
   adminAuth: { getUser: vi.fn(), getUserByEmail: vi.fn(), createUser: vi.fn(), createCustomToken: vi.fn() },
 }));
 
@@ -72,7 +82,8 @@ const REG_META = {
   registrationId: 'reg1', discountCode: '',
 };
 const completedSession = (over: Record<string, unknown> = {}) => ({
-  id: 'cs_1', subscription: null, payment_intent: 'pi_123', amount_total: 5000,
+  id: 'cs_1', subscription: null,
+  created: Math.floor(Date.now() / 1000), payment_intent: 'pi_123', amount_total: 5000,
   metadata: REG_META, ...over,
 });
 
@@ -188,6 +199,75 @@ describe('webhook — paid event ticket confirmation', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'expired' }));
+    expect(mockRefundsCreate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('THE-379 — paid series capacity at confirmation', () => {
+  it.each([
+    ['2031-03-16', false],
+    ['2031-03-23', true],
+    [undefined, false],
+  ])('counts confirmed seats from run %s against the pending run: %s', async (confirmedRunDate, soldOut) => {
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({ exists: true, data: () => ({
+        status: 'pending_payment', runDate: '2031-03-23', quantity: 2, amount: 5000,
+      }) })
+      .mockResolvedValueOnce({ exists: true, data: () => ({
+        title: 'Weekly gathering', ticketTypes: [{ id: 'tt1', name: 'GA', capacity: 3 }],
+      }) });
+    mockCollGet.mockResolvedValue({ docs: [{ data: () => ({
+      ticketTypeId: 'tt1', status: 'confirmed', quantity: 2, runDate: confirmedRunDate,
+    }) }] });
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: soldOut ? 'cancelled' : 'confirmed' }));
+    if (soldOut) expect(mockRefundsCreate).toHaveBeenCalledTimes(1);
+    else expect(mockRefundsCreate).not.toHaveBeenCalled();
+  });
+});
+
+// #556: a checkout completion cannot bypass the run cutoff or revive a cancelled run.
+describe('event registration payment completion respects cancellation and per-run deadlines', () => {
+  it.each([
+    ['2031-03-30T05:59:59.999Z', 'confirmed'],
+    ['2031-03-30T06:00:00.000Z', 'cancelled'],
+    ['2031-03-30T06:00:00.001Z', 'cancelled'],
+    ['2031-10-26T06:59:59.999Z', 'confirmed'],
+    ['2031-10-26T07:00:00.000Z', 'cancelled'],
+  ])('Berlin DST cutoff at %s yields %s', async (now, status) => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(now));
+    try {
+      const spring = now.startsWith('2031-03');
+      mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
+      mockDocGet.mockResolvedValueOnce({ exists: false })
+        .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pending_payment', amount: 5000, runDate: spring ? '2031-03-30' : '2031-10-26' }) })
+        .mockResolvedValueOnce({ exists: true, data: () => ({ title: 'Gathering', status: 'published',
+          timeZone: 'Europe/Berlin', startDate: { toDate: () => new Date(spring ? '2031-03-23T09:00:00Z' : '2031-10-19T08:00:00Z') },
+          recurrence: { freq: 'weekly', count: 3 }, ticketTypes: [{ id: 'tt1', capacity: null }],
+        }) });
+      expect((await POST(makeRequest())).status).toBe(200);
+      expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({ status }));
+      if (status === 'cancelled') expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        refundStatus: 'pending_manual', cancellationReason: 'registration_closed', cancelledAt: 'SERVER_TS',
+      }));
+      expect(mockRefundsCreate).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it.each([true, false])('does not confirm an event cancelled while checkout was open (whole series=%s)', async whole => {
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
+    mockDocGet.mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pending_payment', amount: 5000, runDate: '2031-03-30' }) })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: whole ? 'cancelled' : 'published',
+        recurrence: { freq: 'weekly', cancelledRuns: whole ? [] : ['2031-03-30'] },
+      }) });
+    expect((await POST(makeRequest())).status).toBe(200);
+    expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'cancelled', cancellationReason: 'event_cancelled', refundStatus: 'pending_manual',
+    }));
     expect(mockRefundsCreate).not.toHaveBeenCalled();
   });
 });

@@ -235,3 +235,28 @@ describe('scheduled sends (cron)', () => {
     expect(free.provider.sent).toHaveLength(0);
   });
 });
+
+describe('departure between newsletter preview and delivery', () => {
+  it('rechecks the server opt-out immediately before transport, even after claiming the send', async () => {
+    const ctx = build({ contacts: [person('former@x.org')] });
+    const saved = await ctx.service.saveDraft(admin, TENANT, { subject: 'Hello', bodyHtml: '<p>Hello</p>' });
+    if (!saved.ok) throw new Error('draft failed');
+    const preview = await ctx.service.send(admin, TENANT, { id: saved.broadcast.id, when: { mode: 'now' }, mode: 'preview' });
+    if (!preview.ok || !('confirmToken' in preview)) throw new Error('preview failed');
+    const recheck = vi.spyOn(ctx.mem.store, 'isSuppressedNow').mockResolvedValue(true);
+    await ctx.service.send(admin, TENANT, { id: saved.broadcast.id, when: { mode: 'now' }, mode: 'confirm', confirmToken: preview.confirmToken });
+    expect(recheck).toHaveBeenCalledExactlyOnceWith(TENANT, 'former@x.org');
+    expect(ctx.provider.sent).toHaveLength(0);
+  });
+  it('withholds transport when the last opt-out read throws', async () => {
+    const ctx = build({ contacts: [person('former@x.org')] });
+    const saved = await ctx.service.saveDraft(admin, TENANT, { subject: 'Hello', bodyHtml: '<p>Hello</p>' });
+    if (!saved.ok) throw new Error('draft failed');
+    const preview = await ctx.service.send(admin, TENANT, { id: saved.broadcast.id, when: { mode: 'now' }, mode: 'preview' });
+    if (!preview.ok || !('confirmToken' in preview)) throw new Error('preview failed');
+    vi.spyOn(ctx.mem.store, 'isSuppressedNow').mockRejectedValue(new Error('Suppression unavailable'));
+    const result = await ctx.service.send(admin, TENANT, { id: saved.broadcast.id, when: { mode: 'now' }, mode: 'confirm', confirmToken: preview.confirmToken });
+    expect(ctx.provider.sent).toHaveLength(0);
+    expect(result).toMatchObject({ ok: true, outcome: 'failed', stats: { sent: 0 } });
+  });
+});

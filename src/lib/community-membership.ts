@@ -1,0 +1,79 @@
+/** Flat membership records; timestamps are supplied by the server, never the browser. */
+// Version 2 adds owner contact permission and visibility of onboarding answers.
+export const COMMUNITY_CONSENT_VERSION = 2;
+export const COMMUNITY_CONSENT_SCOPE = 'owner_contact_and_view_name_email_answers';
+export const COMMUNITY_CONSENT_NOTICE = 'By joining, you agree that the community owner can contact you and can see your name, email and answers.';
+
+export const COMMUNITY_SOURCES = ['discover', 'link', 'website'] as const;
+export type CommunitySource = typeof COMMUNITY_SOURCES[number];
+export type MembershipStatus = 'active' | 'left';
+
+export type CommunityMember<T = unknown> = {
+  uid: string;
+  tenantId: string;
+  status: MembershipStatus;
+  source: CommunitySource;
+  joinedAt: T;
+  leftAt: T | null;
+  consentAt: T;
+  consentScope: string;
+  consentVersion: number;
+  updatedAt: T;
+  rulesAcceptedVersion: number;
+  answers: Record<string, string>;
+  answeredAt: T;
+};
+
+/** Server-maintained index at users/{uid}/memberships/{tenantId}. */
+export type UserMembership<T = unknown> = {
+  tenantId: string;
+  status: MembershipStatus;
+  // null means the historical join time was never recorded (legacy leave).
+  joinedAt: T | null;
+  leftAt: T | null;
+};
+
+export function normaliseSource(source: unknown): CommunitySource {
+  if (!COMMUNITY_SOURCES.includes(source as CommunitySource)) throw new Error('Invalid community source.');
+  return source as CommunitySource;
+}
+
+export function isCommunityTenantId(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value);
+}
+
+// Firestore reserves field names beginning and ending with double underscores.
+export const COMMUNITY_QUESTIONS_PENDING = 'communityQuestionsPending';
+export const LEGACY_QUESTIONS_PENDING = '__community_questions_pending__';
+export function writableCommunityAnswers(answers: Record<string, string>): Record<string, string> {
+  const result = { ...answers };
+  if (result[LEGACY_QUESTIONS_PENDING] === 'true') result[COMMUNITY_QUESTIONS_PENDING] = 'true';
+  delete result[LEGACY_QUESTIONS_PENDING];
+  return result;
+}
+
+/** An explicit leave overrides legacy membership, including a stale tenant claim. */
+export function isActiveMember(
+  member: { status?: unknown } | null | undefined,
+  user: { tenantId?: unknown } | null | undefined,
+  tenantId: string,
+): boolean {
+  if (member?.status !== undefined) return member.status === 'active';
+  return user?.tenantId === tenantId;
+}
+
+export function buildCommunityMember<T>(input: {
+  uid: string; tenantId: string; source: CommunitySource; now: T;
+  rulesAcceptedVersion?: number; answers?: Record<string, string>;
+  previous?: Partial<CommunityMember<T>>;
+}): CommunityMember<T> {
+  const { uid, tenantId, source, now, previous, answers, rulesAcceptedVersion } = input;
+  return {
+    uid, tenantId, status: 'active', source: normaliseSource(source),
+    joinedAt: now, leftAt: null, consentAt: now, updatedAt: now,
+    consentScope: COMMUNITY_CONSENT_SCOPE, consentVersion: COMMUNITY_CONSENT_VERSION,
+    rulesAcceptedVersion: rulesAcceptedVersion ?? previous?.rulesAcceptedVersion ?? 0,
+    answers: writableCommunityAnswers(answers ?? previous?.answers ?? { [COMMUNITY_QUESTIONS_PENDING]: 'true' }),
+    answeredAt: answers !== undefined ? now : previous?.answeredAt ?? now,
+  };
+}

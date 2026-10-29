@@ -1,3 +1,4 @@
+import { communityIdFromPath } from '../lib/community/navigation';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { isSuperAdminEmail, SUPER_ADMIN_EMAILS } from './super-admins';
@@ -98,6 +99,7 @@ export function isPlatformContext(): boolean {
   // A tenant subdomain is the authoritative tenant boundary. If we are on one,
   // we are NOT in the platform context, regardless of who is signed in.
   if (getTenantIdFromHost() !== null) return false;
+  if (typeof window !== 'undefined' && communityIdFromPath(window.location.pathname)) return false;
   // Otherwise (apex/custom/preview), only a super admin gets the platform view.
   return isSuperAdmin();
 }
@@ -125,6 +127,8 @@ export function hasPlatformOverride(): boolean {
 export async function getTenantScope(): Promise<string | null> {
   const hostScope = getTenantIdFromHost();
   if (hostScope) return hostScope;
+  const communityScope = typeof window !== 'undefined' ? communityIdFromPath(window.location.pathname) : null;
+  if (communityScope) return communityScope;
   if (isSuperAdmin()) return null;
   return getTenantId();
 }

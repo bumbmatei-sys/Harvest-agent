@@ -229,7 +229,8 @@ describe('1 · the layout fixture has a documented append path', () => {
     // THE-312 shipped its register empty for the same reason: THE-323 moves no
     // phone rendering, so it has no layer to record. An entry added "in
     // advance" is dead weight a later reader has to disprove.
-    expect(loadRegister()).toEqual([]);
+    // Later tickets use the append path; THE-323 itself still records no layer.
+    expect(loadRegister().filter(entry => entry.ticket === 'THE-323')).toEqual([]);
     expect(read('src/components/__tests__/__fixtures__/mobile-layer/README.md'))
       .toContain('Do not add an entry in');
   });
@@ -303,9 +304,12 @@ describe('2 · an UNRECORDED change to the modal still fails', () => {
     expect(acceptedFor(MODAL, base, [recorded])).toHaveLength(2);
   });
 
-  it('and the modal as it stands renders the BASELINE layer — THE-323 moved no phone rendering', () => {
+  it('and the modal renders an exact registered layer, retaining the baseline', () => {
     const host = mount(<PersonalInformationModal isOpen onClose={() => {}} />);
-    expect(mobileLayer(host)).toEqual(baselineLayer(MODAL));
+    // #561 records the account data-request control through this suite's own append path.
+    const actual = mobileLayer(host);
+    const failure = layerFailureFor(MODAL, baselineLayer(MODAL), actual);
+    expect(failure, failure ?? '').toBeNull();
   });
 });
 
@@ -588,7 +592,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // uses min-h-11. It is not a product screen, and it 404s in production.
       // The local development harness is ignored and may be absent in CI.
       ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
+      // THE-999998: local join/CRM screenshot harness, absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/join-crm/preview.tsx')) ? ['src/app/dev/join-crm/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
+      // #556: the ignored screenshot harness is a local-only 404 in production.
+      ...(existsSync(path.join(ROOT, 'src/app/events-harness/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/events-harness/preview.tsx')) ? ['src/app/events-harness/preview.tsx'] : []),
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
       // sweep's own sorted order, not the order tickets arrived in.
@@ -815,13 +823,18 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // THE-555: shadcn admin composer controls state their mobile touch floor.
       // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
       'src/components/community/AdminPostComposer.tsx',
+      'src/components/community/CommunityDataRequests.tsx', // #561: account privacy actions use the phone floor.
       'src/components/community/CommunityEntryDialog.tsx',
+      // THE-999998: join/member and leave actions use the same phone floor.
+      'src/components/community/CommunityMemberPage.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
+      'src/components/community/DeleteCommunityData.tsx', // #561: erasure confirmation uses shadcn controls.
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       // #557: Free member shell controls use the phone touch floor.
       'src/components/community/FreeMemberShell.tsx',
       'src/components/community/GroupList.tsx',
+      'src/components/community/LeaveCommunity.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',
@@ -871,6 +884,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/TemplatesDialog.tsx',
       'src/components/email/UsageMeter.tsx',
       'src/components/email/kit.tsx',
+      // #556: split series start fields retain the mobile floor on their shared Inputs.
+      'src/components/events/EventStartField.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as

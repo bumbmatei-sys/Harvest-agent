@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { SUPER_ADMIN_EMAILS } from '@/utils/super-admins';
 const fx = vi.hoisted(() => ({ user: { uid: 'member', tenantId: 'tenant' }, docs: {} as Record<string, Record<string, unknown> | undefined>, failPath: null as string | null }));
-vi.mock('@/lib/api-auth', () => ({ requireTenantMember: async () => fx.user }));
+vi.mock('@/lib/api-auth', () => ({ requireCommunityMember: async () => fx.user }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: (name: string) => ref(name) } }));
 function ref(path: string): any { return { doc: (id: string) => ref(`${path}/${id}`), collection: (id: string) => ref(`${path}/${id}`), get: async () => { if (fx.failPath === path) throw new Error('read failed'); return { exists: !!fx.docs[path], data: () => fx.docs[path] }; } }; }
 import { GET } from './route';

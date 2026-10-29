@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 /**
@@ -104,7 +104,13 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: (name: string) => makeCollRef(name), batch: () => ({ update: vi.fn(), set: vi.fn(), commit: vi.fn() }) },
+  adminDb: { collection: (name: string) => makeCollRef(name),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const writes: Array<() => Promise<void>> = [];
+      const result = await work({ get: (ref: any) => ref.get(), update: (ref: any, data: any) => writes.push(() => ref.update(data)) });
+      for (const write of writes) await write();
+      return result;
+    }, batch: () => ({ update: vi.fn(), set: vi.fn(), commit: vi.fn() }) },
   getReceiptsBucket: vi.fn(),
 }));
 
@@ -157,6 +163,7 @@ function connectEvent(id: string, type: string, object: any) {
 const ticketSession = (over: Record<string, unknown> = {}) => ({
   id: 'cs_1',
   subscription: null,
+  created: Math.floor(Date.now() / 1000),
   payment_intent: 'pi_123',
   amount_total: TICKET_CENTS,
   metadata: ticketMetadata(),
@@ -368,4 +375,35 @@ describe('connect webhook — paid event tickets (THE-154)', () => {
     await POST(makeRequest());
     expect(registration().status).toBe('confirmed');
   });
+});
+
+
+afterEach(() => vi.useRealTimers());
+
+it('B4 confirms and emails a pre-cutoff Checkout completed after the recurring run cutoff', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T07:30:00Z'));
+  seedPendingTicket();
+  const eventPath = `tenants/${CHURCH_TENANT}/events/e1`;
+  store.set(eventPath, { ...store.get(eventPath), startDate: { toDate: () => new Date('2031-03-23T09:00:00Z') },
+    timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 }, registrationCutoffHours: 2 });
+  store.set(`tenants/${CHURCH_TENANT}/registrations/reg1`, { ...registration(), runDate: '2031-03-30' });
+  mockConstructEvent.mockReturnValue(connectEvent('evt_cutoff', 'checkout.session.completed',
+    ticketSession({ created: Date.parse('2031-03-30T05:59:00Z') / 1000 })));
+  expect((await POST(makeRequest())).status).toBe(200);
+  expect(registration()).toMatchObject({ status: 'confirmed', amountPaid: TICKET_CENTS });
+  expect(registration().refundStatus).toBeUndefined();
+  expect(confirmationEmails()).toHaveLength(1);
+  expect(confirmationEmails()[0][0].html).toContain('2031-03-30');
+});
+
+it('B4 honors a pre-deadline Checkout completed after a one-off deadline', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-01-01T12:30:00Z'));
+  seedPendingTicket();
+  const eventPath = `tenants/${CHURCH_TENANT}/events/e1`;
+  store.set(eventPath, { ...store.get(eventPath), registrationDeadline: { toDate: () => new Date('2031-01-01T12:00:00Z') } });
+  mockConstructEvent.mockReturnValue(connectEvent('evt_deadline', 'checkout.session.completed',
+    ticketSession({ created: Date.parse('2031-01-01T11:59:00Z') / 1000 })));
+  expect((await POST(makeRequest())).status).toBe(200);
+  expect(registration().status).toBe('confirmed');
+  expect(confirmationEmails()).toHaveLength(1);
 });

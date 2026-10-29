@@ -47,7 +47,9 @@ export const PLAN_REFRESH_INTERVAL_MS = 2000;
 
 /** What the context exposes to consumers */
 export interface TenantContextValue {
-  /** Current tenant ID (null = global platform / super admin) */
+  /** Selected host community/tenant (null = platform). This is not the account
+   * tenant or a staff grant: joined users keep their own users/{uid}.tenantId.
+   * CommunitiesData lists memberships; server helpers and rules check access. */
   tenantId: string | null;
   /** The tenant's display name (e.g. church name) */
   tenantName: string | null;

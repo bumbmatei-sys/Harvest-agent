@@ -19,6 +19,11 @@ import {
 } from '@/lib/event-payment-claims';
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
+import { registrationRuns, registrationMatchesRun, type EventRun } from '@/lib/events/recurrence';
+import { createEventRegistration, RegistrationClosedError } from '@/lib/events/registration-write';
+import { registrationClosed } from '@/lib/events/registration-cutoff';
+import { validateAnswers } from '@/lib/events/registration-questions';
+import type { RecurrenceRule, RegistrationQuestion } from '@/hooks/queries/useEventQueries';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +61,10 @@ export async function POST(request: NextRequest) {
     phone?: string;
     additionalAttendees?: AdditionalAttendee[];
     discountCode?: string;
+    /** Required when the event recurs — which run (YYYY-MM-DD) the registrant picked. */
+    runDate?: string;
+    /** Answers to `event.registrationQuestions`, keyed by question id. */
+    answers?: unknown;
   };
   try {
     body = await request.json();
@@ -100,6 +109,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Registration is not available for this event.' }, { status: 410 });
     }
 
+    // Eden "Open to anyone": absent/true means the public share link is open
+    // to anyone, which is every event's behaviour today. `false` restricts
+    // registration to a signed-in member of THIS tenant.
+    if (event.openToAnyone === false) {
+      // Membership may have changed since the ID token was minted.
+      const member = authedUser ? await adminDb.collection('users').doc(authedUser.uid).get() : null;
+      if (!member?.exists || member.data()?.tenantId !== tenantId) {
+        return NextResponse.json(
+          { error: 'This event is open to members only. Please sign in to register.' },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Recurring events (Eden "series with runs") require the registrant to
+    // say which run they mean, and that run must still be a real, uncancelled
+    // occurrence of the series. Non-recurring events ignore `runDate`
+    // entirely, so every existing single-run event is untouched.
+    let targetRunDate: string | null = null;
+    let targetRun: EventRun | undefined;
+    const recurrence: RecurrenceRule | null | undefined = event.recurrence;
+    if (recurrence) {
+      const requestedRunDate = typeof body.runDate === 'string' ? body.runDate.trim() : '';
+      const eventStart: Date | null = event.startDate?.toDate ? event.startDate.toDate() : null;
+      const eventEnd: Date | null = event.endDate?.toDate ? event.endDate.toDate() : eventStart;
+      if (!requestedRunDate || !eventStart) {
+        return NextResponse.json({ error: 'Please choose which date you are registering for.' }, { status: 400 });
+      }
+      const runs = registrationRuns(
+        { startDate: eventStart, endDate: eventEnd || eventStart, timeZone: event.timeZone, recurrence },
+      );
+      targetRun = runs.find((r) => r.runDate === requestedRunDate);
+      if (!targetRun) {
+        return NextResponse.json({ error: 'That date is no longer available for this event.' }, { status: 410 });
+      }
+      targetRunDate = requestedRunDate;
+    }
+
+    if (registrationClosed(event, targetRunDate)) {
+      return NextResponse.json({ error: 'The registration deadline for this date has passed.' }, { status: 410 });
+    }
+
+    // Registration questions (Eden one-at-a-time), validated server-side —
+    // required-but-blank and an out-of-set choice are rejected; free text is
+    // truncated to its kind's cap, never silently dropped.
+    const questions: RegistrationQuestion[] | undefined = event.registrationQuestions;
+    const answersResult = validateAnswers(questions, body.answers);
+    if (!answersResult.ok) {
+      return NextResponse.json({ error: answersResult.error }, { status: 400 });
+    }
+    const answerFields = Object.keys(answersResult.answers).length ? { answers: answersResult.answers } : {};
+    const runDateFields = targetRunDate ? { runDate: targetRunDate } : {};
+
     const ticketTypes: TicketType[] = Array.isArray(event.ticketTypes) ? event.ticketTypes : [];
     const ticketType = ticketTypes.find((t) => t.id === ticketTypeId);
     if (!ticketType) {
@@ -118,11 +180,16 @@ export async function POST(request: NextRequest) {
       .get();
     // Capacity is counted in SEATS, not registrations: a registration for a couple
     // holds `quantity` seats (BUG 5). Legacy rows with no `quantity` field count as 1.
+    // For a recurring event, capacity is counted PER RUN: a registration for
+    // one date must never count against a different date's capacity. A
+    // registration with no `runDate` at all (every registration written
+    // before recurrence existed, and every registration on a non-recurring
+    // event) matches the event's single implicit run.
     const soldForType = regSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed'
-        ? sum + (Number(r.quantity) || 1)
-        : sum;
+      if (r.ticketTypeId !== ticketTypeId || r.status !== 'confirmed') return sum;
+      if (!registrationMatchesRun(r.runDate, targetRunDate)) return sum;
+      return sum + (Number(r.quantity) || 1);
     }, 0);
 
     // Headcount for THIS registration = primary registrant + named additional
@@ -270,7 +337,7 @@ export async function POST(request: NextRequest) {
       // session metadata can carry its id. Pending regs hold no capacity and
       // consume no discount — those happen only at confirmation. `firstName` is
       // stored so the webhook can address the confirmation email.
-      const pendingRef = await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
+      const pendingRef = await createEventRegistration(tenantId, eventId, {
         eventId,
         tenantId,
         userId,
@@ -290,6 +357,8 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         additionalAttendees,
         registeredAt: FieldValue.serverTimestamp(),
+        ...runDateFields,
+        ...answerFields,
       });
 
       // Everything the webhook needs to finalize this registration server-side.
@@ -342,6 +411,16 @@ export async function POST(request: NextRequest) {
       const directCharge = { stripeAccount: connectAccountId };
 
       try {
+        // Re-read immediately before opening Checkout: validation and registration
+        // writes above may have crossed the deadline or a schedule edit.
+        const checkoutEvent = await eventRef.get();
+        const latest = checkoutEvent.data();
+        if (!checkoutEvent.exists || !latest || latest.status !== 'published'
+          || !latest.registrationEnabled || registrationClosed(latest, targetRunDate)
+          || latest.recurrence?.cancelledRuns?.includes(targetRunDate)) {
+          await pendingRef.delete();
+          return NextResponse.json({ error: 'Registration for this date has closed.' }, { status: 400 });
+        }
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
           // Single line item carrying the FULL headcount charge (price × quantity −
@@ -392,7 +471,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Write registration ──
-    await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
+    await createEventRegistration(tenantId, eventId, {
       eventId,
       tenantId,
       userId,
@@ -416,6 +495,8 @@ export async function POST(request: NextRequest) {
       additionalAttendees,
       registeredAt: FieldValue.serverTimestamp(),
       ...paymentFields,
+      ...runDateFields,
+      ...answerFields,
     });
 
     // ── Increment discount usage (read-modify-write the array) ──
@@ -449,8 +530,9 @@ export async function POST(request: NextRequest) {
     // would be false for a waitlist entry. Paid tickets are confirmed by the
     // Stripe webhook, not here, so they don't reach this branch.
     if (phone && !waitlisted) {
-      const eventDate = event.startDate?.toDate
-        ? event.startDate.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      const smsStart = targetRun?.start || event.startDate?.toDate?.();
+      const eventDate = smsStart
+        ? smsStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...(targetRun ? { timeZone: event.timeZone || 'UTC' } : {}) })
         : '';
       await sendAutomatedSms(tenantId, 'event_registration', phone, {
         name: firstName,
@@ -529,11 +611,15 @@ export async function POST(request: NextRequest) {
           : owesManualPayment
             ? `<p><strong>${TICKET_QR_WAITING_TITLE}.</strong> ${ticketQrWaitingBody(tenantName)}</p>`
             : `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>`;
+        const runDateBlock = targetRun
+          ? `<p>Date: ${targetRun.start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: event.timeZone || 'UTC' })}</p>`
+          : '';
         await resend.emails.send({
           from: 'Harvest <noreply@theharvest.app>',
           to: email,
           subject: `Your registration for ${event.title}`,
           html: `<p>Hi ${firstName}, ${intro}</p>` +
+            runDateBlock +
             qrBlock +
             payNote +
             `<br><p>— ${tenantName}</p>`,
@@ -586,6 +672,7 @@ export async function POST(request: NextRequest) {
       paymentClaimToken: paymentFields.paymentClaimToken ?? null,
     });
   } catch (e) {
+    if (e instanceof RegistrationClosedError) return NextResponse.json({ error: e.message }, { status: 410 });
     console.error('Event registration submit error:', e);
     // A public visitor's registration didn't happen. They see a generic failure
     // and go away; the ministry has no signal that anyone ever tried.

@@ -727,7 +727,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       const role = userDoc.exists() ? (userDoc.data().role || 'user') : 'user';
       if (cancelled) return;
       setCurrentUser({ uid: auth.currentUser.uid, name });
-      const admin = isSuperAdminEmail(auth.currentUser.email) || ADMIN_ROLES.includes(role);
+      const admin = isSuperAdminEmail(auth.currentUser.email) || (userDoc.data()?.tenantId === resolved && ADMIN_ROLES.includes(role));
       setCanStartDm(admin);
       setIsAdmin(admin);
       setLoading(false);

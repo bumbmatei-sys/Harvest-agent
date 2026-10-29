@@ -40,9 +40,15 @@ function makeCollRef(): any {
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
+let latestEventSnapshot: any;
 function makeDocRef(): any {
   return {
-    get: mockDocGet,
+    id: 'pending1',
+    get: async () => {
+      const snapshot = await mockDocGet();
+      if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
+      return snapshot || latestEventSnapshot;
+    },
     set: mockDocSet,
     update: mockDocUpdate,
     delete: mockDocDelete,
@@ -87,7 +93,14 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: vi.fn(() => makeCollRef()) },
+  adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const creates: any[] = [];
+      const result = await work({ get: async () => latestEventSnapshot, create: (_ref: any, data: any) => creates.push(data) });
+      for (const data of creates) await mockAdd(data);
+      return result;
+    },
+  },
 }));
 
 // The Connect account id moved to the server-only tenant_private doc — the
@@ -107,8 +120,10 @@ vi.mock('firebase-admin/firestore', () => ({
   },
 }));
 
+const { mockEmailSend } = vi.hoisted(() => ({ mockEmailSend: vi.fn().mockResolvedValue({}) }));
+
 // Email + QR are best-effort and gated on RESEND_API_KEY (left unset in tests).
-vi.mock('resend', () => ({ Resend: vi.fn(() => ({ emails: { send: vi.fn() } })) }));
+vi.mock('resend', () => ({ Resend: class { emails = { send: mockEmailSend }; } }));
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,x') } }));
 
 const { POST } = await import('../submit/route');
@@ -136,6 +151,7 @@ const baseBody = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  latestEventSnapshot = undefined;
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   delete process.env.RESEND_API_KEY;
   mockGetTenantPrivate.mockResolvedValue({ stripeConnectAccountId: 'acct_T' });
@@ -506,4 +522,296 @@ describe('POST /api/event-registration/submit — userId identity link', () => {
     expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ userId: null }));
     expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ userId: 'victim_uid' }));
   });
+});
+
+describe('POST /api/event-registration/submit — registration questions', () => {
+  const freeEvent = {
+    ...PAID_EVENT,
+    ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+    registrationQuestions: [{ id: 'q1', label: 'Dietary needs', kind: 'short', required: true }],
+  };
+
+  it('rejects a missing required answer and writes nothing', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+    const res = await POST(makeRequest({ ...baseBody, answers: {} }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Dietary needs');
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('stores validated answers on the registration, trimmed', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+    const res = await POST(makeRequest({ ...baseBody, answers: { q1: '  Gluten free  ' } }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ answers: { q1: 'Gluten free' } }));
+  });
+
+  it('an event with no registrationQuestions never requires or stores answers', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT_FREE });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+    const call = mockAdd.mock.calls[0][0];
+    expect(call.answers).toBeUndefined();
+  });
+});
+
+const PAID_EVENT_FREE = {
+  ...PAID_EVENT,
+  ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+};
+
+describe('POST /api/event-registration/submit — registration deadline', () => {
+  it('rejects registration once the deadline has passed', async () => {
+    const pastDeadlineEvent = {
+      ...PAID_EVENT_FREE,
+      registrationDeadline: { toDate: () => new Date(Date.now() - 60_000) },
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => pastDeadlineEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(410);
+    expect((await res.json()).error).toMatch(/deadline/i);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('allows registration before the deadline', async () => {
+    const futureDeadlineEvent = {
+      ...PAID_EVENT_FREE,
+      registrationDeadline: { toDate: () => new Date(Date.now() + 60_000) },
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => futureDeadlineEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/event-registration/submit — openToAnyone', () => {
+  it('refuses a logged-out registrant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue(null);
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(403);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('refuses a member of a DIFFERENT tenant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 'other-tenant' });
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 'other-tenant' }) });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(403);
+  });
+
+  it('allows a signed-in member of THIS tenant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 't1' });
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+
+  it('defaults to open (absent field) — every existing event keeps working for logged-out visitors', async () => {
+    mockVerifyAuth.mockResolvedValue(null);
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT_FREE });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/event-registration/submit — recurring event runs', () => {
+  const recurringEvent = {
+    ...PAID_EVENT_FREE,
+    startDate: { toDate: () => new Date('2027-01-04T10:00:00.000Z') },
+    endDate: { toDate: () => new Date('2027-01-04T11:00:00.000Z') },
+    recurrence: { freq: 'weekly', count: 4 },
+  };
+
+  it('requires a runDate for a recurring event', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(400);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('rejects a runDate that is not a real occurrence of the series', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-02-01' }));
+    expect(res.status).toBe(410);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('accepts a real run and stamps runDate on the registration', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate: '2027-01-11' }));
+  });
+
+  it('counts capacity PER RUN — a full run does not block a different run of the same series', async () => {
+    const cappedRecurring = {
+      ...recurringEvent,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
+    // One seat already taken, but on a DIFFERENT run date.
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-04' }) }],
+    });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(200);
+  });
+
+  it('counts capacity PER RUN — the same run date is still blocked once full', async () => {
+    const cappedRecurring = {
+      ...recurringEvent,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-11' }) }],
+    });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(410);
+  });
+});
+
+describe('r9.4/5 recurring registration window and SMS', () => {
+  const instant = (month: number, day: number, hour = 0) => new Date(Date.UTC(2031, month - 1, day, hour));
+  const event = {
+    ...PAID_EVENT_FREE,
+    startDate: { toDate: () => instant(3, 16, 23) },
+    endDate: { toDate: () => instant(3, 17, 0) },
+    timeZone: 'Asia/Tokyo', recurrence: { freq: 'weekly' },
+  };
+  it.each(['2031-03-17', '2031-06-16', '2031-09-29'])('r9.4 rejects ended, thirteenth or beyond-horizon run: %s', async runDate => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(instant(3, 18));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, runDate }));
+      expect(response.status).toBe(410);
+      expect(await response.json()).toEqual({ error: 'That date is no longer available for this event.' });
+      expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('r9.4 refuses an ongoing run after its per-run cutoff', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(instant(3, 23, 23).getTime() + 30 * 60000));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, runDate: '2031-03-24' }));
+      expect(response.status).toBe(410);
+      expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('r9.5 sends the chosen run civil date in the event zone in SMS', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(instant(3, 18));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, phone: '+15550001111', runDate: '2031-03-24' }));
+      expect(response.status).toBe(200);
+      expect(mockSendAutomatedSms).toHaveBeenCalledWith('t1', 'event_registration', '+15550001111', expect.objectContaining({ date: 'Mar 24, 2031' }));
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+
+describe('#556 membership and confirmation follow-ups', () => {
+  it.each([null, 'other-tenant'])('rejects a stale tenant claim when the current user membership is %s', async tenantId => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 't1' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockResolvedValueOnce({ exists: tenantId !== null, data: () => ({ tenantId }) });
+    expect((await POST(makeRequest(baseBody))).status).toBe(403);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+  it('accepts current membership even when the token tenant claim is stale', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 'old-tenant' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) });
+    expect((await POST(makeRequest(baseBody))).status).toBe(200);
+  });
+  it('does not register anyone when membership cannot be read', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 't1' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockRejectedValueOnce(new Error('membership unavailable'));
+    expect((await POST(makeRequest(baseBody))).status).toBe(500);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+  it('emails the chosen run date in the event zone instead of the first date', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2031-03-18T00:00:00Z'));
+    process.env.RESEND_API_KEY = 'test';
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        startDate: { toDate: () => new Date('2031-03-16T23:00:00Z') },
+        endDate: { toDate: () => new Date('2031-03-17T00:00:00Z') },
+        timeZone: 'Asia/Tokyo', recurrence: { freq: 'weekly' },
+      }) }).mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Ministry' }) });
+      expect((await POST(makeRequest({ ...baseBody, runDate: '2031-03-24' }))).status).toBe(200);
+      expect(mockEmailSend).toHaveBeenCalledWith(expect.objectContaining({ html: expect.stringContaining('March 24, 2031') }));
+      expect(mockEmailSend.mock.calls[0][0].html).not.toContain('March 17, 2031');
+    } finally { vi.useRealTimers(); delete process.env.RESEND_API_KEY; }
+  });
+});
+
+// #556: each date uses its own cutoff, independently of the retired series deadline.
+describe('per-run cutoff at submit across Berlin DST', () => {
+  it.each([
+    ['2031-03-30', '2031-03-30T06:00:00Z', -1, 200],
+    ['2031-03-30', '2031-03-30T06:00:00Z', 0, 410],
+    ['2031-03-30', '2031-03-30T06:00:00Z', 1, 410],
+    ['2031-10-26', '2031-10-26T07:00:00Z', -1, 200],
+    ['2031-10-26', '2031-10-26T07:00:00Z', 0, 410],
+  ])('%s boundary %+dms returns %s', async (runDate, cutoff, delta, status) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(Date.parse(cutoff) + Number(delta)));
+    try {
+      const spring = runDate.startsWith('2031-03');
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 },
+        startDate: { toDate: () => new Date(spring ? '2031-03-23T09:00:00Z' : '2031-10-19T08:00:00Z') },
+        registrationDeadline: { toDate: () => new Date('2030-01-01T00:00:00Z') },
+      }) });
+      const response = await POST(makeRequest({ ...baseBody, runDate }));
+      expect(response.status).toBe(status);
+      if (status === 200) expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate }));
+      else expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('enforces an admin-edited fractional offset', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T03:30:00Z'));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 }, registrationCutoffHours: 4.5,
+        startDate: { toDate: () => new Date('2031-03-23T09:00:00Z') },
+      }) });
+      expect((await POST(makeRequest({ ...baseBody, runDate: '2031-03-30' }))).status).toBe(410);
+      expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+
+it('B4 refuses to open Checkout if the deadline closes after the pending registration is admitted', async () => {
+  const deadline = new Date('2031-01-01T12:00:00Z');
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-01-01T11:59:59Z'));
+  const event = { ...PAID_EVENT, registrationDeadline: { toDate: () => deadline } };
+  mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event })
+    .mockResolvedValueOnce({ exists: true, data: () => ({ plan: 'plus' }) })
+    .mockImplementationOnce(async () => {
+      vi.setSystemTime(new Date('2031-01-01T12:00:01Z'));
+      return { exists: true, data: () => event };
+    });
+  try {
+    const response = await POST(makeRequest(baseBody));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toContain('closed');
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+    expect(mockDocDelete).toHaveBeenCalledOnce();
+  } finally { vi.useRealTimers(); }
 });

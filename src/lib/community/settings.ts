@@ -1,3 +1,4 @@
+import { COMMUNITY_QUESTIONS_PENDING, LEGACY_QUESTIONS_PENDING } from '../community-membership';
 import { DEFAULT_COMMUNITY_BRAND, isCommunityBrandColor } from './branding';
 /** Tenant-controlled visibility is additional to, never a replacement for, plan access. */
 export const COMMUNITY_MODULES = [
@@ -76,7 +77,7 @@ export function prepareCommunitySettings(previous: CommunitySettings, draft: Com
 
 export function needsCommunityEntry(settings: CommunitySettings, member: { rulesAcceptedVersion?: number; answeredAt?: unknown; answers?: Record<string, string> } | null): boolean {
   return (settings.rules.enabled && member?.rulesAcceptedVersion !== settings.rules.version) ||
-    (settings.questions.enabled && (!member?.answeredAt || member.answers?.__community_questions_pending__ === 'true'));
+    (settings.questions.enabled && (!member?.answeredAt || member.answers?.[COMMUNITY_QUESTIONS_PENDING] === 'true' || member.answers?.[LEGACY_QUESTIONS_PENDING] === 'true'));
 }
 
 export function requiredQuestionsAnswered(questions: CommunityQuestion[], answers: Record<string, string>): boolean {
