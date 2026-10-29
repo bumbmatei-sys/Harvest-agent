@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 
@@ -549,15 +549,29 @@ describe('no other hardcoded term list remains in a validation path', () => {
 
   const TERM_LITERAL = /['"](monthly|quarterly|yearly|annual)['"]/;
   const modules = walk(SRC);
+  let termLiteralModules: string[] | undefined;
+
+  function findTermLiteralModules(): string[] {
+    // Parsing every source module twice makes these guards exceed the test
+    // deadline under CI load. The raw check only rules out impossible matches;
+    // every candidate still goes through the shared parser-based stripper so
+    // a term in a comment cannot satisfy either assertion. Both guards inspect
+    // the same inventory of the working tree, including untracked source files.
+    if (termLiteralModules === undefined) {
+      termLiteralModules = modules.filter((file) => {
+        const src = readFileSync(file, 'utf8');
+        return TERM_LITERAL.test(src) && TERM_LITERAL.test(stripComments(src));
+      }).map((file) => relative(SRC, file).replace(/\\/g, '/'));
+    }
+    return termLiteralModules;
+  }
 
   it('finds the modules to scan at all', () => {
     expect(modules.length).toBeGreaterThan(50);
   });
 
   it('has triaged every module that writes a term as a literal', () => {
-    const found = modules
-      .filter((file) => TERM_LITERAL.test(codeOf(file)))
-      .map((file) => file.slice(SRC.length + 1));
+    const found = findTermLiteralModules();
 
     for (const file of found) {
       expect(
@@ -574,9 +588,7 @@ describe('no other hardcoded term list remains in a validation path', () => {
     // A stale entry is how this table stops meaning anything: it would keep
     // vouching for a file that was deleted or renamed while a real new site
     // slipped in under the count above.
-    const found = new Set(
-      modules.filter((file) => TERM_LITERAL.test(codeOf(file))).map((file) => file.slice(SRC.length + 1)),
-    );
+    const found = new Set(findTermLiteralModules());
     for (const file of Object.keys(TERM_LITERAL_SITES)) {
       expect(found.has(file), `TERM_LITERAL_SITES still lists ${file}, which no longer writes one`).toBe(true);
     }

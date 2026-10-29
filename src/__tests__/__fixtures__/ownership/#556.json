@@ -435,6 +435,11 @@
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
       "digest": "ce8da4725990f7a35c9e1d5a36782e0ac30f8c152953fdcac692c94398017a8f",
       "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B6: explicit min-h-11 on new controls and Retry clears mobile floors, and sm:min-h-0 lets the existing control/action density take over on desktop. Existing navigation and behavior guards remain."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
+      "digest": "edba5f964f2b733245cbecbec6ccd2779209259dc8a0a21b3f89bf911ca1b931",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 CI timeout fix: prefilter impossible term matches before the shared parser and reuse one working-tree inventory across both sweep assertions. Preserve all term validation and stale-entry checks; an untracked executable annual literal fails, while a comment-only literal passes. Normalize relative paths for Windows."
     }
   ]
 }
