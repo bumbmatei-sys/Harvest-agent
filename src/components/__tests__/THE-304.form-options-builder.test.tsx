@@ -63,6 +63,7 @@ import path from 'node:path';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface Doc { id: string; data: Record<string, unknown> }
+const shareTenant = vi.hoisted(() => ({ tenant: { subdomain: 'grace' } as { subdomain: string } | null, failure: false }));
 
 const STORE: Record<string, Doc[]> = {};
 /** Every write this suite let through, so the SAVED SHAPE is assertable. */
@@ -90,7 +91,13 @@ vi.mock('firebase/firestore', () => ({
     if (typeof cb === 'function') (cb as (s: unknown) => void)({ docs, size: docs.length });
     return () => {};
   },
-  getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  getDoc: async (ref: unknown) => {
+    if (pathOf(ref) === 'tenants/t1') {
+      if (shareTenant.failure) throw new Error('Read failed');
+      return { exists: () => shareTenant.tenant !== null, data: () => shareTenant.tenant };
+    }
+    return { exists: () => true, data: () => ({}) };
+  },
   addDoc: async (c: unknown, payload: Record<string, unknown>) => {
     writes.push({ kind: 'addDoc', path: pathOf(c), payload });
     return { id: 'new' };
@@ -204,6 +211,7 @@ async function save(root: ParentNode) {
 }
 
 beforeEach(() => {
+  shareTenant.tenant = { subdomain: 'grace' }; shareTenant.failure = false;
   for (const k of Object.keys(STORE)) delete STORE[k];
   writes.length = 0;
   STORE['tenants/t1/forms'] = [];
@@ -212,6 +220,34 @@ beforeEach(() => {
   alerts.length = 0;
   (globalThis as unknown as { alert: (m?: unknown) => void }).alert =
     (m?: unknown) => { alerts.push(String(m)); };
+});
+
+describe('public form sharing', () => {
+  it('uses the resolved tenant subdomain for links and QR codes when it differs from the tenant id', async () => {
+    STORE['tenants/t1/forms'] = [{ id: 'f1', data: { title: 'Welcome', description: '', fields: [], active: true, submissionCount: 0, createdAt: null, createdBy: 'u' } }];
+    const m = await mountScreen(<AdminForms />);
+    try {
+      const links = [...m.container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+      expect(links).toHaveLength(2);
+      expect(links.map(link => link.href)).toEqual(Array(2).fill('https://grace.theharvest.app/form/f1'));
+      const qrActions = m.container.querySelectorAll<HTMLButtonElement>('[data-form-qr-action]');
+      expect(qrActions).toHaveLength(2);
+      await click(qrActions[0]);
+      expect(document.body.textContent).toContain('https://grace.theharvest.app/form/f1');
+      expect(document.body.textContent).not.toContain('https://t1.theharvest.app');
+    } finally { m.unmount(); }
+  });
+  it.each(['missing', 'read failure', 'invalid slug'])('shows a visible error and withholds sharing on %s', async reason => {
+    if (reason === 'missing') shareTenant.tenant = null;
+    if (reason === 'read failure') shareTenant.failure = true;
+    if (reason === 'invalid slug') shareTenant.tenant = { subdomain: 'evil/path' };
+    STORE['tenants/t1/forms'] = [{ id: 'f1', data: { title: 'Welcome', description: '', fields: [], active: true, submissionCount: 0, createdAt: null, createdBy: 'u' } }];
+    const m = await mountScreen(<AdminForms />);
+    try {
+      expect(m.container.querySelectorAll('a[target="_blank"]')).toHaveLength(0);
+      expect(m.container.querySelector('[role="alert"]')?.textContent).toContain('Could not load the ministry address');
+    } finally { m.unmount(); }
+  });
 });
 
 const alerts: string[] = [];

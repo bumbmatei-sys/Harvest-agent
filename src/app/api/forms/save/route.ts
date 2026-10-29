@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { requireTenantPermission } from '@/lib/api-auth';
+import { authorizeForms } from '@/lib/form-follow-up/authorize';
+import { MAX_FORM_BYTES, validFormContent } from '@/lib/form-follow-up/form-input';
 import { adminDb } from '@/lib/firebase-admin';
 import { validId } from '@/lib/signup-pages/server';
 import { parseFollowUp } from '@/lib/form-follow-up/model';
 import { InvalidFollowUp, validateFollowUp } from '@/lib/form-follow-up/server';
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, 'utf8') > MAX_FORM_BYTES) return NextResponse.json({ error: 'Form is too large (maximum 256 KiB).' }, { status: 413 });
+    const body = JSON.parse(raw);
     if (!body || !validId(body.tenantId) || (body.formId !== null && !validId(body.formId)) ||
-        typeof body.title !== 'string' || !body.title.trim() || typeof body.description !== 'string' || !Array.isArray(body.fields)) return NextResponse.json({ error: 'Invalid form' }, { status: 400 });
-    const user = await requireTenantPermission(request, body.tenantId, 'manageForms');
+        !validFormContent(body)) return NextResponse.json({ error: 'Invalid form. Use at most 200 title characters, 10,000 description characters, 100 fields, 100 options per field, and 500 characters per field label, placeholder, option or scale label.' }, { status: 400 });
+    const user = await authorizeForms(request, body.tenantId);
     if (user instanceof NextResponse) return user;
     await validateFollowUp(body.tenantId, body.followUp);
     const forms = adminDb.collection('tenants').doc(body.tenantId).collection('forms');

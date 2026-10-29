@@ -1,0 +1,305 @@
+{
+  "ticket": "#562",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "b92c5ff70ef06fe91b2a4943e232349886a1ba59fc4739fa719ce93f95939ced",
+      "why": "PR #562 form follow-up cards and QR sharing. Only tenants/{tenantId}/forms/{formId} changes: clients may create without followUp, update only when followUp is unchanged, and delete with existing forms permission. Server validates references. Emulator coverage is added; founder approval is required before the auto-deploying rules are merged."
+    },
+    {
+      "file": "src/app/api/form-follow-up/options/route.ts",
+      "digest": "13a0ba4a300f780fd1d9f9ac55d92401e7f569da5291e4931caf644e624e3522",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/api/form-follow-up/route.ts",
+      "digest": "ec20010319bc7fcaa5da9fbae374ece7dbb458356055df9303b249adddd72764",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/api/forms/save/route.ts",
+      "digest": "cd70c9b693056e897f39617fac2c6e37e3781580bd461bbd43a7eb400e804442",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/api/signup-pages/route.ts",
+      "digest": "f9415c82daa2b609e3de58c0596a557b34092a94dd393800ff37be0ecbf4f021",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/AdminForms.tsx",
+      "digest": "fbbabd3c05c78d365d3696921fb8b946eca533202d6b99e98c69285097495d83",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/PublicForm.tsx",
+      "digest": "fbc174bdcddf8799297c1ca1dc757c4eb78c15b80406f617f8a745e71a5f9f87",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/__tests__/THE-304.form-options-builder.test.tsx",
+      "digest": "7076c95d1abb552e26a2874f2589ba04c3dfd8b84f743516e3abb2441d8088e1",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "ac628a883b4d409e7da6411ebf1477b801c5c8bd8bbbb510b618f570f702c85b",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpCard.test.tsx",
+      "digest": "f6c2c519f6719d1500e026e80736a51f3e98f84ffb72ce5761021b6164dfb898",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpCard.tsx",
+      "digest": "4b5d188f34cf9e221a6de8de692489987e90c8d8a62b8d2b53970a261d0b3349",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpSetting.tsx",
+      "digest": "d93568220852184c05113073791e65e6d0bbab04127dc7f2cb41b2923628403c",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/QrCodeDialog.test.tsx",
+      "digest": "12cd1d0871000a4358dd1d9b4080d1d63823d461451dd859208877c3b69df2e7",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/form-follow-up/QrCodeDialog.tsx",
+      "digest": "50bcfe13120f583be1b10b33c2155c6c9afbc05a4acaef7ae8d583a5ee5212cd",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/signup-pages/PublicSignupForm.tsx",
+      "digest": "a9cf3476e4b785eae03fb7cf2335f2695c1ae6d7a74fc9f9126cbe0a2e3622be",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/signup-pages/ShareCard.tsx",
+      "digest": "be86884e21dd3314e9f9c6da04bebe724ebebd0482dd52bd7eb395a96cc57afa",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/signup-pages/SignupPageBuilder.tsx",
+      "digest": "fb3b107ea0614092404162b4d6c9f5366f89357cd1d1bb7cf5c83ffb59ea8969",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/signup-pages/SignupPagesScreen.tsx",
+      "digest": "fcb1488ae3316d8e3f58111f9bb7de556a3c4e22b9a088c5ec151c134a332482",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/lib/form-follow-up/model.ts",
+      "digest": "6968a9a2b9d1e7ea9c6c98c63e295ebbf0ad6f8c123c06cabf0e187711c8be77",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.test.ts",
+      "digest": "4e9e4995ce187045dd45c9ca321d7e7d9d1b5734b4968a14991a518b06020ae4",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.ts",
+      "digest": "9bad1dd752d47ccb6b214098663c949d9a80fd450def0533c6990674613b83a6",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/lib/signup-pages/model.ts",
+      "digest": "b03daa55934b799cef68c1723145c8577cf7c9756a98467e6c41b359de25b6dc",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "tests/rules/form-follow-up.rules.test.ts",
+      "digest": "190642fe63b2c42ab6ff81e86ac4b9860f52184554fa6c477b24b5ef320ba669",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/form-follow-up/mobile.layout.test.tsx",
+      "digest": "dc4cd1be793399532a00c05db21f409d0180d94a61a4e658be69675ddd917ed9",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/app/api/form-follow-up/options/route.ts",
+      "digest": "56afbf636628a630e09de637d9f2a6345993c76ceeb5c96d4de2da107140d994",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/products/[id]/page.tsx",
+      "digest": "e1fd1af18baac97bbfdcbfe28d5a646cb489f94bb8e86266d110a7e7f2606c1a",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpSetting.tsx",
+      "digest": "8bd6cdebe33ab2379db47272e9ff4ece4d28f32ad4a7b6d260448880bc824d5f",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/lib/form-follow-up/model.ts",
+      "digest": "676b46c7be5ea88a68004d8e94943d0ee7188dcb0df870d299c1b1c1459c55e2",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.test.ts",
+      "digest": "8eae475fc39eb6dff5b4857ef25e5f000f57ead6f7d9ae5033c48f12f55b7612",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.ts",
+      "digest": "fbdc216a4a9a22edb0dd02a12abbd93989340cc29c021835a197dae2c0a62af5",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/products/__tests__/public-product.test.tsx",
+      "digest": "dda0d6a9258c431f80b1cae8d960818443fcd66a5de52d5fffaa9665c23f7a67",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/form-follow-up/QrCodeDialog.test.tsx",
+      "digest": "16929a496e289413416cf685735b4f77a7dd47043da5dcffadd5dad48781702f",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "7bee2bc5375e17bfab03d27eca99727f7f0bf4d48f54a99a849db7fda6521e67",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "4d4ca70c12a07dc1a5cdaf213ca522cc0abdfd18250daedbe8f317e701ca1533",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/form-follow-up-tokens.json",
+      "digest": "7c12d3f9cd81bb74fb2637424e97b2589b0cff677f8836365ff79a3f045993bd",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "cc89dc745cda016679a515db35ba7ccbe3c6ebe4b5ece6fd7b5771b58d4639f0",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpSetting.tsx",
+      "digest": "b2d8422558746045fad678fe265f3be42637dfbec3138eb2d5082d76af4282fc",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/QrCodeDialog.tsx",
+      "digest": "d45079f31609a7b4256256002b9ad7fd2eb3b8570ab2aa11a307a9e2b5d4da9c",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/mobile.layout.test.tsx",
+      "digest": "39ed27fa2c9fadf55fa06d7aa40a19eea733441b7917dee20d03585b59576402",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "b72d0dd7b9c8a31eda0610333f332cf0722f82961bbf556224ff4814a36f0c4d",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/form-follow-up-tokens.json",
+      "digest": "2c86ba12073c332bd83762a640adb791a81c4cd95176a8ddd69e12664103ab9c",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/products/[id]/page.tsx",
+      "digest": "18f173fd6712a3c01333ed60adb63d76b17dfe8d206d38f03789ac0918e374c4",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "c4469ba659412cb9672dd3af2fad3f3dd3f0c814eb432e7d5c4354e9ba7fe35d",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/form-follow-up-tokens.json",
+      "digest": "e9f62162cb669052a8f9080fac92c5f80a4cc93df1b867058182e9e4747c5c81",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "ad42780aa879840d0b392a836ee41115875d6bfd90e98a145f9c6c1ac2b95703",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/form-follow-up/FollowUpSetting.tsx",
+      "digest": "43a28a2c4c2447d462a1fbf1ce5f3b216dcdf51035a432e5fb777b28fa9c1cef",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/products/[id]/page.tsx",
+      "digest": "14fc25d9588cab9dc73e1d52fa9b18472bc605433f5b913709f64f2a8eb240d5",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/components/__tests__/THE-309.form-submissions-kpi.test.tsx",
+      "digest": "c5fc3835c08b8384044a88d4c6b600fc410721fe530a116368f32b73297307ea",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "4ee22952e61e414b48e1fe037c92a440f621d407421f473da5f872b3351e02ca",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "e01f1d618b7824e02d64306a6ba897425f95582986bbd5b489a15811f0b1fd0a",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/lib/analytics/routes.ts",
+      "digest": "a2cbce0f48d368caaa50ab85d2ba9b7d5dea0de782708bff0404b3f94415c1ae",
+      "why": "PR #562 form follow-up cards and QR sharing. Implements optional tenant-validated follow-up selection, reuses the Discover card after successful submissions, or shares the plan-independent PNG and SVG QR dialog without modifying existing primitives."
+    },
+    {
+      "file": "src/app/products/__tests__/public-product.test.tsx",
+      "digest": "c690464642bbed00ab946ba3eb15cbe979112dcbaf7f2391b5a96d3ee806b575",
+      "why": "PR #562 form follow-up cards and QR sharing. Records behavioral coverage or the existing form test transport migration, preserving prior assertions while validating tenant isolation, shared Discover rendering, Free access and QR downloads."
+    },
+    {
+      "file": "src/app/api/forms/save/route.ts",
+      "digest": "3990318742556e42c54e8a23e49ff8833755b1c9d07ea97f37bb3a6950fbd1b5",
+      "why": "PR #562 review fixes: validate bounded form content and total request bytes server-side before saving, and require fresh tenant membership with current or legacy forms permission before any write."
+    },
+    {
+      "file": "src/app/api/form-follow-up/options/route.ts",
+      "digest": "5c9f46caf05be156ce7184e38f777550fde633436b686d6fb69d42b3953ce1f9",
+      "why": "PR #562 review fixes: re-prove users/{uid} tenant membership before loading follow-up choices, preserving the super admin exception and the legacy seeFormsInbox permission."
+    },
+    {
+      "file": "src/lib/form-follow-up/authorize.ts",
+      "digest": "6700231da8a73247a5ce560fdaea7deaa880a55dbe6070bf04aa0e009b251624",
+      "why": "PR #562 review fixes: share the current users/{uid} membership check across form saving and follow-up choices, before permission checks, and honor manageForms or the legacy seeFormsInbox grant."
+    },
+    {
+      "file": "src/lib/form-follow-up/form-input.ts",
+      "digest": "ffb6c3b55679fd9c60832c87276f3bb6e5d457912f2b55ea05d20c47dd73c428",
+      "why": "PR #562 review fixes: enforce server-side form title, description, field count, field shape, option and text limits, with an overall byte ceiling below the Firestore document size limit."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.ts",
+      "digest": "c9704a1eab30e1db2a2b4aa9b3f7c504c7831ba994a5b4ccbf214fe9b65eb79e",
+      "why": "PR #562 founder decision and review fixes: allow Free tenants to select public same-tenant follow-ups, validate community host slugs, and exclude courses whose access is restricted."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.test.ts",
+      "digest": "852fa4d91de81ccdd76f8c88a656c69d3c29d2a51f48f6cf732cb463ce814ae3",
+      "why": "PR #562 regression coverage: stale tenant claims cannot read choices or write forms, legacy admins retain access, oversized or malformed forms are rejected, Free works, and slug and course access checks hold."
+    },
+    {
+      "file": "src/components/AdminForms.tsx",
+      "digest": "0990bc3bc4e40c8cd6e2ccbf88c597a09829b9425902ae7aa0c4f89bacf411dd",
+      "why": "PR #562 review fixes: resolve the ministry subdomain from its tenant document for QR, copy, embed and open links; withhold sharing and surface a visible error if its public address cannot be loaded."
+    },
+    {
+      "file": "src/components/__tests__/THE-304.form-options-builder.test.tsx",
+      "digest": "badd2791daf0b29896a70b161721b98e9610655c9ac1c31de0025121233f0bc9",
+      "why": "PR #562 review fixes: preserve existing builder assertions while proving form links and QR codes use the resolved tenant subdomain, and missing, invalid or failed address reads render an error."
+    }
+  ]
+}

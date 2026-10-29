@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireTenantPermission } from '@/lib/api-auth';
+import { requireAuth } from '@/lib/api-auth';
+import { authorizeForms } from '@/lib/form-follow-up/authorize';
 import { adminDb } from '@/lib/firebase-admin';
 import { validId } from '@/lib/signup-pages/server';
 import type { FollowUp } from '@/lib/form-follow-up/model';
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
     if (user instanceof NextResponse) return user;
     const tenantId = request.nextUrl.searchParams.get('tenantId') || user.tenantId;
     if (!validId(tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 400 });
-    const access = await requireTenantPermission(request, tenantId, 'manageForms');
+    const access = await authorizeForms(request, tenantId);
     if (access instanceof NextResponse) return access;
     const options: (FollowUp & { name: string })[] = [];
     try {
