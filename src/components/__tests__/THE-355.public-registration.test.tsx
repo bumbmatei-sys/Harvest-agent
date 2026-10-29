@@ -506,3 +506,17 @@ describe('11 · nothing on the rendered page implies Harvest verified anything',
       .toBe('payment received');
   });
 });
+
+
+describe('THE-379 — zero remaining spots', () => {
+  it.each([true, false])('respects waitlistEnabled=%s on the ticket capacity label', async waitlistEnabled => {
+    const root = await mount({ event: {
+      ...FREE_EVENT, waitlistEnabled,
+      ticketTypes: [{ ...FREE_EVENT.ticketTypes[0], capacity: 1 }],
+      spotsLeftByTicket: { 'tt-free': 0 },
+    } });
+    const label = root.querySelector('[data-public-spots-left="0"]');
+    expect(label).toBeTruthy();
+    expect(label!.textContent).toBe(waitlistEnabled ? 'Waitlist' : 'Sold out');
+  });
+});

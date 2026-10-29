@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { registrationMatchesRun } from './events/recurrence';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
@@ -118,7 +119,7 @@ export async function finalizeEventRegistration(opts: {
     // Count SEATS already confirmed (sum of quantities), not registrations.
     const confirmedForType = regsSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed'
+      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed' && registrationMatchesRun(r.runDate, reg.runDate)
         ? sum + (Number(r.quantity) || 1)
         : sum;
     }, 0);

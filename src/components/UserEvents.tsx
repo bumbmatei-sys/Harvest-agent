@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, CalendarCheck, MapPin, Clock, Globe, Ticket, QrCode, X } from 'lucide-react';
 import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import QRCode from 'qrcode';
+import { isSafeOnlineLink } from '../lib/events/online-link';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
@@ -566,7 +567,7 @@ const TicketModal: React.FC<{
    * the same way here — joining a call is not money changing hands.
    */
   const ev = t.event;
-  const canJoin = !!ev?.isOnline && !!ev?.onlineLink && ev.startMillis != null
+  const canJoin = !!ev?.isOnline && !!ev?.onlineLink && isSafeOnlineLink(ev.onlineLink) && ev.startMillis != null
     && Date.now() >= ev.startMillis - 10 * 60 * 1000
     && (ev.endMillis == null || Date.now() <= ev.endMillis);
 

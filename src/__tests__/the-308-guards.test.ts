@@ -34,6 +34,7 @@ import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { stripComments } from './__fixtures__/the-346-strip-comments';
 
 // THE-555 installs the shadcn Carousel; ds-primitives pins its bytes and classes.
 const THE_555_PRIMITIVES = ['carousel.tsx'];
@@ -43,8 +44,7 @@ const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'u
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Source with block and line comments stripped — the code, not the prose. */
-const codeOf = (rel: string): string =>
-  read(rel).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const codeOf = (rel: string): string => stripComments(read(rel));
 
 /** The three files this ticket adds. */
 const ADDED = [
@@ -280,8 +280,9 @@ describe('6-7 · the events read', () => {
     expect(writer, 'an ISO string reaches startDate').not.toMatch(/startDate:\s*[^,\n]*toISOString/);
     expect(writer, 'a template string reaches startDate').not.toMatch(/startDate:\s*`/);
     expect(writer, 'startDate is not built by toTimestamp').toMatch(/startDate:\s*toTimestamp\(/);
-    expect(writer).toMatch(/const toTimestamp = \(v: string\): Timestamp \| null/);
-    expect(writer).toMatch(/Timestamp\.fromDate\(new Date\(v\)\)/);
+    // THE-379: keep the Timestamp-only contract and require the event zone.
+    expect(writer).toMatch(/const toTimestamp = \(v: string, timeZone: string\): Timestamp \| null/);
+    expect(writer).toMatch(/Timestamp\.fromDate\(parseEventDateTime\(v, timeZone\)\)/);
   });
 
   it('7c · and the month view refuses a non-Timestamp rather than parsing it', () => {
@@ -417,6 +418,9 @@ describe('9-10 · event write paths are byte-identical', () => {
        * byte-identical inside this region.
        */
       '9d5ced7593b4dfb58d8141e4b8bedeaee536cd91bf0383fa09641ffc680d2296',
+      // APPENDED BY THE-379 review: preserve cancelled runs, interpret dates
+      // in the event zone and reject unsafe online links. Price gates unchanged.
+      '52c589591debe21b68681fa68e32e7bbc253bc9d0192ae1dbaa306fd803c8b3c',
     ];
     const actual = sha256(src);
     expect(
@@ -622,7 +626,8 @@ describe('8 · the existing list view is intact', () => {
     // events yet" is gone with it. A SEPARATE empty state, `data-events-filter-
     // empty`, covers a filter or a picked day with zero rows while other
     // events exist — that state did not exist before this ticket.
-    expect(SRC).toContain('rowsToShow.map(ev => (');
+    // THE-379: block callback computes the row's next/last run before JSX.
+    expect(stripComments(SRC)).toContain('rowsToShow.map(ev => {');
     expect(SRC, 'the true-empty-state copy went missing').toContain('Plan your first event');
   });
 

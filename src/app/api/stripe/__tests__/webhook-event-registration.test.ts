@@ -191,3 +191,30 @@ describe('webhook — paid event ticket confirmation', () => {
     expect(mockRefundsCreate).not.toHaveBeenCalled();
   });
 });
+
+
+describe('THE-379 — paid series capacity at confirmation', () => {
+  it.each([
+    ['2031-03-16', false],
+    ['2031-03-23', true],
+    [undefined, false],
+  ])('counts confirmed seats from run %s against the pending run: %s', async (confirmedRunDate, soldOut) => {
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({ exists: true, data: () => ({
+        status: 'pending_payment', runDate: '2031-03-23', quantity: 2, amount: 5000,
+      }) })
+      .mockResolvedValueOnce({ exists: true, data: () => ({
+        title: 'Weekly gathering', ticketTypes: [{ id: 'tt1', name: 'GA', capacity: 3 }],
+      }) });
+    mockCollGet.mockResolvedValue({ docs: [{ data: () => ({
+      ticketTypeId: 'tt1', status: 'confirmed', quantity: 2, runDate: confirmedRunDate,
+    }) }] });
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: soldOut ? 'cancelled' : 'confirmed' }));
+    if (soldOut) expect(mockRefundsCreate).toHaveBeenCalledTimes(1);
+    else expect(mockRefundsCreate).not.toHaveBeenCalled();
+  });
+});

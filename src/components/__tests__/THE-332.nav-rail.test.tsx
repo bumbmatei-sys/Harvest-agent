@@ -1012,6 +1012,10 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        pins this file for: the real calendar, its day-marking read and its
        click-to-filter behaviour are unchanged outside tests. */
     '1c9c90007b4839e008a46734f183f8853f595571f1acdce6e431db76323a50f3',
+    // APPENDED BY THE-379 review fixes: preserve cancelled runs, use series run
+    // dates, interpret event-zone inputs, validate HTTPS and keep one create CTA.
+    // No nav, permission, collection or Firestore path changed.
+    'fc932678f7caa417863db8dc9e5db0f22680413c089476f63a6b5868f9cec187',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */

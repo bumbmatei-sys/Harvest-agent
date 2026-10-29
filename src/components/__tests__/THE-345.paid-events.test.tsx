@@ -139,7 +139,8 @@ vi.mock('../../hooks/queries/useEventQueries', () => ({
 vi.mock('../../hooks/queries/useMonthEvents', () => ({
   useMonthEvents: () => ({ data: { kind: 'complete', undated: 0, events: [] }, isLoading: false }),
 }));
-vi.mock('../../utils/notify', () => ({ notifyError: () => {}, notifySuccess: () => {} }));
+const notifications = vi.hoisted(() => ({ error: vi.fn() }));
+vi.mock('../../utils/notify', () => ({ notifyError: notifications.error, notifySuccess: () => {} }));
 vi.mock('../../utils/tenant-scope', () => ({
   PLATFORM_TENANT_ID: 'platform', getTenantScope: async () => 't1', getWriteTenantScope: async () => 't1',
 }));
@@ -192,7 +193,7 @@ async function createForm(): Promise<HTMLElement> {
 const placeholders = (root: ParentNode) =>
   Array.from(root.querySelectorAll('input')).map((i) => i.getAttribute('placeholder'));
 
-afterEach(() => { mounted?.unmount(); mounted = null; writes.length = 0; stored.length = 0; });
+afterEach(() => { mounted?.unmount(); mounted = null; writes.length = 0; stored.length = 0; eventsData.current = [PAID_EVENT, FREE_EVENT]; notifications.error.mockClear(); vi.useRealTimers(); });
 
 describe('THE-345 · a paid event cannot be created while no payment rail exists', () => {
   /* ═══ 1 · the founder's instruction ═══════════════════════════════════════ */
@@ -493,5 +494,171 @@ describe('THE-345 · a paid event cannot be created while no payment rail exists
       expect(mod.NOT_COLLECTED_LABEL).toBe(NOT_COLLECTED_LABEL);
       vi.doUnmock('../../lib/paid-events-feature');
     })();
+  });
+});
+
+
+describe('THE-379 review regressions — admin events', () => {
+  const at = (month: number, day: number, hour = 0, minute = 0) => new Date(Date.UTC(2031, month - 1, day, hour, minute)).toISOString();
+  const timestamp = (iso: string) => ({ toDate: () => new Date(iso) });
+  const series = (over: Record<string, unknown> = {}) => ({
+    ...FREE_EVENT, title: 'Weekly gathering',
+    startDate: timestamp(at(3, 16, 18, 0)),
+    endDate: timestamp(at(3, 16, 19, 0)),
+    timeZone: 'Europe/Berlin',
+    recurrence: { freq: 'weekly', count: 4, cancelledRuns: [at(3, 23).slice(0, 10)] },
+    ...over,
+  });
+  const editOnlyEvent = async () => {
+    const c = await screen();
+    const edit = c.querySelector('button svg[class*="pen"]')?.closest('button');
+    expect(edit).toBeTruthy();
+    await click(edit!);
+    const dialogs = c.querySelectorAll<HTMLElement>('[data-event-form-dialog]');
+    expect(dialogs.length).toBeGreaterThan(0);
+    return dialogs[dialogs.length - 1];
+  };
+  const fill = async (input: HTMLInputElement, value: string) => {
+    const { act } = await import('react');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+
+  it('preserves individually cancelled dates when a series is edited and saved', async () => {
+    eventsData.current = [series()];
+    const c = await editOnlyEvent();
+    await fill(c.querySelector('input[placeholder="Event name"]')!, 'Renamed gathering');
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(1);
+    expect(stored[0].title).toBe('Renamed gathering');
+    expect(stored[0].recurrence).toEqual({ freq: 'weekly', count: 4, cancelledRuns: [at(3, 23).slice(0, 10)] });
+    const { expandRuns } = await import('../../lib/events/recurrence');
+    const runs = expandRuns({
+      startDate: (stored[0].startDate as { toDate(): Date }).toDate(),
+      endDate: (stored[0].endDate as { toDate(): Date }).toDate(),
+      timeZone: 'Europe/Berlin', recurrence: stored[0].recurrence as Parameters<typeof expandRuns>[0]['recurrence'],
+    }, new Date(at(3, 1)), new Date(at(5, 1)));
+    expect(runs.map(run => run.runDate)).toEqual([at(3, 16).slice(0, 10), at(3, 30).slice(0, 10), at(4, 6).slice(0, 10)]);
+  });
+
+  it('keeps a started series in Upcoming, then moves it to Past after its last run', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(at(3, 24, 12, 0)));
+    eventsData.current = [series()];
+    const c = await screen();
+    expect(c.querySelectorAll('h3')).toHaveLength(1);
+    expect(c.querySelector('h3')?.textContent).toBe('Weekly gathering');
+    expect(c.textContent).toContain('Sunday, Mar 30');
+    await click(buttonContaining(c, 'Past'));
+    expect(c.querySelector('h3')).toBeNull();
+    mounted!.unmount(); mounted = null;
+    vi.setSystemTime(new Date(at(4, 7, 12, 0)));
+    const finished = await screen();
+    expect(finished.querySelector('h3')).toBeNull();
+    await click(buttonContaining(finished, 'Past'));
+    expect(finished.querySelector('h3')?.textContent).toBe('Weekly gathering');
+    expect(finished.textContent).toContain('Sunday, Apr 6');
+  });
+
+  it('filters the mini-calendar selection by expanded runs, including cancellations', async () => {
+    // The heavy calendar is deliberately not mounted under NODE_ENV=test.
+    // Execute the actual filter initializer parsed from the component instead
+    // of duplicating its predicate or changing that production/test boundary.
+    const ts = await import('typescript');
+    const { readFileSync } = await import('node:fs');
+    const { runInNewContext } = await import('node:vm');
+    const { stripComments } = await import('../../__tests__/__fixtures__/the-346-strip-comments');
+    const { expandRuns } = await import('../../lib/events/recurrence');
+    const source = stripComments(readFileSync('src/components/AdminEvents.tsx', 'utf8'));
+    const ast = ts.createSourceFile('AdminEvents.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const filters: string[] = [];
+    const walk = (node: import('typescript').Node) => {
+      if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'rowsToShow' && node.initializer) {
+        filters.push(node.initializer.getText(ast));
+      }
+      ts.forEachChild(node, walk);
+    };
+    walk(ast);
+    expect(filters).toHaveLength(1);
+    const event = series();
+    const runs = expandRuns({ startDate: event.startDate.toDate(), endDate: event.endDate.toDate(),
+      timeZone: event.timeZone, recurrence: event.recurrence as Parameters<typeof expandRuns>[0]['recurrence'],
+    }, new Date(at(3, 1)), new Date(at(5, 1)));
+    const dayKey = (date: Date) => date.toDateString();
+    const code = ts.transpile(filters[0], { target: ts.ScriptTarget.ES2022 });
+    const select = (day: string) => runInNewContext(code, {
+      selectedDay: new Date(day), events: [event], runsByEvent: new Map([[event.id, runs]]),
+      dayKey, visibleEvents: [],
+    });
+    expect(select(at(3, 30, 12, 0)).map((e: { id: string }) => e.id)).toEqual([event.id]);
+    expect(select(at(3, 23, 12, 0))).toHaveLength(0);
+    expect(select(at(3, 31, 12, 0))).toHaveLength(0);
+  });
+
+  it('does not offer a series with every remaining run cancelled in Upcoming', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(at(3, 24, 12, 0)));
+    eventsData.current = [series({ recurrence: { freq: 'weekly', count: 2, cancelledRuns: [at(3, 23).slice(0, 10)] } })];
+    const c = await screen();
+    expect(c.querySelector('h3')).toBeNull();
+    await click(buttonContaining(c, 'Past'));
+    expect(c.querySelector('h3')?.textContent).toBe('Weekly gathering');
+  });
+
+  it.each([
+    ['Europe/Berlin', 19, 20, 17, 18],
+    ['America/New_York', 14, 15, 23, 24],
+  ] as const)('edits and saves wall-clock times in the event zone across DST: %s', async (timeZone, startHour, endHour, savedStartHour, savedEndHour) => {
+    // Two zones ensure the browser-local parser fails on every runner zone.
+    eventsData.current = [series({ timeZone })];
+    const c = await editOnlyEvent();
+    const dates = c.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]');
+    expect(dates[0].value).toBe(at(3, 16, startHour, 0).slice(0, 16));
+    expect(dates[1].value).toBe(at(3, 16, endHour, 0).slice(0, 16));
+    await fill(dates[0], at(3, 30, 19, 0).slice(0, 16));
+    await fill(dates[1], at(3, 30, 20, 0).slice(0, 16));
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(1);
+    expect((stored[0].startDate as { toDate(): Date }).toDate().toISOString()).toBe(at(3, 30, savedStartHour, 0));
+    expect((stored[0].endDate as { toDate(): Date }).toDate().toISOString()).toBe(at(3, 30, savedEndHour, 0));
+  });
+
+  it('shows an error and writes nothing for a nonexistent DST wall-clock time', async () => {
+    eventsData.current = [series()];
+    const c = await editOnlyEvent();
+    await fill(c.querySelector('input[type="datetime-local"]')!, at(3, 30, 2, 30).slice(0, 16));
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(0);
+    expect(notifications.error).toHaveBeenCalledWith('Failed to save event', expect.any(Error));
+  });
+
+  it.each(['javascript:alert(1)', 'http://meet.example.com', 'https://meet.example.com/%zz'])(
+    'rejects unsafe online links on write: %s', async onlineLink => {
+      eventsData.current = [series({ isOnline: true, onlineLink })];
+      const c = await editOnlyEvent();
+      await click(buttonContaining(c, 'Save Changes'));
+      expect(stored).toHaveLength(0);
+      expect(notifications.error).toHaveBeenCalledWith('Online event link must be a valid HTTPS URL', null);
+    },
+  );
+
+  it('accepts a valid HTTPS online link on write', async () => {
+    eventsData.current = [series({ isOnline: true, onlineLink: 'https://meet.example.com/room' })];
+    const c = await editOnlyEvent();
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(1);
+    expect(stored[0].onlineLink).toBe('https://meet.example.com/room');
+  });
+
+  it.each([false, true])('offers exactly one create CTA, empty list: %s', async empty => {
+    eventsData.current = empty ? [] : [series()];
+    const c = await screen();
+    const ctas = Array.from(c.querySelectorAll('button')).filter(button => /(?:Create|New) event/.test(button.textContent ?? ''));
+    expect(ctas).toHaveLength(1);
+    expect(ctas[0].textContent).toContain('Create event');
+    await click(ctas[0]);
+    expect(c.querySelector('[data-event-form-dialog]')).toBeTruthy();
   });
 });

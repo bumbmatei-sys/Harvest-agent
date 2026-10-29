@@ -2985,8 +2985,16 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
     const now = stripPresentation(read('AdminEvents.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedLines);
-    expect(sha(now), DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedSha);
+    // THE-379 review fixes: preserve the previous pin and append the reviewed state.
+    const accepted = [
+      THE_308_EVENTS,
+      // THE-379 review: cancellation preservation, run-aware dates/filtering,
+      // event-zone date inputs, HTTPS validation and one header create CTA.
+      { strippedSha: '5c51cdf0db34be0b9aba0eb3a665b909151e572d504d770f5ead389a785e09ab', strippedLines: 1896 },
+    ];
+    expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
+      strippedSha: sha(now), strippedLines: now.split('\n').length,
+    });
   });
 
   /**

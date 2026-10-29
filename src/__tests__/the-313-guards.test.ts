@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { stripComments } from './__fixtures__/the-346-strip-comments';
 import postcss from 'postcss';
 
 import { buildAppCss } from '../test/support/tailwind-build';
@@ -22,10 +23,7 @@ const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string) => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
 /** Source with block and line comments stripped — the code, not the prose. */
-const codeOf = (rel: string): string =>
-  read(rel)
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+const codeOf = (rel: string): string => stripComments(read(rel));
 
 /**
  * Every production file THE-313 ADDS. Four, and the list is the claim.
@@ -759,6 +757,9 @@ describe('the existing events list, its write paths and paid-event creation are 
        * above, are byte-identical inside this region.
        */
       '9d5ced7593b4dfb58d8141e4b8bedeaee536cd91bf0383fa09641ffc680d2296',
+      // APPENDED BY THE-379 review: preserve cancelled runs, interpret dates
+      // in the event zone and reject unsafe online links. Price gates unchanged.
+      '52c589591debe21b68681fa68e32e7bbc253bc9d0192ae1dbaa306fd803c8b3c',
     ];
     const actual = sha256(src);
     expect(
@@ -966,7 +967,9 @@ describe('the existing events list, its write paths and paid-event creation are 
     // direction this guard has always been about. A count that is not exactly
     // 306 (classNames) or 7 (inline styles) means something else moved.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(306);
+    // APPENDED BY THE-379 review: two redundant create buttons (each with
+    // one className on its icon span) were removed; the header CTA remains.
+    expect([306, 304], 'className count moved').toContain((src.match(/className/g) || []).length);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

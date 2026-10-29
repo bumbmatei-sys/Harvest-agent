@@ -117,6 +117,111 @@
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
       "digest": "26009c291ad340fb5912cb7b2bb65db211a2a78fd7e60216191aedf46e24cc41",
       "why": "APPENDED, NOT SUBSTITUTED — all prior accepted digests remain. The events remodel appended the current AdminEvents.tsx digest to this guard's accepted values after the calendar test timeout fix; the existing assertions and previous accepted values are unchanged."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "fc932678f7caa417863db8dc9e5db0f22680413c089476f63a6b5868f9cec187",
+      "why": "APPENDED, NOT SUBSTITUTED — Review items 1, 2, 5, 6 and 7: preserve cancelledRuns on edit, expand runs for Upcoming/Past and day selection (display the next or last run), parse and format date inputs in the event zone, refuse unsafe online links and retain only the header Create event action. Same Firestore paths and payment gates."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "7a35e734768e1cabc28d1da6ce8c0c3991b85b242d1b3ed66d0e440f3861622b",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 4: zero spots reads Sold out when waitlistEnabled is false and Waitlist when true; registration and payment paths unchanged."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "213486ec881bc6b75405d207c741205626a08e2abc5b7ed94cd7896dca5062ee",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 6: validate the stored meeting link through isSafeUrl plus HTTPS-only URL parsing before rendering Join; malformed encoded URLs fail closed."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 3: confirmed seat quantities count only registrations matching the pending runDate through registrationMatchesRun. Existing refund and legacy single-event behavior retained."
+    },
+    {
+      "file": "src/lib/events/recurrence.ts",
+      "digest": "4aa20fa56e177c22f24271bc66dccf2c12862f24dd77d0ecdf2e7c6b7abcff2e",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 5: add shared event-zone datetime-local parsing and formatting. DST gaps throw visibly; autumn overlaps choose the earlier instant. Existing expandRuns scheduling unchanged."
+    },
+    {
+      "file": "src/lib/events/online-link.ts",
+      "digest": "9d1253941620fd798f464a9ee7c9d85c18d8340f8aea2cfc71e146cd122466ac",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 6: shared HTTPS-only online meeting validator uses existing isSafeUrl and rejects malformed encodings and invalid URLs."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "01c46a991b280fa5e956f9d20b1b84660994721be78b1249206afc40d05c1cf2",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND regression tests for review items 1, 2, 5, 6 and 7; original assertions unchanged. Real component writes and DOM cover cancellation, ongoing series, time-zone round-trips and errors, URL validation and a single create CTA; parse and execute the actual day-filter expression because the heavy calendar is intentionally absent in unit tests."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "072775ae054936f68be3cdd0c6e552e5f53b50f2c05f07e83a771e8109943dcf",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 4 regression cases for zero capacity with waitlist enabled and disabled; original tests unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-359.member-ticket-qr.test.tsx",
+      "digest": "2789a589e09e25cc3094ff26440e4fc9ba2c0e670631bbc11515d88b1ae4e4fd",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 6 rendered ticket-modal coverage for safe HTTPS, malicious schemes, encoded prefixes, malformed encoding, relative URLs and HTTP; original tests unchanged."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/webhook-event-registration.test.ts",
+      "digest": "abe3b67063443055a6003fd9ef11451087307d201a5b895ed38ad91d36227d52",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 3 regression cases for another run, the same run and legacy undated registrations, with party quantities and refund assertions."
+    },
+    {
+      "file": "src/lib/events/__tests__/recurrence.test.ts",
+      "digest": "1486abcd9318dd52c733a009776c7b7f19028b8c5b37beedcc5b19861b864e17",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 5 date-input tests across spring and autumn DST, ambiguous and missing hours and a fractional UTC offset; original recurrence tests unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "674d02f5c1fa7a6330a5d3b38b4f0a5ec8a2d7c32127a6362975d69772f99f99",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND the reviewed AdminEvents digest to the existing accepted list; no assertions or prior accepted hashes removed. Record this edited guard itself as required."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "5fec5f997557cab5540dd34c8481c7ea692d71e7bfa4abc5a59e813c0331e4e4",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND the reviewed AdminEvents presentation-stripped hash/line-count pair beside the previous pin. Preserve correlation between line count and digest and all prior accepted values; every layout, palette, read and write assertion retained. Record this edited guard itself as required."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "b550854025fbbe31e86cc4ff4362f0b09d359d4319a8af91a0a0763513de34d3",
+      "why": "APPENDED, NOT SUBSTITUTED — strengthen review item 5 regression after mutation: test both Europe/Berlin and America/New_York so browser-local parsing fails regardless of the runner zone. All prior tests and recorded digests retained. All eight planted regressions (including the separate mini-calendar filter) now fail their targeted tests."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e164c46e28c02180a8bdebff9353199c38cb6123d1e05b77bd902b226a720799",
+      "why": "APPENDED, NOT SUBSTITUTED — Review fixes 1, 5 and 6: append the new handleSave region hash without removing prior hashes. The Timestamp-only writer guard now requires the event-zone parameter and parseEventDateTime conversion; it no longer mandates the buggy browser-local Date parser. Item 2 changes the row callback to a block to compute next/last run before JSX; keep the precise mapping assertion and read parser-stripped source."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "7312474b9af4b4367e818c38db1378775926f6feb0d46f0a6dfe2cc6f5088e71",
+      "why": "APPENDED, NOT SUBSTITUTED — Review fixes 1, 5 and 6: append the new handleSave region hash without removing prior hashes. Item 7 removes two redundant create buttons, each with one icon-span className; append exact count 304 beside 306 while retaining the exact seven inline styles assertion. No payment gate or Firestore path changed."
+    },
+    {
+      "file": "src/__tests__/the-326-guards.test.ts",
+      "digest": "0b0d83fc0b9a439bd9fd0b1914b765deeab1d58650f344388ee83320e7cb9946",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 2: require the actual block-form rowsToShow callback used to calculate the row next/last run, instead of mandating an expression callback. Parser-stripped source retains the exact map assertion; all event-product, public-calendar, service-planning and empty-state checks remain."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "101a26368d7d63de1cf35d98f49c259d19ceb1825998030c969d972ebbc53cb6",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "d20c98f0d7f722563ee4ac3a1638b6191a8623edc8f3e7a8c23434c25f45e4d9",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/__tests__/the-326-guards.test.ts",
+      "digest": "debd3743bfd54b4e10ba2221bed9216365b18f409ebcf51f9edfd35c717b1569",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "41c5e787d0b2a50733b6b5bf40bd1ad466cde94e7c24fbdc4fa049fadd53f271",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 review item 3 deliberately changed the webhook capacity re-check to per-run. Append its new digest to the existing accepted list while retaining the old digest and every assertion; record the edited guard itself here."
     }
   ]
 }

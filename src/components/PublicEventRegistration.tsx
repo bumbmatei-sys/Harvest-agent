@@ -843,7 +843,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                       {t.capacity != null && (
                         <p className="text-[11px] text-wheat-600 mt-0.5" data-public-spots-left={event.spotsLeftByTicket?.[t.id] ?? undefined}>
                           {event.spotsLeftByTicket && typeof event.spotsLeftByTicket[t.id] === 'number'
-                            ? (event.spotsLeftByTicket[t.id] > 0 ? `${event.spotsLeftByTicket[t.id]} spots left` : 'Waitlist')
+                            ? (event.spotsLeftByTicket[t.id] > 0 ? `${event.spotsLeftByTicket[t.id]} spots left` : event.waitlistEnabled ? 'Waitlist' : 'Sold out')
                             : 'Limited spots'}
                         </p>
                       )}

@@ -524,7 +524,10 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // byte-identical too, pinned by
   // `src/lib/__tests__/the-155-the-152-stale-money-path-comments.test.ts`.
   ['src/lib/stripe-connect.ts', 'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1'],
-  ['src/lib/event-registration-webhook.ts', 'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184'],
+  ['src/lib/event-registration-webhook.ts',
+    'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184',
+    // APPENDED: THE-379 review item 3 deliberately made the webhook capacity re-check per-run.
+    '4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
   // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
   //

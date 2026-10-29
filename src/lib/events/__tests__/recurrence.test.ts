@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { expandRuns, registrationMatchesRun } from '../recurrence';
+import { expandRuns, registrationMatchesRun, parseEventDateTime, formatEventDateTime } from '../recurrence';
 
 const FAR_PAST = new Date('2000-01-01T00:00:00.000Z');
 const FAR_FUTURE = new Date('2100-01-01T00:00:00.000Z');
@@ -189,5 +189,26 @@ describe('registrationMatchesRun', () => {
   it('matches only the exact runDate', () => {
     expect(registrationMatchesRun('2027-01-04', '2027-01-04')).toBe(true);
     expect(registrationMatchesRun('2027-01-11', '2027-01-04')).toBe(false);
+  });
+});
+
+
+describe('THE-379 — event time-zone date inputs', () => {
+  it.each([
+    ['2031-03-16T19:00', '2031-03-16T18:00:00.000Z'],
+    ['2031-03-30T19:00', '2031-03-30T17:00:00.000Z'],
+    ['2031-10-19T19:00', '2031-10-19T17:00:00.000Z'],
+    ['2031-10-26T19:00', '2031-10-26T18:00:00.000Z'],
+    ['2031-10-26T02:30', '2031-10-26T00:30:00.000Z'],
+  ])('round-trips %s in Berlin with deterministic DST disambiguation', (wall, iso) => {
+    const instant = parseEventDateTime(wall, 'Europe/Berlin');
+    expect(instant.toISOString()).toBe(iso);
+    expect(formatEventDateTime(instant, 'Europe/Berlin')).toBe(wall);
+  });
+  it('rejects a missing hour during spring-forward', () => {
+    expect(() => parseEventDateTime('2031-03-30T02:30', 'Europe/Berlin')).toThrow('does not exist');
+  });
+  it('supports fractional offsets independent of the browser zone', () => {
+    expect(parseEventDateTime('2031-03-30T19:00', 'Asia/Kathmandu').toISOString()).toBe('2031-03-30T13:15:00.000Z');
   });
 });

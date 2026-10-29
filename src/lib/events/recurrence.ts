@@ -145,6 +145,30 @@ function zonedTimeToUtc(
   return new Date(guess);
 }
 
+/** Format an instant for datetime-local in the event's zone, never the browser's. */
+export function formatEventDateTime(date: Date, timeZone: string): string {
+  const p = getZonedParts(date, timeZone);
+  return `${civilDateString(p)}T${pad2(p.hour)}:${pad2(p.minute)}`;
+}
+
+/**
+ * Interpret datetime-local as a wall clock in the event's zone. Reject a spring
+ * gap instead of silently moving the event; choose the earlier instant in a
+ * repeated autumn hour. Candidate offsets on either side cover DST transitions.
+ */
+export function parseEventDateTime(value: string, timeZone: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new Error('Enter a valid event date and time');
+  const [year, month, day, hour, minute] = match.slice(1).map(Number);
+  const wall = Date.UTC(year, month - 1, day, hour, minute);
+  const offsets = new Set([-36, 0, 36].map(hours => tzOffsetMs(wall + hours * 3600000, timeZone)));
+  const candidates = [...offsets].map(offset => new Date(wall - offset))
+    .filter(date => formatEventDateTime(date, timeZone) === value)
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (!candidates.length) throw new Error('This date and time does not exist in the event time zone');
+  return candidates[0];
+}
+
 /**
  * Expand a (possibly recurring) event into concrete runs overlapping
  * `[from, to]`. Non-recurring events (`recurrence` absent/null) always

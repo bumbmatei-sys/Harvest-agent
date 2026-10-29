@@ -327,3 +327,28 @@ describe('10 · a missing tenant name does not render a blank sentence', () => {
     expect(COPY.TENANT_NAME_FALLBACK, 'the fallback names Harvest').not.toMatch(/harvest/i);
   });
 });
+
+
+describe('THE-379 — safe online join links', () => {
+  it.each([
+    ['https://meet.example.com/room', true],
+    ['javascript:alert(1)', false],
+    ['http://meet.example.com/room', false],
+    ['data:text/html,test', false],
+    ['//meet.example.com/room', false],
+    ['https://meet.example.com/%zz', false],
+    ['%6a%61vascript:alert(1)', false],
+  ])('join link %s is offered: %s', async (onlineLink, allowed) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(START_MS - 5 * 60 * 1000));
+    try {
+      const modal = await openTicket('free', { event: {
+        title: 'Online gathering', startMillis: START_MS, endMillis: START_MS + 3600000,
+        location: null, isOnline: true, status: 'published', onlineLink,
+      } });
+      const link = modal.querySelector('[data-ticket-join-link]');
+      if (allowed) expect(link?.getAttribute('href')).toBe(onlineLink);
+      else expect(link).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+});
