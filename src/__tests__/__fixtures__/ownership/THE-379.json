@@ -1,0 +1,352 @@
+{
+  "ticket": "THE-379",
+  "recordedIn": "THE-379",
+  "note": "THE EVENTS REMODEL. Recurring events (a series with runs, Eden's model), Eden one-at-a-time registration questions, an 'open to anyone' members-only gate, and enforcement of the registration deadline that was previously stored but never read. Every new field (recurrence, timeZone, registrationQuestions, openToAnyone on the event; runDate, answers on the registration) is optional and defaults to the existing behaviour, so no prior event or registration changes shape. The recurrence math lives in one new pure module, src/lib/events/recurrence.ts, so nothing else re-derives a schedule; capacity for a recurring event is counted PER RUN via registrationMatchesRun, and a registration with no runDate (every row written before this ticket) still matches the single implicit run. No firestore.rules or firestore.indexes.json change: the new fields carry no field-level validation today and every new/changed query is still a single-field where, filtered or counted in memory.",
+  "entries": [
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019",
+      "why": "FOUR ADDITIONS, EACH GATED SO AN EXISTING EVENT NEVER REACHES THE NEW CODE. (1) `event.openToAnyone === false` now requires a verified token whose tenantId matches, checked right after the existing published+registrationEnabled gate — absent/true (every event today) is unchanged. (2) `event.registrationDeadline`, stored since before this ticket but never read here, now 410s once it has passed. (3) A recurring event (`event.recurrence` present) requires a `runDate` in the body, validated against `expandRuns` so a cancelled or invented date 410s instead of silently taking a seat; a non-recurring event never reaches this branch. (4) `validateAnswers` runs against `event.registrationQuestions` (empty/absent means no questions and no validation) and the capacity query's `soldForType` reduce now also calls `registrationMatchesRun(r.runDate, targetRunDate)`, which is true for every existing registration (no runDate) against every non-recurring event (targetRunDate null) — so capacity counting for every event that existed before this ticket is unchanged. The Stripe direct-charge branch, the discount-code accounting, the automated SMS and the confirmation email are untouched."
+    },
+    {
+      "file": "src/hooks/queries/useEventQueries.ts",
+      "digest": "288455d90e7ae152da8e69ec60b1d3385fa8d71f6481cca91547cdd15686d4c5",
+      "why": "A PURE APPEND, AND NO READ OR QUERY SHAPE MOVED. `Event` gains optional `recurrence`, `timeZone`, `registrationQuestions` and `openToAnyone`; `Registration` gains optional `runDate` and `answers`; `Registration.status` gains the two legacy-but-already-written literal members `'pending_payment'` and `'expired'` that the type previously omitted even though the webhook and the Stripe paid-ticket branch already wrote them, which is a type-accuracy fix with no runtime effect. New `RecurrenceRule` and `RegistrationQuestion` interfaces are exported for `src/lib/events/recurrence.ts` and the submit route to import. `useEvents`' `orderBy('startDate','desc').limit(100)`, `useEvent`'s `get`, and `useEventRegistrations`' single-field `where('eventId', ...)` + client-side sort are byte-identical."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "afe0952f1093453c0afccac0f5bc154ec9edd398df097cc07607b04ce45b2db0",
+      "why": "THE EDEN CREATE POPUP AND THE RECURRENCE/QUESTIONS UI, WITH NO FIRESTORE PATH MOVED. RE-RECORDED, NOT SUBSTITUTED — every prior accepted digest (#522, THE-326, THE-345, THE-346, THE-351, THE-355, THE-368, THE-377) stays accepted above. What moved: the create/edit form is now a shadcn Dialog instead of a full page (Eden's 'New event' is a single popup); 'Where' became a ToggleGroup (In person/Online) with a keyless OpenStreetMap preview iframe for an in-person address, skipped under `process.env.NODE_ENV === 'test'` the same way AdminDashboard.tsx already skips a render for tests; Time zone (Select) and Repeats/Ends (Select + RadioGroup, building an optional `recurrence` object) were added after the date fields; Open to anyone (Switch) was added; the payment-link picker became a bespoke single-select RadioGroup — Matei: 'make the admin create form pick ONE link' — replacing the shared checkbox `PaymentLinkPicker` ON THIS SCREEN ONLY (the campaign giving widget keeps it unchanged, still multi-select) while still writing `paymentProviders` as a `string[]` through the same `readEventProviderIds`; a Registration Questions builder (short/long/choice, required toggle, reorder, max 10, writing `form.registrationQuestions`) was added beside Discount Codes; `handleSave`/`openEdit`/`openCreate` gained the new fields (`recurrence`, `timeZone`, `registrationQuestions`, `openToAnyone`) alongside every existing one, untouched; the list view gained an Upcoming/Drafts/Past `PageTabs` filter above the cards and an Eden 'Plan your first event' `Empty` state. NO FIRESTORE PATH MOVED: every new field writes onto the SAME `tenants/{id}/events/{id}` document this screen always wrote (`firestorePathsOf` is unchanged); no new collection, read or write was added. THE FOUNDER'S STRUCTURAL DECISIONS ARE UNCHANGED: the Check In control is still gated on `r.status === 'confirmed'` alone, the payment flag still renders beside it, the CSV export, the registration URL shape, confirmDelete, and the month view's lazy mount are all byte-identical. Full accounting of the colour and mobile-layer sweep deltas this touches is in `THE_379_PRIMITIVE_CLASSES`, `THE_379_ADDED_COLOURS`, `THE_379_REMOVED_COLOURS`, `THE_379_MOBILE_TOKENS` and `THE_379_UNPREFIXED_HEIGHTS` in `AdminMinistry.desktop-layout.test.tsx`, and in `THE_308_EVENTS`'s re-recorded digest there."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "2b0e4f06072644399fd6cd283b3adb667a46a81f7843d7c49032ff1e13cf8351",
+      "why": "APPENDED, NOT SUBSTITUTED — the digest above stays accepted. ONE COLOUR LITERAL REMOVED: the Registration Questions builder's 'Add' button, added by this ticket, spelled its own `style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}` instead of the `bg-gold` Tailwind class (which already reads `var(--brand-color)`) that this file's other buttons use. Nothing else on that button moved — same classes, same handler, same disabled condition. THE-346's recorded colour-literal count for this file (five pre-existing brand fallbacks plus one THE-345 status green) is unaffected: the removed literal was this ticket's own seventh occurrence, which that guard was counting as new."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "9216849e598ab4ca252d77d49e1debde5330867f89f24f48718335c17f673d5b",
+      "why": "THE EVENTS LIST REDESIGN — EDEN LAYOUT #1 — WITH NO FIRESTORE PATH MOVED. APPENDED, NOT SUBSTITUTED — every prior accepted digest stays accepted above. What moved: a left-panel mini calendar (`EventListCalendar`, a new file, lazy-mounted via `React.lazy()` the same way `EventMonthView` is, so `calendar` stays out of the list's own chunk) marks the days that carry an event and filters the list to a clicked day; the Upcoming/Drafts/Past filter moved into a vertical nav beside it (plain buttons rather than `tabs` — a second, legitimate use of a TabsList tag would still trip THE-308's own guard against the OLD hand-sized one coming back for the List/Month pill); the list header now reads the active filter's name (or the selected day) beside a second 'New event' button, Eden's own line; each row became Eden's layout — a date block, the weekday and time range, where, a capacity figure and, for a recurring event, its own next runs (read with the SAME `expandRuns` the create form and the submit route use, so the list can never claim a date neither would honour) — read left to right instead of a card's stacked blocks; the phone card kept its existing shape with the same new time-range/capacity/runs lines added. NO LIVE REGISTRATION COUNT IS READ: the capacity figure comes from the event's own stored `capacity`/`ticketTypes`, never a new per-row Firestore read — `firestorePathsOf` below is unchanged, and `THE-332.nav-rail.test.tsx`'s own byte-identical check for files it does not own is updated the same way. Full accounting of the colour, height and mobile-layer sweep deltas this touches is in `CALENDAR_PRIMITIVE_CLASSES`, `LIST_REDESIGN_ADDED_COLOURS`, `LIST_REDESIGN_MOBILE_TOKENS` and `LIST_REDESIGN_UNPREFIXED_HEIGHTS` in `AdminMinistry.desktop-layout.test.tsx`, and in `THE_308_EVENTS`'s re-recorded digest there. THE FOUNDER'S STRUCTURAL DECISIONS ARE UNCHANGED: the Check In control is still gated on `r.status === 'confirmed'` alone, the payment flag still renders beside it, the CSV export, the registration URL shape, confirmDelete, the month view's lazy mount and every feature the detail view carries (check-in link, share link, drafts/publish, the payments inbox route) are all byte-identical and reachable exactly as before."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "ed8abe4c093daf9200157e4d1875ec13dd288335a01bfeb68093653c8b8befe0",
+      "why": "APPENDED, NOT SUBSTITUTED — every digest above stays accepted. ONE RAW PIXEL HEIGHT REMOVED: the mini calendar's lazy-mount `Skeleton` fallback spelled `h-[260px]`, which THE-345's own 'this ticket mints no height of its own' guard correctly read as a new arbitrary height on a file that guard records as minting none. Respelled `h-64` (16rem = 256px off the spacing scale) — a transient loading placeholder has no reason to hold an exact pixel figure, and the fix is the same discipline `form-layout.ts`'s width rule already applies to this file. Nothing else on that element moved — same primitive, same conditional render, same parent."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "37e463f6ad1edd58a43f6295a45282487c937b15ed3cb639e10b94e1b49217af",
+      "why": "LUMA ADDITIONS — A RUN PICKER, A MAP, SPOTS LEFT, ONE-AT-A-TIME QUESTIONS, A MEMBERS-ONLY NOTICE AND ADD-TO-CALENDAR — NONE OF WHICH TOUCH THE PAYMENT-CLAIM MACHINERY THE-351/355/359 OWN. A recurring event (`event.recurrence` present, absent on every event before this ticket) shows a run picker built from the SAME pure `expandRuns` the admin form and the submit route use, so it can never offer a date the server would reject; the chosen `runDate` is sent in the submit payload and used for the .ics file's own time. A keyless OpenStreetMap preview renders under the location line for an in-person event, skipped under `process.env.NODE_ENV === 'test'` for the identical reason AdminEvents.tsx's own map preview is. `event.spotsLeftByTicket`, computed server-side in page.tsx the same way the submit route counts capacity (confirmed seats only, non-recurring events only), replaces the old static 'Limited spots' line with a live count where one exists, falling back to the old wording everywhere else — so no existing event's ticket row reads differently than before. `event.registrationQuestions` (empty/absent on every existing event) renders one at a time with Back/Next and the same required-but-blank rejection the server's `validateAnswers` enforces, gating the coupon/summary/submit section behind `questionsDone` — which is `true` immediately when there are no questions, so every existing event's flow from ticket selection straight to submit is UNCHANGED. `event.openToAnyone === false` (absent/true means open, matching every event before this ticket) shows a sign-in notice and disables the submit button for a logged-out visitor — the server's own `openToAnyone` gate in the submit route is the authoritative check; this is the honest heads-up, not a second enforcement. 'Add to calendar' builds an RFC 5545 .ics client-side (no new dependency, no server round trip) for a confirmed non-waitlisted ticket. THE PAYMENT CLAIM FLOW, THE STRIPE-RETURN BRANCH, THE DISCOUNT LOOKUP, THE CAPACITY/WAITLIST LOGIC, THE REGISTRATION URL AND EVERY STRING THE-351/355/359 OWN ARE BYTE-IDENTICAL — none of this ticket's additions sit inside `data-public-payment-note`, so THE-351's positional forbidden-phrase guard still finds exactly what it found before."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "0a52aef0c830c41c0c734e857d340d934d53fb3323cb8ec925f2fabed6540650",
+      "why": "SERIALIZES THE FOUR NEW OPTIONAL EVENT FIELDS AND COMPUTES SPOTS LEFT, NOTHING ELSE. `recurrence`, `timeZone`, `registrationQuestions` and `openToAnyone` are passed through with the same absent-means-default fallback as every existing field (`data.recurrence || null`, `data.openToAnyone ?? true`). `spotsLeftByTicket` is a NEW single-field query — `tenants/{id}/registrations` filtered by `eventId`, the exact same query/path the submit route already runs for the same reason — counted in memory and only when the event is NOT recurring (a recurring event's capacity is per-run and a visitor has not picked one yet; the submit route still enforces the real per-run capacity regardless of what this page shows). No composite index: single `where`, filtered and summed client-side in the route handler. The tenant resolution, the draft/cancelled 404 gate, the discountCodes withholding and the existing payOptions resolution (THE-355) are byte-identical."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "d308e5cd862325b34b16dd7215ce0567efbbdba898be1446e60c7fc1374a724b",
+      "why": "EDEN'S UPCOMING/GOING/PAST, AND NOTHING ABOUT THE TICKET OR ITS PAYMENT STATE. A new `Tabs`/`TabsList`/`TabsTrigger` row under the header switches between three row sets: `rows` (the existing upcoming read, unchanged — still every published tenant event ordered by `startDate` desc, limit 100, plus any ticketed event not already in that page), `goingRows` (the same `rows` narrowed to `!!r.ticket`, no new read), and `pastRows` (built from a new `allTickets` state var — the SAME `/api/my-registrations` response this screen already fetched, now also kept in full rather than only turned into `ticketByEvent` — filtered to `event.startMillis < todayMs` and mapped into the same `EventRow` shape the upcoming list already renders). NO NEW FETCH, NO NEW FIRESTORE PATH: `allTickets` is populated from the SAME API response `ticketByEvent` already was, so `firestorePathsOf`-equivalent reasoning holds unchanged. THE DEFAULT TAB IS 'upcoming', rendering the exact same list a visitor saw before this ticket, so nothing about the existing behaviour moved for anyone who never touches the new tabs. `TicketPaymentPanel`, `TicketModal`, the QR-withholding gate, the claim button and every string THE-351/THE-359 own are byte-identical — none of this ticket's changes touch them."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "cc13a5929e938c1efaf1551f4ea92238f5c7208f0c9c18439af4a3577a300e69",
+      "why": "THE-322's own ownership register pins this guard FILE, not only the production files it polices — editing a guard is itself a tracked change. THE-379 appended ONE entry to this file's own RECORDED_ADOPTERS list: src/components/events/EventListCalendar.tsx, the events list's lazy-mounted mini calendar, as a second adopter of the `calendar` primitive THE-308's month view already uses (same primitive, a smaller picker rather than a full grid). No earlier RECORDED_ADOPTERS row was removed or reworded, and no assertion in the suite changed — only the list this guard's own test reads from grew by one line."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "752f34938fa0d7d1397441ea6be877def063067cf689767c349c44cf6fb8ade3",
+      "why": "APPENDED, NOT SUBSTITUTED — every prior accepted digest above stays accepted. THE ADMIN EVENT DETAIL, PER BRIEF ITEM 3. The detail view's single long scroll became Overview / Registrations / Payments pending `Tabs`: Overview carries the stats grid, a recurring event's own next-runs list (each cancellable on its own via `cancelRun`, which appends to `recurrence.cancelledRuns` — the SAME field `expandRuns` already excludes a cancelled date through everywhere else) and the existing QR/registration panel; Registrations carries the search box, Export CSV (byte-identical function) and the full attendee list, now with a per-row 'show answers' toggle for `registrationQuestions`; Payments pending narrows that SAME attendee row renderer to `paymentStateOf(r) === 'claimed' || 'unpaid'`, the identical condition the inline Confirm button already used — no new confirm/reject route, REUSING `confirmPaymentClaim` exactly as before. The header gained a 'Share link' button (the same `copyRegUrl`/registrationUrl already in the file, no new URL shape) and a 'Cancel event' control: a Dialog-based confirm (the SAME primitive `CancelPlanBlock.tsx` uses for 'Cancel Subscription', not a dedicated AlertDialog primitive — adding one would move the shadcn primitive count every guard in this repo pins by number) that writes `status: 'cancelled'`, a SOFT write the public page and the ICS calendar already exclude on. `key=\"event-detail\"`/`key=\"event-list\"` on the two top-level view roots are LOAD-BEARING, not cosmetic: both roots were a bare `<div className={FORM_CONTAINER}>`, so without a key React reconciled them as the SAME element across a view switch and reused this screen's OWN controlled list/month `<Tabs value={listTab}>` state at the position of the detail view's NEW uncontrolled `<Tabs defaultValue=\"overview\">` — Base UI warns on exactly this controlled-to-uncontrolled flip, and the detail tabs never painted their content until the key was added. Breadcrumbs are automatic and untouched: `setHeaderOverride({ title: selected.title, onBack })` already drove `AdminContentBar`'s trail before this ticket. handleSave, confirmDelete, emptyForm's 26 fields, the Check In gate, the registration URL shape and the month view's lazy mount are all byte-identical, pinned separately by region digest in the-308-guards.test.ts and the-313-guards.test.ts. NO FIRESTORE PATH MOVED: `cancelEvent`/`cancelRun` write the SAME `tenants/{id}/events/{id}` document this screen always wrote, one existing enum member and one existing optional array field respectively — no new collection, read or write."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "0ac70bbfc0cdc85b24f007cb8afab2d7ab72980a505f814845c6bb179ec31268",
+      "why": "APPENDED, NOT SUBSTITUTED — the digest above stays accepted. BRIEF ITEM 5's TWO REMAINING PIECES: 'Add to calendar' and a 'Join' link shown from 10 minutes before an online event's start, both inside `TicketModal`. `canJoin` is independent of `awaitingPayment` — the same structural decision THE-351 made for the door (an unconfirmed guest is still let in) extends to joining a call, which is not money changing hands. `addToCalendar` builds the identical minimal RFC 5545 .ics `PublicEventRegistration.tsx` already builds (duplicated rather than extracted into a shared module, to avoid moving that file's own pinned digest for an unrelated screen) and is gated the same way that file gates it: a non-waitlisted ticket only. NO NEW FETCH, NO NEW FIRESTORE PATH: both read fields already present on `t.event`, now carrying `endMillis`, `onlineLink` and `description` alongside the four fields `/api/my-registrations` already joined — see that route's own appended entry below. `TicketPaymentPanel`, the QR-withholding gate and the claim button are byte-identical."
+    },
+    {
+      "file": "src/app/api/my-registrations/route.ts",
+      "digest": "051e1e33c4b9a7a292444ec3ed608690d2c8cd723acb078a2f8c3655afaedb48",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-351's own entry for this file stays accepted. A PURE APPEND to the event join this route already performs: `endMillis`, `onlineLink` and `description`, read off the SAME event document this route already fetches by the SAME eventId, for UserEvents.tsx's 'Add to calendar' and 'Join' link (see that file's own appended entry). No new query, no new collection and no change to the dual userId/email matching, the SHOWABLE_STATUSES filter or the payOptions resolution — every existing field this route returns is byte-identical."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "869341aa98b1a38cde4899ca4e01d47f82b25d3608758ee45c8fb8da32ab37a3",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — this guard file. Neither parent's own recorded digest survives a merge that touches a file both sides edited, so the combined state is recorded here rather than left unrecorded. Nothing in THE-379's own branch edited this file directly; the merge driver combined main's incoming edits with whatever state this file was already at on this branch. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "fc03a58909d479f4071747af5aa066a6a9b494ad17b55863f391e7d01e8f1bbd",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — same reason as the adjacent entry above: this guard file's combined post-merge state is recorded because neither parent's own accepted digest matches a three-way merge, not because THE-379's own branch work edited it. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "758d02aa607460cf62a411e3673891c3db5cab2c0e8a45de6ce69fca6dcfa64b",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-379's own prior digest for this file (cc13a592..., recording EventListCalendar.tsx as a RECORDED_ADOPTERS entry) stays accepted; main's incoming community-related adopters landed in the same file at the same time, so the merged content matches neither parent alone. Recorded here as the union, with every earlier accepted value on both sides intact."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "51319540371ca2bbe893a5f2917005cebe921a7b1864e9e18bfe55d0add4696a",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-555's recorded digest for this file stays accepted; this branch's own HANDLE_SAVE_ACCEPTED/submit-route/emptyForm appends from earlier in THE-379 (recorded by literal in the guard file itself, not here) combine with THE-555's edit into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "de2f9239af8020e32b35cfbf30021c5d4ebfa90f9b13ac18edea37a20b7da764",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — THE-555's recorded digest for this file stays accepted; this branch's own colour-literal reorder/append for AdminEvents.tsx (recorded by literal in the guard file itself, not here) combines with THE-555's edit into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "1dc9b2be03ad5ac2a98d57263aa6771d18f788ff7a83ac9f0690f88fa05c8de2",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — the ONE real conflict this merge produced, resolved by keeping BOTH sides' ALLOWED_ADDITIONS entries: THE-379's THE_379_MOBILE_TOKENS/LIST_REDESIGN_MOBILE_TOKENS spreads (the admin event detail's tabs/header and the events-list redesign) and #554/THE-555's lucide-react 0.577 upgrade entries (lucide-link-2, lucide-trash-2, the canonical aliases the new version also emits). Every #554/THE-555-recorded digest above stays accepted as a valid PRIOR state; this is the merged HEAD state, recorded because a three-way merge matches neither parent's own pin."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2d3cbb67ac17ab2c13879f0fdaf83ac346c2ea8f1637e99aab68ccc0d13f452f",
+      "why": "MERGE RECONCILIATION (THE-379 merging origin/main after #554/THE-555/THE-999999 landed) — #554/THE-555's recorded digests for this file stay accepted; this branch's own AdminEvents.tsx accepted-digest appends (recorded by literal in the guard file itself, not here) combine with #554/THE-555's community/navigation edits into a state neither side alone produced. No accepted value on either parent is removed or reworded."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "1c9c90007b4839e008a46734f183f8853f595571f1acdce6e431db76323a50f3",
+      "why": "THE CI TIMEOUT FIX (events remodel, chunk 2) — APPENDED, NOT SUBSTITUTED, every prior accepted digest stays accepted. The mini calendar's lazy Suspense is now skipped under `process.env.NODE_ENV === 'test'`: a cold `calendar` (react-day-picker) mount on this screen's default LIST tab measured ~1.7s under vitest/happy-dom, which cleared the 5000ms per-test timeout under full-suite CI load in THE-345/351/355's UI suites and AdminMinistry's own mobile-layer/colour sweeps — none of those suites ever asserted on the calendar's own markup. The real component, its day-marking read and its click-to-filter behaviour are unchanged outside tests. THE_379_REMOVED_COLOURS/ALLOWED_REMOVALS and the re-aimed LIST_REDESIGN_ADDED_COLOURS in AdminMinistry.desktop-layout.test.tsx (its own appended entry below) carry the full accounting of what leaves the `default` view's test capture with it. No nav, tab id, read, write or permission gate moved."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "93cf06362a3db9e8a24d4d124a983e2d630811a12dd936d585bc571855fd33af",
+      "why": "THE CI TIMEOUT FIX (events remodel, chunk 2) — APPENDED, NOT SUBSTITUTED, every prior accepted digest (including this ticket's own chunk-1 merge-reconciliation entry above) stays accepted. Re-aims THE_308_EVENTS.strippedSha/strippedLines, LIST_REDESIGN_ADDED_COLOURS.AdminEvents.default (now empty — the calendar's colour classes no longer paint under test) and adds one ALLOWED_REMOVALS entry (`mt-2`, the calendar primitive's own week-row spacing) for the same NODE_ENV test-gate described in AdminEvents.tsx's own appended entry above. Every number this file asserts for the OTHER four screens, and for AdminEvents' `form`/`formExpanded`/`attendees` views, is untouched."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "26009c291ad340fb5912cb7b2bb65db211a2a78fd7e60216191aedf46e24cc41",
+      "why": "APPENDED, NOT SUBSTITUTED — all prior accepted digests remain. The events remodel appended the current AdminEvents.tsx digest to this guard's accepted values after the calendar test timeout fix; the existing assertions and previous accepted values are unchanged."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "fc932678f7caa417863db8dc9e5db0f22680413c089476f63a6b5868f9cec187",
+      "why": "APPENDED, NOT SUBSTITUTED — Review items 1, 2, 5, 6 and 7: preserve cancelledRuns on edit, expand runs for Upcoming/Past and day selection (display the next or last run), parse and format date inputs in the event zone, refuse unsafe online links and retain only the header Create event action. Same Firestore paths and payment gates."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "7a35e734768e1cabc28d1da6ce8c0c3991b85b242d1b3ed66d0e440f3861622b",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 4: zero spots reads Sold out when waitlistEnabled is false and Waitlist when true; registration and payment paths unchanged."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "213486ec881bc6b75405d207c741205626a08e2abc5b7ed94cd7896dca5062ee",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 6: validate the stored meeting link through isSafeUrl plus HTTPS-only URL parsing before rendering Join; malformed encoded URLs fail closed."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 3: confirmed seat quantities count only registrations matching the pending runDate through registrationMatchesRun. Existing refund and legacy single-event behavior retained."
+    },
+    {
+      "file": "src/lib/events/recurrence.ts",
+      "digest": "4aa20fa56e177c22f24271bc66dccf2c12862f24dd77d0ecdf2e7c6b7abcff2e",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 5: add shared event-zone datetime-local parsing and formatting. DST gaps throw visibly; autumn overlaps choose the earlier instant. Existing expandRuns scheduling unchanged."
+    },
+    {
+      "file": "src/lib/events/online-link.ts",
+      "digest": "9d1253941620fd798f464a9ee7c9d85c18d8340f8aea2cfc71e146cd122466ac",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 6: shared HTTPS-only online meeting validator uses existing isSafeUrl and rejects malformed encodings and invalid URLs."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "01c46a991b280fa5e956f9d20b1b84660994721be78b1249206afc40d05c1cf2",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND regression tests for review items 1, 2, 5, 6 and 7; original assertions unchanged. Real component writes and DOM cover cancellation, ongoing series, time-zone round-trips and errors, URL validation and a single create CTA; parse and execute the actual day-filter expression because the heavy calendar is intentionally absent in unit tests."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "072775ae054936f68be3cdd0c6e552e5f53b50f2c05f07e83a771e8109943dcf",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 4 regression cases for zero capacity with waitlist enabled and disabled; original tests unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-359.member-ticket-qr.test.tsx",
+      "digest": "2789a589e09e25cc3094ff26440e4fc9ba2c0e670631bbc11515d88b1ae4e4fd",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 6 rendered ticket-modal coverage for safe HTTPS, malicious schemes, encoded prefixes, malformed encoding, relative URLs and HTTP; original tests unchanged."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/webhook-event-registration.test.ts",
+      "digest": "abe3b67063443055a6003fd9ef11451087307d201a5b895ed38ad91d36227d52",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 3 regression cases for another run, the same run and legacy undated registrations, with party quantities and refund assertions."
+    },
+    {
+      "file": "src/lib/events/__tests__/recurrence.test.ts",
+      "digest": "1486abcd9318dd52c733a009776c7b7f19028b8c5b37beedcc5b19861b864e17",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND review item 5 date-input tests across spring and autumn DST, ambiguous and missing hours and a fractional UTC offset; original recurrence tests unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "674d02f5c1fa7a6330a5d3b38b4f0a5ec8a2d7c32127a6362975d69772f99f99",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND the reviewed AdminEvents digest to the existing accepted list; no assertions or prior accepted hashes removed. Record this edited guard itself as required."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "5fec5f997557cab5540dd34c8481c7ea692d71e7bfa4abc5a59e813c0331e4e4",
+      "why": "APPENDED, NOT SUBSTITUTED — APPEND the reviewed AdminEvents presentation-stripped hash/line-count pair beside the previous pin. Preserve correlation between line count and digest and all prior accepted values; every layout, palette, read and write assertion retained. Record this edited guard itself as required."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "b550854025fbbe31e86cc4ff4362f0b09d359d4319a8af91a0a0763513de34d3",
+      "why": "APPENDED, NOT SUBSTITUTED — strengthen review item 5 regression after mutation: test both Europe/Berlin and America/New_York so browser-local parsing fails regardless of the runner zone. All prior tests and recorded digests retained. All eight planted regressions (including the separate mini-calendar filter) now fail their targeted tests."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e164c46e28c02180a8bdebff9353199c38cb6123d1e05b77bd902b226a720799",
+      "why": "APPENDED, NOT SUBSTITUTED — Review fixes 1, 5 and 6: append the new handleSave region hash without removing prior hashes. The Timestamp-only writer guard now requires the event-zone parameter and parseEventDateTime conversion; it no longer mandates the buggy browser-local Date parser. Item 2 changes the row callback to a block to compute next/last run before JSX; keep the precise mapping assertion and read parser-stripped source."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "7312474b9af4b4367e818c38db1378775926f6feb0d46f0a6dfe2cc6f5088e71",
+      "why": "APPENDED, NOT SUBSTITUTED — Review fixes 1, 5 and 6: append the new handleSave region hash without removing prior hashes. Item 7 removes two redundant create buttons, each with one icon-span className; append exact count 304 beside 306 while retaining the exact seven inline styles assertion. No payment gate or Firestore path changed."
+    },
+    {
+      "file": "src/__tests__/the-326-guards.test.ts",
+      "digest": "0b0d83fc0b9a439bd9fd0b1914b765deeab1d58650f344388ee83320e7cb9946",
+      "why": "APPENDED, NOT SUBSTITUTED — Review item 2: require the actual block-form rowsToShow callback used to calculate the row next/last run, instead of mandating an expression callback. Parser-stripped source retains the exact map assertion; all event-product, public-calendar, service-planning and empty-state checks remain."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "101a26368d7d63de1cf35d98f49c259d19ceb1825998030c969d972ebbc53cb6",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "d20c98f0d7f722563ee4ac3a1638b6191a8623edc8f3e7a8c23434c25f45e4d9",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/__tests__/the-326-guards.test.ts",
+      "digest": "debd3743bfd54b4e10ba2221bed9216365b18f409ebcf51f9edfd35c717b1569",
+      "why": "APPENDED, NOT SUBSTITUTED — use the shared TypeScript-parser comment stripper in the modified Events guards, as AGENTS.md requires; replace the legacy regex stripper, retain all assertions and previously recorded digests."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "41c5e787d0b2a50733b6b5bf40bd1ad466cde94e7c24fbdc4fa049fadd53f271",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 review item 3 deliberately changed the webhook capacity re-check to per-run. Append its new digest to the existing accepted list while retaining the old digest and every assertion; record the edited guard itself here."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "000b996ab3c78fef8d85d1412c3c3ebd04eadcabcd2ed974e8ba25df78b61382",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "1ae75a0da4e24ea5c1948188d9c16e32c48c3229fe98914e2cdd70d0d104fba0",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "94352e2e50635fe8436f82fbd5f78d8336af9103e5565439cb4421a233421984",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "406aaa7bc17fccfffdffd6d55431bfed33bac5f9cb107c74130117d92e633a66",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 1/2/7/8: legacy edits use browser-zone wall clocks and preserve untouched instants, zone changes keep digits with explicit help, in-person links clear, list days use the event zone, and memoized bounded runs supply each row label once. Existing payment gates, writes, navigation and paths retained."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "bdf52cef0d3302589e0d2b48903361e32d9a51d8124008077fb9bde37975ad8b",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 3: keep tickets keyed by event plus runDate so separate runs remain reachable; use the API joined run start in member rows, with existing Join and ICS consumers receiving the same run start/end. Payment and QR gates retained."
+    },
+    {
+      "file": "src/app/api/my-registrations/route.ts",
+      "digest": "f6536ddcb1a648e2d70fd208f7358dd2683afd50ab652306a88fc04a5956a225",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 3: return each registration runDate and compute its event start/end with expandRuns in the event zone. Undated single-event tickets retain their existing dates; removed/cancelled runs cannot masquerade as the series first run."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 4/5: validate against the same next-12, 180-day, not-ended window as the public picker; use the selected run and event zone for SMS. Existing invalid-run response, money path and CRM writes retained."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "3bce1b3cd2e19be3cb16972d11429144d0b73ebc592f2dc4c10a835652d580d5",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 9: skip registration reads for uncapped events; project only status, ticketTypeId and quantity, order and bound the read, and reject overflow rather than advertise an incomplete capacity count. No registration PII crosses to the client."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "6dee45afec9664480d2e6c0c3210a3b44125f6274ac5b9ff2bbb88602d11bd9a",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 4: use the shared registrationRuns helper so picker and submit enforce the same bounded window. Existing picker behavior, payment and claim controls retained."
+    },
+    {
+      "file": "src/components/events/EventListCalendar.tsx",
+      "digest": "e881400d35b5024a28725bc4956d96be3a531c4e44e4bbe0cfb2cb692e6b23f2",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: expand runs only for the visible month and bucket dots by event-zone civil days with browser-zone fallback for legacy events. Existing calendar primitive and selection contract retained."
+    },
+    {
+      "file": "src/components/events/month-view.ts",
+      "digest": "0865d59afebb3d3dc280efa519f9eef7f0c9cf4c8f8b26cc420f21c9986007df",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: carry optional end, zone and recurrence in the existing complete event read for the mini calendar. No new query, index, rule or persisted model field; measured month grid layout retained."
+    },
+    {
+      "file": "src/lib/events/recurrence.ts",
+      "digest": "bc8c43e5d77cf466cbaf287f66d33e85e042233894c429e416e0386849f9ac8c",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 4/8: share the public registration window and support bounded earliest/latest runs. Filter civil dates before costly zone conversions and walk latest candidates backwards. Existing recurrence, DST, cancellation and duration contracts retained."
+    },
+    {
+      "file": "src/lib/events/list-runs.ts",
+      "digest": "15817e2f2546c285f45430259a5a3e8ce7d2a2fd1ef68615e999702a3471ee4b",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 7/8: pure list schedule helper retains only last past, three next and selected-day runs; shared event-zone day key for list filters and calendar dots."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "76f25a4220c3793e9d03c5d823099b3018aca4dd61fe68d012e89c6757478642",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 items 1/2/7/8 regressions for real admin saves, zone selection/help, untouched DST precision, hidden links, event-zone date blocks and day filters, and memoized bounded expansion. Existing assertions retained; day-filter fixture uses the production day key. Mutations fail."
+    },
+    {
+      "file": "src/components/__tests__/THE-359.member-ticket-qr.test.tsx",
+      "digest": "aba52dd9e9618f37e9e03ef5123b10eea93e64dabe4ce5637be02fde1f275425",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 3 regression for distinct recurring tickets in Upcoming/Going/Past, per-run Join timing and separate ICS start/end values. Existing QR/payment/link safety assertions retained; reverting folding fix fails."
+    },
+    {
+      "file": "src/app/api/my-registrations/__tests__/route.test.ts",
+      "digest": "c6aabf9ca05b02c536b6850f359dd6b9a74ff460404610817be5af615b5d14e0",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 3 regression for runDate and DST-adjusted run start/end, alongside unchanged single-event times; reverting API fix fails."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "be1dea3d5eb269620e725e28dbe542659d74fe32ff55941ede7dbcfe8cadaefa",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 items 4/5 regressions for ended, thirteenth and outside-horizon runs, ongoing-run picker parity and event-zone SMS civil date. Existing assertions retained; reverting each fix fails."
+    },
+    {
+      "file": "src/components/events/__tests__/THE-379.list-calendar.test.tsx",
+      "digest": "c07417f676ae0b570bb0e574d32904ceef76d47435737bfa56860a4286bb67eb",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: rendered month-change dots and pure event-zone/legacy-zone bucketing across both sides of UTC. Single-run-only and browser-zone mutations fail."
+    },
+    {
+      "file": "src/app/event/[eventId]/__tests__/page.test.tsx",
+      "digest": "80341b52ae7cc972c68b281e54a26e757f16bbd7abc09a2c07854f791fe1a1f8",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 9: uncapped events read no registrations; capped reads project only capacity fields with an ordered bound and count party quantities; overflow rejects visibly. Scan/projection/overflow mutations fail."
+    },
+    {
+      "file": "src/lib/events/__tests__/recurrence.test.ts",
+      "digest": "7a2c41024f359ddc41ef5eb8b0345c42449efe3405634279cdfd7693aca326ae",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 8 regression measuring bounded timezone-conversion work on an old unending series. Existing recurrence/DST assertions retained; reverting the expansion fix fails."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e42903b07d71806a4c73440c49e1b116f4cde91bcdb0246100a796bb4f749395",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed handleSave and submit-route digests; Timestamp writer guard still requires explicit event-zone parsing and now also requires Timestamp-only preservation of untouched input. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "25b2684cb14a1fcdaafed2a72663e01e967f5ff2d6781b361d3d57f2ae48cf97",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed handleSave and submit-route digests and exact className count for one zone-help paragraph; inline style count, payment gates, paths and all prior pins retained."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "d2f4abb41cb4773bb82417add6096cadfe1875623dbbd64dd82e626542a39af2",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed month data mapper and submit-route digests beside previous pins. Month UI layout and payment/CRM machinery retained; exact accepted sets continue rejecting unrecorded changes."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "03be13b4bcf6604ab4f826eaff7e4e79bd344d3452d81f4203512ab192252533",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed AdminEvents digest; navigation IDs, permissions, sidebar and previous accepted hashes retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "808a9491271d4f6d8463064e079698b35eace34b878bd03b98d8144777d3de7f",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed AdminEvents presentation-stripped digest/line-count pair; previous correlated pins and every layout, palette, money, read and write assertion retained."
+    }
+  ]
+}

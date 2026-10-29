@@ -46,6 +46,29 @@ const nextConfig = {
     const modules = Array.isArray(config.resolve.modules) ? [...config.resolve.modules] : ["node_modules"];
     if (!modules.includes(vendorDir)) modules.push(vendorDir);
     config.resolve.modules = modules;
+
+    // Events screenshot harness ONLY — inert unless EVENTS_HARNESS_MOCK=1 is
+    // set, and the harness's own files (src/app/events-harness/) are never
+    // committed (see the worktree's git info/exclude), so this alias has no
+    // target in a normal checkout either. Lets the harness page render the
+    // REAL AdminEvents/UserEvents/PublicEventRegistration against made-up
+    // in-memory data instead of a live Firestore project, by swapping the
+    // exact module specifiers those files import. Never used outside a dev
+    // server started explicitly for events screenshots.
+    if (process.env.EVENTS_HARNESS_MOCK === "1") {
+      const harnessMocks = path.join(path.dirname(fileURLToPath(import.meta.url)), "src/app/events-harness/_mocks");
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "../firebase": path.join(harnessMocks, "firebase.ts"),
+        "@/firebase$": path.join(harnessMocks, "firebase.ts"),
+        "../../firebase": path.join(harnessMocks, "firebase.ts"),
+        "../utils/tenant-scope": path.join(harnessMocks, "tenant-scope.ts"),
+        "./tenant-scope": path.join(harnessMocks, "tenant-scope.ts"),
+        "../contexts/TenantContext": path.join(harnessMocks, "tenant-context.tsx"),
+        "firebase/firestore": path.join(harnessMocks, "firestore.ts"),
+        "firebase/auth": path.join(harnessMocks, "auth.ts"),
+      };
+    }
     return config;
   },
   images: {

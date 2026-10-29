@@ -1,8 +1,10 @@
 "use client";
+import { Button } from '@/components/ui/button';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, CalendarCheck, MapPin, Clock, Globe, Ticket, QrCode, X } from 'lucide-react';
 import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import QRCode from 'qrcode';
+import { isSafeOnlineLink } from '../lib/events/online-link';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
@@ -11,6 +13,7 @@ import ShareButton from './ShareButton';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { CONTROL_DENSITY } from './layout/form-layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { claimPaymentSent } from './inbox/payment-claims-client';
 import {
   MEMBER_CLAIM_BUTTON, MEMBER_UNPAID_BADGE, TICKET_QR_WAITING_TITLE,
@@ -26,6 +29,7 @@ const BRAND = 'var(--brand-color, #B8962E)';
 interface ApiTicket {
   id: string;
   eventId: string | null;
+  runDate?: string | null;
   ticketCode: string | null;
   status: string;               // 'confirmed' | 'waitlisted'
   ticketTypeName: string | null;
@@ -39,8 +43,13 @@ interface ApiTicket {
   event: {
     title: string;
     startMillis: number | null;
+    /** THE-379 (events remodel) — for "Add to calendar"; falls back to startMillis + 1h when absent. */
+    endMillis: number | null;
     location: string | null;
     isOnline: boolean;
+    /** THE-379 — the online event's own join link. */
+    onlineLink: string | null;
+    description: string;
     status: string | null;
   } | null;
 }
@@ -48,6 +57,7 @@ interface ApiTicket {
 /** A row in the upcoming-events list — a tenant event, optionally ticketed. */
 interface EventRow {
   id: string;
+  rowKey?: string;
   title: string;
   startMillis: number | null;
   location: string | null;
@@ -78,6 +88,11 @@ interface UserEventsProps {
 
 const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   const [rows, setRows] = useState<EventRow[]>([]);
+  // THE-379 (events remodel) — every ticket this member holds, regardless of
+  // date, so the "Past" tab can list one without a second fetch. `rows`
+  // above stays UPCOMING-only, exactly as it always has.
+  const [allTickets, setAllTickets] = useState<ApiTicket[]>([]);
+  const [tab, setTab] = useState<'upcoming' | 'going' | 'past'>('upcoming');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ticketView, setTicketView] = useState<EventRow | null>(null);
@@ -134,9 +149,9 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         for (const t of tickets) {
           if (!t.eventId) continue;
           // Prefer a confirmed ticket over a waitlisted one for the same event.
-          const existing = ticketByEvent.get(t.eventId);
+          const existing = ticketByEvent.get(`${t.eventId}:${t.runDate || ''}`);
           if (!existing || (existing.status === 'waitlisted' && t.status === 'confirmed')) {
-            ticketByEvent.set(t.eventId, t);
+            ticketByEvent.set(`${t.eventId}:${t.runDate || ''}`, t);
           }
         }
 
@@ -153,11 +168,11 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           byId.set(d.id, {
             id: d.id,
             title: e.title || 'Event',
-            startMillis,
+            startMillis: ticketByEvent.get(`${d.id}:`)?.event?.startMillis ?? startMillis,
             location: e.location || null,
             isOnline: !!e.isOnline,
             registrationEnabled: !!e.registrationEnabled,
-            ticket: ticketByEvent.get(d.id) || null,
+            ticket: ticketByEvent.get(`${d.id}:`) || null,
           });
         });
 
@@ -165,9 +180,12 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         // the user still holds a real ticket to), using the API's joined event info
         // so their QR is never unreachable.
         ticketByEvent.forEach((t, eventId) => {
-          if (byId.has(eventId)) return;
+          const id = t.eventId!;
+          // Each recurring run remains reachable even when the series itself was read.
+          if (!t.runDate && byId.has(id)) return;
           byId.set(eventId, {
-            id: eventId,
+            id,
+            rowKey: eventId,
             title: t.event?.title || 'Event',
             startMillis: t.event?.startMillis ?? null,
             location: t.event?.location || null,
@@ -187,6 +205,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           });
 
         setRows(list);
+        setAllTickets(tickets);
       } catch (e) {
         console.error('My Events load failed:', e);
         if (!cancelled) setError('Could not load your events. Please try again.');
@@ -202,6 +221,28 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
     // opinion about what "paid" means.
   }, [reloadKey]);
 
+  // THE-379 (events remodel) — Eden-style Upcoming / Going / Past. "Going" is
+  // the existing upcoming list narrowed to a held ticket; "Past" is built
+  // from `allTickets` directly (every ticket this member ever held),
+  // independent of the upcoming `eventsSnap` read above.
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const todayMs = startOfToday.getTime();
+  const goingRows = rows.filter((r) => !!r.ticket);
+  const pastRows: EventRow[] = allTickets
+    .filter((t) => t.eventId && t.event?.startMillis != null && t.event.startMillis < todayMs)
+    .map((t) => ({
+      id: t.eventId!,
+      rowKey: `${t.eventId}:${t.runDate || t.id}`,
+      title: t.event?.title || 'Event',
+      startMillis: t.event?.startMillis ?? null,
+      location: t.event?.location || null,
+      isOnline: !!t.event?.isOnline,
+      registrationEnabled: false,
+      ticket: t,
+    }))
+    .sort((a, b) => (b.startMillis ?? 0) - (a.startMillis ?? 0));
+  const visibleRows = tab === 'going' ? goingRows : tab === 'past' ? pastRows : rows;
+
   return (
     <div className="flex flex-col min-h-full h-full bg-surface overflow-y-auto">
       <div className="sticky top-0 z-10 bg-surface-raised border-b border-line">
@@ -210,6 +251,15 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
             <ArrowLeft size={18} className="text-muted" />
           </button>
           <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">My Events</h2>
+        </div>
+        <div className="px-4 pb-3 lg:max-w-[760px] lg:mx-auto">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+            <TabsList>
+              <TabsTrigger value="upcoming" data-events-tab="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="going" data-events-tab="going">Going</TabsTrigger>
+              <TabsTrigger value="past" data-events-tab="past">Past</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
@@ -224,20 +274,24 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{error}</p>
           </div>
-        ) : rows.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div className="text-center py-16 text-faint">
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No upcoming events</p>
-            <p className="text-sm mt-1">Events you can join will show up here.</p>
+            <p className="font-medium">
+              {tab === 'going' ? "You're not going to anything yet" : tab === 'past' ? 'No past events' : 'No upcoming events'}
+            </p>
+            <p className="text-sm mt-1">
+              {tab === 'going' ? 'Register for an event and it will show up here.' : tab === 'past' ? 'Events you attended will show up here.' : 'Events you can join will show up here.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {rows.map((r) => {
+            {visibleRows.map((r) => {
               const ticketed = !!r.ticket;
               const time = fmtTime(r.startMillis);
               return (
                 <div
-                  key={r.id}
+                  key={r.rowKey || r.id}
                   className={`rounded-2xl p-4 shadow-xs transition-colors ${
                     ticketed
                       ? 'bg-surface-raised ring-2'
@@ -513,6 +567,43 @@ const TicketModal: React.FC<{
 
   const status = statusLabel(t);
 
+  /**
+   * THE-379 (events remodel) — "Join link shown from 10 minutes before for
+   * online events." Independent of `awaitingPayment`: the structural decision
+   * THE-351 made for the door (an unconfirmed guest is still let in) extends
+   * the same way here — joining a call is not money changing hands.
+   */
+  const ev = t.event;
+  const canJoin = !!ev?.isOnline && !!ev?.onlineLink && isSafeOnlineLink(ev.onlineLink) && ev.startMillis != null
+    && Date.now() >= ev.startMillis - 10 * 60 * 1000
+    && (ev.endMillis == null || Date.now() <= ev.endMillis);
+
+  /** "Add to calendar" — a confirmed, non-waitlisted ticket only, same gate PublicEventRegistration uses. */
+  const canAddToCalendar = t.status !== 'waitlisted' && ev?.startMillis != null;
+  const addToCalendar = () => {
+    if (!ev || ev.startMillis == null) return;
+    const start = new Date(ev.startMillis);
+    const end = new Date(ev.endMillis ?? ev.startMillis + 60 * 60 * 1000);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Harvest//Event//EN', 'BEGIN:VEVENT',
+      `UID:${ev.title.replace(/\s+/g, '-')}-${start.getTime()}@theharvest.app`,
+      `DTSTAMP:${fmt(new Date())}`, `DTSTART:${fmt(start)}`, `DTEND:${fmt(end)}`,
+      `SUMMARY:${escape(ev.title)}`,
+      ev.description ? `DESCRIPTION:${escape(ev.description)}` : '',
+      ev.location ? `LOCATION:${escape(ev.location)}` : '',
+      'END:VEVENT', 'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ev.title.replace(/[^a-z0-9]/gi, '_') || 'event'}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-[400] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
@@ -582,6 +673,32 @@ const TicketModal: React.FC<{
               that promise is what section 1 of this ticket deleted. */}
           {!awaitingPayment && (
             <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
+          )}
+
+          {(canJoin || canAddToCalendar) && (
+            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+              {canJoin && (
+                <a
+                  href={ev!.onlineLink!}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-ticket-join-link
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white ${CONTROL_DENSITY.action}`}
+                  style={{ backgroundColor: BRAND }}
+                >
+                  <Globe size={13} /> Join
+                </a>
+              )}
+              {canAddToCalendar && (
+                <Button variant="outline"
+                  onClick={addToCalendar}
+                  data-ticket-add-to-calendar
+                  className={`h-auto min-h-11 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}
+                >
+                  <CalendarCheck size={13} /> Add to calendar
+                </Button>
+              )}
+            </div>
           )}
 
           <TicketPaymentPanel ticket={t} tenantName={tenantName} onChanged={onChanged} />

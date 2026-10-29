@@ -73,6 +73,9 @@ export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed';
 
 /** One event, reduced to what a grid cell and its day panel draw. */
 export interface MonthEvent {
+  readonly end?: Date | null;
+  readonly timeZone?: string | null;
+  readonly recurrence?: import('@/lib/events/recurrence').RecurrenceRule | null;
   readonly id: string;
   readonly title: string;
   /** Null for an event saved without a start — see {@link eventStart}. */
@@ -119,6 +122,9 @@ export const toMonthEvent = (data: Record<string, unknown>, id: string): MonthEv
   id,
   title: typeof data.title === 'string' ? data.title : '',
   start: eventStart(data.startDate),
+  end: eventStart(data.endDate),
+  timeZone: typeof data.timeZone === 'string' ? data.timeZone : null,
+  recurrence: (data.recurrence as MonthEvent['recurrence']) || null,
   status: STATUSES.includes(data.status as EventStatus) ? (data.status as EventStatus) : 'draft',
   location: typeof data.location === 'string' ? data.location : '',
   isOnline: data.isOnline === true,

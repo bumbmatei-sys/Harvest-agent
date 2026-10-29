@@ -408,7 +408,18 @@ describe('13b · the tab pair is a real target at 380px', () => {
     ]) {
       expect(screen, `the shipped tab bar no longer contains: ${line}`).toContain(line);
     }
-    // The old hand-sized TabsList is gone: PageTabs owns the 44px floor now.
-    expect(screen).not.toContain('<TabsList');
+    // ⚠️ NARROWED BY THE ADMIN EVENT DETAIL (BRIEF ITEM 3, EVENTS REMODEL),
+    // for the reason THE-308's own header gives about guards asserting their
+    // own diff: this used to be a blanket `not.toContain('<TabsList')`, true
+    // only because the List/Month pill was this file's one and only
+    // `TabsList` user. The detail screen now has a SECOND, unrelated one —
+    // Overview/Registrations/Payments pending — so the claim narrows from
+    // "no TabsList at all" to the thing it actually guards: the OLD
+    // hand-sized List/Month pair never comes back INSIDE a TabsList. A
+    // TabsTrigger whose value is 'list' or 'month' is that regression,
+    // wherever it is; the detail screen's TabsTrigger values ('overview',
+    // 'registrations', 'pending') are disjoint from it.
+    expect(screen).not.toMatch(/<TabsTrigger\s+value=["']list["']/);
+    expect(screen).not.toMatch(/<TabsTrigger\s+value=["']month["']/);
   });
 });

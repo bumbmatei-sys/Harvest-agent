@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * THE-351 · 🔴 THE RENDERED SURFACES — the disclaimer, the provider picker, the
@@ -159,7 +159,11 @@ function attendeeRow(root: ParentNode, name: string): HTMLElement {
 let mounted: { container: HTMLElement; unmount: () => void } | null = null;
 async function screen() {
   mounted = await mountScreen(<AdminEvents />);
-  return mounted.container;
+  // THE-379 (events remodel) — see the identical note in
+  // THE-345.paid-events.test.tsx: the create/edit form moved into a shadcn
+  // Dialog, which portals to `document.body`, a strict superset of
+  // `mounted.container`.
+  return document.body;
 }
 async function createForm(): Promise<HTMLElement> {
   const c = await screen();
@@ -172,6 +176,11 @@ async function detail(): Promise<HTMLElement> {
     .filter((d) => /Autumn Retreat/.test(d.textContent ?? ''));
   await click(rows[rows.length - 1] as HTMLElement);
   await settle();
+  // THE-379 (events remodel) — the attendee list and Export CSV moved behind
+  // the detail screen's own "Registrations" tab (Overview/Registrations/
+  // Payments pending); every caller of this helper wants the attendee list.
+  await click(buttonContaining(c, 'Registrations'));
+  await settle();
   return c;
 }
 
@@ -179,6 +188,17 @@ beforeEach(() => {
   stored.length = 0;
   branding.current = { churchName: 'Grace Chapel', givingLinks: GIVING_LINKS };
 });
+
+/**
+ * THE-379 (events remodel) — this suite had no `afterEach` at all: harmless
+ * while `screen()` returned the per-test `mounted.container` (a fresh div
+ * each test never looked outside of), but once the create/edit form became a
+ * Dialog and `screen()` started returning `document.body` so it could reach
+ * the portal, an unmounted PREVIOUS test's DOM started leaking into the
+ * NEXT test's queries. Unmounting here matches the identical `afterEach` in
+ * the two sibling suites (THE-345.paid-events, THE-355.confirmed-wording).
+ */
+afterEach(() => { mounted?.unmount(); mounted = null; });
 
 /* ═══ 1 / 3 · the creation form ═══════════════════════════════════════════ */
 
@@ -195,7 +215,15 @@ describe('1+3 · the event form: disclaimer, provider picker, ticket price', () 
       .toBe('alert');
   });
 
-  it('🔴 offers exactly the church’s own links as checkboxes, in table order', async () => {
+  /**
+   * 🔴 THE-379 (events remodel) — ONE LINK, NOT A SUBSET, ON THIS SCREEN ONLY.
+   * Matei: "make the admin create form pick ONE link." The campaign giving
+   * widget keeps the checkbox picker (several links is still correct there) —
+   * see `campaign-payment-links*.test.tsx`, unchanged. This test now asserts
+   * a single-select radio list instead of checkboxes; the structural claims
+   * (exactly the church's own links, table order, 44px floor) are unchanged.
+   */
+  it('🔴 offers exactly the church’s own links as a single-select list, in table order', async () => {
     const c = await createForm();
     const picker = c.querySelector('[data-event-provider-picker]');
     expect(picker, 'the provider picker is missing').not.toBeNull();
@@ -206,10 +234,12 @@ describe('1+3 · the event form: disclaimer, provider picker, ticket price', () 
     expect(offered).toEqual(['paypal', 'zelle', 'revolut']);
     // And a provider the church does NOT publish is not offered.
     expect(offered).not.toContain('wise');
-    // Every option is a real checkbox with a ≥44px hit area below `sm`.
+    // Every option is a real radio button with a ≥44px hit area below `sm`.
     for (const opt of picker!.querySelectorAll('[data-provider-option]')) {
       expect(opt.className, 'a provider row is under the 44px tap floor')
         .toMatch(/min-h-11/);
+      expect(opt.querySelector('[data-slot="radio-group-item"]'),
+        'a provider row has no radio control').not.toBeNull();
     }
   });
 
@@ -223,9 +253,9 @@ describe('1+3 · the event form: disclaimer, provider picker, ticket price', () 
     fill(c.querySelector('input') as HTMLInputElement, 'Autumn Retreat');
     await settle();
 
-    // `Checkbox` is base-ui's, which renders a `role="checkbox"` button.
-    const paypalBox = c.querySelector('[data-provider-option="paypal"] [data-slot="checkbox"]');
-    expect(paypalBox, 'the PayPal option has no checkbox').not.toBeNull();
+    // `RadioGroupItem` is base-ui's, which renders a `role="radio"` button.
+    const paypalBox = c.querySelector('[data-provider-option="paypal"] [data-slot="radio-group-item"]');
+    expect(paypalBox, 'the PayPal option has no radio control').not.toBeNull();
     await click(paypalBox as HTMLElement);
     await settle();
 

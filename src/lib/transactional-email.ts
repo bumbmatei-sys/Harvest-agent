@@ -170,6 +170,8 @@ export async function sendTransactionalEmail(opts: {
   churchName?: string;
   /** Where a reply should go, when the caller knows. */
   replyTo?: string;
+  /** Stable across retries of the same notice, including an interrupted response. */
+  idempotencyKey?: string;
 }): Promise<SendEmailResult> {
   const to = typeof opts.to === 'string' ? opts.to.trim() : '';
   if (!to) return { ok: false, error: 'No email address.', code: 'no_recipient' };
@@ -187,7 +189,7 @@ export async function sendTransactionalEmail(opts: {
       subject: opts.subject,
       text: opts.text,
       ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
-    });
+    }, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined);
     // ⚠️ Resend REPORTS rather than throws for a rejected message, so a caller
     // that only wrapped this in try/catch would read a rejection as a success.
     if (error) {

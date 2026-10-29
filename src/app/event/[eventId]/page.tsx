@@ -36,6 +36,38 @@ export default async function PublicEventPage({
   // Serialize Firestore Timestamps to ISO strings so the client component can
   // render dates without pulling in firebase types.
   const toIso = (ts: any): string | null => (ts?.toDate ? ts.toDate().toISOString() : null);
+
+  // THE-379 (events remodel) — spots left, for the ticket type a fresh visitor
+  // lands on. Computed the SAME way the submit route counts capacity (seats,
+  // confirmed only), so the number on this page can never promise more than
+  // the route that actually holds the seat will honour. Recurring events are
+  // intentionally out of scope here (a visitor has not picked a run yet) —
+  // the submit route still enforces the real per-run capacity regardless of
+  // what this page shows.
+  let spotsLeftByTicket: Record<string, number> | null = null;
+  if (!data.recurrence && Array.isArray(data.ticketTypes) && data.ticketTypes.some((ticket: { capacity?: number | null }) => ticket.capacity != null)) {
+    const regSnap = await adminDb
+      .collection('tenants').doc(tenant.id)
+      .collection('registrations')
+      .where('eventId', '==', eventId)
+      .select('status', 'ticketTypeId', 'quantity')
+      .orderBy('__name__')
+      .limit(5001)
+      .get();
+    if (regSnap.docs.length > 5000) throw new Error('Event capacity read exceeds the supported limit');
+    const soldByTicket: Record<string, number> = {};
+    for (const d of regSnap.docs) {
+      const r = d.data();
+      if (r.status !== 'confirmed') continue;
+      soldByTicket[r.ticketTypeId] = (soldByTicket[r.ticketTypeId] || 0) + (Number(r.quantity) || 1);
+    }
+    spotsLeftByTicket = {};
+    for (const t of data.ticketTypes) {
+      if (t.capacity == null) continue;
+      spotsLeftByTicket[t.id] = Math.max(0, t.capacity - (soldByTicket[t.id] || 0));
+    }
+  }
+
   const event = {
     id: snap.id,
     title: data.title || 'Event',
@@ -55,6 +87,16 @@ export default async function PublicEventPage({
     // discountCodes are intentionally NOT exposed to the client — codes are
     // validated server-side via /api/event-registration/apply-discount.
     hasDiscounts: Array.isArray(data.discountCodes) && data.discountCodes.length > 0,
+    // THE-379 (events remodel) — all optional, all absent on every event that
+    // predates this feature, so the client component's existing render for
+    // those events is untouched.
+    recurrence: data.recurrence || null,
+    registrationCutoffHours: data.registrationCutoffHours ?? null,
+    registrationDeadline: toIso(data.registrationDeadline),
+    timeZone: data.timeZone || null,
+    registrationQuestions: Array.isArray(data.registrationQuestions) ? data.registrationQuestions : [],
+    openToAnyone: data.openToAnyone ?? true,
+    spotsLeftByTicket,
   };
 
   const branding = (tenant as any).config || {};
