@@ -35,6 +35,26 @@
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "4e2bc58a1e7ef001f9d501f4c07c069d7797e92ef233c48d0c1fc07650b1871c",
       "why": "PR #560 review corrects the ThemePicker floor-register explanation for outline theme-card Buttons and the ghost icon delete Button with explicit mobile and desktop target floors. The sorted inventory and every assertion are unchanged."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "b0c74f86db33021a19053d9a8d6ee70198a74843cace89e3c5ad3bbedf6b4710",
+      "why": "PR #560 commit 64293d6 records the /dev/email-themes screenshot harness as a development preview: the guard checks its existence, production notFound call and exclusion from public analytics before excluding it from the public route inventory. No existing route checks were removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "ff55c35787da775273b88aa1b23386a699ecfe28ac9779b1209275f7192a66d7",
+      "why": "PR #560 merged with main #557: retain the sign-up builder and public form adopter rows from main alongside the newsletter ThemeWarning, Box and IssueHeader adopters, including b2da82e's radio-group explanation. All prior rows and assertions remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "d8ab9384519628f9f1cc9ea10d693b45619c3dc2f984667e62379f7036c7e2ad",
+      "why": "PR #560 merged with main #557: retain FreeMemberShell and the sign-up page phone-floor inventory from main alongside ThemePicker and ThemeSettingsPanels, including b2da82e's updated Button-floor explanation. Every existing inventory row and assertion is preserved."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "b121ed71409f6e1887f5e21140738e8381fff94805126fa75d22be5dccda3101",
+      "why": "PR #560 merged with main #557: retain main's /s/[handle] analytics route coverage alongside 64293d6's /dev/email-themes preview checks. The preview must still call notFound in production and remain outside public analytics; all route assertions are preserved."
     }
   ]
 }
