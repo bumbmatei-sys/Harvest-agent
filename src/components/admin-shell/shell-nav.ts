@@ -161,6 +161,7 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     icon: CalendarCheck,
     items: [
       { id: 'forms', label: 'Forms', icon: ClipboardList },
+      { id: 'signup-pages', label: 'Sign-up pages', icon: ClipboardList },
       { id: 'events', label: 'Events', icon: CalendarCheck },
       { id: 'checkin', label: 'Check-in', icon: QrCode },
     ],

@@ -285,7 +285,7 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
     // moved to 'free', and all three are caps free genuinely has a value for
     // (500 contacts, 1 course, 1 admin) rather than capabilities it lacks.
     const EXPECTED: Record<keyof PlanFeatures, TenantPlan | null> = {
-      blog: 'church', newsFeed: 'church', aiChat: null, aiKnowledge: 'ministry', map: 'ministry',
+      adminDashboard: 'church', createCommunity: 'church', blog: 'church', newsFeed: 'church', aiChat: null, aiKnowledge: 'ministry', map: 'ministry',
       maxChurches: 'church', maxContacts: 'free', maxCourses: 'free', maxAdmins: 'free',
       maxProducts: 'church', maxCommunities: 'church', aiMessagesPerMonth: 'church',
       customDomain: 'ministry', customBranding: 'ministry', newsletterAutomation: 'ministry',
@@ -340,7 +340,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
 
   const EXPECTED: Record<PricedPlan, PlanFeatures> = {
     church: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
+      adminDashboard: true, createCommunity: true, newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
       maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 5, maxAdmins: 2,
       maxProducts: 3, maxCommunities: 1, aiMessagesPerMonth: 300,
       customDomain: false, customBranding: false, newsletterAutomation: false, automatedNewsletter: false,
@@ -350,7 +350,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       givingStatements: false, pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     ministry: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
+      adminDashboard: true, createCommunity: true, newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
       maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 15,
       maxProducts: UNLIMITED_CAP, maxCommunities: UNLIMITED_CAP, aiMessagesPerMonth: 5000,
       customDomain: true, customBranding: true, newsletterAutomation: true, automatedNewsletter: true,

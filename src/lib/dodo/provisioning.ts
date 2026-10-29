@@ -158,6 +158,7 @@ export type DodoProvisioningOutcome =
   | { readonly outcome: 'created'; readonly tenantId: string; readonly plan: TenantPlan; readonly period: BillingPeriod }
   /** Not a new-ministry signup. Correct and complete: do nothing. */
   | { readonly outcome: 'not-a-signup' }
+  | { readonly outcome: 'refused'; readonly tenantId: string; readonly reason: string }
   /** This subscription, or this user, already has a tenant. */
   | { readonly outcome: 'already-provisioned'; readonly tenantId: string };
 
@@ -281,6 +282,20 @@ export async function provisionTenantFromDodoSubscription(
   const existingUserSnap = await adminDb.collection('users').doc(meta.userId).get();
   const existingTenantId = existingUserSnap.exists ? existingUserSnap.data()?.tenantId : null;
   if (existingTenantId) {
+    const tenantSnap = await adminDb.collection('tenants').doc(existingTenantId).get();
+    if (!tenantSnap.exists) {
+      throw new DodoProvisioningError('tenant-not-found', `Existing tenant ${existingTenantId} does not exist.`);
+    }
+    if (tenantSnap.data()?.plan === 'free') {
+      const result = await handleFirstSubscriptionAttach({
+        ...sub,
+        metadata: { ...readDodoMetadata(sub.metadata), newTenant: 'false', firstSubscription: 'true', tenantId: existingTenantId },
+      });
+      if (result.outcome === 'attached') return { outcome: 'created', tenantId: existingTenantId, plan, period };
+      if (result.outcome === 'already-attached') return { outcome: 'already-provisioned', tenantId: existingTenantId };
+      if (result.outcome === 'refused') return result;
+      throw new DodoProvisioningError('upgrade-refused', `Could not upgrade tenant ${existingTenantId}: ${result.outcome}`);
+    }
     console.log(`⏭️ [dodo] User ${meta.userId} already has tenant ${existingTenantId}; skipping new-tenant build`);
     return { outcome: 'already-provisioned', tenantId: existingTenantId };
   }
@@ -460,6 +475,11 @@ export async function handleDodoSubscriptionActive(
   }
 
   const result = await provisionTenantFromDodoSubscription(payload);
+
+  if (result.outcome === 'refused') {
+    // Reported by the first-subscription handler; do not sync or retry.
+    return { outcome: 'already-provisioned', tenantId: result.tenantId };
+  }
 
   if (result.outcome === 'already-provisioned') {
     // Failure to restore must NOT turn a successful provisioning outcome into a

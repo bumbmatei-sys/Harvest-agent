@@ -903,6 +903,8 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/signup-pages/SignupPageBuilder.tsx', ticket: '#557', why: 'The builder uses the existing textarea for the page message and switches for the enabled and required settings on each field.' },
+  { file: 'src/components/signup-pages/PublicSignupForm.tsx', ticket: '#557', why: 'The public form uses the existing textarea for prayer requests, preserving the shared accessible field styling and validation behavior.' },
   { file: 'src/components/community/AdminPostComposer.tsx', ticket: 'THE-555', why: 'The admin composer adopts shared Textarea and ToggleGroup primitives for post text and mutually exclusive Post or Poll modes; shared menu items own the attachment picker.' },
   { file: 'src/components/community/MemberPostComposer.tsx', ticket: 'THE-999999', why: 'The member post composer uses the shared textarea primitive for an accessible short text entry field.' },
   { file: 'src/components/community/NewGroupDialog.tsx', ticket: 'THE-999999', why: 'The new group dialog uses the shared checkbox primitive for selecting members of an explicit group roster.' },

@@ -416,7 +416,7 @@ describe('a subscription created by first-subscription records the same term as 
     it(`records the same product for ${term} whichever path created it`, async () => {
       // The free-upgrade path.
       currentDb = makeDb();
-      currentDb.store.set('tenants/upgraded', { plan: 'free', status: 'active' });
+      currentDb.store.set('tenants/upgraded', { plan: 'free', status: 'active', ownerId: 'user_up' });
       currentDb.store.set('tenant_private/upgraded', { adminEmails: ['a@b.c'] });
       currentDb.store.set('users/user_up', { tenantId: 'upgraded', plan: 'free' });
       const attach = await attachFirstSubscriptionToTenant({

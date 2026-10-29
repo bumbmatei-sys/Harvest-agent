@@ -50,6 +50,7 @@ import { CommunityEntryDialog } from './community/CommunityEntryDialog';
 import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
 import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
 import UserEvents from './UserEvents';
+import { FreeMemberShell } from './community/FreeMemberShell';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -98,9 +99,10 @@ const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 interface MainAppProps {
   onNavigate: (page: string) => void;
   isAdminPreview?: boolean;
+  accountTenantId?: string | null;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, accountTenantId }) => {
   const { tenantPlan, currentUser } = useAppStore();
   // THE-141 - the member's own photo, from the Firestore user document.
   const { photoURL: memberPhotoURL } = useMemberPhoto();
@@ -695,6 +697,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
       <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #e6b325)', borderTopColor: 'transparent' }}></div>
     </div>
   );
+
+  if (!tenantId && resolvedPlan && getEffectiveFeatures(resolvedPlan, tenantAddons).adminDashboard === false) {
+    return <FreeMemberShell uid={currentUser?.uid} tenantId={accountTenantId} email={currentUser?.email} canCreateCommunity={getEffectiveFeatures(resolvedPlan, tenantAddons).createCommunity} />;
+  }
 
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
   if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;

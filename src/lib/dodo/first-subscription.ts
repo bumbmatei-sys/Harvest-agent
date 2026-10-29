@@ -100,6 +100,10 @@ export async function attachFirstSubscriptionToTenant(
   if (!tenantSnap.exists) {
     return { outcome: 'refused', tenantId: meta.tenantId, reason: 'tenant-not-found' };
   }
+  if (tenantSnap.data()?.plan === 'free' && tenantSnap.data()?.ownerId !== meta.userId) {
+    console.warn(`[dodo] First subscription refused for tenant ${meta.tenantId}: buyer is not the owner`);
+    return { outcome: 'refused', tenantId: meta.tenantId, reason: 'buyer-is-not-owner' };
+  }
   const priv = privateSnap.exists ? (privateSnap.data() ?? {}) : {};
   const existingSub = str(priv.dodoSubscriptionId);
 
@@ -142,7 +146,7 @@ export async function attachFirstSubscriptionToTenant(
 
   const now = new Date().toISOString();
   const batch = adminDb.batch();
-  batch.update(tenantRef, { plan, addons, updatedAt: now });
+  batch.update(tenantRef, { plan, addons, setupCompleted: true, updatedAt: now });
   batch.set(
     privateRef,
     {

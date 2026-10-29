@@ -85,9 +85,17 @@ export async function POST(request: NextRequest) {
     // error" shape AGENTS.md forbids, in the one module whose whole job is
     // refusing to write against a non-concrete tenant. No coercion, ever.
     const applicantTenantId: string | null =
-      typeof rawApplicantTenantId === 'string' && rawApplicantTenantId !== ''
+      typeof rawApplicantTenantId === 'string' && rawApplicantTenantId.trim() !== ''
         ? rawApplicantTenantId
         : null;
+    if (applicantTenantId) {
+      const tenant = await adminDb.collection('tenants').doc(applicantTenantId).get();
+      if (!tenant.exists) return NextResponse.json({ error: MEMBER_CAP_UNAVAILABLE_MESSAGE, code: MEMBER_CAP_UNAVAILABLE_CODE }, { status: 503 });
+      const data = tenant.data();
+      if (data?.plan === 'free' && data.ownerId !== uid) {
+        return NextResponse.json({ error: 'Free accounts do not accept members' }, { status: 403 });
+      }
+    }
     // D3 — "is this person already a member?" is answered from the Auth custom
     // claim, NOT the `users` doc: the doc is client-writable (rules:144), the
     // claim is not.

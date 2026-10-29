@@ -1188,6 +1188,8 @@ it('records chart, table and all 11 progress adopters, while pagination remains 
       ...PHASE_1_TABLE_ADOPTERS,
       ...NEWSLETTER_TABLE_ADOPTERS,
       ...SETTINGS_BILLING_TABLE_ADOPTERS,
+      // #557: Sign-up page submissions are displayed in the shared table.
+      'src/components/signup-pages/SubmissionsTable.tsx',
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));

@@ -418,3 +418,18 @@ describe('the existing auth checks still answer first', () => {
     expect(h.userDocSet).not.toHaveBeenCalled();
   });
 });
+
+
+describe('#557 Free tenant membership', () => {
+  it('refuses a non-owner even with an existing claim', async () => {
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', ownerId: 'owner' }) });
+    h.getUser.mockResolvedValue({ customClaims: { tenantId: 'gracechurch' } });
+    expect((await POST(post())).status).toBe(403);
+    expect(h.setCustomClaims).not.toHaveBeenCalled();
+  });
+  it('allows the owner', async () => {
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', ownerId: APPLICANT }) });
+    expect((await POST(post())).status).toBe(200);
+    expect(h.setCustomClaims).toHaveBeenCalledWith(APPLICANT);
+  });
+});

@@ -61,7 +61,7 @@ const {
     },
   })),
   setDoc: vi.fn(async () => {}),
-  getDocMock: vi.fn(async (): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> =>
+  getDocMock: vi.fn(async (_ref?: { __path: string }): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> =>
     ({ exists: () => false, data: () => ({}) })),
   updateDocMock: vi.fn(async () => {}),
   tenantCtx: {
@@ -182,7 +182,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
   clearCookies();
-  getDocMock.mockResolvedValue({ exists: () => false, data: () => ({}) });
+  getDocMock.mockImplementation(async (ref) => ref?.__path === 'tenants/kingdom-living'
+    ? { exists: () => true, data: () => ({ plan: 'church', subdomain: 'kingdom-living' }) }
+    : { exists: () => false, data: () => ({}) });
   fetchMock = vi.fn(async (url: string) => {
     if (typeof url === 'string' && url.includes(CAP_URL)) {
       return { ok: true, status: 200, json: async () => ({ canAccept: true }) };
@@ -509,5 +511,25 @@ describe('11 · an iPhone home-screen app is told why Google cannot open', () =>
     await pressGoogle();
     expect(buttonLabelled('Sign up with Google')!.disabled,
       'loading was never cleared — the screen still looks like it is working').toBe(false);
+  });
+});
+
+
+describe('#557 rejected tenant hosts', () => {
+  it.each([
+    ['missing', false, {}],
+    ['free', true, { plan: 'free', subdomain: 'kingdom-living' }],
+    ['hostless', true, { plan: 'church' }],
+    ['mismatched', true, { plan: 'church', subdomain: 'other' }],
+  ])('blocks password and Google signup on a %s host', async (_label, exists, data) => {
+    getDocMock.mockImplementation(async (ref) => ref?.__path === 'tenants/kingdom-living'
+      ? { exists: () => exists, data: () => data }
+      : { exists: () => false, data: () => ({}) });
+    setURL(`${TENANT_HOST}?signup=1`);
+    await renderPage();
+    await submitSignupForm();
+    await pressGoogle();
+    expect(createUser).not.toHaveBeenCalled();
+    expect(setDoc).not.toHaveBeenCalled();
   });
 });

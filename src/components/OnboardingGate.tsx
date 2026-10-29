@@ -188,7 +188,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
             const t = tSnap.exists() ? tSnap.data() : null;
             // Only a brand-new tenant (explicit false) gates first-run, and only
             // for its admin. Legacy tenants (no field) and members pass through.
-            if (!t || t.setupCompleted !== false) { setStatus('ready'); return; }
+            if (!t || t.setupCompleted !== false || (t.plan && t.plan !== 'free' && !t.subdomain)) { setStatus('ready'); return; }
             if (isTenantAdminRole(role)) { setStatus('first-run'); return; }
             // Roster fallback: the adminEmails roster moved off the public
             // tenant doc to the server-only tenant_private doc, so ask the API.

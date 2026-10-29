@@ -101,6 +101,8 @@ type Registry = Record<keyof PlanFeatures, { gates: readonly string[] } | { flag
  * The gate is real and is covered by its own tests; see the PR body.
  */
 const FLAG_SURFACES: Registry = {
+  adminDashboard: { gates: ['App.tsx', 'components/MainApp.tsx'] },
+  createCommunity: { gates: ['components/MainApp.tsx'] },
   // ─── member app ───────────────────────────────────────────────────────────
   blog:          { gates: ['components/MainApp.tsx', 'components/AdminDashboard.tsx'] },
   newsFeed:      { gates: ['components/MainApp.tsx', 'app/post/[postId]/page.tsx', 'components/SavedItems.tsx'] },

@@ -2,6 +2,10 @@ import { TenantAddons, TenantPlan, PricedPlan, LegacyPlanId } from '../types/ten
 import { canonicalPlanId } from './plan-id';
 
 export interface PlanFeatures {
+  /** Access to the administrative dashboard. */
+  adminDashboard: boolean;
+  /** Ability to create a community. */
+  createCommunity: boolean;
   /** Show blog tab in user app + blog management in admin */
   blog: boolean;
   /**
@@ -340,6 +344,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // exact defect that removed `churchDirectory`, `customBackground` and
   // `publicCalendar` from this interface.
   free: {
+    adminDashboard: false,
+    createCommunity: false,
     blog: false,
     // 🔴 FALSE — THE ONLY TIER WITHOUT THE FEED (THE-205, founder-corrected).
     // "Literally the only thing is discipleship, the discipleship page for the
@@ -494,6 +500,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // tier: it gates the live RAG chat, which is an add-on (THE-253) and must not
   // be re-sold as included.
   church: {
+    adminDashboard: true,
+    createCommunity: true,
     blog: true,
     newsFeed: true,
     aiChat: false,
@@ -553,6 +561,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // is something an admin can fill, and the chat that answers from it is the
   // add-on until the assistant ships.
   ministry: {
+    adminDashboard: true,
+    createCommunity: true,
     blog: true,
     newsFeed: true,
     aiChat: false,
