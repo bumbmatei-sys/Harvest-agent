@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/api-auth';
+import { isActiveCommunityMember } from '@/lib/community-membership-server';
 import { adminDb } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ const MAX_COMMENT_LENGTH = 500;
  * Members NEVER write this subcollection from the client (the read rule allows
  * member reads only; writes stay admin/permission-gated). Routing the write
  * through this authed route is what keeps the rules surface small. Any
- * authenticated viewer may post; the global middleware rate-limits /api/* per IP.
+ * active community member may post; the global middleware rate-limits /api/* per IP.
  */
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(request);
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   const { tenantId } = body;
   const name = (body.name || 'Anonymous').trim().slice(0, 120);
   const text = (body.text || '').trim();
-  if (!tenantId || !text) {
+  if (!tenantId || tenantId.includes('/') || !text) {
     return NextResponse.json({ error: 'tenantId and text are required' }, { status: 400 });
   }
   if (text.length > MAX_COMMENT_LENGTH) {
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (!authResult.isSuperAdmin && !(await isActiveCommunityMember(authResult.uid, tenantId))) {
+      return NextResponse.json({ error: 'Community membership required.' }, { status: 403 });
+    }
     const currentRef = adminDb.collection('tenants').doc(tenantId).collection('livestream').doc('current');
     const current = await currentRef.get();
     const sessionId = current.data()?.sessionId;

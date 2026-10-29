@@ -40,9 +40,12 @@ describe('community membership model', () => {
     expect(next).toMatchObject({ source: 'discover', status: 'active', joinedAt: 'new', leftAt: null, consentAt: 'new', updatedAt: 'new', answers: { q: 'yes' }, answeredAt: 'old', rulesAcceptedVersion: 3 });
     expect(previous.joinedAt).toBe('old');
   });
+  it('migrates the old pending marker before rewriting retained answers', () => {
+    expect(buildCommunityMember({ uid: 'u', tenantId: 't', source: 'link', now: 'now', previous: { answers: { __community_questions_pending__: 'true' } } }).answers).toEqual({ communityQuestionsPending: 'true' });
+  });
   it('keeps missing onboarding answers pending for the existing entry flow', () => {
     const member = buildCommunityMember({ uid: 'u', tenantId: 't', source: 'link', now: 'now' });
-    expect(member.answers).toEqual({ __community_questions_pending__: 'true' });
+    expect(member.answers).toEqual({ communityQuestionsPending: 'true' });
     expect(member.rulesAcceptedVersion).toBe(0);
   });
 });

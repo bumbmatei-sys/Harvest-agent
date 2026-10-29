@@ -35,6 +35,16 @@ export function isCommunityTenantId(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value);
 }
 
+// Firestore reserves field names beginning and ending with double underscores.
+export const COMMUNITY_QUESTIONS_PENDING = 'communityQuestionsPending';
+export const LEGACY_QUESTIONS_PENDING = '__community_questions_pending__';
+export function writableCommunityAnswers(answers: Record<string, string>): Record<string, string> {
+  const result = { ...answers };
+  if (result[LEGACY_QUESTIONS_PENDING] === 'true') result[COMMUNITY_QUESTIONS_PENDING] = 'true';
+  delete result[LEGACY_QUESTIONS_PENDING];
+  return result;
+}
+
 /** An explicit leave overrides legacy membership, including a stale tenant claim. */
 export function isActiveMember(
   member: { status?: unknown } | null | undefined,
@@ -55,7 +65,7 @@ export function buildCommunityMember<T>(input: {
     uid, tenantId, status: 'active', source: normaliseSource(source),
     joinedAt: now, leftAt: null, consentAt: now, updatedAt: now,
     rulesAcceptedVersion: rulesAcceptedVersion ?? previous?.rulesAcceptedVersion ?? 0,
-    answers: answers ?? previous?.answers ?? { __community_questions_pending__: 'true' },
+    answers: writableCommunityAnswers(answers ?? previous?.answers ?? { [COMMUNITY_QUESTIONS_PENDING]: 'true' }),
     answeredAt: answers !== undefined ? now : previous?.answeredAt ?? now,
   };
 }

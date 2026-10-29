@@ -6,6 +6,7 @@ import { adminAuth, adminDb } from './firebase-admin';
 import { isSuperAdminEmail } from '@/utils/super-admins';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { isTenantAdminRole } from './roles';
+import { isActiveCommunityMember } from './community-membership-server';
 
 export interface AuthenticatedUser {
   uid: string;
@@ -153,6 +154,25 @@ export async function requireTenantMember(
     return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
   }
   return userOrResponse;
+}
+
+/** Community content membership is independent of the account's staff tenant. */
+export async function requireCommunityMember(
+  request: NextRequest,
+  tenantId: string,
+): Promise<AuthenticatedUser | NextResponse> {
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+  // Preserve the existing platform moderation grant independently of membership.
+  if (user.isSuperAdmin) return user;
+  try {
+    if (!(await isActiveCommunityMember(user.uid, tenantId))) {
+      return NextResponse.json({ error: 'Community membership required' }, { status: 403 });
+    }
+    return user;
+  } catch {
+    return NextResponse.json({ error: 'Could not check community membership' }, { status: 503 });
+  }
 }
 
 /**

@@ -1,9 +1,9 @@
-# Community join and leave, chunk (a)
+# Community membership, chunks (a) and (b)
 
 The join/leave APIs support membership in many communities without moving
 `users/{uid}.tenantId` or changing Auth claims. No URL or membership depends on a
-subdomain. Existing surfaces still use their old membership checks until chunk (b),
-and UI/index consumption is reserved for chunk (d).
+subdomain. Community content now uses active membership, independently of the account tenant.
+The existing community list consumes the reverse index; UI redesign remains chunk (d).
 
 ## Records
 
@@ -24,8 +24,8 @@ duplicated into either record.
 An explicit status always wins. Without status (including no entry document),
 legacy membership requires the actual `users/{uid}.tenantId` to match; a token
 claim or an unrelated onboarding document is insufficient. Active legacy joins
-remain no-ops, so they do not backfill the reverse index. Chunk (d) must combine
-the index with the legacy primary tenant until a separate backfill is authorised.
+remain no-ops, so they do not backfill the reverse index. The client combines
+the index with the legacy primary tenant and rechecks member documents until a separate backfill is authorised.
 Leaving such a legacy member creates an explicit `left` marker; the index uses
 `joinedAt: null` when no historical timestamp exists, and no consent is fabricated.
 
@@ -42,7 +42,7 @@ Leaving such a legacy member creates an explicit `left` marker; the index uses
 - An already active membership returns 200 without changing records. New/rejoin
   requests must accept the current rules when enabled and supply required
   onboarding answers when enabled. Omitted onboarding fields retain prior values;
-  a new member without answers retains the existing pending-questions sentinel
+  a new member without answers retains the legal `communityQuestionsPending` answer marker
   so the old entry flow can ask questions enabled later.
 - `POST /api/community/leave`: JSON `{ tenantId }`. Marks active memberships left;
   an absent/already-left membership returns 200 without writes. Owners, scoped
@@ -83,9 +83,28 @@ and owners may get/list their tenant's member documents; unrelated members and
 foreign tenant admins are denied. The per-user index permits only self get/list
 and no client writes, including admin writes.
 
-`isActiveCommunityMember(tenantId)` is introduced only for member onboarding
-writes. Other collection rules are unchanged for chunk (b). This chunk does not
-give joined users access to all existing community surfaces yet.
+`isActiveCommunityMember(tenantId)` gates community member operations: posts,
+comments, reactions/RSVPs, the communal prayer wall, channels/messages, DMs,
+community settings/reviews and livestream chat reads. Existing staff moderation
+and platform grants remain independent. An explicit leave overrides legacy
+membership and stale token claims. Author-only delete paths also require active
+membership. The server's `requireCommunityMember` and transactional review recheck
+use `community-membership-server.ts`, which delegates to `isActiveMember`.
+
+The community admin directory/count unions primary users and active member docs,
+deduplicates and excludes explicit leaves. Its existing settings endpoint exposes
+only directory fields, with foreign staff roles mapped to member. Full user docs,
+CRM, finance, billing, course material, service plans and event registrations keep
+their old tenant/role checks. Public events retain their existing authenticated
+read policy; there is no separate community event collection. New membership
+alone confers no staff or money authority.
+
+TenantContext continues selecting the host tenant independently of the account's
+primary tenant. Existing community links therefore open joined communities without
+rewriting user data or claims. The Free shell lists joined communities too; its owned Free personal workspace
+without a subdomain is not a community card. Both
+pending-marker spellings are read; all writes use the legal spelling, and question
+submission removes both. The join API rejects reserved answer field names.
 
 `firestore.rules` auto-deploys on merge. Founder approval is still required before
 merging/shipping these exact rules changes; no deployment is part of this work.

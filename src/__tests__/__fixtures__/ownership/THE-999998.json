@@ -96,6 +96,221 @@
       "file": "src/app/api/community/join/route.test.ts",
       "digest": "02643d21e9833d29659a49a7a1cab264a5b242c63a99d64f63c78b13bf2d3619",
       "why": "The join route fixture now models Firestore recursive map merging; mutation proves the rejoin regression test rejects retaining the pending marker after answers are submitted."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "dda5ac9f15d4b445e5755f836d628b8363bad519e8893953854ed3c242c2efd6",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "1614103205f1a0de3286205e898d2a53ed261c6373824aace11aa09f77cc3cb4",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "7a9acd74f255739da106a81c7a2bf437999383e5c3224fbf80359ace82edbbb0",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.test.ts",
+      "digest": "f52deb650cb7df3d8f47bda68d3b089529bb2e8eed818a284a4b5829a28393cb",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "c228ccd402467ca83491d90acdab4dcaf33bf3b0c78430e58d9faa43cb2c768d",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "0b7c7b1f4174fd7b669e86ffe25ab4ec69aaeb23863f52d721dc472203ef23a9",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "6bb593520bf43bdad1aa34a939e4d72b38fe68649f23a76a7e05de1bf664abae",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "853f241fbd4fcbc31f483106314fc42d7c0e0cce92c8a814fcafadd480b44adf",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "5a71df557b579bf54b7636c61a05c1a2686263b47a4e83a6e1c70ca1c0305a01",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/livestream/comment/__tests__/route.test.ts",
+      "digest": "286d75ea0e58594e9603b0edf26f094f78446bafad0ccebbc7d01d4099a90201",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/livestream/comment/route.ts",
+      "digest": "e476a82a81da4a58c8f33cae4735ac849d7d91b07e3e4482cdf9dcd2fb05ca88",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "1938b833b75cc6109cb7e91fd6dc7c241515829b63ba04265229f052197e0c54",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "8f56507a08e98d184a0605f42b6b2f9c423d7ee57f2a9ca2d289ee2d75524cd9",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "aeec6b55897de5e2cb93cde31387d735d78db4069c59280bc737f602b00bd666",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "3a49093eaecf53a98dd84d5d6e179158d0d71fbac26c2789a57b2c70f39beaac",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.tsx",
+      "digest": "67f607a37477b857813eb4bda465abe2a573adca766c1cc48f9a51a6aa91f138",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/OnboardingAnswers.tsx",
+      "digest": "2e2854b79d5a6233c5c061d3692b0858be8ef19a7f182b1f79d905f73850efa7",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "f329a9fb451566055e98185a4f3cd1a4ee080eadd67949b14927cd24a436181d",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "a6449e3757c9a9f6e771ddd773b6f8c7cc36fb595b10db295d3254eefdb7ab1e",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/api-auth.ts",
+      "digest": "4f7c6f742f4c7d96f906cc029fb284d6e9b3e1a1b1825beaef2a30570e7b4c58",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "2a2c0fd5c8af0cca96e516110756b6204e7e42fda8b462b1709738660483e4db",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership.test.ts",
+      "digest": "5b4518d6b923f6127dc94d3f8c74322570e7c0ded659920dd404ba367a3d6949",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "952128b8bab616a3dcc118dad4e4fd3e8c5d5ad81a5efb03d0246f6d4e97db80",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/settings.ts",
+      "digest": "e90de6f46feda82c059daf545a5774f515fc4866d9c60c7e3dc43a48fda89dcc",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "f4bfc3d8332727cb17cc627047c44e8d088fae1f68e06738459f9d650192d934",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "71c0c5e841ddc90c57aea0826b4923ec4a47f95657bd4d018bebe4fee42ec21a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "dc772fe6668dde90f155b8ccdc70484f63d82698ed2041ef8f1af0b63d927144",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "0dd8c1be29ee7e18b27720c2e0489a441229d76e6b580433d66d16414d424d53",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "f567574b366bb60050a757a61b75c54869da762f069ab25e20e19fdf33e198d1",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "40b0effb149fae88d65f286d5312d01b63fcf6dcf1f5c3f124ea52a0d28fbee3",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-directory.test.ts",
+      "digest": "23682bb69735032cafc8b5bf788b721b603422975f827830f04a18f5929adc68",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-server.test.ts",
+      "digest": "a7531cf0e0d7cf06efcba30eb704270e297a48272aca707dd3d227f57b3e6c3c",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-server.ts",
+      "digest": "ff58f3612e1f082c67ad1dc9a1bddab6deb81719536b247ccb1208af0a9bf076",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "ccad2eb8a64227cc0142b9842c323e8f4f45f0378ef495ce7adb1eb51a6894d5",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.review.test.ts",
+      "digest": "0bc8a23ba8e19f1562cb0ab5e032a0877c10558f3080afb397a269adf56af182",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "09ba8b8d37ea5b88247d9fc2c0c210f3b8bef836cf2c4e03ebede1140c4853ab",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "72bc548949f3ebf846ba84dbf257eba5ef101893ae1bdcf7e1d3c125e1538921",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "23d58dbd32dbc6ce25b56968784005390e629e97c398a5cc6e5b2d491a3da239",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "01387a68143f6399a23ec061ffde87f72ed6fea4222c4e67e430727145bf7619",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "44aec74ea565c353175ce6baa17a2675bc2a0c14d1ed8277e0fd5be0f6e1ea1a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "bac047a0ce95ede4798cc18c412f3dcdd48c7f2b6d527b3adc0506448fb99ce1",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "bdfa62260839fe520fa19e84f44bc2a3592caaab4b108df1f0150946133b360a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "f5c34f65b55cfb722fe693ca097efeb9cef0a283fad1974bb38864328913c657",
+      "why": "Community join CRM chunk (c) fixes the DM access-call budget with null-guarded bound membership, counterpart and parent reads; preserves counterpart authority, participant field restrictions, leave denial and moderation semantics without changing rules tests."
     }
   ]
 }

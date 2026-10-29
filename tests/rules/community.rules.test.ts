@@ -105,6 +105,7 @@ describe('community access', () => {
     const env = await getEnv();
     for (const [uid, profile] of [['comment-no-profile', null], ['comment-empty-profile', { displayName: '', name: 'Unbound legacy name' }]] as const) {
       if (profile) await seedDoc(`users/${uid}`, { ...profile, role: 'user', tenantId: TENANT_A });
+      else await seedDoc(`tenants/${TENANT_A}/communityMembers/${uid}`, { status: 'active' });
       const db = env.authenticatedContext(uid, { tenantId: TENANT_A, name: 'Auth commenter' }).firestore();
       const base = { authorId: uid, authorName: 'Auth commenter', authorPhoto: '', content: 'Hello', createdAt: '2040-01-01T12:00:00Z', tenantId: TENANT_A };
       await assertSucceeds(db.doc(`community_posts/comment-fallback/comments/${uid}`).set(base));
@@ -202,6 +203,7 @@ describe('community access', () => {
       ['post-empty-name', { displayName: '', name: 'Unbound legacy name' }],
     ] as const) {
       if (profile) await seedDoc(`users/${uid}`, { ...profile, role: 'user', tenantId: TENANT_A });
+      else await seedDoc(`tenants/${TENANT_A}/communityMembers/${uid}`, { status: 'active' });
       const db = env.authenticatedContext(uid, { tenantId: TENANT_A, name: 'Auth member' }).firestore();
       const base = { tenantId: TENANT_A, authorId: uid, content: 'hello' };
       await assertSucceeds(db.doc(`community_posts/${uid}`).set({ ...base, authorName: 'Auth member', authorPhoto: '' }));

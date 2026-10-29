@@ -2048,8 +2048,11 @@ describe('no community query or write path changed', () => {
     for (let i = 0; i < 2; i += 1) expected.splice(expected.indexOf("'users'"), 1);
     expect(firestorePathsOf(stripComments(after))).toEqual(expected);
     const loader = stripComments(readFileSync(path.join(REPO, 'src/components/community/loadScopedUserDocs.ts'), 'utf8'));
-    expect(firestorePathsOf(loader)).toEqual(["'users'"]);
-    expect(loader).toContain("where('tenantId', '==', value), orderBy(documentId()), limit(max)");
+    // Multi-community directory reads now use a safe server projection. Full
+    // users docs remain private; bounded pickers consume the complete union.
+    expect(firestorePathsOf(loader)).toEqual([]);
+    expect(loader).toContain('authFetch(`/api/community/settings?tenantId=');
+    expect(loader).toContain('body.people.slice(0, max)');
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 

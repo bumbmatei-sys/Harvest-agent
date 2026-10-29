@@ -70,7 +70,7 @@ describe('community membership server authority', () => {
   });
   it('permits replacing the answers map to clear the pending marker', async () => {
     const path = `tenants/${TENANT_A}/communityMembers/multi-member`;
-    await seedDoc(path, { ...membership, uid: 'multi-member', answers: { __community_questions_pending__: 'true' } });
+    await seedDoc(path, { ...membership, uid: 'multi-member', answers: { communityQuestionsPending: 'true' } });
     const db = (await asUid('multi-member')).firestore();
     await assertSucceeds(db.doc(path).set(entry, { mergeFields: ['rulesAcceptedVersion', 'answers', 'answeredAt'] }));
     const saved = (await db.doc(path).get()).data()!;
@@ -143,5 +143,69 @@ describe('per-user membership index', () => {
     await assertFails(db.doc(indexPath).update({ status: 'left' }));
     await assertFails(db.doc(`users/${MEMBER_UID}/memberships/${TENANT_B}`).set({ tenantId: TENANT_B, status: 'active', joinedAt: new Date(1000), leftAt: null }));
     await assertFails(db.doc(indexPath).delete());
+  });
+});
+
+// These use the same four actors against every community surface. A token for
+// tenant-a is deliberately supplied to outsiders: claims are not membership.
+describe('multi-community content boundary', () => {
+  beforeAll(async () => {
+    await seedDoc('community_posts/membership-post', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Hello' });
+    await seedDoc('community_posts/membership-post/comments/one', { tenantId: TENANT_A, authorId: MEMBER_UID, content: 'Reply' });
+    await seedDoc('prayer_requests/membership-prayer', { tenantId: TENANT_A, authorId: MEMBER_UID, request: 'Prayer' });
+    await seedDoc(`tenants/${TENANT_A}/channels/membership-all`, { audience: 'all', members: [] });
+    await seedDoc(`tenants/${TENANT_A}/channels/membership-private`, { audience: 'selected', members: [MEMBER_UID] });
+    await seedDoc(`tenants/${TENANT_A}/channelMessages/membership-message`, { channelId: 'membership-all', senderId: MEMBER_UID });
+    await seedDoc(`tenants/${TENANT_A}/livestreamSessions/membership-session/comments/one`, { text: 'Hello', createdAt: 1 });
+    await seedDoc(`tenants/${TENANT_A}/contacts/membership-contact`, { name: 'Private CRM' });
+    await seedDoc(`tenants/${TENANT_A}/invoices/membership-invoice`, { amount: 100 });
+    await seedDoc(`tenants/${TENANT_A}/servicePlans/membership-plan`, { title: 'Staff schedule' });
+  });
+  it.each([
+    ['multi-member', true], ['left-member', false], ['legacy-outsider', false], ['member2-uid', true],
+  ])('%s has expected community reads (%s), including constrained lists', async (uid, allowed) => {
+    const db = (await getEnv()).authenticatedContext(uid, { tenantId: TENANT_A }).firestore();
+    const check = allowed ? assertSucceeds : assertFails;
+    for (const path of [
+      'community_posts/membership-post', 'community_posts/membership-post/comments/one', 'prayer_requests/membership-prayer',
+      `tenants/${TENANT_A}/channels/membership-all`, `tenants/${TENANT_A}/channelMessages/membership-message`,
+      `tenants/${TENANT_A}/settings/community`,
+      `tenants/${TENANT_A}/livestreamSessions/membership-session/comments/one`,
+    ]) await check(db.doc(path).get());
+    await check(db.collection('community_posts').where('tenantId', '==', TENANT_A).get());
+    await check(db.collection(`tenants/${TENANT_A}/channels`).where('audience', '==', 'all').get());
+    await check(db.collection('community_posts/membership-post/comments').get());
+  });
+  it('joined members keep byline, channel privacy, DM counterpart and staff-data constraints', async () => {
+    const uid = 'multi-member';
+    const db = (await asUid(uid)).firestore();
+    const base = { tenantId: TENANT_A, authorId: uid, authorName: 'Member', content: 'Joined in another community' };
+    await assertSucceeds(db.doc('community_posts/membership-new').set(base));
+    await assertSucceeds(db.doc('community_posts/membership-new').update({ content: 'Edited' }));
+    await assertSucceeds(db.doc('community_posts/membership-post').update({ likes: [uid] }));
+    await assertFails(db.doc('community_posts/membership-forged').set({ ...base, authorId: MEMBER_UID }));
+    await assertFails(db.doc('community_posts/membership-rich').set({ ...base, type: 'poll', pollOptions: [] }));
+    await assertFails(db.doc(`tenants/${TENANT_A}/channels/membership-private`).get());
+    await assertSucceeds(db.doc(`tenants/${TENANT_A}/channelMessages/membership-send`).set({ channelId: 'membership-all', senderId: uid, senderName: 'Member', senderRole: 'user' }));
+    await assertFails(db.doc(`tenants/${TENANT_A}/channelMessages/membership-spoof`).set({ channelId: 'membership-all', senderId: uid, senderName: 'Member', senderRole: 'admin' }));
+    await assertSucceeds(db.doc(`tenants/${TENANT_A}/directMessages/membership-admin`).set({ participants: [uid, 'full-admin-uid'] }));
+    await assertSucceeds(db.doc(`tenants/${TENANT_A}/dmMessages/membership-admin`).set({ dmId: 'membership-admin', senderId: uid }));
+    await assertFails(db.doc(`tenants/${TENANT_A}/directMessages/membership-peer`).set({ participants: [uid, MEMBER_UID] }));
+    for (const path of ['contacts/membership-contact', 'invoices/membership-invoice', 'servicePlans/membership-plan']) await assertFails(db.doc(`tenants/${TENANT_A}/${path}`).get());
+    await assertFails(db.doc(`users/${MEMBER_UID}`).get());
+    await assertFails(db.doc(`tenants/${TENANT_A}/contacts/membership-write`).set({ name: 'No CRM access' }));
+  });
+  it.each(['left-member', 'legacy-outsider'])('denies every member write for %s', async uid => {
+    const db = (await getEnv()).authenticatedContext(uid, { tenantId: TENANT_A }).firestore();
+    await seedDoc(`community_posts/old-${uid}`, { tenantId: TENANT_A, authorId: uid, authorName: 'Member', content: 'Old' });
+    await assertFails(db.doc(`community_posts/new-${uid}`).set({ tenantId: TENANT_A, authorId: uid, authorName: 'Member', content: 'New' }));
+    await assertFails(db.doc(`community_posts/old-${uid}`).update({ content: 'Changed' }));
+    await assertFails(db.doc(`community_posts/old-${uid}`).delete());
+    await assertFails(db.doc('community_posts/membership-post').update({ likes: [uid] }));
+    await assertFails(db.doc(`tenants/${TENANT_A}/channelMessages/denied-${uid}`).set({ channelId: 'membership-all', senderId: uid, senderName: 'Member', senderRole: 'user' }));
+    await seedDoc(`tenants/${TENANT_A}/directMessages/old-${uid}`, { participants: [uid, 'full-admin-uid'] });
+    await assertFails(db.doc(`tenants/${TENANT_A}/directMessages/old-${uid}`).get());
+    await assertFails(db.doc(`tenants/${TENANT_A}/dmMessages/denied-${uid}`).set({ dmId: `old-${uid}`, senderId: uid }));
+    await assertFails(db.doc(`tenants/${TENANT_A}/directMessages/old-${uid}`).update({ lastMessage: 'Denied' }));
   });
 });

@@ -73,6 +73,10 @@ describe('join and leave API', () => {
     expect((await handler(request(joinBody))).status).toBe(401);
     expect(fx.writes).not.toHaveBeenCalled();
   });
+  it('rejects Firestore-reserved answer keys before any write', async () => {
+    expect((await join(request({ ...joinBody, answers: { __reserved__: 'bad' } }))).status).toBe(400);
+    expect(fx.writes).not.toHaveBeenCalled();
+  });
   it.each([join, leave])('rejects malformed JSON', async handler => {
     expect((await handler(new NextRequest('http://localhost', { method: 'POST', body: '{' }))).status).toBe(400);
   });

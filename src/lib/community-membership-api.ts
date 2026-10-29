@@ -26,7 +26,7 @@ function parseBody(value: unknown, joining: boolean) {
   if (version !== undefined && (!Number.isSafeInteger(version) || (version as number) < 0)) throw badRequest();
   const answers = value.answers;
   if (answers !== undefined && (!isRecord(answers) || Object.keys(answers).length > 100 ||
-      Object.entries(answers).some(([key, answer]) => !key || key.length > 128 || typeof answer !== 'string' || answer.length > 4000))) throw badRequest();
+      Object.entries(answers).some(([key, answer]) => !key || /^__.*__$/.test(key) || key.length > 128 || typeof answer !== 'string' || answer.length > 4000))) throw badRequest();
   return { tenantId: value.tenantId, source, rulesAcceptedVersion: version as number | undefined, answers: answers as Record<string, string> | undefined };
 }
 
