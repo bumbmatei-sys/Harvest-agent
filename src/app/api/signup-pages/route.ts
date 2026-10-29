@@ -30,6 +30,14 @@ export async function POST(request: NextRequest) {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
     if (!validId(user.tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 403 });
+    // The token claim is not the membership authority: verifyAuth prefers it, so a
+    // stale or forged claim outlives a move between tenants. Re-prove the requested
+    // tenant against users/{uid} exactly the way authorizePage does — before anything
+    // below trusts user.tenantId, and before the first write.
+    const currentUser = await adminDb.collection('users').doc(user.uid).get();
+    if (!user.isSuperAdmin && (!currentUser.exists || currentUser.data()?.tenantId !== user.tenantId)) {
+      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+    }
     const permitted = await requireTenantPermission(request, user.tenantId, 'manageForms');
     if (permitted instanceof NextResponse) return permitted;
     const input = parseSignupPageInput(await request.json());
