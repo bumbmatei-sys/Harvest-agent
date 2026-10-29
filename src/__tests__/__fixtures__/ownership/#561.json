@@ -1,0 +1,16 @@
+{
+  "ticket": "#561",
+  "note": "#561 (community join CRM) fixes a rules bug in isActiveCommunityMember: get() on a missing communityMembers doc is an evaluation error, not null, so every user without a membership doc was denied wherever the helper is used. firestore.rules auto-deploys on merge: merge needs explicit founder go.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "e64ac09c2fbb5fc1f9d5d43880fa6423e1fcc1754f529501ced7204575af9e08",
+      "why": "#561 owns this change and it is the isActiveCommunityMember helper only: the single get(memberPath) is now guarded by exists(memberPath) in the same short-circuiting condition, so a missing communityMembers doc falls through to the legacy user-doc tenant check instead of erroring and denying. Every other rule is byte-identical. Proven by the existing emulator suites (community, messaging-isolation, permissions, livestream-comments), which were 36 red before and are 583/583 green after."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "e66cd61334d4909742bc959af991c4dcdac80d05bd074b56f6d4effc0d139bd1",
+      "why": "#561 owns this change: the SPA routing table gains the member /community/:tenantId page (with its resolved-path fixture row), and /dev/join-crm joins the named dev-only previews beside /dev/social-scheduler with the same assertions (notFound() in production, no PublicRouteAnalytics, absent from the analytics registry). No assertion was removed or relaxed; the enumeration comparisons still run over every page file."
+    }
+  ]
+}

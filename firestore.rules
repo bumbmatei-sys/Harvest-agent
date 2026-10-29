@@ -80,12 +80,12 @@ service cloud.firestore {
     // overrides the legacy user-doc tenant, so leaving cannot resurrect access.
     function isActiveCommunityMember(tenantId) {
       let memberPath = /databases/$(database)/documents/tenants/$(tenantId)/communityMembers/$(request.auth.uid);
-      // get() returns null for a missing doc. One bound read avoids a separate
-      // exists() call; existence and document lookups need not share a cache.
-      let member = get(memberPath);
+      // get() on a missing doc is an evaluation error (a denial), not null, so
+      // guard it with exists(). Both calls address one document, so it is
+      // fetched once against the read budget.
       return isAuthenticated() && (
-        member != null && member.data.keys().hasAny(['status'])
-          ? member.data.status == 'active'
+        exists(memberPath) && get(memberPath).data.keys().hasAny(['status'])
+          ? get(memberPath).data.status == 'active'
           : userDocExists() && userData().get('tenantId', null) == tenantId
       );
     }
