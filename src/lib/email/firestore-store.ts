@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash } from 'node:crypto';
+import { communitySuppressionId, scrubSuppressionEmail, tenantAddressSuppressed } from '@/lib/community-privacy';
 
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -269,13 +269,13 @@ export const firestoreEmailStore: EmailStore = {
   },
 
   async isSuppressedNow(tenantId, email) {
-    const id = createHash('sha256').update(normalizeEmail(email)).digest('hex');
-    return (await tenantDoc(tenantId).collection(SUPPRESSIONS).doc(id).get()).exists;
+    return tenantAddressSuppressed(tenantId, email);
   },
 
   async listSuppressed(tenantId) {
     const snap = await tenantDoc(tenantId).collection(SUPPRESSIONS).get();
-    return new Set(snap.docs.map((d) => d.data().email).filter((e): e is string => typeof e === 'string'));
+    await Promise.all(snap.docs.map(scrubSuppressionEmail));
+    return new Set(snap.docs.map(d => d.id));
   },
 
   async listBroadcasts(tenantId) {
@@ -439,7 +439,7 @@ async function markContacts(tenantId: string, email: string, fields: Record<stri
  * Keyed by a hash of the address so the id is safe and the write is idempotent.
  */
 async function recordSuppression(tenantId: string, email: string, status: string, at: string, from: string): Promise<void> {
-  const target = normalizeEmail(email);
-  const id = createHash('sha256').update(target).digest('hex');
-  await tenantDoc(tenantId).collection(SUPPRESSIONS).doc(id).set({ email: target, status, at, from }, { merge: true });
+  const emailHash = communitySuppressionId(email);
+  // Replace the old shape so a legacy plaintext address cannot survive erasure.
+  await tenantDoc(tenantId).collection(SUPPRESSIONS).doc(emailHash).set({ emailHash, status, at, from });
 }

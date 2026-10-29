@@ -6,7 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { isTenantAdminRole } from '@/lib/roles';
 import { COMMUNITY_CONSENT_VERSION, buildCommunityMember, isActiveMember, isCommunityTenantId, normaliseSource, type CommunityMember, type UserMembership } from './community-membership';
 import { readCommunitySettings, requiredQuestionsAnswered } from './community/settings';
-import { readCommunityDeparture, writeCommunityDeparture } from './community-privacy';
+import { readCommunityDeparture, writeCommunityDeparture, readCommunityRejoin, writeCommunityRejoin } from './community-privacy';
 import { upsertCommunityContact } from './community-contact';
 
 class MembershipError extends Error {
@@ -71,6 +71,8 @@ export async function communityMembershipRequest(request: NextRequest, joining: 
         }
         const data = buildCommunityMember({ uid: user.uid, tenantId, source: body.source!, now: Timestamp.now(),
           previous, rulesAcceptedVersion: body.rulesAcceptedVersion, answers: body.answers });
+        const rejoin = previous?.status === 'left' ? await readCommunityRejoin(tx, tenantId, user.uid, profile?.email) : null;
+        if (rejoin) writeCommunityRejoin(tx, rejoin, user.uid);
         const index: UserMembership<Timestamp> = { tenantId, status: data.status, joinedAt: data.joinedAt, leftAt: null };
         // Replace the complete record so submitted answers also clear the old
         // pending-questions marker instead of recursively merging it back in.

@@ -181,7 +181,8 @@ per normalised address. The linked contact retains its Left label and exact date
 This precedes the retryable CRM repair, so a failed repair cannot leave email on.
 The newsletter audience, generic admin email (including bulk loops), announcement
 email fallback and individual CRM send enforce the block server-side. Duplicate
-contacts, reimports, edited email addresses and rejoining do not undo the opt-out.
+contacts and reimports do not undo the opt-out. A fresh join with version 2
+consent clears the community-departure block, as described below.
 Other ministries' contacts and email permissions are independent.
 
 `POST /api/community/delete-data` takes `{ tenantId, uid? }`. Authentication is
@@ -206,3 +207,37 @@ no communityUserId, routing community erasure through the server. Membership's
 existing onboarding-only key allowlist already protects both consent fields.
 The missing-document get() comments now consistently describe a denied branch.
 No rule, index or function was deployed.
+
+## Pre-merge follow-ups (#561)
+
+An explicit rejoin with consent version 2 clears community-leave email blocks and
+restores linked CRM contacts to active in the membership transaction. This also
+repairs duplicate contacts' departure opt-outs, while preserving blocks originating
+from newsletter unsubscribe, bounce or complaint events. Rejoining allows owner
+contact again; newsletter subscription still requires its own opt-in. Channel
+rosters are not restored by rejoin.
+
+All suppression writers now replace the record with a normalized (trimmed,
+lowercase) SHA-256 `emailHash` plus status, timestamp and source. The document ID
+remains that hash under `tenants/{tenantId}/emailSuppressions`, so existing
+newsletter and community records remain addressable without a key migration.
+Individual lookups and full newsletter/announcement block-list reads remove any
+legacy plaintext `email` field on access; a failed scrub withholds sending.
+Erasure replaces matching legacy blocks without plaintext as part of its atomic
+transaction. This is a lazy migration, not a claim that production records have
+already been scrubbed. No production scan or migration was run.
+
+Newsletter audience resolution, import suppression and the last check before
+sending use hash keys. CRM Gmail, admin Resend and announcement fallback also
+check those keys, including when a stale contact still says subscribed or its
+community marker is missing. The independent left-contact newsletter check is
+covered without a suppression document too.
+
+The delete-on-request API continues authorizing only the current Firestore tenant
+owner or the member themself. Token admin/owner claims grant no erasure authority.
+The CRM erasure component reads the same tenant owner before offering its shadcn
+confirmation; non-owner admins see no deletion button. A failed ownership read is
+visible and withholds deletion. Account self-service remains available.
+
+These follow-ups do not modify `firestore.rules`; the reviewed delta still only
+tightens access. No git writes or deployments are part of this work.

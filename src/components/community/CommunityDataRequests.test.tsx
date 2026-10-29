@@ -13,7 +13,7 @@ const button = (label: string) => [...document.querySelectorAll('button')].find(
 beforeEach(() => {
   vi.clearAllMocks();
   h.list.mockResolvedValue({ docs: [{ id: 'former', data: () => ({ status: 'left' }) }] });
-  h.get.mockResolvedValue({ exists: () => true, data: () => ({ name: 'Former community' }) });
+  h.get.mockResolvedValue({ exists: () => true, data: () => ({ name: 'Former community', ownerId: 'self' }) });
   h.request.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
 });
 afterEach(async () => { await act(async () => root.render(null)); });
@@ -45,6 +45,22 @@ describe('community data request controls', () => {
     await act(async () => button('Confirm data deletion').click());
     expect(h.request).toHaveBeenCalledWith('/api/community/delete-data', { method: 'POST', body: JSON.stringify({ tenantId: 'target', uid: 'member' }) });
     expect(deleted).toHaveBeenCalledOnce();
+  });
+  it('hides the CRM erasure button from a non-owner admin, then shows it for the Firestore owner', async () => {
+    h.get.mockResolvedValueOnce({ exists: () => true, data: () => ({ ownerId: 'another-owner' }) });
+    await act(async () => root.render(<DeleteCommunityData tenantId="target" uid="member" onDeleted={vi.fn()} />));
+    expect(h.get).toHaveBeenLastCalledWith('tenants/target');
+    expect(button('Delete community contact data')).toBeUndefined();
+    h.get.mockResolvedValueOnce({ exists: () => true, data: () => ({ ownerId: 'self' }) });
+    await act(async () => root.render(<DeleteCommunityData tenantId="owned" uid="member" onDeleted={vi.fn()} />));
+    expect(button('Delete community contact data')).toBeTruthy();
+    expect(h.request).not.toHaveBeenCalled();
+  });
+  it('withholds owner erasure and surfaces a failed ownership read', async () => {
+    h.get.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => root.render(<DeleteCommunityData tenantId="target" uid="member" onDeleted={vi.fn()} />));
+    expect(button('Delete community contact data')).toBeUndefined();
+    expect(host.querySelector('[role=alert]')?.textContent).toContain('Could not check community ownership');
   });
   it('distinguishes a failed index read from an empty list', async () => {
     h.list.mockRejectedValue(new Error('Could not load retained memberships.'));

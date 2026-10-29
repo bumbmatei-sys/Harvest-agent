@@ -261,6 +261,76 @@
       "file": "src/lib/email/service.ts",
       "digest": "2c2f19547e3248409ef97f9b34bb0aeeacbec6e9b39ceb33f283b27b5609ebf2",
       "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "7b2559efd6b7daaee0495b5b2daa7b5e4962dafb8fb98fcd281490b26022ae88",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "b8f26b66693246f3f1003dab70d6e529007a2ced157f1c5b5f85597f829ec18d",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/crm/__tests__/send-email-route.test.ts",
+      "digest": "08fe37be8e0e325babd486fb0ca42fa333a512ca554b51051839785dd97713a2",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-email/route.test.ts",
+      "digest": "d7bbab2f7f69e3416cf742d0a2dc548c2210cb1e22e0094659325429b14cb584",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-notification/route.test.ts",
+      "digest": "2580e8869047ddd9f3e1be3ef35e6f03911e6bd000016d9f2ad5825793baec5f",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-notification/route.ts",
+      "digest": "2e98d7acf66ca19ee0e00f02765a43ed06b5967b3f9a096aa2e457a12ff912b2",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityDataRequests.test.tsx",
+      "digest": "b2628a94c74365a91b2d95e788d5ddbe0209ce4e1582e08c2d2bbf157a34ad58",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/components/community/DeleteCommunityData.tsx",
+      "digest": "86537d73e96a011200767ed0604acdafe6f023414b8640389b7d54a73438eb34",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "ff8073c8f601f6c0dc6def0f3ee83d0c68056bbbad46c74c2c0fad4d092969d4",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "f4817f13d77a6bf0dfba7fdedbf71a4fc26ce76392a6896da278616b6751aae4",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/__tests__/helpers.ts",
+      "digest": "bf9271a64017573011d5749ba6af86a50508e0d315d7fbe241130259ca1437f0",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "f30cdc53f6c176fd93b94c0603c05e6bec0e10072c375a8b87052d148169626d",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/service.ts",
+      "digest": "2ff5b9a1289677094c3cd64fd79baed40a571f2fe5e72082101d3c3d4b9064b0",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/suppression-key.ts",
+      "digest": "eed0bf88b520dc26d0828d4c10412a1fc846db1204e984173cbd38ec55deef14",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
     }
   ]
 }

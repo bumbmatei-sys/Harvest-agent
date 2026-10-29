@@ -10,7 +10,7 @@ vi.mock('@/lib/firebase-admin', () => {
     doc: (id: string) => ({ collection: (key: string) => collection(`${path}/${id}/${key}`), get: async () => {
       if (h.fail) throw new Error('offline');
       expect(id).toBe(createHash('sha256').update('member@example.org').digest('hex'));
-      return { exists: h.suppressed };
+      return { exists: h.suppressed, data: () => ({ emailHash: id, status: 'unsubscribed' }) };
     } }),
     where: (_field: string, _op: string, tenantId: string) => ({ get: async () => ({ docs: h.contacts.filter(data => data.tenantId === tenantId).map(data => ({ data: () => data })) }) }),
     add: h.add,

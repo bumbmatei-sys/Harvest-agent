@@ -1,5 +1,4 @@
-import { tenantBlockedEmails, tenantAddressSuppressed } from '@/lib/community-privacy';
-import { normalizeEmail } from '@/lib/donation-history';
+import { tenantBlockedEmailHashes, tenantAddressSuppressed, communitySuppressionId } from '@/lib/community-privacy';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { Resend } from 'resend';
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
     const snapshot = await q.get();
 
     // Resolve opt-outs before any delivery. A failed read must withhold email.
-    const blockedEmails = tenantId ? await tenantBlockedEmails(tenantId) : new Set<string>();
+    const blockedEmails = tenantId ? await tenantBlockedEmailHashes(tenantId) : new Set<string>();
 
     // Collect all FCM tokens, plus the email of every non-opted-out user who
     // has no token at all (they get the announcement by email instead).
@@ -63,12 +62,12 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(data.fcmTokens) && data.fcmTokens.length > 0) {
         tokens.push(...data.fcmTokens);
         userTokenMap.set(doc.id, data.fcmTokens);
-        if (email && !blockedEmails.has(normalizeEmail(email))) {
+        if (email && !blockedEmails.has(communitySuppressionId(email))) {
           uidEmail.set(doc.id, email);
           uidHasAnySuccess.set(doc.id, false);
           for (const token of data.fcmTokens) tokenOwner.set(token, doc.id);
         }
-      } else if (email && !blockedEmails.has(normalizeEmail(email))) {
+      } else if (email && !blockedEmails.has(communitySuppressionId(email))) {
         noTokenEmails.push(email);
       }
     });

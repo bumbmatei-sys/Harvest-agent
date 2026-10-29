@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { communitySuppressionId } from '@/lib/email/suppression-key';
 import { NextRequest } from 'next/server';
 const h = vi.hoisted(() => ({ auth: vi.fn(), listBlocks: vi.fn(), lastCheck: vi.fn(), send: vi.fn(), push: vi.fn(), people: [] as Record<string, unknown>[] }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: h.auth }));
-vi.mock('@/lib/community-privacy', () => ({ tenantBlockedEmails: h.listBlocks, tenantAddressSuppressed: h.lastCheck }));
+vi.mock('@/lib/community-privacy', async () => ({ tenantBlockedEmailHashes: h.listBlocks, tenantAddressSuppressed: h.lastCheck, ...(await import('@/lib/email/suppression-key')) }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: () => ({ where: () => ({ get: async () => ({ forEach: (fn: (doc: unknown) => void) => h.people.forEach((data, i) => fn({ id: String(i), data: () => data })) }) }) }) } }));
 vi.mock('firebase-admin', () => ({ messaging: () => ({ sendEachForMulticast: h.push }) }));
 vi.mock('resend', () => ({ Resend: class { emails = { send: h.send }; } }));
@@ -12,7 +13,7 @@ const request = () => new NextRequest('https://example.org/api/send-notification
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubEnv('RESEND_API_KEY', 'test-key');
   h.auth.mockResolvedValue({ uid: 'owner', tenantId: 'target', isAdmin: true });
-  h.listBlocks.mockResolvedValue(new Set(['left@example.org']));
+  h.listBlocks.mockResolvedValue(new Set([communitySuppressionId('left@example.org')]));
   h.lastCheck.mockResolvedValue(false);
   h.send.mockResolvedValue({ data: { id: 'sent' } });
   h.people = [{ email: ' LEFT@EXAMPLE.ORG ' }, { email: 'allowed@example.org' }];
