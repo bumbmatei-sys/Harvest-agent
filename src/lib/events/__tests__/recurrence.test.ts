@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { expandRuns, registrationMatchesRun, parseEventDateTime, formatEventDateTime } from '../recurrence';
 
 const FAR_PAST = new Date('2000-01-01T00:00:00.000Z');
@@ -210,5 +210,20 @@ describe('THE-379 — event time-zone date inputs', () => {
   });
   it('supports fractional offsets independent of the browser zone', () => {
     expect(parseEventDateTime('2031-03-30T19:00', 'Asia/Kathmandu').toISOString()).toBe('2031-03-30T13:15:00.000Z');
+  });
+});
+
+describe('r9.8 bounded run expansion', () => {
+  it('converts only the bounded next/last runs to instants for an old unending series', async () => {
+    const real = Intl.DateTimeFormat;
+    const spy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (...args: ConstructorParameters<typeof Intl.DateTimeFormat>) {
+      return new real(...args);
+    } as typeof Intl.DateTimeFormat);
+    try {
+      const { listEventRuns } = await import('../list-runs');
+      const runs = listEventRuns({ startDate: new Date(Date.UTC(2031, 0, 6, 19)), endDate: new Date(Date.UTC(2031, 0, 6, 20)), timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly' } }, new Date(Date.UTC(2040, 0, 1)));
+      expect(runs).toHaveLength(4);
+      expect(spy.mock.calls.length).toBeLessThan(25);
+    } finally { spy.mockRestore(); }
   });
 });

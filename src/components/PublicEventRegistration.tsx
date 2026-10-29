@@ -23,7 +23,7 @@ import {
   publicPayBody,
   ticketQrWaitingBody,
 } from '../lib/event-payment-claims';
-import { expandRuns, type RecurrenceRule } from '../lib/events/recurrence';
+import { registrationRuns, type RecurrenceRule } from '../lib/events/recurrence';
 
 /** One registration question, Eden one-at-a-time style. */
 interface RegistrationQuestion {
@@ -159,9 +159,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     if (!recurrence || !event.startDate) return [];
     const start = new Date(event.startDate);
     const end = event.endDate ? new Date(event.endDate) : start;
-    const now = new Date();
-    const horizon = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 180);
-    return expandRuns({ startDate: start, endDate: end, timeZone: event.timeZone || undefined, recurrence }, now, horizon).slice(0, 12);
+    return registrationRuns({ startDate: start, endDate: end, timeZone: event.timeZone || undefined, recurrence });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.recurrence, event.startDate, event.endDate, event.timeZone]);
   const [selectedRunDate, setSelectedRunDate] = useState<string | null>(null);

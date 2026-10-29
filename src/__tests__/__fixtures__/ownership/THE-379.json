@@ -237,6 +237,116 @@
       "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
       "digest": "94352e2e50635fe8436f82fbd5f78d8336af9103e5565439cb4421a233421984",
       "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "406aaa7bc17fccfffdffd6d55431bfed33bac5f9cb107c74130117d92e633a66",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 1/2/7/8: legacy edits use browser-zone wall clocks and preserve untouched instants, zone changes keep digits with explicit help, in-person links clear, list days use the event zone, and memoized bounded runs supply each row label once. Existing payment gates, writes, navigation and paths retained."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "bdf52cef0d3302589e0d2b48903361e32d9a51d8124008077fb9bde37975ad8b",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 3: keep tickets keyed by event plus runDate so separate runs remain reachable; use the API joined run start in member rows, with existing Join and ICS consumers receiving the same run start/end. Payment and QR gates retained."
+    },
+    {
+      "file": "src/app/api/my-registrations/route.ts",
+      "digest": "f6536ddcb1a648e2d70fd208f7358dd2683afd50ab652306a88fc04a5956a225",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 3: return each registration runDate and compute its event start/end with expandRuns in the event zone. Undated single-event tickets retain their existing dates; removed/cancelled runs cannot masquerade as the series first run."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 4/5: validate against the same next-12, 180-day, not-ended window as the public picker; use the selected run and event zone for SMS. Existing invalid-run response, money path and CRM writes retained."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "3bce1b3cd2e19be3cb16972d11429144d0b73ebc592f2dc4c10a835652d580d5",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 9: skip registration reads for uncapped events; project only status, ticketTypeId and quantity, order and bound the read, and reject overflow rather than advertise an incomplete capacity count. No registration PII crosses to the client."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "6dee45afec9664480d2e6c0c3210a3b44125f6274ac5b9ff2bbb88602d11bd9a",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 4: use the shared registrationRuns helper so picker and submit enforce the same bounded window. Existing picker behavior, payment and claim controls retained."
+    },
+    {
+      "file": "src/components/events/EventListCalendar.tsx",
+      "digest": "e881400d35b5024a28725bc4956d96be3a531c4e44e4bbe0cfb2cb692e6b23f2",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: expand runs only for the visible month and bucket dots by event-zone civil days with browser-zone fallback for legacy events. Existing calendar primitive and selection contract retained."
+    },
+    {
+      "file": "src/components/events/month-view.ts",
+      "digest": "0865d59afebb3d3dc280efa519f9eef7f0c9cf4c8f8b26cc420f21c9986007df",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: carry optional end, zone and recurrence in the existing complete event read for the mini calendar. No new query, index, rule or persisted model field; measured month grid layout retained."
+    },
+    {
+      "file": "src/lib/events/recurrence.ts",
+      "digest": "bc8c43e5d77cf466cbaf287f66d33e85e042233894c429e416e0386849f9ac8c",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 4/8: share the public registration window and support bounded earliest/latest runs. Filter civil dates before costly zone conversions and walk latest candidates backwards. Existing recurrence, DST, cancellation and duration contracts retained."
+    },
+    {
+      "file": "src/lib/events/list-runs.ts",
+      "digest": "15817e2f2546c285f45430259a5a3e8ce7d2a2fd1ef68615e999702a3471ee4b",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 7/8: pure list schedule helper retains only last past, three next and selected-day runs; shared event-zone day key for list filters and calendar dots."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "76f25a4220c3793e9d03c5d823099b3018aca4dd61fe68d012e89c6757478642",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 items 1/2/7/8 regressions for real admin saves, zone selection/help, untouched DST precision, hidden links, event-zone date blocks and day filters, and memoized bounded expansion. Existing assertions retained; day-filter fixture uses the production day key. Mutations fail."
+    },
+    {
+      "file": "src/components/__tests__/THE-359.member-ticket-qr.test.tsx",
+      "digest": "aba52dd9e9618f37e9e03ef5123b10eea93e64dabe4ce5637be02fde1f275425",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 3 regression for distinct recurring tickets in Upcoming/Going/Past, per-run Join timing and separate ICS start/end values. Existing QR/payment/link safety assertions retained; reverting folding fix fails."
+    },
+    {
+      "file": "src/app/api/my-registrations/__tests__/route.test.ts",
+      "digest": "c6aabf9ca05b02c536b6850f359dd6b9a74ff460404610817be5af615b5d14e0",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 3 regression for runDate and DST-adjusted run start/end, alongside unchanged single-event times; reverting API fix fails."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "be1dea3d5eb269620e725e28dbe542659d74fe32ff55941ede7dbcfe8cadaefa",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 items 4/5 regressions for ended, thirteenth and outside-horizon runs, ongoing-run picker parity and event-zone SMS civil date. Existing assertions retained; reverting each fix fails."
+    },
+    {
+      "file": "src/components/events/__tests__/THE-379.list-calendar.test.tsx",
+      "digest": "c07417f676ae0b570bb0e574d32904ceef76d47435737bfa56860a4286bb67eb",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 items 6/7: rendered month-change dots and pure event-zone/legacy-zone bucketing across both sides of UTC. Single-run-only and browser-zone mutations fail."
+    },
+    {
+      "file": "src/app/event/[eventId]/__tests__/page.test.tsx",
+      "digest": "80341b52ae7cc972c68b281e54a26e757f16bbd7abc09a2c07854f791fe1a1f8",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 r9 item 9: uncapped events read no registrations; capped reads project only capacity fields with an ordered bound and count party quantities; overflow rejects visibly. Scan/projection/overflow mutations fail."
+    },
+    {
+      "file": "src/lib/events/__tests__/recurrence.test.ts",
+      "digest": "7a2c41024f359ddc41ef5eb8b0345c42449efe3405634279cdfd7693aca326ae",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND r9 item 8 regression measuring bounded timezone-conversion work on an old unending series. Existing recurrence/DST assertions retained; reverting the expansion fix fails."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e42903b07d71806a4c73440c49e1b116f4cde91bcdb0246100a796bb4f749395",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed handleSave and submit-route digests; Timestamp writer guard still requires explicit event-zone parsing and now also requires Timestamp-only preservation of untouched input. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "25b2684cb14a1fcdaafed2a72663e01e967f5ff2d6781b361d3d57f2ae48cf97",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed handleSave and submit-route digests and exact className count for one zone-help paragraph; inline style count, payment gates, paths and all prior pins retained."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "d2f4abb41cb4773bb82417add6096cadfe1875623dbbd64dd82e626542a39af2",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed month data mapper and submit-route digests beside previous pins. Month UI layout and payment/CRM machinery retained; exact accepted sets continue rejecting unrecorded changes."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "03be13b4bcf6604ab4f826eaff7e4e79bd344d3452d81f4203512ab192252533",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed AdminEvents digest; navigation IDs, permissions, sidebar and previous accepted hashes retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "808a9491271d4f6d8463064e079698b35eace34b878bd03b98d8144777d3de7f",
+      "why": "APPENDED, NOT SUBSTITUTED — THE-379 APPEND reviewed AdminEvents presentation-stripped digest/line-count pair; previous correlated pins and every layout, palette, money, read and write assertion retained."
     }
   ]
 }

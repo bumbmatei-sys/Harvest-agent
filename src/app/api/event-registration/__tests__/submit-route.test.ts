@@ -660,3 +660,44 @@ describe('POST /api/event-registration/submit — recurring event runs', () => {
     expect(res.status).toBe(410);
   });
 });
+
+describe('r9.4/5 recurring registration window and SMS', () => {
+  const instant = (month: number, day: number, hour = 0) => new Date(Date.UTC(2031, month - 1, day, hour));
+  const event = {
+    ...PAID_EVENT_FREE,
+    startDate: { toDate: () => instant(3, 16, 23) },
+    endDate: { toDate: () => instant(3, 17, 0) },
+    timeZone: 'Asia/Tokyo', recurrence: { freq: 'weekly' },
+  };
+  it.each(['2031-03-17', '2031-06-16', '2031-09-29'])('r9.4 rejects ended, thirteenth or beyond-horizon run: %s', async runDate => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(instant(3, 18));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, runDate }));
+      expect(response.status).toBe(410);
+      expect(await response.json()).toEqual({ error: 'That date is no longer available for this event.' });
+      expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('r9.4 accepts an ongoing run exactly as the public picker does', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(instant(3, 23, 23).getTime() + 30 * 60000));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, runDate: '2031-03-24' }));
+      expect(response.status).toBe(200);
+      expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate: '2031-03-24' }));
+    } finally { vi.useRealTimers(); }
+  });
+  it('r9.5 sends the chosen run civil date in the event zone in SMS', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(instant(3, 18));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
+      const response = await POST(makeRequest({ ...baseBody, phone: '+15550001111', runDate: '2031-03-24' }));
+      expect(response.status).toBe(200);
+      expect(mockSendAutomatedSms).toHaveBeenCalledWith('t1', 'event_registration', '+15550001111', expect.objectContaining({ date: 'Mar 24, 2031' }));
+    } finally { vi.useRealTimers(); }
+  });
+});

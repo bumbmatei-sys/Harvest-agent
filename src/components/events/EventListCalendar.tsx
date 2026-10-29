@@ -16,11 +16,13 @@
  */
 'use client';
 
+import { expandRuns } from '@/lib/events/recurrence';
+import { eventDayKey } from '@/lib/events/list-runs';
 import React from 'react';
 
 import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 
-import { daysWithEvents, eventsByDay, eventsOn, type MonthRead } from './month-view';
+import { daysWithEvents, eventsOn, type MonthRead } from './month-view';
 
 export interface EventListCalendarProps {
   read: MonthRead | undefined;
@@ -30,12 +32,31 @@ export interface EventListCalendarProps {
   onSelect: (day: Date | undefined) => void;
 }
 
+/** Expand only the visible month, keyed by each event's own civil run day. */
+export function runsByMonthDay(events: readonly import('./month-view').MonthEvent[], month: Date) {
+  const byDay = new Map<string, import('./month-view').MonthEvent[]>();
+  const from = new Date(Date.UTC(month.getFullYear(), month.getMonth(), 1) - 86400000);
+  const to = new Date(Date.UTC(month.getFullYear(), month.getMonth() + 1, 1) + 86400000);
+  for (const event of events) {
+    if (!event.start) continue;
+    const timeZone = event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const runs = expandRuns({ startDate: event.start, endDate: event.end || event.start, timeZone, recurrence: event.recurrence }, from, to);
+    for (const run of runs) {
+      const key = eventDayKey(run.start, timeZone);
+      const rows = byDay.get(key) || [];
+      rows.push(event);
+      byDay.set(key, rows);
+    }
+  }
+  return byDay;
+}
+
 const EventListCalendar: React.FC<EventListCalendarProps> = ({ read, selected, onSelect }) => {
   const [month, setMonth] = React.useState<Date>(() => new Date());
 
   const byDay = React.useMemo(
-    () => eventsByDay(read?.kind === 'complete' ? read.events : []),
-    [read],
+    () => runsByMonthDay(read?.kind === 'complete' ? read.events : [], month),
+    [read, month],
   );
   const marked = React.useMemo(() => daysWithEvents(byDay, month), [byDay, month]);
 

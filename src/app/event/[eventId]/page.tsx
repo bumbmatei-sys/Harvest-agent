@@ -45,13 +45,16 @@ export default async function PublicEventPage({
   // the submit route still enforces the real per-run capacity regardless of
   // what this page shows.
   let spotsLeftByTicket: Record<string, number> | null = null;
-  if (!data.recurrence && Array.isArray(data.ticketTypes) && data.ticketTypes.length > 0) {
+  if (!data.recurrence && Array.isArray(data.ticketTypes) && data.ticketTypes.some((ticket: { capacity?: number | null }) => ticket.capacity != null)) {
     const regSnap = await adminDb
       .collection('tenants').doc(tenant.id)
       .collection('registrations')
       .where('eventId', '==', eventId)
-      .limit(5000)
+      .select('status', 'ticketTypeId', 'quantity')
+      .orderBy('__name__')
+      .limit(5001)
       .get();
+    if (regSnap.docs.length > 5000) throw new Error('Event capacity read exceeds the supported limit');
     const soldByTicket: Record<string, number> = {};
     for (const d of regSnap.docs) {
       const r = d.data();

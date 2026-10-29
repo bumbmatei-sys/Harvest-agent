@@ -142,6 +142,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // byte-identical. THE-313 still did not touch this file.
     ['516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
       'main + THE-379 — the registration deadline, the open-to-anyone gate and per-run questions/capacity; the CRM write and the Stripe path are byte-identical'],
+    ['b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde', 'THE-379 r9 — shared picker window and chosen-run SMS; payment and CRM writes unchanged'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
@@ -760,6 +761,8 @@ describe('the existing events list, its write paths and paid-event creation are 
       // APPENDED BY THE-379 review: preserve cancelled runs, interpret dates
       // in the event zone and reject unsafe online links. Price gates unchanged.
       '52c589591debe21b68681fa68e32e7bbc253bc9d0192ae1dbaa306fd803c8b3c',
+      // APPENDED THE-379 r9: clear in-person links and preserve untouched date instants.
+      '766f17505ba9333ff0eeb3de37beadd9b2119c065bfdd85006f5c2bc1316ffa4',
     ];
     const actual = sha256(src);
     expect(
@@ -969,7 +972,7 @@ describe('the existing events list, its write paths and paid-event creation are 
     const src = EVENTS();
     // APPENDED BY THE-379 review: two redundant create buttons (each with
     // one className on its icon span) were removed; the header CTA remains.
-    expect([306, 304], 'className count moved').toContain((src.match(/className/g) || []).length);
+    expect([306, 304, 305], 'className count moved').toContain((src.match(/className/g) || []).length);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

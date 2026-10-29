@@ -37,7 +37,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { expandRuns, parseEventDateTime, formatEventDateTime } from '../lib/events/recurrence';
+import { expandRuns, parseEventDateTime, formatEventDateTime, type EventRun } from '../lib/events/recurrence';
 import { isSafeOnlineLink } from '../lib/events/online-link';
 import type { RecurrenceRule, RegistrationQuestion } from '../hooks/queries/useEventQueries';
 import {
@@ -80,6 +80,7 @@ const EventMonthView = React.lazy(() => import('./events/EventMonthView'));
 const EventListCalendar = React.lazy(() => import('./events/EventListCalendar'));
 import { useMonthEvents } from '../hooks/queries/useMonthEvents';
 import { dayKey } from './events/month-view';
+import { listEventRuns, eventDayKey } from '../lib/events/list-runs';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -127,21 +128,23 @@ const fmtDate = (ts: Timestamp | null) => {
 const fmtDateInput = (ts: Timestamp | null, timeZone: string) =>
   ts ? formatEventDateTime(ts.toDate(), timeZone) : '';
 
-const toTimestamp = (v: string, timeZone: string): Timestamp | null => {
+const toTimestamp = (v: string, timeZone: string, original?: Timestamp | null): Timestamp | null => {
   if (!v) return null;
+  // Preserve precision and the chosen side of a repeated DST hour on untouched edits.
+  if (original && fmtDateInput(original, timeZone) === v) return original;
   return Timestamp.fromDate(parseEventDateTime(v, timeZone));
 };
 
 /** "Thursday, Oct 23" — a list row's weekday/date line. */
-const fmtWeekdayDate = (ts: Timestamp | null) => {
+const fmtWeekdayDate = (ts: Timestamp | null, timeZone = BROWSER_TIME_ZONE()) => {
   if (!ts) return null;
-  return ts.toDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return ts.toDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone });
 };
 
 /** "5:00 PM" or "5:00 PM – 6:00 PM" — a list row's time line. No end time, no dash. */
-const fmtTimeRange = (start: Timestamp | null, end: Timestamp | null) => {
+const fmtTimeRange = (start: Timestamp | null, end: Timestamp | null, timeZone = BROWSER_TIME_ZONE()) => {
   if (!start) return null;
-  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', timeZone };
   const startStr = start.toDate().toLocaleTimeString('en-US', opts);
   return end ? `${startStr} – ${end.toDate().toLocaleTimeString('en-US', opts)}` : startStr;
 };
@@ -174,19 +177,12 @@ const RECURRENCE_FREQ_LABEL: Record<RecurrenceRule['freq'], string> = {
  * the create form and the submit route use, so the list can never claim a
  * date neither of them would honour.
  */
-const eventRunsLabel = (ev: Event, now: Date): string | null => {
-  if (!ev.recurrence || !ev.startDate || !ev.endDate) return null;
-  const horizon = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-  const runs = expandRuns(
-    { startDate: ev.startDate.toDate(), endDate: ev.endDate.toDate(), timeZone: ev.timeZone, recurrence: ev.recurrence },
-    now,
-    horizon,
-  );
+const eventRunsLabel = (ev: Event, runs: EventRun[], now: number): string | null => {
+  if (!ev.recurrence) return null;
   const freq = RECURRENCE_FREQ_LABEL[ev.recurrence.freq];
-  if (runs.length <= 1) return freq;
-  const dates = runs.slice(0, 3).map((r) => r.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-  const more = runs.length > 3 ? ` +${runs.length - 3} more` : '';
-  return `${freq} · ${dates.join(', ')}${more}`;
+  const dates = runs.filter(run => run.end.getTime() >= now).slice(0, 3)
+    .map(run => run.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ev.timeZone || BROWSER_TIME_ZONE() }));
+  return dates.length ? `${freq} · Next: ${dates.join(', ')}` : freq;
 };
 
 const emptyForm = {
@@ -300,6 +296,10 @@ const AdminEvents: React.FC = () => {
   // that day alone, independent of (and clearing) the Upcoming/Drafts/Past
   // split above — a specific day is a more precise question than any bucket.
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
+  const now = Math.floor(Date.now() / 60000) * 60000;
+  const runsByEvent = React.useMemo(() => new Map(events.map(ev => [ev.id, ev.recurrence && ev.startDate
+    ? listEventRuns({ startDate: ev.startDate.toDate(), endDate: (ev.endDate || ev.startDate).toDate(), timeZone: ev.timeZone || BROWSER_TIME_ZONE(), recurrence: ev.recurrence }, new Date(now), selectedDay)
+    : null])), [events, now, selectedDay]);
   const { data: monthRead, isLoading: monthLoading } = useMonthEvents(tenantId, isAuthReady);
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -413,10 +413,10 @@ const AdminEvents: React.FC = () => {
       location: ev.location,
       isOnline: ev.isOnline,
       onlineLink: ev.onlineLink || '',
-      startDate: fmtDateInput(ev.startDate, ev.timeZone || 'UTC'),
-      endDate: fmtDateInput(ev.endDate, ev.timeZone || 'UTC'),
+      startDate: fmtDateInput(ev.startDate, ev.timeZone || BROWSER_TIME_ZONE()),
+      endDate: fmtDateInput(ev.endDate, ev.timeZone || BROWSER_TIME_ZONE()),
       capacity: ev.capacity?.toString() || '',
-      registrationDeadline: fmtDateInput(ev.registrationDeadline, ev.timeZone || 'UTC'),
+      registrationDeadline: fmtDateInput(ev.registrationDeadline, ev.timeZone || BROWSER_TIME_ZONE()),
       price: ev.price.toString(),
       currency: ev.currency,
       status: ev.status,
@@ -432,7 +432,7 @@ const AdminEvents: React.FC = () => {
       recurrenceEndMode: ev.recurrence?.until ? 'on' : ev.recurrence?.count != null ? 'after' : 'never',
       recurrenceUntil: ev.recurrence?.until || '',
       recurrenceCount: ev.recurrence?.count != null ? String(ev.recurrence.count) : '8',
-      timeZone: ev.timeZone || 'UTC',
+      timeZone: ev.timeZone || BROWSER_TIME_ZONE(),
       openToAnyone: ev.openToAnyone ?? true,
       registrationQuestions: Array.isArray(ev.registrationQuestions) ? ev.registrationQuestions : [],
     });
@@ -451,7 +451,7 @@ const AdminEvents: React.FC = () => {
   const handleSave = async () => {
     if (!form.title.trim()) { notifyError('Event title is required', null); return; }
     if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
-    if (form.onlineLink.trim() && !isSafeOnlineLink(form.onlineLink.trim())) {
+    if (form.isOnline && form.onlineLink.trim() && !isSafeOnlineLink(form.onlineLink.trim())) {
       notifyError('Online event link must be a valid HTTPS URL', null);
       return;
     }
@@ -472,17 +472,18 @@ const AdminEvents: React.FC = () => {
               ? { count: Math.max(1, Math.min(104, Number(form.recurrenceCount) || 1)) }
               : {}),
           };
+      const originalDates = selected && form.timeZone === (selected.timeZone || BROWSER_TIME_ZONE()) ? selected : null;
       const data: Partial<Omit<Event, 'id'>> = {
         title: form.title.trim(),
         description: form.description.trim(),
         coverImage: form.coverImage.trim() || null,
         location: form.location.trim(),
         isOnline: form.isOnline,
-        onlineLink: form.onlineLink.trim() || null,
-        startDate: toTimestamp(form.startDate, form.timeZone || BROWSER_TIME_ZONE()),
-        endDate: toTimestamp(form.endDate, form.timeZone || BROWSER_TIME_ZONE()),
+        onlineLink: form.isOnline ? form.onlineLink.trim() || null : null,
+        startDate: toTimestamp(form.startDate, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.startDate),
+        endDate: toTimestamp(form.endDate, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.endDate),
         capacity: form.capacity ? Number(form.capacity) : null,
-        registrationDeadline: toTimestamp(form.registrationDeadline, form.timeZone || BROWSER_TIME_ZONE()),
+        registrationDeadline: toTimestamp(form.registrationDeadline, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.registrationDeadline),
         // THE-345 - the write gate, and it is deliberately NOT `price: 0`.
         //
         // While no payment rail exists the price input is absent, so a CREATE
@@ -917,6 +918,7 @@ const AdminEvents: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-faint">Times are in {form.timeZone || BROWSER_TIME_ZONE()}. Changing the zone keeps the entered times.</p>
               </div>
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
@@ -1769,14 +1771,10 @@ const AdminEvents: React.FC = () => {
   const copyCalendarUrl = async () => {
     try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
-  const now = Date.now();
   // Eden's three list filters. A draft always sorts under Drafts regardless
   // of its date (an admin still drafting next year's conference should find
   // it there, not buried in "Upcoming"); everything else splits on whether
   // its last available run has ended.
-  const runsByEvent = new Map(events.map(ev => [ev.id, ev.recurrence && ev.startDate
-    ? expandRuns({ startDate: ev.startDate.toDate(), endDate: (ev.endDate || ev.startDate).toDate(), timeZone: ev.timeZone, recurrence: ev.recurrence }, ev.startDate.toDate(), new Date('9999-12-31T23:59:59Z'))
-    : null]));
   const isPastEvent = (ev: Event) => {
     if (ev.status === 'draft') return false;
     const runs = runsByEvent.get(ev.id);
@@ -1792,8 +1790,8 @@ const AdminEvents: React.FC = () => {
   const rowsToShow = selectedDay
     ? events.filter((ev) => {
         const runs = runsByEvent.get(ev.id);
-        return runs ? runs.some(run => dayKey(run.start) === dayKey(selectedDay))
-          : ev.startDate && dayKey(ev.startDate.toDate()) === dayKey(selectedDay);
+        return runs ? runs.some(run => run.runDate === dayKey(selectedDay))
+          : ev.startDate && eventDayKey(ev.startDate.toDate(), ev.timeZone || BROWSER_TIME_ZONE()) === dayKey(selectedDay);
       })
     : visibleEvents;
   const selectedDayLabel = selectedDay
@@ -1967,8 +1965,10 @@ const AdminEvents: React.FC = () => {
           {rowsToShow.map(ev => {
             const runs = runsByEvent.get(ev.id);
             const displayRun = selectedDay
-              ? runs?.find(run => dayKey(run.start) === dayKey(selectedDay))
+              ? runs?.find(run => run.runDate === dayKey(selectedDay))
               : runs?.find(run => run.end.getTime() >= now) ?? runs?.at(-1);
+            const runsLabel = eventRunsLabel(ev, runs || [], now);
+            const timeZone = ev.timeZone || BROWSER_TIME_ZONE();
             const displayStart = displayRun ? Timestamp.fromDate(displayRun.start) : ev.startDate;
             const displayEnd = displayRun ? Timestamp.fromDate(displayRun.end) : ev.endDate;
             return (
@@ -2002,7 +2002,7 @@ const AdminEvents: React.FC = () => {
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted">
                     {displayStart && (
                       <span className="flex items-center gap-1">
-                        <Clock size={11} /> {[fmtWeekdayDate(displayStart), fmtTimeRange(displayStart, displayEnd)].filter(Boolean).join(' · ')}
+                        <Clock size={11} /> {[fmtWeekdayDate(displayStart, timeZone), fmtTimeRange(displayStart, displayEnd, timeZone)].filter(Boolean).join(' · ')}
                       </span>
                     )}
                     {ev.isOnline ? (
@@ -2026,8 +2026,8 @@ const AdminEvents: React.FC = () => {
                     {eventCapacityLabel(ev) && (
                       <span className="flex items-center gap-1"><Users size={11} /> {eventCapacityLabel(ev)}</span>
                     )}
-                    {eventRunsLabel(ev, new Date(now)) && (
-                      <span className="flex items-center gap-1"><Repeat size={11} /> {eventRunsLabel(ev, new Date(now))}</span>
+                    {runsLabel && (
+                      <span className="flex items-center gap-1"><Repeat size={11} /> {runsLabel}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-line">
@@ -2057,10 +2057,10 @@ const AdminEvents: React.FC = () => {
               >
                 <div className="flex w-12 h-12 shrink-0 flex-col items-center justify-center rounded-xl bg-surface-sunken">
                   <span className="text-[9px] font-bold uppercase leading-none tracking-wide text-gold">
-                    {displayStart ? displayStart.toDate().toLocaleDateString('en-US', { month: 'short' }) : '—'}
+                    {displayStart ? displayStart.toDate().toLocaleDateString('en-US', { month: 'short', timeZone }) : '—'}
                   </span>
                   <span className="mt-0.5 text-base font-bold leading-none text-strong">
-                    {displayStart ? displayStart.toDate().getDate() : '–'}
+                    {displayStart ? displayStart.toDate().toLocaleDateString('en-US', { day: 'numeric', timeZone }) : '–'}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -2070,7 +2070,7 @@ const AdminEvents: React.FC = () => {
                     {ev.registrationEnabled && <AdminBadge tone="sky">Registration</AdminBadge>}
                   </div>
                   <div className="mt-0.5 text-xs text-muted">
-                    {[fmtWeekdayDate(displayStart), fmtTimeRange(displayStart, displayEnd)].filter(Boolean).join(' · ') || '—'}
+                    {[fmtWeekdayDate(displayStart, timeZone), fmtTimeRange(displayStart, displayEnd, timeZone)].filter(Boolean).join(' · ') || '—'}
                   </div>
                   <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                     {ev.isOnline ? (
@@ -2093,9 +2093,9 @@ const AdminEvents: React.FC = () => {
                         <DollarSign size={11} /> {eventPriceLabel(ev.price)}
                       </span>
                     )}
-                    {eventRunsLabel(ev, new Date(now)) && (
+                    {runsLabel && (
                       <span className="flex items-center gap-1 text-xs text-muted">
-                        <Repeat size={11} /> {eventRunsLabel(ev, new Date(now))}
+                        <Repeat size={11} /> {runsLabel}
                       </span>
                     )}
                   </div>

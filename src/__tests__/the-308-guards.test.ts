@@ -281,8 +281,9 @@ describe('6-7 · the events read', () => {
     expect(writer, 'a template string reaches startDate').not.toMatch(/startDate:\s*`/);
     expect(writer, 'startDate is not built by toTimestamp').toMatch(/startDate:\s*toTimestamp\(/);
     // THE-379: keep the Timestamp-only contract and require the event zone.
-    expect(writer).toMatch(/const toTimestamp = \(v: string, timeZone: string\): Timestamp \| null/);
+    expect(writer).toMatch(/const toTimestamp = \(v: string, timeZone: string, original\?: Timestamp \| null\): Timestamp \| null/);
     expect(writer).toMatch(/Timestamp\.fromDate\(parseEventDateTime\(v, timeZone\)\)/);
+    expect(writer).toMatch(/if \(original && fmtDateInput\(original, timeZone\) === v\) return original/);
   });
 
   it('7c · and the month view refuses a non-Timestamp rather than parsing it', () => {
@@ -421,6 +422,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       // APPENDED BY THE-379 review: preserve cancelled runs, interpret dates
       // in the event zone and reject unsafe online links. Price gates unchanged.
       '52c589591debe21b68681fa68e32e7bbc253bc9d0192ae1dbaa306fd803c8b3c',
+      // APPENDED THE-379 r9: clear in-person links and preserve untouched date instants.
+      '766f17505ba9333ff0eeb3de37beadd9b2119c065bfdd85006f5c2bc1316ffa4',
     ];
     const actual = sha256(src);
     expect(
@@ -564,6 +567,8 @@ describe('9-10 · event write paths are byte-identical', () => {
        * pending-registration rollback and the capacity count's SEATS unit.
        */
       '516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
+      // APPENDED THE-379 r9: match the public run window; SMS uses the chosen run.
+      'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

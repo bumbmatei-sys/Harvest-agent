@@ -28,6 +28,7 @@ const BRAND = 'var(--brand-color, #B8962E)';
 interface ApiTicket {
   id: string;
   eventId: string | null;
+  runDate?: string | null;
   ticketCode: string | null;
   status: string;               // 'confirmed' | 'waitlisted'
   ticketTypeName: string | null;
@@ -55,6 +56,7 @@ interface ApiTicket {
 /** A row in the upcoming-events list — a tenant event, optionally ticketed. */
 interface EventRow {
   id: string;
+  rowKey?: string;
   title: string;
   startMillis: number | null;
   location: string | null;
@@ -146,9 +148,9 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         for (const t of tickets) {
           if (!t.eventId) continue;
           // Prefer a confirmed ticket over a waitlisted one for the same event.
-          const existing = ticketByEvent.get(t.eventId);
+          const existing = ticketByEvent.get(`${t.eventId}:${t.runDate || ''}`);
           if (!existing || (existing.status === 'waitlisted' && t.status === 'confirmed')) {
-            ticketByEvent.set(t.eventId, t);
+            ticketByEvent.set(`${t.eventId}:${t.runDate || ''}`, t);
           }
         }
 
@@ -165,11 +167,11 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           byId.set(d.id, {
             id: d.id,
             title: e.title || 'Event',
-            startMillis,
+            startMillis: ticketByEvent.get(`${d.id}:`)?.event?.startMillis ?? startMillis,
             location: e.location || null,
             isOnline: !!e.isOnline,
             registrationEnabled: !!e.registrationEnabled,
-            ticket: ticketByEvent.get(d.id) || null,
+            ticket: ticketByEvent.get(`${d.id}:`) || null,
           });
         });
 
@@ -177,9 +179,12 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         // the user still holds a real ticket to), using the API's joined event info
         // so their QR is never unreachable.
         ticketByEvent.forEach((t, eventId) => {
-          if (byId.has(eventId)) return;
+          const id = t.eventId!;
+          // Each recurring run remains reachable even when the series itself was read.
+          if (!t.runDate && byId.has(id)) return;
           byId.set(eventId, {
-            id: eventId,
+            id,
+            rowKey: eventId,
             title: t.event?.title || 'Event',
             startMillis: t.event?.startMillis ?? null,
             location: t.event?.location || null,
@@ -226,6 +231,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
     .filter((t) => t.eventId && t.event?.startMillis != null && t.event.startMillis < todayMs)
     .map((t) => ({
       id: t.eventId!,
+      rowKey: `${t.eventId}:${t.runDate || t.id}`,
       title: t.event?.title || 'Event',
       startMillis: t.event?.startMillis ?? null,
       location: t.event?.location || null,
@@ -284,7 +290,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
               const time = fmtTime(r.startMillis);
               return (
                 <div
-                  key={r.id}
+                  key={r.rowKey || r.id}
                   className={`rounded-2xl p-4 shadow-xs transition-colors ${
                     ticketed
                       ? 'bg-surface-raised ring-2'

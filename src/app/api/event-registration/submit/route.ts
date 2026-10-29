@@ -19,7 +19,7 @@ import {
 } from '@/lib/event-payment-claims';
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
-import { expandRuns, registrationMatchesRun } from '@/lib/events/recurrence';
+import { registrationRuns, registrationMatchesRun, type EventRun } from '@/lib/events/recurrence';
 import { validateAnswers } from '@/lib/events/registration-questions';
 import type { RecurrenceRule, RegistrationQuestion } from '@/hooks/queries/useEventQueries';
 
@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
     // occurrence of the series. Non-recurring events ignore `runDate`
     // entirely, so every existing single-run event is untouched.
     let targetRunDate: string | null = null;
+    let targetRun: EventRun | undefined;
     const recurrence: RecurrenceRule | null | undefined = event.recurrence;
     if (recurrence) {
       const requestedRunDate = typeof body.runDate === 'string' ? body.runDate.trim() : '';
@@ -136,12 +137,11 @@ export async function POST(request: NextRequest) {
       if (!requestedRunDate || !eventStart) {
         return NextResponse.json({ error: 'Please choose which date you are registering for.' }, { status: 400 });
       }
-      const runs = expandRuns(
+      const runs = registrationRuns(
         { startDate: eventStart, endDate: eventEnd || eventStart, timeZone: event.timeZone, recurrence },
-        new Date(0),
-        new Date(Date.UTC(9999, 0, 1)),
       );
-      if (!runs.some((r) => r.runDate === requestedRunDate)) {
+      targetRun = runs.find((r) => r.runDate === requestedRunDate);
+      if (!targetRun) {
         return NextResponse.json({ error: 'That date is no longer available for this event.' }, { status: 410 });
       }
       targetRunDate = requestedRunDate;
@@ -516,8 +516,9 @@ export async function POST(request: NextRequest) {
     // would be false for a waitlist entry. Paid tickets are confirmed by the
     // Stripe webhook, not here, so they don't reach this branch.
     if (phone && !waitlisted) {
-      const eventDate = event.startDate?.toDate
-        ? event.startDate.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      const smsStart = targetRun?.start || event.startDate?.toDate?.();
+      const eventDate = smsStart
+        ? smsStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...(targetRun ? { timeZone: event.timeZone || 'UTC' } : {}) })
         : '';
       await sendAutomatedSms(tenantId, 'event_registration', phone, {
         name: firstName,

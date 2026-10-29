@@ -2991,6 +2991,8 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       // THE-379 review: cancellation preservation, run-aware dates/filtering,
       // event-zone date inputs, HTTPS validation and one header create CTA.
       { strippedSha: '5c51cdf0db34be0b9aba0eb3a665b909151e572d504d770f5ead389a785e09ab', strippedLines: 1896 },
+      // APPENDED THE-379 r9: browser-zone legacy edits, hidden links and bounded run-aware rows.
+      { strippedSha: '02e666ae9154b808e29d6cd9f07a56f1bb934df1798529ead0bc64d12db42202', strippedLines: 1895 },
     ];
     expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
       strippedSha: sha(now), strippedLines: now.split('\n').length,

@@ -175,7 +175,7 @@ export function parseEventDateTime(value: string, timeZone: string): Date {
  * produce at most one run, so every existing single-run event keeps working
  * unmodified.
  */
-export function expandRuns(event: RecurrenceInput, from: Date, to: Date): EventRun[] {
+export function expandRuns(event: RecurrenceInput, from: Date, to: Date, options: { maxCount?: number; latest?: boolean } = {}): EventRun[] {
   const timeZone = event.timeZone || 'UTC';
   const durationMs = event.endDate.getTime() - event.startDate.getTime();
   const startParts = getZonedParts(event.startDate, timeZone);
@@ -187,6 +187,9 @@ export function expandRuns(event: RecurrenceInput, from: Date, to: Date): EventR
   const untilCivil = rule?.until ? parseCivilDateString(rule.until) : null;
 
   const runs: EventRun[] = [];
+  const candidates: CivilDate[] = [];
+  const lowerCivil = getZonedParts(new Date(from.getTime() - Math.max(0, durationMs) - 86400000), timeZone);
+  const upperCivil = getZonedParts(to, timeZone);
   let occurrenceIndex = 0;
   let monthCursor = 0; // only advances for freq === 'monthly'
 
@@ -216,20 +219,25 @@ export function expandRuns(event: RecurrenceInput, from: Date, to: Date): EventR
     if (untilCivil && compareCivil(civil, untilCivil) > 0) break;
     if (rule?.count != null && occurrenceIndex >= rule.count) break;
 
-    const runDate = civilDateString(civil);
-    const start = zonedTimeToUtc(civil.year, civil.month, civil.day, tod.hour, tod.minute, tod.second, timeZone);
-    const end = new Date(start.getTime() + durationMs);
-
-    // Civil dates are strictly increasing with `occurrenceIndex`, so once a
-    // run starts after the window there is nothing later worth generating.
-    if (start.getTime() > to.getTime()) break;
-
-    if (!cancelled.has(runDate) && end.getTime() >= from.getTime()) {
-      runs.push({ runDate, start, end });
-    }
-
+    // Skip historical civil dates before doing any costly zone conversion.
+    if (compareCivil(civil, upperCivil) > 0) break;
+    if (compareCivil(civil, lowerCivil) >= 0) candidates.push(civil);
     occurrenceIndex += 1;
   }
+
+  // A past row needs only the latest run. Walk backwards so maxCount also
+  // bounds instant expansion, rather than building and discarding the series.
+  if (options.latest) candidates.reverse();
+  for (const civil of candidates) {
+    const runDate = civilDateString(civil);
+    if (cancelled.has(runDate)) continue;
+    const start = zonedTimeToUtc(civil.year, civil.month, civil.day, tod.hour, tod.minute, tod.second, timeZone);
+    const end = new Date(start.getTime() + durationMs);
+    if (start > to || end < from) continue;
+    runs.push({ runDate, start, end });
+    if (options.maxCount && runs.length >= options.maxCount) break;
+  }
+  if (options.latest) runs.reverse();
 
   return runs;
 }
@@ -246,4 +254,9 @@ export function registrationMatchesRun(
 ): boolean {
   if (!targetRunDate) return !registrationRunDate;
   return registrationRunDate === targetRunDate;
+}
+
+/** The public picker and submit route offer exactly the same bounded run window. */
+export function registrationRuns(event: RecurrenceInput, now = new Date()): EventRun[] {
+  return expandRuns(event, now, new Date(now.getTime() + 180 * 86400000), { maxCount: 12 });
 }

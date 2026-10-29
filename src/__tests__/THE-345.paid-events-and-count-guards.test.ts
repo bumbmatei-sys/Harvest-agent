@@ -298,14 +298,16 @@ describe("8 · THE-308's month view is untouched", () => {
     // The day-cell measurement itself lives in THE-308's own Chromium suite and
     // runs unedited; what this ticket owes it is that the files it measures did
     // not move. A digest says that in a way no re-measurement can.
-    const MONTH_VIEW: Record<string, string> = {
+    const MONTH_VIEW: Record<string, string | readonly string[]> = {
       'src/components/events/EventMonthView.tsx':
         '2dee2d960e56dd9a4f1afe51c4b321666632981d68c258a8688fae974c3a7961',
       'src/components/events/month-view.ts':
-        '2933854ade2aa6695bd1996f2e9a5a425655f6be5a1b0e66d2a0aa4b12796d76',
+        // APPENDED THE-379 r9: optional scheduling data; grid layout untouched.
+        ['2933854ade2aa6695bd1996f2e9a5a425655f6be5a1b0e66d2a0aa4b12796d76', '0865d59afebb3d3dc280efa519f9eef7f0c9cf4c8f8b26cc420f21c9986007df'],
     };
     for (const [rel, digest] of Object.entries(MONTH_VIEW)) {
-      expect(sha256(read(rel)), `${rel} moved - THE-308's measured month grid is at risk`).toBe(digest);
+      const accepted = typeof digest === 'string' ? [digest] : digest;
+      expect(accepted, `${rel} moved - THE-308's measured month grid is at risk`).toContain(sha256(read(rel)));
     }
   });
 
@@ -474,8 +476,9 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
      * still mean a free registration, a waitlist entry and a ticket discounted
      * to $0 mint neither a reference nor a token and still receive their QR.
      */
-    expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe('516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019');
+    // APPENDED THE-379 r9: shared picker window and chosen-run SMS only.
+    expect(['516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
+      'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

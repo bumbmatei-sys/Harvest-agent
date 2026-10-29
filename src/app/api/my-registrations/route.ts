@@ -1,3 +1,4 @@
+import { expandRuns, type RecurrenceInput } from '@/lib/events/recurrence';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
@@ -28,6 +29,7 @@ interface PayOption {
 interface Ticket {
   id: string;
   eventId: string | null;
+  runDate: string | null;
   ticketCode: string | null;
   status: string;
   ticketTypeName: string | null;
@@ -112,6 +114,7 @@ export async function GET(request: NextRequest) {
     // Join event docs (for title/date/location) so each ticket renders on its own.
     const eventIds = Array.from(new Set(rows.map((r) => r.data.eventId).filter(Boolean))) as string[];
     const eventMap: Record<string, Ticket['event']> = {};
+    const seriesMap: Record<string, RecurrenceInput> = {};
     /** Raw `paymentProviders` per event, cleaned below against the church's own links. */
     const eventProviders: Record<string, unknown> = {};
     await Promise.all(
@@ -123,6 +126,9 @@ export async function GET(request: NextRequest) {
             const start = e.startDate;
             const end = e.endDate;
             eventProviders[eid] = e.paymentProviders;
+            if (e.recurrence && start?.toMillis) {
+              seriesMap[eid] = { startDate: new Date(start.toMillis()), endDate: new Date(end?.toMillis ? end.toMillis() : start.toMillis()), timeZone: e.timeZone, recurrence: e.recurrence };
+            }
             eventMap[eid] = {
               title: e.title || 'Event',
               startMillis: start && typeof start.toMillis === 'function' ? start.toMillis() : null,
@@ -160,9 +166,19 @@ export async function GET(request: NextRequest) {
     const tickets: Ticket[] = rows.map((r) => {
       const eventId = r.data.eventId || null;
       const payment = paymentStateOf(r.data);
+      const runDate = typeof r.data.runDate === 'string' ? r.data.runDate : null;
+      let ticketEvent = (eventId && eventMap[eventId]) || null;
+      if (runDate && eventId && seriesMap[eventId] && ticketEvent) {
+        const day = new Date(`${runDate}T00:00:00Z`).getTime();
+        const run = expandRuns(seriesMap[eventId], new Date(day - 86400000), new Date(day + 2 * 86400000))
+          .find(candidate => candidate.runDate === runDate);
+        ticketEvent = { ...ticketEvent, startMillis: run?.start.getTime() ?? null, endMillis: run?.end.getTime() ?? null,
+          ...(run ? {} : { status: 'cancelled' }) };
+      }
       return {
         id: r.id,
         eventId,
+        runDate,
         ticketCode: r.data.ticketCode || null,
         status: r.data.status,
         ticketTypeName: r.data.ticketTypeName || null,
@@ -181,7 +197,7 @@ export async function GET(request: NextRequest) {
                 handle: l.handle,
                 email: l.email,
               })),
-        event: (eventId && eventMap[eventId]) || null,
+        event: ticketEvent,
       };
     });
 

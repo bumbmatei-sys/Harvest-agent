@@ -36,6 +36,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const expansionCalls = vi.hoisted(() => vi.fn());
+vi.mock('../../lib/events/recurrence', async (original) => {
+  const real = await original<typeof import('../../lib/events/recurrence')>();
+  return { ...real, expandRuns: (...args: Parameters<typeof real.expandRuns>) => {
+    expansionCalls(...args);
+    return real.expandRuns(...args);
+  } };
+});
+
 const writes: string[] = [];
 /** Whatever the last create/update write actually stored. */
 const stored: Array<Record<string, unknown>> = [];
@@ -586,15 +595,24 @@ describe('THE-379 review regressions — admin events', () => {
     const runs = expandRuns({ startDate: event.startDate.toDate(), endDate: event.endDate.toDate(),
       timeZone: event.timeZone, recurrence: event.recurrence as Parameters<typeof expandRuns>[0]['recurrence'],
     }, new Date(at(3, 1)), new Date(at(5, 1)));
-    const dayKey = (date: Date) => date.toDateString();
+    const { dayKey } = await import('../events/month-view');
+    const { eventDayKey } = await import('../../lib/events/list-runs');
     const code = ts.transpile(filters[0], { target: ts.ScriptTarget.ES2022 });
-    const select = (day: string) => runInNewContext(code, {
-      selectedDay: new Date(day), events: [event], runsByEvent: new Map([[event.id, runs]]),
-      dayKey, visibleEvents: [],
+    const select = (day: string, ev = event, runList = runs) => runInNewContext(code, {
+      selectedDay: new Date(day), events: [ev], runsByEvent: new Map([[ev.id, runList]]),
+      dayKey, eventDayKey, BROWSER_TIME_ZONE: () => 'UTC', visibleEvents: [],
     });
     expect(select(at(3, 30, 12, 0)).map((e: { id: string }) => e.id)).toEqual([event.id]);
     expect(select(at(3, 23, 12, 0))).toHaveLength(0);
     expect(select(at(3, 31, 12, 0))).toHaveLength(0);
+    const tokyo = series({ timeZone: 'Asia/Tokyo', startDate: timestamp(at(3, 16, 23)), endDate: timestamp(at(3, 17, 0)) });
+    const tokyoRuns = expandRuns({ startDate: tokyo.startDate.toDate(), endDate: tokyo.endDate.toDate(), timeZone: 'Asia/Tokyo', recurrence: { freq: 'weekly', count: 1 } }, new Date(at(3, 1)), new Date(at(4, 1)));
+    expect(select(at(3, 17, 12), tokyo, tokyoRuns)).toHaveLength(1);
+    expect(select(at(3, 16, 12), tokyo, tokyoRuns)).toHaveLength(0);
+    const pacific = series({ timeZone: 'America/Los_Angeles', startDate: timestamp(at(3, 17, 1)), endDate: timestamp(at(3, 17, 2)) });
+    const pacificRuns = expandRuns({ startDate: pacific.startDate.toDate(), endDate: pacific.endDate.toDate(), timeZone: 'America/Los_Angeles', recurrence: { freq: 'weekly', count: 1 } }, new Date(at(3, 1)), new Date(at(4, 1)));
+    expect(select(at(3, 16, 12), pacific, pacificRuns)).toHaveLength(1);
+    expect(select(at(3, 17, 12), pacific, pacificRuns)).toHaveLength(0);
   });
 
   it('does not offer a series with every remaining run cancelled in Upcoming', async () => {
@@ -661,4 +679,97 @@ describe('THE-379 review regressions — admin events', () => {
     await click(ctas[0]);
     expect(c.querySelector('[data-event-form-dialog]')).toBeTruthy();
   });
+
+  it.each(['Asia/Tokyo', 'America/Los_Angeles'])('r9.1 legacy edit defaults to browser zone and preserves the instant: %s', async zone => {
+    const original = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...original.call(this), timeZone: zone };
+    });
+    try {
+      eventsData.current = [series({ timeZone: undefined, recurrence: null })];
+      const c = await editOnlyEvent();
+      const dates = c.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]');
+      const { formatEventDateTime } = await import('../../lib/events/recurrence');
+      expect(dates[0].value).toBe(formatEventDateTime(new Date(at(3, 16, 18)), zone));
+      expect(dates[1].value).toBe(formatEventDateTime(new Date(at(3, 16, 19)), zone));
+      expect(c.textContent).toContain(`Times are in ${zone}`);
+      expect(c.textContent).toContain('Changing the zone keeps the entered times');
+      await click(buttonContaining(c, 'Save Changes'));
+      expect(stored).toHaveLength(1);
+      expect(stored[0].timeZone).toBe(zone);
+      expect((stored[0].startDate as { toDate(): Date }).toDate().toISOString()).toBe(at(3, 16, 18));
+      expect((stored[0].endDate as { toDate(): Date }).toDate().toISOString()).toBe(at(3, 16, 19));
+    } finally { spy.mockRestore(); }
+  });
+
+  it('r9.1 untouched legacy edits preserve seconds and a repeated DST hour', async () => {
+    const original = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...original.call(this), timeZone: 'Europe/Berlin' };
+    });
+    try {
+      const start = new Date(Date.UTC(2031, 9, 26, 1, 30, 27)).toISOString();
+      const end = new Date(Date.UTC(2031, 9, 26, 2, 30, 43)).toISOString();
+      eventsData.current = [series({ timeZone: undefined, startDate: timestamp(start), endDate: timestamp(end) })];
+      const c = await editOnlyEvent();
+      await click(buttonContaining(c, 'Save Changes'));
+      expect(stored).toHaveLength(1);
+      expect((stored[0].startDate as { toDate(): Date }).toDate().toISOString()).toBe(start);
+      expect((stored[0].endDate as { toDate(): Date }).toDate().toISOString()).toBe(end);
+    } finally { spy.mockRestore(); }
+  });
+
+  it('r9.1 zone picker keeps the typed wall clock and explains the new zone', async () => {
+    eventsData.current = [series()];
+    const c = await editOnlyEvent();
+    const input = c.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
+    await fill(input, at(3, 30, 19).slice(0, 16));
+    await click(buttonContaining(c, 'Europe/Berlin'));
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(e => e.textContent === 'America/New_York');
+    expect(option).toBeTruthy();
+    const { act } = await import('react');
+    await act(async () => {
+      option!.focus();
+      option!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    await settle();
+    expect(input.value).toBe(at(3, 30, 19).slice(0, 16));
+    expect(c.textContent).toContain('Times are in America/New_York');
+  });
+
+  it.each(['javascript:alert(1)', 'https://meet.example.com/old-room'])('r9.2 clears a hidden in-person meeting link without blocking save: %s', async onlineLink => {
+    eventsData.current = [series({ isOnline: false, onlineLink })];
+    const c = await editOnlyEvent();
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(1);
+    expect(stored[0].onlineLink).toBeNull();
+    expect(notifications.error).not.toHaveBeenCalled();
+  });
+
+  it('r9.7 list date and time use the event zone across a UTC day boundary', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(at(3, 15)));
+    eventsData.current = [series({ startDate: timestamp(at(3, 16, 23, 30)), endDate: timestamp(at(3, 17, 0, 30)), timeZone: 'Asia/Tokyo' })];
+    const c = await screen();
+    expect(c.textContent).toContain('Monday, Mar 17');
+    expect(c.textContent).toContain('8:30 AM');
+    const desktop = c.querySelector('.lg\\:flex');
+    expect(desktop?.textContent).toContain('17');
+  });
+
+  it('r9.8 memoizes bounded series runs across unrelated row rerenders', async () => {
+    expansionCalls.mockClear();
+    const spy = expansionCalls;
+    try {
+      eventsData.current = [series({ recurrence: { freq: 'weekly' } })];
+      const c = await screen();
+      const first = spy.mock.calls.length;
+      expect(first).toBeGreaterThan(0);
+      expect(spy.mock.calls.every(call => call[3]?.maxCount && call[3].maxCount <= 4)).toBe(true);
+      await click(buttonContaining(c, 'Past'));
+      await click(buttonContaining(c, 'Upcoming'));
+      expect(spy.mock.calls.length).toBe(first);
+    } finally { spy.mockClear(); }
+  });
+
 });
