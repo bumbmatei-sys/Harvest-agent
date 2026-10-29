@@ -7,17 +7,18 @@
  * luminance functions are re-exported from the app's single implementation
  * (`src/lib/theme.ts`) rather than reimplemented here.
  *
- * `inkOn` moved here from render.ts — it is the "readable ink on a filled
- * background" primitive and the fallback logic below builds on the same two
- * ink colours. render.ts re-exports it, so nothing that imported it breaks.
+ * `inkOn` moved here from render.ts. Its historic threshold is preserved for
+ * legacy designs; the AA helpers below also use pure black where near-black
+ * misses the floor. render.ts re-exports it for existing importers.
  */
 import { AA_CONTRAST, contrastRatio, luminance } from '@/lib/theme';
 
 export { AA_CONTRAST, contrastRatio, luminance };
 
-/** The two inks every fallback chooses between. */
+/** Historic inks, plus the pure-black fallback needed to guarantee AA. */
 const NEAR_BLACK = '#1A1A1A';
 const WHITE = '#ffffff';
+const BLACK = '#000000';
 
 /**
  * White or near-black, whichever reads on `hex`. Used for the text on a filled
@@ -28,9 +29,10 @@ export function inkOn(hex: string): string {
   return luminance(hex) > 0.45 ? NEAR_BLACK : WHITE;
 }
 
-/** The ink with the higher contrast on `background` — never below 4.58:1 for any ground. */
+/** Prefer near-black when it clears AA, otherwise black; compare with white. The floor is 4.5:1. */
 export function readableInkOn(background: string): string {
-  return contrastRatio(NEAR_BLACK, background) >= contrastRatio(WHITE, background) ? NEAR_BLACK : WHITE;
+  const dark = contrastRatio(NEAR_BLACK, background) >= AA_CONTRAST ? NEAR_BLACK : BLACK;
+  return contrastRatio(dark, background) >= contrastRatio(WHITE, background) ? dark : WHITE;
 }
 
 /** Straight-line mix of two six-digit hexes; `t` = 0 gives `a`, 1 gives `b`. */
@@ -50,9 +52,8 @@ export function mixHex(a: string, b: string, t: number): string {
  * The colour `preferred` should be drawn in on `background`: `preferred` itself
  * when it clears AA, otherwise the closest readable colour to it — nudged
  * toward whichever ink reads better on that ground until it clears 4.5:1. The
- * walk keeps the theme's hue as long as it can; the extreme always clears AA
- * (one of black or white is at least 4.58:1 on any ground), so the fallback
- * can never resolve to something unreadable.
+ * walk keeps the theme's hue as long as it can; the extreme always clears
+ * 4.5:1, using pure black when near-black would miss AA.
  */
 export function readableTextOn(background: string, preferred: string): string {
   if (contrastRatio(preferred, background) >= AA_CONTRAST) return preferred;
@@ -88,7 +89,7 @@ export interface BoxFillColors {
  * Every ink is `readableTextOn` against the actual fill, keeping each
  * preferred hue as long as it reads. A filled Box's button keeps the theme's
  * own colours only while its background clears the 3:1 non-text floor against
- * that fill; otherwise the button becomes a light/dark chip in `inkOn(fill)`
+ * that fill; otherwise the button becomes a light/dark chip in `readableInkOn(fill)`
  * with contrasting text — a themed button vanishing into its own Box is the
  * failure this replaces.
  */
@@ -103,9 +104,10 @@ export function boxFillColors(
   let buttonBg = theme.buttonBg;
   let buttonInk = theme.buttonInk;
   if (filled && (buttonBg === 'transparent' || contrastRatio(buttonBg, fill) < UI_CONTRAST)) {
-    buttonBg = inkOn(fill);
+    buttonBg = readableInkOn(fill);
     buttonInk = readableTextOn(buttonBg, fill);
   }
+  buttonInk = readableTextOn(buttonBg === 'transparent' ? fill : buttonBg, buttonInk);
   return {
     fill,
     border: mixHex(fill, base, 0.45),

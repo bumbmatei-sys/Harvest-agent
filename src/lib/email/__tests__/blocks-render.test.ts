@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeEmailBody, renderEmail, DEFAULT_EMAIL_DESIGN } from '@/lib/email/render';
+import { BOX_TINTS } from '@/lib/email/blocks';
+import { THEME_PRESETS } from '@/lib/email/themes';
 import { AA_CONTRAST, boxFillColors, contrastRatio, luminance } from '@/lib/email/theme-contrast';
 
 const base = {
@@ -173,4 +175,41 @@ describe('block fields can never inject markup', () => {
     const out = html(box({ 'data-button-text': 'Go', 'data-button-url': 'https://x.org/" onload="steal()' }));
     expect(out).not.toContain('onload');
   });
+});
+
+describe('every preset, tint and Box variant keeps all rendered text at AA', () => {
+  for (const preset of THEME_PRESETS) {
+    for (const tint of BOX_TINTS) {
+      for (const variant of ['filled', 'outline'] as const) {
+        it.each([false, true])(`${preset.id} / ${tint.key} / ${variant} / dark=%s`, (dark) => {
+          const out = html(box({
+            'data-label': 'Give',
+            'data-tint': tint.key,
+            'data-variant': variant,
+            'data-button-text': 'Reserve a seat',
+            'data-button-url': 'https://x.org/rsvp',
+          }), { themeId: preset.id, dark });
+          const root = document.createElement('div');
+          root.innerHTML = out;
+          const cell = [...root.querySelectorAll('td')].find((el) =>
+            el.getAttribute('style')?.includes('border:1px solid') && el.textContent?.includes('Sunday supper'));
+          expect(cell, 'the rendered Box cell exists').toBeDefined();
+          const color = (el: Element, property: string) => {
+            const match = new RegExp(`(?:^|;)${property}:(#[0-9a-fA-F]{6}|transparent)(?:;|$)`)
+              .exec(el.getAttribute('style')!);
+            expect(match, `${property} is explicit in ${el.outerHTML}`).not.toBeNull();
+            return match![1];
+          };
+          const fill = color(cell!, 'background');
+          const words = [...cell!.querySelectorAll('div, a')].filter((el) => el.children.length === 0);
+          expect(words.map((el) => el.textContent)).toEqual(['GIVE', 'Sunday supper', 'Bring a friend.', 'Reserve a seat']);
+          for (const el of words) {
+            const background = el.tagName === 'A' ? color(el, 'background') : fill;
+            expect(contrastRatio(color(el, 'color'), background === 'transparent' ? fill : background), el.textContent!)
+              .toBeGreaterThanOrEqual(AA_CONTRAST);
+          }
+        });
+      }
+    }
+  }
 });

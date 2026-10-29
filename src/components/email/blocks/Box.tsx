@@ -8,6 +8,7 @@ import { Segmented, TAP, type Option } from '@/components/email/kit';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import {
   BOX_DEFAULTS,
@@ -241,21 +242,18 @@ function BoxFields({ attrs, commit, urlOk }: {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>Tint</Label>
-        <div role="radiogroup" aria-label="Box tint" className="flex flex-wrap gap-2">
+        <RadioGroup value={attrs.tint} onValueChange={(value) => commit({ tint: value as BoxTint })} aria-label="Box tint" className="flex flex-wrap gap-2">
           {BOX_TINTS.map((t) => (
-            <button
+            <RadioGroupItem
               key={t.key}
-              type="button"
-              role="radio"
-              aria-checked={attrs.tint === t.key}
+              value={t.key}
               aria-label={t.label}
               title={t.label}
-              onClick={() => commit({ tint: t.key as BoxTint })}
-              className={cn('size-9 rounded-full border-2', TAP, attrs.tint === t.key ? 'border-strong ring-2 ring-brand' : 'border-line')}
+              className={cn('size-11 min-w-11 rounded-full border-2 sm:size-[38px] sm:min-w-[38px]', TAP, attrs.tint === t.key ? 'border-strong ring-2 ring-brand' : 'border-line')}
               style={{ background: swatchColor(t.key) }}
             />
           ))}
-        </div>
+        </RadioGroup>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>Style</Label>

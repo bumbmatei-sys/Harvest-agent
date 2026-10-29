@@ -1574,7 +1574,7 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     file: 'src/components/email/blocks/Box.tsx',
     ticket: '#560',
     why:
-      "Newsletter themes: the tinted Box block's settings open in a popover anchored to its own gear trigger, so the tint and padding controls sit beside the block they change instead of a modal, and the block's blurb takes the textarea for the same field styling as every other input. The primitives are unedited.",
+      "Newsletter themes: the tinted Box block's settings use popover and textarea. PR #560 review replaces the native tint swatches with radio-group and radio-group-item, because exactly one tint is selected and keyboard navigation belongs to the primitive. The primitives are unedited.",
   },
   {
     file: 'src/components/email/blocks/IssueHeader.tsx',

@@ -43,7 +43,7 @@ describe('PreviewDialog starting mode and React 18 close composition', () => {
     expect(document.querySelector('iframe')?.getAttribute('srcdoc')).toBe('<p>Sample email</p>');
   });
 
-  it('closes through a native render button without a function-component ref warning', async () => {
+  it('closes through the shadcn Button without a function-component ref warning', async () => {
     const errors = vi.spyOn(console, 'error');
     const onOpenChange = vi.fn();
     await mount(<PreviewDialog open onOpenChange={onOpenChange} api={{ preview: async () => '<p>Preview</p>' }} draft={{}} />);
@@ -61,6 +61,7 @@ describe('ThemePicker', () => {
     const tiles = all('[role=radio]');
     expect(tiles.map((t) => t.getAttribute('aria-label'))).toEqual(THEME_PRESETS.map((p) => p.name));
     const picked = need(byName('[role=radio]', 'Letter'), 'letter tile');
+    expect(tiles.every((tile) => tile.getAttribute('data-slot') === 'button')).toBe(true);
     expect(picked.getAttribute('aria-checked')).toBe('true');
     expect(checkBadge(picked)).not.toBeNull();
     for (const t of tiles.filter((x) => x !== picked)) {
@@ -88,6 +89,18 @@ describe('ThemePicker', () => {
     expect(need(byName('[role=radio]', 'Sunday letter'), 'sunday').textContent).not.toContain('Default');
   });
 
+  it('deleting a saved theme uses a separate ghost Button and does not select it', async () => {
+    const onSelect = vi.fn();
+    const onDelete = vi.fn();
+    await mount(<ThemePicker selectedId="letter" onSelect={onSelect} onDelete={onDelete}
+      customThemes={[{ id: 'c1', name: 'Advent', tokens: letter, createdAt: '2031-01-01T00:00:00.000Z' }]} />);
+    const trash = need(byName('button', 'Delete Advent'), 'delete theme');
+    expect(trash.getAttribute('data-slot')).toBe('button');
+    await click(trash);
+    expect(onDelete).toHaveBeenCalledWith('c1');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it('the checkmark probe can fail: a badge on an unselected tile is caught (planted defect)', async () => {
     await mount(<ThemePicker selectedId="letter" onSelect={() => {}} />);
     // The probe under test: a tile agrees with itself only when its checked
@@ -105,6 +118,7 @@ describe('the settings panels write through to the tokens', () => {
   it('typing a hex into a colour row updates that token and nothing else', async () => {
     const onChange = vi.fn();
     await mount(<ThemeSettingsPanels tokens={letter} onChange={onChange} defaults={letter} />);
+    expect(need(byName('input', 'Headings swatch'), 'colour picker').getAttribute('data-slot')).toBe('input');
     await typeInto(need(byName('input', 'Headings hex'), 'heading hex'), '#123456');
     expect(onChange).toHaveBeenLastCalledWith({ ...letter, heading: '#123456' });
   });

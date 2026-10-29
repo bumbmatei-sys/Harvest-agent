@@ -869,11 +869,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/TemplatesDialog.tsx',
       // APPENDED BY the newsletter email-themes work (#560), NOTHING ABOVE OR
       // BELOW REMOVED OR REWRITTEN. It sits here because this list is the
-      // sweep's own sorted order. The theme tiles themselves are radios on the
-      // kit's shared TAP token and spell no class of their own, but the tile's
-      // delete control USES `min-h-11 min-w-11 ... sm:min-h-0 sm:min-w-0` — the
-      // Rule-4 phone floor with the `sm` hand-back — so the file is in the
-      // sweep THE-356 reads and needs its own entry now.
+      // sweep's own sorted order. PR #560 review puts theme tiles on outline
+      // Buttons and deletion on a separate ghost icon Button. Both spell
+      // min-h-11; the delete target also has min-w-11 and 38px desktop floors.
+      // The tile uses h-auto so its thumbnail and label fit inside the Button.
+      // Both therefore stay in the sweep THE-356 reads.
       'src/components/email/ThemePicker.tsx',
       // APPENDED BY the newsletter email-themes work, NOTHING ABOVE OR BELOW
       // REMOVED OR REWRITTEN. It sits here because this list is the sweep's own

@@ -405,6 +405,17 @@ export function tokensFromDesign(design: EmailDesign, dark = false): EmailThemeT
 const isOneOf = <T extends string>(value: unknown, options: readonly T[]): value is T =>
   typeof value === 'string' && (options as readonly string[]).includes(value);
 
+/** A banner must be an absolute https URL before it can become an image source. */
+function readBannerUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const url = value.trim();
+  try {
+    return new URL(url).protocol === 'https:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Read a token set out of untrusted storage (a broadcast snapshot or a custom
  * theme document). Every field is validated; a malformed field falls back to
@@ -415,7 +426,7 @@ export function readThemeTokens(value: unknown, base: EmailThemeTokens): EmailTh
   const v = (value ?? {}) as Record<string, unknown>;
   const b = (v.buttons ?? {}) as Record<string, unknown>;
   const hex = (key: keyof EmailThemeTokens) => readHexColor(v[key]) ?? (base[key] as string);
-  const bannerUrl = typeof v.bannerUrl === 'string' && v.bannerUrl.trim() ? v.bannerUrl.trim() : undefined;
+  const bannerUrl = readBannerUrl(v.bannerUrl);
   return freeze({
     page: hex('page'),
     card: hex('card'),

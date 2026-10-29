@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AA_CONTRAST, contrastRatio } from '@/lib/email/theme-contrast';
+import { AA_CONTRAST, contrastRatio, inkOn, readableInkOn, readableTextOn } from '@/lib/email/theme-contrast';
 import {
   DEFAULT_THEME_TOKENS,
   NIGHT_CARD,
@@ -8,6 +8,7 @@ import {
   THEME_PRESETS,
   getThemePreset,
   resolveTheme,
+  readThemeTokens,
   tokensFromDesign,
 } from '@/lib/email/themes';
 import { DEFAULT_EMAIL_DESIGN } from '@/lib/email/design';
@@ -234,3 +235,41 @@ describe('the shared brand settings ride every theme', () => {
   });
 });
 
+
+describe('readable inks across the full grey ramp', () => {
+  it.each(['#000000', '#1A1A1A', '#ffffff', '#777777', '#957137'])(
+    'keeps %s readable on every grey from 0 through 255', (preferred) => {
+      for (let grey = 0; grey <= 255; grey++) {
+        const background = `#${grey.toString(16).padStart(2, '0').repeat(3)}`;
+        expect(contrastRatio(readableTextOn(background, preferred), background), background)
+          .toBeGreaterThanOrEqual(AA_CONTRAST);
+        expect(contrastRatio(readableInkOn(background), background), background)
+          .toBeGreaterThanOrEqual(AA_CONTRAST);
+      }
+    },
+  );
+
+  it('preserves the historic inkOn threshold even when its output misses AA', () => {
+    expect(inkOn('#777777')).toBe('#ffffff');
+    expect(inkOn('#FFFFFF')).toBe('#1A1A1A');
+    expect(inkOn('#000000')).toBe('#ffffff');
+  });
+});
+
+describe('banner URLs are https-only at the storage boundary', () => {
+  it.each(['http://example.org/banner.jpg', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'ftp://example.org/a', '//example.org/a', 'https://', 'not a URL'])(
+    'drops %s from tokens and rendered markup', (bannerUrl) => {
+      const tokens = { ...DEFAULT_THEME_TOKENS, header: 'banner', bannerUrl };
+      expect(readThemeTokens(tokens, DEFAULT_THEME_TOKENS).bannerUrl).toBeUndefined();
+      expect(html('<p>Words</p>', { themeTokens: tokens }).html).not.toContain('<img');
+    },
+  );
+
+  it('keeps a trimmed https banner and escapes its attribute', () => {
+    const bannerUrl = '  https://cdn.example.org/banner.jpg?a=1&b=2  ';
+    const tokens = { ...DEFAULT_THEME_TOKENS, header: 'banner', bannerUrl };
+    expect(readThemeTokens(tokens, DEFAULT_THEME_TOKENS).bannerUrl).toBe(bannerUrl.trim());
+    expect(html('<p>Words</p>', { themeTokens: tokens }).html)
+      .toContain('src="https://cdn.example.org/banner.jpg?a=1&amp;b=2"');
+  });
+});

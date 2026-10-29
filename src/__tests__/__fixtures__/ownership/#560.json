@@ -4,7 +4,7 @@
     {
       "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
       "digest": "5aa0d0f4c8b0edf51eef34b88ef2ae89af2aa788b6ae00d83e7498b43cc6662d",
-      "why": "PR #560 (newsletter email themes) appended the ThemeSettingsPanels.tsx adopter to the collapsible adopter map — the chunk-3 adopter the map had never been told about — with nothing above or below removed or rewritten."
+      "why": "PR #560 (newsletter email themes) appended the ThemeSettingsPanels.tsx adopter to the collapsible adopter map \u2014 the chunk-3 adopter the map had never been told about \u2014 with nothing above or below removed or rewritten."
     },
     {
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
@@ -25,6 +25,16 @@
       "file": "src/__tests__/THE-339.gmail-hidden.test.ts",
       "digest": "bea447617c7d073bdfdbce833a78b7249b16c0879dd081fc70eebf79d658e133",
       "why": "PR #560's fix pass added src/lib/email/themes.ts to the enumerated Gmail-mentioning population and corrected the count in the note beside it; the population assertion itself is unchanged."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "cdb52a611c8b7e672c217376de5e076ca2eb8feb26b04d79129aee0cfd620588",
+      "why": "PR #560 review records the Box tint swatches adopting radio-group and radio-group-item in the existing Box adopter row. Popover and textarea remain adopted, every existing adopter stays recorded, and no primitive changes."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "4e2bc58a1e7ef001f9d501f4c07c069d7797e92ef233c48d0c1fc07650b1871c",
+      "why": "PR #560 review corrects the ThemePicker floor-register explanation for outline theme-card Buttons and the ghost icon delete Button with explicit mobile and desktop target floors. The sorted inventory and every assertion are unchanged."
     }
   ]
 }

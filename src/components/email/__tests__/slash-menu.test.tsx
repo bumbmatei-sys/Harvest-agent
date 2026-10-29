@@ -65,6 +65,13 @@ describe('the "/" menu', () => {
     const html = onChange.mock.calls.at(-1)?.[0] as string;
     expect(html).toContain('data-hv-block="box"');
     expect(html).not.toContain('hello /'); // the slash and its query are gone
+    await click(need(byName('button', 'Box options'), 'Box settings'));
+    await flush();
+    const swatch = need(byName('[role=radio]', 'Warm'), 'warm tint');
+    expect(swatch.getAttribute('data-slot')).toBe('radio-group-item');
+    await click(swatch);
+    await settle();
+    expect(onChange.mock.calls.at(-1)?.[0]).toContain('data-tint="warm"');
   });
 });
 

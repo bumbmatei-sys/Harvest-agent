@@ -118,12 +118,12 @@ function ColourRow({ label, value, fallback, onChange }: {
         Reset
       </Button>
       <div className="relative flex w-32 shrink-0 items-center rounded-lg border border-line bg-card focus-within:ring-2 focus-within:ring-ring">
-        <input
+        <Input
           type="color"
           aria-label={`${label} swatch`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="absolute left-0 size-11 min-h-11 cursor-pointer border-0 bg-transparent p-2.5 sm:min-h-[38px] [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-line"
+          className="absolute left-0 size-11 w-11 min-h-11 cursor-pointer border-0 bg-transparent p-2.5 sm:min-h-[38px] [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-line"
         />
         <Input
           aria-label={`${label} hex`}

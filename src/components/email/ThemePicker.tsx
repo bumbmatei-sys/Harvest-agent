@@ -2,6 +2,8 @@
 
 import { Check, Trash2 } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+
 import {
   THEME_PRESETS,
   type CustomTheme,
@@ -67,13 +69,14 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
 }) {
   return (
     <div className="relative min-w-0">
-      <button
+      <Button
+        variant="outline"
         type="button"
         role="radio"
         aria-label={name}
         aria-checked={selected}
         onClick={() => onSelect(choice)}
-        className={cn('flex min-h-11 w-full flex-col gap-2 rounded-xl border p-1.5 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring', selected ? 'border-primary bg-surface-raised ring-1 ring-primary' : 'border-line bg-card hover:border-primary hover:bg-surface-raised')}
+        className="flex h-auto min-h-11 w-full flex-col gap-2 rounded-xl border border-line bg-card p-1.5 text-left transition-colors hover:border-primary hover:bg-surface-raised focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-primary aria-checked:bg-surface-raised aria-checked:ring-1 aria-checked:ring-primary"
       >
         <span aria-hidden className="relative block w-full overflow-hidden rounded-lg border border-line">
           <ThemeThumb tokens={choice.tokens} />
@@ -87,9 +90,11 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
           <span className="block w-full truncate text-xs font-medium leading-4 text-strong">{name}</span>
           {defaultTheme && <span className="text-[10px] leading-3 text-faint">Default</span>}
         </span>
-      </button>
+      </Button>
       {onDelete && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           type="button"
           aria-label={`Delete ${name}`}
           onClick={onDelete}
@@ -98,7 +103,7 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
           className="absolute bottom-1.5 right-1.5 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-sunken hover:text-danger focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[38px] sm:min-w-[38px]"
         >
           <Trash2 className="size-3.5" />
-        </button>
+        </Button>
       )}
     </div>
   );
