@@ -1,4 +1,7 @@
 "use client";
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
@@ -32,6 +35,10 @@ import {
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { EventStartField } from './events/EventStartField';
+import { getSeriesEditLock, saveEventEdit } from './events/event-edit-client';
+import { SERIES_LOCK_MESSAGE } from '../lib/events/series-edit';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -304,6 +311,19 @@ const AdminEvents: React.FC = () => {
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [seriesLock, setSeriesLock] = useState<'loading' | 'locked' | 'unlocked' | 'error'>('unlocked');
+  const [lockRetry, setLockRetry] = useState(0);
+  const seriesScheduleLocked = view === 'edit' && !!selected?.recurrence && seriesLock !== 'unlocked';
+
+  useEffect(() => {
+    if (view !== 'edit' || !selected?.recurrence || !tenantId) return;
+    let active = true;
+    setSeriesLock('loading');
+    getSeriesEditLock(tenantId, selected.id).then(locked => {
+      if (active) setSeriesLock(locked ? 'locked' : 'unlocked');
+    }, () => { if (active) setSeriesLock('error'); });
+    return () => { active = false; };
+  }, [view, selected?.id, selected?.recurrence, tenantId, lockRetry]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Detail view state
@@ -406,6 +426,7 @@ const AdminEvents: React.FC = () => {
   };
 
   const openEdit = (ev: Event) => {
+    setSeriesLock(ev.recurrence ? 'loading' : 'unlocked');
     setForm({
       title: ev.title,
       description: ev.description,
@@ -449,6 +470,9 @@ const AdminEvents: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (view === 'edit' && selected?.recurrence && (seriesLock === 'loading' || seriesLock === 'error')) {
+      notifyError('Could not check series registrations. Please try again.', null); return;
+    }
     if (!form.title.trim()) { notifyError('Event title is required', null); return; }
     if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
     if (form.isOnline && form.onlineLink.trim() && !isSafeOnlineLink(form.onlineLink.trim())) {
@@ -514,10 +538,7 @@ const AdminEvents: React.FC = () => {
         registrationQuestions: form.registrationQuestions.slice(0, MAX_REGISTRATION_QUESTIONS),
       };
       if (view === 'edit' && selected) {
-        await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), {
-          ...data,
-          updatedAt: serverTimestamp(),
-        });
+        await saveEventEdit(tenantId, selected.id, data);
         setSelected({ ...selected, ...data } as Event);
         await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setView('detail');
@@ -843,7 +864,8 @@ const AdminEvents: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Start Date & Time *</label>
-                <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })}
+                <EventStartField value={form.startDate} locked={seriesScheduleLocked}
+                  onValueChange={startDate => setForm({ ...form, startDate })}
                   className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
               </div>
               <div>
@@ -875,8 +897,8 @@ const AdminEvents: React.FC = () => {
                   className={`mt-3 w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
                 <>
-                  <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                    className={`mt-3 w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Venue name and address" />
+                  <Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+                    className={`h-auto min-h-11 sm:min-h-0 mt-3 w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Venue name and address" />
                   {/*
                     Keyless map preview — an OpenStreetMap search embed needs no
                     API key and no new env var, unlike Google Maps' JS/embed APIs.
@@ -908,7 +930,7 @@ const AdminEvents: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Time zone</label>
-                <Select value={form.timeZone || BROWSER_TIME_ZONE()} onValueChange={(v: unknown) => setForm({ ...form, timeZone: String(v) })}>
+                <Select disabled={seriesScheduleLocked} value={form.timeZone || BROWSER_TIME_ZONE()} onValueChange={(v: unknown) => setForm({ ...form, timeZone: String(v) })}>
                   <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
                     <SelectValue>{() => form.timeZone || BROWSER_TIME_ZONE()}</SelectValue>
                   </SelectTrigger>
@@ -922,7 +944,7 @@ const AdminEvents: React.FC = () => {
               </div>
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
-                <Select value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>
+                <Select disabled={seriesScheduleLocked} value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>
                   <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
                     <SelectValue>{() => REPEATS_LABEL[form.recurrenceFreq]}</SelectValue>
                   </SelectTrigger>
@@ -934,6 +956,16 @@ const AdminEvents: React.FC = () => {
                 </Select>
               </div>
             </div>
+            {view === 'edit' && selected?.recurrence && seriesLock !== 'unlocked' && (
+              <Alert>
+                <AlertDescription>
+                  {seriesLock === 'locked' ? SERIES_LOCK_MESSAGE : seriesLock === 'loading'
+                    ? 'Checking series registrations before unlocking the schedule…'
+                    : 'Could not check series registrations. Saving is unavailable until the check succeeds.'}
+                  {seriesLock === 'error' && <Button variant="outline" className={CONTROL_DENSITY.action} onClick={() => setLockRetry(n => n + 1)}>Retry</Button>}
+                </AlertDescription>
+              </Alert>
+            )}
             {form.recurrenceFreq !== 'none' && (
               <div data-recurrence-ends>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Ends</label>
@@ -949,15 +981,15 @@ const AdminEvents: React.FC = () => {
                   <label className="flex items-center gap-2 text-sm text-body" htmlFor="recur-on">
                     <RadioGroupItem id="recur-on" value="on" /> On date
                     {form.recurrenceEndMode === 'on' && (
-                      <input type="date" value={form.recurrenceUntil} onChange={e => setForm({ ...form, recurrenceUntil: e.target.value })}
-                        className="ml-1 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm" />
+                      <Input type="date" value={form.recurrenceUntil} onChange={e => setForm({ ...form, recurrenceUntil: e.target.value })}
+                        className={`min-h-11 ${CONTROL_DENSITY.control} ml-1 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm`} />
                     )}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-body" htmlFor="recur-after">
                     <RadioGroupItem id="recur-after" value="after" /> After
                     {form.recurrenceEndMode === 'after' && (
-                      <input type="number" min={1} max={104} value={form.recurrenceCount} onChange={e => setForm({ ...form, recurrenceCount: e.target.value })}
-                        className="ml-1 w-16 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm" />
+                      <Input type="number" min={1} max={104} value={form.recurrenceCount} onChange={e => setForm({ ...form, recurrenceCount: e.target.value })}
+                        className={`min-h-11 ${CONTROL_DENSITY.control} ml-1 w-16 border border-line bg-surface-sunken rounded-lg px-2 py-1 text-sm`} />
                     )}
                     {form.recurrenceEndMode === 'after' ? ' times' : 'a number of times'}
                   </label>
@@ -1170,7 +1202,7 @@ const AdminEvents: React.FC = () => {
                         <input value={ticketDraft.name} onChange={e => setTicketDraft({ ...ticketDraft, name: e.target.value })}
                           placeholder="Name (e.g. Adult)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
                         <input value={ticketDraft.description} onChange={e => setTicketDraft({ ...ticketDraft, description: e.target.value })}
-                          placeholder="Description (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                          placeholder="Description (optional)" className={`h-auto min-h-11 sm:min-h-0 w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                         {/*
                           THE-345 - same gate, same reason as the event price
                           above: a ticket type is where the price that ACTUALLY
@@ -1260,14 +1292,14 @@ const AdminEvents: React.FC = () => {
                   </div>
 
                   {/* Registration questions — Eden one-at-a-time, asked before the event */}
-                  <div>
+                  <div data-registration-questions>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-xs font-bold text-body flex items-center gap-1.5 font-display">Registration Questions</h4>
                       {!showQuestionForm && form.registrationQuestions.length < MAX_REGISTRATION_QUESTIONS && (
-                        <button onClick={() => { setQuestionDraft(emptyQuestion); setShowQuestionForm(true); }}
-                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-line text-muted hover:bg-surface-sunken">
+                        <Button variant="outline" onClick={() => { setQuestionDraft(emptyQuestion); setShowQuestionForm(true); }}
+                          className={`h-auto min-h-11 flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-line text-muted hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}>
                           <Plus size={12} /> Add Question
-                        </button>
+                        </Button>
                       )}
                     </div>
 
@@ -1281,21 +1313,21 @@ const AdminEvents: React.FC = () => {
                       {form.registrationQuestions.map((q, i) => (
                         <div key={q.id} className="flex items-center gap-2 bg-surface-raised border border-line rounded-xl px-3 py-2.5">
                           <div className="flex flex-col">
-                            <button onClick={() => moveQuestion(q.id, -1)} disabled={i === 0} className="text-stone-300 hover:text-muted disabled:opacity-30"><ArrowUp size={12} /></button>
-                            <button onClick={() => moveQuestion(q.id, 1)} disabled={i === form.registrationQuestions.length - 1} className="text-stone-300 hover:text-muted disabled:opacity-30"><ArrowDown size={12} /></button>
+                            <Button variant="ghost" onClick={() => moveQuestion(q.id, -1)} disabled={i === 0} aria-label={`Move ${q.label} up`} className={`h-auto min-h-11 text-stone-300 hover:text-muted disabled:opacity-30 ${CONTROL_DENSITY.action}`}><ArrowUp size={12} /></Button>
+                            <Button variant="ghost" onClick={() => moveQuestion(q.id, 1)} disabled={i === form.registrationQuestions.length - 1} aria-label={`Move ${q.label} down`} className={`h-auto min-h-11 text-stone-300 hover:text-muted disabled:opacity-30 ${CONTROL_DENSITY.action}`}><ArrowDown size={12} /></Button>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-strong truncate">{q.label}{q.required && <span className="text-wheat-600"> *</span>}</p>
                             <p className="text-xs text-faint">{QUESTION_KIND_LABEL[q.kind]}{q.kind === 'choice' && q.options?.length ? ` · ${q.options.length} options` : ''}</p>
                           </div>
-                          <button onClick={() => removeQuestion(q.id)} className="p-1.5 rounded-lg hover:bg-red-50"><X size={14} className="text-red-400" /></button>
+                          <Button variant="ghost" onClick={() => removeQuestion(q.id)} aria-label={`Remove ${q.label}`} className={`h-auto min-h-11 p-1.5 rounded-lg hover:bg-red-50 ${CONTROL_DENSITY.action}`}><X size={14} className="text-red-400" /></Button>
                         </div>
                       ))}
                     </div>
 
                     {showQuestionForm && (
                       <div className="mt-2 bg-surface-sunken rounded-xl p-3 space-y-2.5">
-                        <input value={questionDraft.label} onChange={e => setQuestionDraft({ ...questionDraft, label: e.target.value })}
+                        <Input value={questionDraft.label} onChange={e => setQuestionDraft({ ...questionDraft, label: e.target.value })}
                           placeholder="Question (e.g. Dietary needs)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                         <Select value={questionDraft.kind} onValueChange={(v: unknown) => setQuestionDraft({ ...questionDraft, kind: v as RegistrationQuestion['kind'] })}>
                           <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
@@ -1308,18 +1340,18 @@ const AdminEvents: React.FC = () => {
                           </SelectContent>
                         </Select>
                         {questionDraft.kind === 'choice' && (
-                          <textarea value={questionDraft.optionsText} onChange={e => setQuestionDraft({ ...questionDraft, optionsText: e.target.value })}
+                          <Textarea value={questionDraft.optionsText} onChange={e => setQuestionDraft({ ...questionDraft, optionsText: e.target.value })}
                             rows={3} placeholder={'One option per line'}
                             className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold resize-none ${FIELD_WIDTH.long}`} />
                         )}
                         <label className="flex items-center gap-2 text-sm text-body">
-                          <input type="checkbox" checked={questionDraft.required} onChange={e => setQuestionDraft({ ...questionDraft, required: e.target.checked })} />
+                          <Checkbox checked={questionDraft.required} onCheckedChange={required => setQuestionDraft({ ...questionDraft, required })} />
                           Required
                         </label>
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowQuestionForm(false); setQuestionDraft(emptyQuestion); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
-                          <button onClick={saveQuestionDraft} disabled={!questionDraft.label.trim()}
-                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-gold disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Add</button>
+                          <Button variant="outline" onClick={() => { setShowQuestionForm(false); setQuestionDraft(emptyQuestion); }} className={`h-auto min-h-11 flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</Button>
+                          <Button variant="default" onClick={saveQuestionDraft} disabled={!questionDraft.label.trim()}
+                            className={`h-auto min-h-11 flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-gold disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Add</Button>
                         </div>
                       </div>
                     )}
@@ -1351,7 +1383,7 @@ const AdminEvents: React.FC = () => {
         </div>
         <DialogFooter>
             <button onClick={() => setView('list')} className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving || !form.title.trim()}
+            <button onClick={handleSave} disabled={saving || !form.title.trim() || (view === 'edit' && !!selected?.recurrence && (seriesLock === 'loading' || seriesLock === 'error'))}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
               {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Create Event'}
@@ -1468,20 +1500,20 @@ const AdminEvents: React.FC = () => {
             )}
           </div>
           {questions.length > 0 && r.answers && Object.keys(r.answers).length > 0 && (
-            <button
+            <Button variant="ghost"
               onClick={() => setExpandedRegId(expandedRegId === r.id ? null : r.id)}
-              className="p-1.5 rounded-lg hover:bg-surface-sunken text-faint flex-shrink-0"
+              className={`h-auto min-h-11 p-1.5 rounded-lg hover:bg-surface-sunken text-faint flex-shrink-0 ${CONTROL_DENSITY.action}`}
               aria-label={expandedRegId === r.id ? 'Hide answers' : 'Show answers'}
             >
               <ChevronDown size={14} className={`transition-transform ${expandedRegId === r.id ? 'rotate-180' : ''}`} />
-            </button>
+            </Button>
           )}
           {/* 🔴 THE-351 — Confirm sits BESIDE Check In and never in place
               of it: the founder's decision is that an unconfirmed guest
               walks in, so the door control below is reached on exactly
               the same condition it always was. */}
           {manualConfirmationMode() && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
-            <button
+            <Button variant="default"
               onClick={() => void confirmPayment(r)}
               disabled={confirming === r.id}
               data-row-confirm-payment
@@ -1492,10 +1524,10 @@ const AdminEvents: React.FC = () => {
               // `var(--brand-color, #d4a017)` fallbacks in this file,
               // which THE-346's registry pins by value and which a sixth
               // would have added to.
-              className={`min-h-11 px-3 rounded-xl text-xs font-semibold text-white bg-gold disabled:opacity-50 flex-shrink-0 ${CONTROL_DENSITY.action}`}
+              className={`h-auto min-h-11 px-3 rounded-xl text-xs font-semibold text-white bg-gold disabled:opacity-50 flex-shrink-0 ${CONTROL_DENSITY.action}`}
             >
               {confirming === r.id ? 'Recording…' : CONFIRM_BUTTON}
-            </button>
+            </Button>
           )}
           {r.status === 'confirmed' && (
             <button
@@ -1556,16 +1588,16 @@ const AdminEvents: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+            <Button variant="outline" onClick={copyRegUrl} className={`h-auto min-h-11 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}>
               {copied ? <Check size={13} /> : <Link2 size={13} />} {copied ? 'Copied!' : 'Share link'}
-            </button>
+            </Button>
             <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken">
               <Edit2 size={15} className="text-muted" />
             </button>
             {selected.status !== 'cancelled' && selected.status !== 'completed' && (
-              <button onClick={() => setShowCancelEventConfirm(true)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken" title="Cancel event">
+              <Button variant="outline" onClick={() => setShowCancelEventConfirm(true)} className={`h-auto min-h-11 p-2 rounded-xl border border-line hover:bg-surface-sunken ${CONTROL_DENSITY.action}`} title="Cancel event">
                 <Ban size={15} className="text-muted" />
-              </button>
+              </Button>
             )}
             <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-red-100 hover:bg-red-50">
               <Trash2 size={15} className="text-red-400" />
@@ -1590,12 +1622,12 @@ const AdminEvents: React.FC = () => {
               <DialogClose className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
                 Keep event
               </DialogClose>
-              <button
+              <Button variant="default"
                 onClick={() => { void cancelEvent(); setShowCancelEventConfirm(false); }}
-                className={`flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
+                className={`h-auto min-h-11 flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               >
                 Cancel event
-              </button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1647,13 +1679,13 @@ const AdminEvents: React.FC = () => {
                       <span className="text-sm text-body">
                         {new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(run.start)}
                       </span>
-                      <button
+                      <Button variant="ghost"
                         onClick={() => void cancelRun(run.runDate)}
-                        className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 flex-shrink-0"
+                        className={`h-auto min-h-11 flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 flex-shrink-0 ${CONTROL_DENSITY.action}`}
                         title="Cancel this run only — the rest of the series is unaffected"
                       >
                         <CalendarX size={13} /> Cancel this date
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1677,9 +1709,9 @@ const AdminEvents: React.FC = () => {
                     <p className="text-xs font-semibold text-muted mb-1">Registration link</p>
                     <p className="text-xs text-muted break-all mb-2">{registrationUrl(selected.id)}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
+                      <Button variant="outline" onClick={copyRegUrl} className={`h-auto min-h-11 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}>
                         {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy link'}
-                      </button>
+                      </Button>
                       {qrDataUrl && (
                         <a href={qrDataUrl} download={`${selected.title.replace(/[^a-z0-9]/gi, '_')}_qr.png`}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken">
@@ -1720,13 +1752,13 @@ const AdminEvents: React.FC = () => {
             <div className="flex items-center gap-3 mb-3 mt-4">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-                <input value={regSearch} onChange={e => setRegSearch(e.target.value)}
-                  placeholder="Search attendees..." className={`w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                <Input value={regSearch} onChange={e => setRegSearch(e.target.value)}
+                  placeholder="Search attendees..." className={`h-auto min-h-11 sm:min-h-0 w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
               </div>
               {registrations.length > 0 && (
-                <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
+                <Button variant="outline" onClick={exportCSV} className={`h-auto min-h-11 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}>
                   <Download size={13} /> Export CSV
-                </button>
+                </Button>
               )}
             </div>
 
@@ -1910,15 +1942,15 @@ const AdminEvents: React.FC = () => {
                 { value: 'drafts' as const, label: `Drafts${draftEvents.length ? ` (${draftEvents.length})` : ''}` },
                 { value: 'past' as const, label: 'Past' },
               ]).map((item) => (
-                <button
+                <Button variant="ghost"
                   key={item.value}
                   type="button"
                   aria-pressed={listFilter === item.value}
                   onClick={() => { setListFilter(item.value); setSelectedDay(undefined); }}
-                  className={`min-h-11 rounded-lg px-3 text-left text-sm font-semibold transition-colors ${listFilter === item.value ? 'bg-surface-sunken text-strong' : 'text-muted hover:bg-surface-sunken'}`}
+                  className={`h-auto min-h-11 justify-between rounded-lg px-3 text-left text-sm font-semibold transition-colors ${listFilter === item.value ? 'bg-surface-sunken text-strong' : 'text-muted hover:bg-surface-sunken'} ${CONTROL_DENSITY.action}`}
                 >
                   {item.label}
-                </button>
+                </Button>
               ))}
             </div>
           </aside>
@@ -1943,12 +1975,12 @@ const AdminEvents: React.FC = () => {
               <h2 className="font-display text-lg font-medium text-strong">{listHeading}</h2>
             </div>
             {selectedDay && (
-              <button
+              <Button variant="outline"
                 onClick={() => setSelectedDay(undefined)}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-sunken px-3 text-xs font-semibold text-muted hover:bg-surface-raised sm:min-h-0 sm:py-1"
+                className={`h-auto min-h-11 inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-sunken px-3 text-xs font-semibold text-muted hover:bg-surface-raised sm:min-h-0 sm:py-1 ${CONTROL_DENSITY.action}`}
               >
                 {selectedDayLabel} <X size={12} />
-              </button>
+              </Button>
             )}
 
         {rowsToShow.length === 0 ? (

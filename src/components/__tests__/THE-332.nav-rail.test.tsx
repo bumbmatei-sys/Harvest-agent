@@ -999,6 +999,10 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'ed8abe4c093daf9200157e4d1875ec13dd288335a01bfeb68093653c8b8befe0',
     // APPENDED THE-379 r9: zone-safe edits and bounded run-aware list; nav unchanged.
     '406aaa7bc17fccfffdffd6d55431bfed33bac5f9cb107c74130117d92e633a66',
+    // APPENDED #556 B1/B2: shadcn controls and registered-series editing lock; navigation retained.
+    '4d9d749f00fca99483a2a7d84e0bb10604ed412f786428cb061bb4216586f019',
+    // APPENDED #556 final: preserve mobile input floors and the existing left-aligned filter.
+    '1057a750cf8bb9d1d1546c32e268388f2ef18f817d6314014399f7f05ceac354',
     /* APPENDED BY the admin event detail (brief item 3), nothing above
        removed or rewritten. The detail view's single scroll became Overview/
        Registrations/Payments pending Tabs, plus a Cancel-event confirm

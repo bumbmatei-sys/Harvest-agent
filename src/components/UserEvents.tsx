@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, CalendarCheck, MapPin, Clock, Globe, Ticket, QrCode, X } from 'lucide-react';
 import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
@@ -689,13 +690,13 @@ const TicketModal: React.FC<{
                 </a>
               )}
               {canAddToCalendar && (
-                <button
+                <Button variant="outline"
                   onClick={addToCalendar}
                   data-ticket-add-to-calendar
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}
+                  className={`h-auto min-h-11 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-body hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}
                 >
                   <CalendarCheck size={13} /> Add to calendar
-                </button>
+                </Button>
               )}
             </div>
           )}

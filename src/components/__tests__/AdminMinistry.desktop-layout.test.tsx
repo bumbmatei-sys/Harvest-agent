@@ -4,7 +4,18 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import { extractClassNames } from '../ui/__tests__/ds-primitives.audit';
+import { buttonVariants } from '../ui/button';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
+
+// #556 B1: Input and Button emit their own classes. Reuse their pinned definitions
+// instead of inventing allowlist entries or re-recording the ministry baselines.
+// This remains scoped to AdminEvents; every other screen keeps its original checks.
+const CONTROL_PRIMITIVE_CLASSES = new Set([
+  ...extractClassNames(path.resolve(__dirname, '../ui/input.tsx')),
+  ...buttonVariants({ variant: 'outline' }).split(/\s+/),
+]);
+
 
 /**
  * Batch F — the five admin ministry screens (Community, Events, Fundraising,
@@ -2303,7 +2314,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const before = new Set(toTokens(BASELINE[name]![view].mobileLayer));
         const added = toTokens(mobileLayer(c)).filter((t) => !before.has(t));
-        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)),
+        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS) && !(name === 'AdminEvents' && CONTROL_PRIMITIVE_CLASSES.has(t))),
           `${name}/${view} gained a token that reaches a phone`).toEqual([]);
       }
     });
@@ -2362,7 +2373,7 @@ describe('no touch target got smaller', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
         for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
-          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          if (name === 'AdminEvents' && (recorded.has(t) || CONTROL_PRIMITIVE_CLASSES.has(t))) continue;
           expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
         }
       }
@@ -2993,6 +3004,8 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       { strippedSha: '5c51cdf0db34be0b9aba0eb3a665b909151e572d504d770f5ead389a785e09ab', strippedLines: 1896 },
       // APPENDED THE-379 r9: browser-zone legacy edits, hidden links and bounded run-aware rows.
       { strippedSha: '02e666ae9154b808e29d6cd9f07a56f1bb934df1798529ead0bc64d12db42202', strippedLines: 1895 },
+      // APPENDED #556 B1/B2: shared controls and registered-series server save; prior pins retained.
+      { strippedSha: '059ae2bb73992ad6d97101db778394590f1cb25d5b8d25138e325d57167fa50c', strippedLines: 1926 },
     ];
     expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
       strippedSha: sha(now), strippedLines: now.split('\n').length,
@@ -3017,17 +3030,19 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * (`recurrence.cancelledRuns`) onto the same document. THE-251 names this
    * as the guard that protects the money; AdminEvents had none until THE-345.
    */
-  it('🔴 adds no Firestore WRITE to AdminEvents beyond two more of a path shape it already had', () => {
+  it('🔴 keeps only cancellation client writes on the selected event; saves use the server', () => {
     const now = firestorePathsOf(read('AdminEvents.tsx'));
     const pathShape = "'tenants', tenantId, 'events', selected.id";
     expect(PRE_PR.AdminEvents.firestorePaths.filter((p) => p === pathShape)).toHaveLength(1);
-    expect(now.filter((p) => p === pathShape), 'cancelEvent/cancelRun did not both reach this path').toHaveLength(3);
-    // And nothing else about the set moved: the same multiset, with this one
-    // path shape appearing twice more than before.
+    expect(now.filter((p) => p === pathShape), 'only cancelEvent/cancelRun may write this selected-event path').toHaveLength(2);
+    // #556 B2 moved handleSave to the server. The baseline carries one path;
+    // cancelEvent/cancelRun now carry two, so subtract just the one addition.
     const withoutNewOccurrences = [...now];
     withoutNewOccurrences.splice(withoutNewOccurrences.indexOf(pathShape), 1);
-    withoutNewOccurrences.splice(withoutNewOccurrences.indexOf(pathShape), 1);
     expect(withoutNewOccurrences.sort()).toEqual([...PRE_PR.AdminEvents.firestorePaths].sort());
+    const save = stripComments(read('AdminEvents.tsx')).split('const handleSave = async () => {')[1].split('const confirmDelete')[0];
+    expect(save).toContain('await saveEventEdit(tenantId, selected.id, data)');
+    expect(save).not.toContain('updateDoc(');
   });
 
   /**
@@ -3281,7 +3296,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       // this guard into a hole on every screen but the one it is for.
       const excluded = new Set(
         name === 'AdminEvents'
-          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES, ...THE_379_PRIMITIVE_CLASSES]
+          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES, ...THE_379_PRIMITIVE_CLASSES, ...CONTROL_PRIMITIVE_CLASSES]
           : TABS_PRIMITIVE_CLASSES,
       );
       for (const [view, c] of Object.entries(await surfaces(name))) {
@@ -3320,7 +3335,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         const base = new Set(BASELINE[name]![view].colours);
         for (const t of colourTokens(c)) {
           if (base.has(t)) continue;
-          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          if (name === 'AdminEvents' && (recorded.has(t) || CONTROL_PRIMITIVE_CLASSES.has(t))) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           if ((THE_379_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           if ((LIST_REDESIGN_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;

@@ -110,11 +110,15 @@ export async function POST(request: NextRequest) {
     // Eden "Open to anyone": absent/true means the public share link is open
     // to anyone, which is every event's behaviour today. `false` restricts
     // registration to a signed-in member of THIS tenant.
-    if (event.openToAnyone === false && (!authedUser || authedUser.tenantId !== tenantId)) {
-      return NextResponse.json(
-        { error: 'This event is open to members only. Please sign in to register.' },
-        { status: 403 },
-      );
+    if (event.openToAnyone === false) {
+      // Membership may have changed since the ID token was minted.
+      const member = authedUser ? await adminDb.collection('users').doc(authedUser.uid).get() : null;
+      if (!member?.exists || member.data()?.tenantId !== tenantId) {
+        return NextResponse.json(
+          { error: 'This event is open to members only. Please sign in to register.' },
+          { status: 403 },
+        );
+      }
     }
 
     // A registration deadline, once set, is enforced here — it was stored but
@@ -597,11 +601,15 @@ export async function POST(request: NextRequest) {
           : owesManualPayment
             ? `<p><strong>${TICKET_QR_WAITING_TITLE}.</strong> ${ticketQrWaitingBody(tenantName)}</p>`
             : `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>`;
+        const runDateBlock = targetRun
+          ? `<p>Date: ${targetRun.start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: event.timeZone || 'UTC' })}</p>`
+          : '';
         await resend.emails.send({
           from: 'Harvest <noreply@theharvest.app>',
           to: email,
           subject: `Your registration for ${event.title}`,
           html: `<p>Hi ${firstName}, ${intro}</p>` +
+            runDateBlock +
             qrBlock +
             payNote +
             `<br><p>— ${tenantName}</p>`,

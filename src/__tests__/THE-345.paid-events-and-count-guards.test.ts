@@ -478,7 +478,9 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
      */
     // APPENDED THE-379 r9: shared picker window and chosen-run SMS only.
     expect(['516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
-      'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
+      'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde',
+      // APPENDED #556 F1/F3: fresh membership and chosen-run email date; payment logic retained.
+      'ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

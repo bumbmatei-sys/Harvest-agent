@@ -424,6 +424,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       '52c589591debe21b68681fa68e32e7bbc253bc9d0192ae1dbaa306fd803c8b3c',
       // APPENDED THE-379 r9: clear in-person links and preserve untouched date instants.
       '766f17505ba9333ff0eeb3de37beadd9b2119c065bfdd85006f5c2bc1316ffa4',
+      // APPENDED #556 B2: server save rechecks registered series identities; create payload retained.
+      '60c307e02ee2d88a429d5428e2cb5ff0ab0349c3b36d87ff3284fe0c8b8a2c33',
     ];
     const actual = sha256(src);
     expect(
@@ -569,6 +571,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       '516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
       // APPENDED THE-379 r9: match the public run window; SMS uses the chosen run.
       'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde',
+      // APPENDED #556 F1/F3: current membership and chosen-run confirmation date.
+      'ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

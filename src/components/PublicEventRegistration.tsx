@@ -1,4 +1,8 @@
 "use client";
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Input } from './ui/input';
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Calendar, MapPin, Globe, Plus, X } from 'lucide-react';
 import type { User } from 'firebase/auth';
@@ -570,7 +574,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           <p className="text-sm text-faint">A confirmation has been sent to {email}.</p>
           {/* THE-379 — client-side .ics, no server round trip. Uses the selected run's own time for a recurring event, so the file matches the date the registrant actually picked. */}
           {!done.waitlisted && event.startDate && (
-            <button
+            <Button variant="outline"
               type="button"
               data-public-add-to-calendar
               onClick={() => downloadIcs(
@@ -580,10 +584,10 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                 selectedRun ? selectedRun.start : new Date(event.startDate),
                 selectedRun ? selectedRun.end : new Date(event.endDate || event.startDate),
               )}
-              className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-line text-strong hover:bg-surface-sunken"
+              className={`h-auto min-h-11 mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-line text-strong hover:bg-surface-sunken ${CONTROL_DENSITY.action}`}
             >
               Add to calendar
-            </button>
+            </Button>
           )}
           {/*
             🔴 THE-351's PAYMENT INSTRUCTION, AND THE-355's LINKS, CLAIM CONTROL
@@ -795,16 +799,16 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                 const active = r.runDate === selectedRunDate;
                 const label = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(r.start);
                 return (
-                  <button
+                  <Button variant="outline"
                     key={r.runDate}
                     data-public-run-option={r.runDate}
                     onClick={() => setSelectedRunDate(r.runDate)}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'}`}
+                    className={`h-auto min-h-11 justify-start w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'} ${CONTROL_DENSITY.action}`}
                     style={active ? ({ '--tw-ring-color': primaryColor } as React.CSSProperties) : undefined}
                   >
                     <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-line-strong'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
                     <span className="text-sm font-medium text-strong">{label}</span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -827,10 +831,10 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
               {ticketTypes.map((t) => {
                 const active = t.id === selectedTicketId;
                 return (
-                  <button
+                  <Button variant="outline"
                     key={t.id}
                     onClick={() => selectTicket(t.id)}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'}`}
+                    className={`h-auto min-h-11 justify-start whitespace-normal w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'}`}
                     style={active ? ({ '--tw-ring-color': primaryColor } as React.CSSProperties) : undefined}
                   >
                     <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-line-strong'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
@@ -847,7 +851,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                       )}
                     </div>
                     <span className="text-sm font-bold text-strong shrink-0">{fmtCents(t.price)}</span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -924,34 +928,34 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
               {currentQuestion.label}{currentQuestion.required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             {currentQuestion.kind === 'long' ? (
-              <textarea className={`${inputCls} resize-none`} style={ring} rows={3}
+              <Textarea className={`${inputCls} resize-none`} style={ring} rows={3}
                 value={answers[currentQuestion.id] || ''}
                 onChange={(e) => setAnswers((a) => ({ ...a, [currentQuestion.id]: e.target.value }))} />
             ) : currentQuestion.kind === 'choice' ? (
-              <div className="space-y-2">
+              <RadioGroup aria-label={currentQuestion.label} value={answers[currentQuestion.id] || ''}
+                onValueChange={value => setAnswers(a => ({ ...a, [currentQuestion.id]: String(value) }))} className="space-y-2">
                 {(currentQuestion.options || []).map((opt) => (
                   <label key={opt} className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer text-sm text-body">
-                    <input type="radio" name={currentQuestion.id} checked={answers[currentQuestion.id] === opt}
-                      onChange={() => setAnswers((a) => ({ ...a, [currentQuestion.id]: opt }))} />
+                    <RadioGroupItem value={opt} />
                     {opt}
                   </label>
                 ))}
-              </div>
+              </RadioGroup>
             ) : (
-              <input className={inputCls} style={ring}
+              <Input className={`${inputCls} h-auto min-h-11 ${CONTROL_DENSITY.control} sm:min-h-0`} style={ring}
                 value={answers[currentQuestion.id] || ''}
                 onChange={(e) => setAnswers((a) => ({ ...a, [currentQuestion.id]: e.target.value }))} />
             )}
             {questionError && <p className="text-xs text-red-600 mt-1.5">{questionError}</p>}
             <div className="flex gap-2 mt-4">
-              <button type="button" onClick={backQuestion}
-                className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-strong">
+              <Button variant="outline" type="button" onClick={backQuestion}
+                className={`h-auto min-h-11 flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-strong ${CONTROL_DENSITY.action}`}>
                 Back
-              </button>
-              <button type="button" data-public-question-next onClick={nextQuestion}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: primaryColor }}>
+              </Button>
+              <Button variant="default" type="button" data-public-question-next onClick={nextQuestion}
+                className={`h-auto min-h-11 flex-1 py-2.5 rounded-xl text-sm font-semibold text-white ${CONTROL_DENSITY.action}`} style={{ backgroundColor: primaryColor }}>
                 {questionIndex + 1 >= questions.length ? 'Continue' : 'Next'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -1019,8 +1023,8 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           must see how much before they commit; what is removed is the claim
           about WHERE THEY ARE ABOUT TO BE SENT, which was the false half.
         */}
-        <button onClick={submit} disabled={submitting || (event.openToAnyone === false && !authUser)} data-public-submit
-          className="mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50"
+        <Button variant="default" onClick={submit} disabled={submitting || (event.openToAnyone === false && !authUser)} data-public-submit
+          className={`h-auto min-h-11 mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50 ${CONTROL_DENSITY.action}`}
           style={{ backgroundColor: primaryColor }}>
           {submitting
             ? (total > 0 && !manualConfirmationMode() ? 'Redirecting to payment…' : 'Registering…')
@@ -1029,7 +1033,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                 ? `Register · ${fmtCents(total)}`
                 : `Continue to payment · ${fmtCents(total)}`)
               : 'Register')}
-        </button>
+        </Button>
         </>
         )}
       </div>

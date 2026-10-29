@@ -107,8 +107,10 @@ vi.mock('firebase-admin/firestore', () => ({
   },
 }));
 
+const { mockEmailSend } = vi.hoisted(() => ({ mockEmailSend: vi.fn().mockResolvedValue({}) }));
+
 // Email + QR are best-effort and gated on RESEND_API_KEY (left unset in tests).
-vi.mock('resend', () => ({ Resend: vi.fn(() => ({ emails: { send: vi.fn() } })) }));
+vi.mock('resend', () => ({ Resend: class { emails = { send: mockEmailSend }; } }));
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,x') } }));
 
 const { POST } = await import('../submit/route');
@@ -581,7 +583,8 @@ describe('POST /api/event-registration/submit — openToAnyone', () => {
   it('refuses a member of a DIFFERENT tenant when openToAnyone is false', async () => {
     mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 'other-tenant' });
     const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
-    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 'other-tenant' }) });
     const res = await POST(makeRequest(baseBody));
     expect(res.status).toBe(403);
   });
@@ -589,7 +592,8 @@ describe('POST /api/event-registration/submit — openToAnyone', () => {
   it('allows a signed-in member of THIS tenant when openToAnyone is false', async () => {
     mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 't1' });
     const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
-    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) });
     const res = await POST(makeRequest(baseBody));
     expect(res.status).toBe(200);
   });
@@ -699,5 +703,44 @@ describe('r9.4/5 recurring registration window and SMS', () => {
       expect(response.status).toBe(200);
       expect(mockSendAutomatedSms).toHaveBeenCalledWith('t1', 'event_registration', '+15550001111', expect.objectContaining({ date: 'Mar 24, 2031' }));
     } finally { vi.useRealTimers(); }
+  });
+});
+
+
+describe('#556 membership and confirmation follow-ups', () => {
+  it.each([null, 'other-tenant'])('rejects a stale tenant claim when the current user membership is %s', async tenantId => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 't1' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockResolvedValueOnce({ exists: tenantId !== null, data: () => ({ tenantId }) });
+    expect((await POST(makeRequest(baseBody))).status).toBe(403);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+  it('accepts current membership even when the token tenant claim is stale', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 'old-tenant' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) });
+    expect((await POST(makeRequest(baseBody))).status).toBe(200);
+  });
+  it('does not register anyone when membership cannot be read', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', tenantId: 't1' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE, openToAnyone: false }) })
+      .mockRejectedValueOnce(new Error('membership unavailable'));
+    expect((await POST(makeRequest(baseBody))).status).toBe(500);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+  it('emails the chosen run date in the event zone instead of the first date', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2031-03-18T00:00:00Z'));
+    process.env.RESEND_API_KEY = 'test';
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        startDate: { toDate: () => new Date('2031-03-16T23:00:00Z') },
+        endDate: { toDate: () => new Date('2031-03-17T00:00:00Z') },
+        timeZone: 'Asia/Tokyo', recurrence: { freq: 'weekly' },
+      }) }).mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Ministry' }) });
+      expect((await POST(makeRequest({ ...baseBody, runDate: '2031-03-24' }))).status).toBe(200);
+      expect(mockEmailSend).toHaveBeenCalledWith(expect.objectContaining({ html: expect.stringContaining('March 24, 2031') }));
+      expect(mockEmailSend.mock.calls[0][0].html).not.toContain('March 17, 2031');
+    } finally { vi.useRealTimers(); delete process.env.RESEND_API_KEY; }
   });
 });

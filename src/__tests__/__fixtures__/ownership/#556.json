@@ -1,0 +1,140 @@
+{
+  "ticket": "#556",
+  "entries": [
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "4d9d749f00fca99483a2a7d84e0bb10604ed412f786428cb061bb4216586f019",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1/B2 replace reviewed controls with shadcn primitives, lock registered series date/frequency/zone, show check failures, and route edits through a server transaction. Existing creation, payment and navigation behavior retained."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "71061b91e16d2f92ab9923ce0ae9a52b437aa35da58a7f90eadaa48a3d8e5fd6",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 replaces calendar, run selection, question stepper and submit controls with shared primitives, preserving existing handlers and payment copy."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "4158eed9e32a957a4d7e68783cde2a6031c598d0750e760d69452e2eef494fe8",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 changes only the reviewed Add to calendar control to the shared Button with existing handler and density."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: F1/F3 require current users/{uid} tenant membership for restricted events and include the selected civil run date in confirmation emails. Payment and CRM writes retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "a3753014480662fed32c316dc041f03b36413c554c72de0d974709cb27b6377f",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1/B2 append real-DOM primitive assertions, disabled schedule fields, editable start time and failed-read coverage. Existing save assertions use the new server-save client boundary; all original tests retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "9bb55dd70d76a44e85e9ff01f6331a0926def578f88881f21fe3c99eae9d2005",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 appends a rendered question-stepper regression covering Input, Textarea, RadioGroup, exclusive selection and Button through submission. Prior assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "96278f3a283df8ed78af52d31b9d23a6ada7cbc02f07eb458a91b95626865c75",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: F1/F3 append stale-token, removed membership, read-failure and selected-run email regressions. Existing signed-in tests now supply the authoritative user document; prior assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e696ada313d570852f45d68d138c571e01c432553282e86ec44f0ef46e77581e",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed event-save and submit-route digest pins; prior pins and all assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "16048ffaec5377862edb5152e08252fe301f51a5c69312335f03b9447a92e8f1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append reviewed event-save and submit-route digest pins, and assert the exact shadcn primitive imports required by B1. No raw-control exemptions; prior pins and all other assertions retained."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "ac98259a1450359888f40799c192c8698fef7b97adde6931343c5a1e5e5374d4",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed submit-route digest for F1/F3; preserve previous pin and every money-path, height and date guard."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "fcffb13b40b674359822249220fb3008f2314c12c2014b07a8c6ee3593c42801",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed AdminEvents digest for B1/B2; previous pins and all navigation, permission and sidebar assertions retained."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "a363f4c8983d8ad1a290e4029a94b094ee76946ad2be3692ceb688e7d9a46385",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 adds a manageEvents-protected server edit endpoint with a current registration check inside the save transaction, refusing series identity changes with a visible conflict. Lock-state reads fail visibly."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "4e991c46d25390171efe615d23dbc1686b84230ced8393caa298f502f38f1812",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 covers day, frequency, zone and recurrence removal conflicts, registrations arriving after the editor opens, allowed details/time changes, failed reads and tenant permission checks. Removing the lock fails five cases."
+    },
+    {
+      "file": "src/lib/events/series-edit.ts",
+      "digest": "6fb726e19c1d7d72dc1aa9134db18ac2981c07dc643bf9ed6a8b6914ef78d9d3",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 compares recurrence identity using the event-zone civil start day, frequency and time zone while permitting time-of-day changes."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "98544eb2c0799764b8a1b32a785513f9b7d16058808b64b7fe786115499bc729",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 composes shared Inputs into a disabled start date and editable start time for locked series, retaining the normal datetime field for unlocked edits."
+    },
+    {
+      "file": "src/components/events/event-edit-client.ts",
+      "digest": "2013862571383965b334424830c0796a32ad1776b3bcde89cfc91698b5e3e106",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 sends authenticated edit/lock requests, serializes event dates for the server and throws server/read failures instead of silently unlocking or reporting success."
+    },
+    {
+      "file": "src/__tests__/THE-379.review-guards.test.ts",
+      "digest": "e1eb604e50d4bc789fe004f6e9f7e2b607b350be3a3fe3fb9ca7d073154ca997",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 checks parser-stripped JSX controls, raw-control count ceilings and the question editor/stepper primitive-only subtrees. Replacing the Add button with a raw control fails this guard and the UI regression."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "1057a750cf8bb9d1d1546c32e268388f2ef18f817d6314014399f7f05ceac354",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 final shared input density and left-aligned filter treatment, with B2 lock and transactional server save retained. No primitive edits or raw-control allowlist additions."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "675e7c5b29f5f94f596d472b41fa278baa3c6862f76f53073e0f84791a54b57d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 final public input uses shared control density; question and calendar behavior, payment copy and guards retained."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "075d03ee7f65193b1933865850ec8bc0c3a63c9a8bd964342bfbbbe914980846",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 final split field keeps the mobile touch floor and existing desktop density for the disabled day and editable time."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "8dd65e2ee22be0abdc16b030dd539311448f4446e379c1678117e38e60c0274c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append final AdminEvents digest only, keeping every previous digest and navigation assertion."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "2aa931b79a604ac1d34c82688866f01c9320ad35c2c84fc3ee0956e120a0cae1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 reuses unchanged digest-pinned Input classes and the existing Button outline variant instead of adding per-class allowlist entries; all ministry measurements and baseline fixtures remain. B2 pins the exact smaller client path set and explicitly requires server-save delegation with no direct edit updateDoc. Append the correlated source digest/line count; retain prior pins. A custom palette/height mutation is rejected."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "41695328037d1e5fce4d848e2d92cfb9d749e35f076a0285ce230a64e0daca51",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 append untouched Timestamp precision and affirmative editor-lock tests; retain all schedule-conflict, permission, failure and stale-editor regressions."
+    },
+    {
+      "file": "src/components/events/__tests__/event-edit-client.test.ts",
+      "digest": "a878b0dad2702f39b1123431938369e77837d5a7872af4e2dce00c4b6ae4fde1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 verifies authenticated date serialization, explicit lock booleans and rejected server/malformed responses so the client cannot report false success or silently unlock."
+    },
+    {
+      "file": "src/components/events/event-edit-client.ts",
+      "digest": "677bb4f9374e6c9b174a86c3c92c7f91c42cdee5f7b3591a46b1b0751e0061d2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Keep omitted date fields absent on partial updates, while explicit nulls clear them and actual timestamps serialize. Existing failure propagation retained."
+    },
+    {
+      "file": "src/components/events/__tests__/event-edit-client.test.ts",
+      "digest": "c1d4a04fd6ba400ed2aa3ee50bb491099479c71eff2707afe9af4469fb3cddda",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Append regression proving partial updates cannot silently clear omitted event dates; all prior serialization and failure assertions retained."
+    },
+    {
+      "file": "src/__tests__/THE-379.review-guards.test.ts",
+      "digest": "889e2c01d91d1b51993dc49e72d1164c67d0a95163abb19a6103306469637d61",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Expand primitive assertions to the reviewed search, sharing, answer expansion, cancellation, calendar and date/ticket selection controls. No raw-control allowance changes."
+    }
+  ]
+}

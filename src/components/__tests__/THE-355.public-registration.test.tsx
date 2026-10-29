@@ -520,3 +520,29 @@ describe('THE-379 — zero remaining spots', () => {
     expect(label!.textContent).toBe(waitlistEnabled ? 'Waitlist' : 'Sold out');
   });
 });
+
+// #556: exercise the real primitives and exclusive choice behavior through all question kinds.
+it('renders the question stepper with shadcn controls through submission', async () => {
+  const c = await mount({ event: { ...FREE_EVENT, registrationQuestions: [
+    { id: 'short', label: 'Name tag', kind: 'short', required: false },
+    { id: 'long', label: 'Access needs', kind: 'long', required: false },
+    { id: 'choice', label: 'Meal', kind: 'choice', options: ['Standard', 'Vegetarian'], required: true },
+  ] } });
+  expect(c.querySelector('[data-public-question-step="short"] input')?.getAttribute('data-slot')).toBe('input');
+  expect(c.querySelector('[data-public-question-next]')?.getAttribute('data-slot')).toBe('button');
+  await click(c.querySelector('[data-public-question-next]')!);
+  expect(c.querySelector('[data-public-question-step="long"] textarea')?.getAttribute('data-slot')).toBe('textarea');
+  await click(c.querySelector('[data-public-question-next]')!);
+  const group = c.querySelector('[data-slot="radio-group"]')!;
+  expect(group).toBeTruthy();
+  const radios = [...group.querySelectorAll<HTMLElement>('[data-slot="radio-group-item"]')];
+  expect(radios).toHaveLength(2);
+  await click(radios[0]);
+  await click(radios[1]);
+  expect(radios[0].getAttribute('aria-checked')).toBe('false');
+  expect(radios[1].getAttribute('aria-checked')).toBe('true');
+  await click(c.querySelector('[data-public-question-next]')!);
+  expect(c.querySelector('[data-public-submit]')?.getAttribute('data-slot')).toBe('button');
+  await registerAndSubmit(c);
+  expect(server.calls.find(call => call.url.includes('submit'))?.body.answers).toEqual({ choice: 'Vegetarian' });
+});

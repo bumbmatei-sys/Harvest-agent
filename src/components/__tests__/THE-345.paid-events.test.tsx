@@ -45,6 +45,7 @@ vi.mock('../../lib/events/recurrence', async (original) => {
   } };
 });
 
+const editState = vi.hoisted(() => ({ locked: false, error: false }));
 const writes: string[] = [];
 /** Whatever the last create/update write actually stored. */
 const stored: Array<Record<string, unknown>> = [];
@@ -160,6 +161,13 @@ vi.mock('../../store/useAppStore', () => ({
   },
 }));
 
+vi.mock('../events/event-edit-client', () => ({
+  getSeriesEditLock: async () => { if (editState.error) throw new Error('unavailable'); return editState.locked; },
+  saveEventEdit: async (tenantId: string, eventId: string, data: Record<string, unknown>) => {
+    writes.push(`update:tenants/${tenantId}/events/${eventId}`); stored.push(data);
+  },
+}));
+
 const AdminEvents = (await import('../AdminEvents')).default;
 const { mountScreen, click, settle } = await import('../../test/support/ministry-screens');
 
@@ -202,7 +210,7 @@ async function createForm(): Promise<HTMLElement> {
 const placeholders = (root: ParentNode) =>
   Array.from(root.querySelectorAll('input')).map((i) => i.getAttribute('placeholder'));
 
-afterEach(() => { mounted?.unmount(); mounted = null; writes.length = 0; stored.length = 0; eventsData.current = [PAID_EVENT, FREE_EVENT]; notifications.error.mockClear(); vi.useRealTimers(); });
+afterEach(() => { editState.locked = false; editState.error = false; mounted?.unmount(); mounted = null; writes.length = 0; stored.length = 0; eventsData.current = [PAID_EVENT, FREE_EVENT]; notifications.error.mockClear(); vi.useRealTimers(); });
 
 describe('THE-345 · a paid event cannot be created while no payment rail exists', () => {
   /* ═══ 1 · the founder's instruction ═══════════════════════════════════════ */
@@ -772,4 +780,50 @@ describe('THE-379 review regressions — admin events', () => {
     } finally { spy.mockClear(); }
   });
 
+});
+
+
+describe('#556 registered series editor and shadcn controls', () => {
+  const series = { ...FREE_EVENT, timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 4 } };
+  it('locks the date, frequency and zone while leaving the start time and other fields editable', async () => {
+    editState.locked = true; eventsData.current = [series];
+    const c = await screen();
+    await click(c.querySelector('button svg[class*="pen"]')!.closest('button')!);
+    const date = c.querySelector<HTMLInputElement>('input[aria-label="Start date"]')!;
+    expect(date.disabled).toBe(true);
+    expect(date.dataset.slot).toBe('input');
+    const time = c.querySelector<HTMLInputElement>('input[aria-label="Start time"]')!;
+    expect(time.disabled).toBe(false);
+    const pickers = [...c.querySelectorAll<HTMLButtonElement>('[data-slot="select-trigger"]')];
+    expect(pickers.filter(p => p.disabled)).toHaveLength(2);
+    expect(c.textContent).toContain('This series has registrations');
+    const { act } = await import('react');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(time, '15:30');
+      time.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await click(buttonContaining(c, 'Save Changes'));
+    expect(stored).toHaveLength(1);
+    expect((stored[0].startDate as { toDate(): Date }).toDate().toISOString()).toBe(new Date(Date.UTC(2031, 8, 4, 13, 30)).toISOString());
+    expect(stored[0].recurrence).toEqual(series.recurrence);
+    expect(stored[0].timeZone).toBe('Europe/Berlin');
+  });
+  it('fails closed in the editor when the registration check fails', async () => {
+    editState.error = true; eventsData.current = [series];
+    const c = await screen();
+    await click(c.querySelector('button svg[class*="pen"]')!.closest('button')!);
+    expect(c.textContent).toContain('Could not check series registrations');
+    expect(buttonContaining(c, 'Save Changes').disabled).toBe(true);
+    expect(c.querySelector<HTMLInputElement>('input[aria-label="Start date"]')!.disabled).toBe(true);
+  });
+  it('renders the questions editor with real shadcn input, checkbox and buttons', async () => {
+    const c = await createForm();
+    const addQuestion = buttonContaining(c, 'Add Question');
+    expect(addQuestion.dataset.slot).toBe('button');
+    await click(addQuestion);
+    expect(c.querySelector('input[placeholder="Question (e.g. Dietary needs)"]')?.getAttribute('data-slot')).toBe('input');
+    expect(c.querySelector('[data-slot="checkbox"]')).toBeTruthy();
+    const add = [...c.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Add')!;
+    expect(add.dataset.slot).toBe('button');
+  });
 });
