@@ -27,6 +27,7 @@ import {
   publicPayBody,
   ticketQrWaitingBody,
 } from '../lib/event-payment-claims';
+import { runRegistrationOpen } from '../lib/events/registration-cutoff';
 import { registrationRuns, type RecurrenceRule } from '../lib/events/recurrence';
 
 /** One registration question, Eden one-at-a-time style. */
@@ -166,11 +167,19 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return registrationRuns({ startDate: start, endDate: end, timeZone: event.timeZone || undefined, recurrence });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.recurrence, event.startDate, event.endDate, event.timeZone]);
+  const [registrationNow, setRegistrationNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setRegistrationNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const openRuns = runs.filter(run => runRegistrationOpen(run.start, event.registrationCutoffHours, registrationNow));
   const [selectedRunDate, setSelectedRunDate] = useState<string | null>(null);
   useEffect(() => {
-    if (runs.length && !selectedRunDate) setSelectedRunDate(runs[0].runDate);
-  }, [runs, selectedRunDate]);
-  const selectedRun = runs.find((r) => r.runDate === selectedRunDate) || runs[0] || null;
+    if (!openRuns.some(run => run.runDate === selectedRunDate)) setSelectedRunDate(openRuns[0]?.runDate || null);
+  }, [openRuns, selectedRunDate]);
+  const selectedRun = runs.find((r) => r.runDate === selectedRunDate) || null;
+  const cutoffClosed = recurrence ? !openRuns.some(run => run.runDate === selectedRunDate)
+    : !!event.registrationDeadline && registrationNow.getTime() > Date.parse(event.registrationDeadline);
 
   // THE-379 — Eden one-at-a-time registration questions. `questionIndex`
   // tracks which question is CURRENTLY showing; `questionsDone` becomes true
@@ -797,17 +806,18 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
             <div className="space-y-2">
               {runs.map((r) => {
                 const active = r.runDate === selectedRunDate;
+                const closed = !runRegistrationOpen(r.start, event.registrationCutoffHours, registrationNow);
                 const label = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(r.start);
                 return (
                   <Button variant="outline"
                     key={r.runDate}
                     data-public-run-option={r.runDate}
-                    onClick={() => setSelectedRunDate(r.runDate)}
+                    onClick={() => setSelectedRunDate(r.runDate)} disabled={closed}
                     className={`h-auto min-h-11 justify-start w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-line hover:border-line-strong'} ${CONTROL_DENSITY.action}`}
                     style={active ? ({ '--tw-ring-color': primaryColor } as React.CSSProperties) : undefined}
                   >
                     <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-line-strong'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
-                    <span className="text-sm font-medium text-strong">{label}</span>
+                    <span className="text-sm font-medium text-strong">{label}{closed ? ' — Registration closed' : ''}</span>
                   </Button>
                 );
               })}
@@ -823,6 +833,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           </Alert>
         )}
 
+        {cutoffClosed && <Alert><AlertTitle>Registration closed</AlertTitle><AlertDescription>Choose an available date to register, if another run is listed.</AlertDescription></Alert>}
         {/* Ticket type selector */}
         {ticketTypes.length > 0 && (
           <div className="mb-5">
@@ -1023,7 +1034,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           must see how much before they commit; what is removed is the claim
           about WHERE THEY ARE ABOUT TO BE SENT, which was the false half.
         */}
-        <Button variant="default" onClick={submit} disabled={submitting || (event.openToAnyone === false && !authUser)} data-public-submit
+        <Button variant="default" onClick={submit} disabled={submitting || cutoffClosed || (event.openToAnyone === false && !authUser)} data-public-submit
           className={`h-auto min-h-11 mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50 ${CONTROL_DENSITY.action}`}
           style={{ backgroundColor: primaryColor }}>
           {submitting

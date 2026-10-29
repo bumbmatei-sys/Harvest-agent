@@ -91,6 +91,8 @@ export default async function PublicEventPage({
     // predates this feature, so the client component's existing render for
     // those events is untouched.
     recurrence: data.recurrence || null,
+    registrationCutoffHours: data.registrationCutoffHours ?? null,
+    registrationDeadline: toIso(data.registrationDeadline),
     timeZone: data.timeZone || null,
     registrationQuestions: Array.isArray(data.registrationQuestions) ? data.registrationQuestions : [],
     openToAnyone: data.openToAnyone ?? true,

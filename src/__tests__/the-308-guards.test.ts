@@ -426,6 +426,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       '766f17505ba9333ff0eeb3de37beadd9b2119c065bfdd85006f5c2bc1316ffa4',
       // APPENDED #556 B2: server save rechecks registered series identities; create payload retained.
       '60c307e02ee2d88a429d5428e2cb5ff0ab0349c3b36d87ff3284fe0c8b8a2c33',
+      // APPENDED #556: editable per-run cutoff and organizer contact; existing payment gates retained.
+      'da11ce834e00fa359d26b1e98406729cc21d1351e15cd161df466ffaf0d7210c',
     ];
     const actual = sha256(src);
     expect(
@@ -439,7 +441,7 @@ describe('9-10 · event write paths are byte-identical', () => {
     expect(sha256(src)).toBe('803e468cb1f5b8061ce9c1481b813088b46bcba6d94e35dc553acd2bc0a616e5');
   });
 
-  it('and emptyForm still carries exactly its 26 stored fields', () => {
+  it('and emptyForm still carries exactly its 28 stored fields', () => {
     /**
      * 18 → 19, THE-351. `paymentProviders` joins the form, and it is the only
      * addition: the point of counting rather than listing is that a NINETEENTH
@@ -455,7 +457,10 @@ describe('9-10 · event write paths are byte-identical', () => {
      * `registrationQuestions` (the one-at-a-time question builder's output).
      */
     const src = region(read(EDITED), 'const emptyForm = {', '};');
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(26);
+    // #556 adds registrationCutoffHours and organizerEmail.
+    expect(src).toContain('registrationCutoffHours:');
+    expect(src).toContain('organizerEmail:');
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(28);
   });
 
   /**
@@ -573,6 +578,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde',
       // APPENDED #556 F1/F3: current membership and chosen-run confirmation date.
       'ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df',
+      // APPENDED #556: per-run cutoffs and atomic signup against cancellation; CRM and fees retained.
+      '6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

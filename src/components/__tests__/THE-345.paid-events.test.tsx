@@ -168,6 +168,9 @@ vi.mock('../events/event-edit-client', () => ({
   },
 }));
 
+const cancellationFetch = vi.hoisted(() => vi.fn());
+vi.mock('../../utils/auth-fetch', () => ({ authFetch: cancellationFetch }));
+
 const AdminEvents = (await import('../AdminEvents')).default;
 const { mountScreen, click, settle } = await import('../../test/support/ministry-screens');
 
@@ -826,4 +829,93 @@ describe('#556 registered series editor and shadcn controls', () => {
     const add = [...c.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Add')!;
     expect(add.dataset.slot).toBe('button');
   });
+});
+
+// #556 founder decisions: drive cancellation confirmation and the editable per-run cutoff.
+describe('cancellation confirmation and per-run configuration', () => {
+  const openOneDetail = async (recurring = false) => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(Date.UTC(2031, 8, 1)));
+    eventsData.current = [{ ...FREE_EVENT, ...(recurring ? { recurrence: { freq: 'weekly', count: 4 } } : {}) }];
+    const c = await screen();
+    const titles = [...c.querySelectorAll('div')].filter(node => node.textContent === FREE_EVENT.title);
+    await click(titles[titles.length - 1]); await settle();
+    return c;
+  };
+  it.each([false, true])('shows the exact server count before cancelling (single run=%s)', async singleRun => {
+    cancellationFetch.mockReset().mockImplementation(async (_url: string, options?: RequestInit) => ({
+      ok: true, json: async () => options?.method === 'POST' ? { emailed: 27, remaining: 0 } : { count: 27 },
+    }));
+    const c = await openOneDetail(singleRun);
+    if (singleRun) await click(buttonContaining(c, 'Cancel this date'));
+    else await click(c.querySelector('[title="Cancel event"]')!);
+    await settle();
+    const dialog = [...c.querySelectorAll('[role="dialog"]')].at(-1)!;
+    expect(dialog).toBeTruthy();
+    expect(dialog.textContent).toContain('27 registrant(s) will be emailed');
+    const confirm = buttonContaining(dialog, 'Cancel and email registrants');
+    expect(confirm.getAttribute('data-slot')).toBe('button');
+    expect(cancellationFetch.mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(0);
+    await click(confirm); await settle();
+    const post = cancellationFetch.mock.calls.find(call => call[1]?.method === 'POST')!;
+    expect(post).toBeTruthy();
+    const payload = JSON.parse(post[1].body);
+    expect(payload).toMatchObject({ tenantId: 't1', eventId: FREE_EVENT.id });
+    expect(singleRun ? /^\d{4}-\d{2}-\d{2}$/.test(payload.runDate) : payload.runDate === null).toBe(true);
+  });
+  it('keeps a send failure visible in the dialog and permits retry', async () => {
+    cancellationFetch.mockReset().mockImplementation(async (_url: string, options?: RequestInit) => ({
+      ok: options?.method !== 'POST',
+      json: async () => options?.method === 'POST' ? { error: 'One cancellation notice failed. Retry.' } : { count: 2 },
+    }));
+    const c = await openOneDetail();
+    await click(c.querySelector('[title="Cancel event"]')!); await settle();
+    await click(buttonContaining(c, 'Cancel and email registrants')); await settle();
+    const dialog = [...c.querySelectorAll('[role="dialog"]')].at(-1)!;
+    expect(dialog.textContent).toContain('One cancellation notice failed. Retry.');
+    expect(buttonContaining(dialog, 'Retry cancellation').disabled).toBe(false);
+  });
+  it('shows manual refund flags on cancelled registrations', async () => {
+    const row = REGISTRATIONS[1] as Record<string, any>;
+    const status = row.status;
+    row.refundStatus = 'pending_manual'; row.status = 'cancelled';
+    try {
+      const c = await openOneDetail();
+      await click(c.querySelector('[role="tab"][data-slot="tabs-trigger"][id*="registrations"]') || buttonContaining(c, 'Registrations'));
+      await settle();
+      expect(c.textContent).toContain('Refund pending (manual)');
+      expect([...c.querySelectorAll('[data-row-confirm-payment]')]).toHaveLength(0);
+    } finally { delete row.refundStatus; row.status = status; }
+  });
+  it('defaults a series cutoff to two hours and saves the edited offset', async () => {
+    eventsData.current = [{ ...FREE_EVENT, recurrence: { freq: 'weekly', count: 4 } }];
+    const c = await screen();
+    await click(c.querySelector('button svg[class*="pen"]')!.closest('button')!); await settle();
+    const form = [...c.querySelectorAll('[data-event-form-dialog]')].at(-1)!;
+    const input = form.querySelector<HTMLInputElement>('#registration-cutoff')!;
+    expect(input.getAttribute('data-slot')).toBe('input');
+    expect(input.value).toBe('2');
+    expect(input.type).toBe('number');
+    const { act } = await import('react');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '4.5');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await click(buttonContaining(form, 'Save Changes')); await settle();
+    expect(stored.find(write => 'registrationCutoffHours' in write)).toMatchObject({ registrationCutoffHours: 4.5, registrationDeadline: null });
+  });
+});
+
+it('continues bounded cancellation requests until the server reports no notices remaining', async () => {
+  let posts = 0;
+  cancellationFetch.mockReset().mockImplementation(async (_url: string, options?: RequestInit) => ({
+    ok: true, json: async () => options?.method === 'POST' ? { emailed: 20, remaining: ++posts === 1 ? 5 : 0 } : { count: 25 },
+  }));
+  eventsData.current = [FREE_EVENT];
+  const c = await screen();
+  const titles = [...c.querySelectorAll('div')].filter(node => node.textContent === FREE_EVENT.title);
+  await click(titles[titles.length - 1]); await settle();
+  await click(c.querySelector('[title="Cancel event"]')!); await settle();
+  const dialog = [...c.querySelectorAll('[role="dialog"]')].at(-1)!;
+  await click(buttonContaining(dialog, 'Cancel and email registrants')); await settle();
+  expect(posts).toBe(2);
 });

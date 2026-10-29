@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { registrationClosed } from './events/registration-cutoff';
 import { registrationMatchesRun } from './events/recurrence';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -102,6 +103,17 @@ export async function finalizeEventRegistration(opts: {
   const eventRef = adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId);
   const eventSnap = await eventRef.get();
   const eventData = eventSnap.data() || {};
+  const eventCancelled = eventData.status === 'cancelled'
+    || (reg.runDate && eventData.recurrence?.cancelledRuns?.includes(reg.runDate));
+  if (!eventSnap.exists || eventCancelled || eventData.status === 'completed' || registrationClosed(eventData, reg.runDate)) {
+    await regRef.update({
+      status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
+      cancellationReason: eventCancelled ? 'event_cancelled' : 'registration_closed',
+      refundStatus: 'pending_manual', stripePaymentIntentId: paymentIntentId, amountPaid,
+      updatedAt: new Date().toISOString(),
+    });
+    return;
+  }
   const ticketTypes: Array<{ id: string; name: string; capacity: number | null }> =
     Array.isArray(eventData.ticketTypes) ? eventData.ticketTypes : [];
   const ticketType = ticketTypes.find((t) => t.id === ticketTypeId) || null;
@@ -181,7 +193,7 @@ export async function finalizeEventRegistration(opts: {
   // verified uid), and .update() leaves it intact — but we also restore it from
   // the Checkout metadata as a belt-and-suspenders. '' metadata = logged-out.
   const linkedUserId = reg.userId || meta.userId || null;
-  await regRef.update({
+  const confirmation = {
     status: 'confirmed',
     waitlisted: false,
     stripePaymentIntentId: paymentIntentId,
@@ -189,7 +201,27 @@ export async function finalizeEventRegistration(opts: {
     ...(linkedUserId ? { userId: linkedUserId } : {}),
     confirmedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  };
+  const confirmed = await adminDb.runTransaction(async tx => {
+    const currentReg = await tx.get(regRef);
+    const currentEvent = await tx.get(eventRef);
+    const latest = currentEvent.data();
+    if (currentReg.data()?.status !== 'pending_payment') return false;
+    const cancelled = latest?.status === 'cancelled'
+      || latest?.recurrence?.cancelledRuns?.includes(reg.runDate);
+    if (!currentEvent.exists || !latest || cancelled || latest.status === 'completed' || registrationClosed(latest, reg.runDate)) {
+      tx.update(regRef, {
+        status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
+        cancellationReason: cancelled ? 'event_cancelled' : 'registration_closed',
+        refundStatus: 'pending_manual', stripePaymentIntentId: paymentIntentId, amountPaid,
+        updatedAt: new Date().toISOString(),
+      });
+      return false;
+    }
+    tx.update(regRef, confirmation);
+    return true;
   });
+  if (!confirmed) return;
 
   // Increment discount usage now (read-modify-write the array, same as the free
   // path does at submit time). Best-effort, mirroring the submit route.

@@ -135,6 +135,146 @@
       "file": "src/__tests__/THE-379.review-guards.test.ts",
       "digest": "889e2c01d91d1b51993dc49e72d1164c67d0a95163abb19a6103306469637d61",
       "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Expand primitive assertions to the reviewed search, sharing, answer expansion, cancellation, calendar and date/ticket selection controls. No raw-control allowance changes."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "0f0b2f37a33c1adc3da4330b90fff3ada0f434a526f28ab776fbcb028f36957e",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "08f214981a407fb826abb7b31c2f764cdacd102c84f1b91ddd5fd8bb61837d19",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "a1db8400797d1a07a0d468264209e82ac44b6f00944a336c8878f2d9313be53c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-direct-charge.test.ts",
+      "digest": "6e70c330f9bf11f129d640b6f3e104278f85335d3eb469164b433c73a1e71c95",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "e894347f37a33c4d901f0509715e2decc06640125720f3f2894e6f8007fd5e4b",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "3344bbd13dc896c74006de9ba4fa1a5a99c6da9c1180ac65d7f51014e3777d37",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "a601e9215ab093e4bdf7fd5ddc4abbe84437d583dadcccd0545406879808afc0",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/connect-webhook-event-registration.test.ts",
+      "digest": "700c0e861af967e52a820f75ee5b5590d9d57bd86e77ab7b056041cdedf90278",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/webhook-event-registration.test.ts",
+      "digest": "911167b142e2426ece37ce1f5ef80c146fe32db6454c8af1ef9d8df7b161b9d6",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "9aee0c248aefb159dc3517ff403eedd06873c98e8f4fb69affb7c7678ad4c3a2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "814c132c2dd4dda63f5ba56eb45936eba10e9697aa8a5b9dbffe43a7a7f4188d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "715035cc4527a2e6fd437030740afadea67f76e0f9fa3da3db07837b62d8bbfa",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "299771492c1823af6086b2727d583725abf50c7d1f0045bc4f2f3169ae7a37a3",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "a38ce6ee79278488ef2f7980b59c00302b6bb2b2e129df9eceb825f0613d70e5",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/hooks/queries/useEventQueries.ts",
+      "digest": "b72c4c8cd768b552c2d67baa1d8e03909345e4bda9b524e6b4358cfb2f28da64",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/__tests__/stripe-config-split.test.ts",
+      "digest": "3555163c74f2d8cddc35b101160f9bb720a9287aa51951f81ed1564ddc9173df",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "5ec84d3907d18a48255fc1a33082f27ad3c1187a584c9e77ba8ec126ccf6a930",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/transactional-email.ts",
+      "digest": "c8cd0411cd19f228f612ff8f2856d24d718463bb706a705fb75e8d5c4b28cefc",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/events/cancel/__tests__/route.test.ts",
+      "digest": "c6fb8490bdf262a3cec6d121e047490fffc038c1e9fee1b0d6ed763a301969bd",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/events/cancel/route.ts",
+      "digest": "36d3bde05dd2a0809b3dba5fcbb8a417a3ea15e279d4798d7d115458bb11a4a4",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/__tests__/event-cancellation-email.test.ts",
+      "digest": "10c66591a9a8462711b09d11fe7c596e195fb856b652f08efd1a6151cf1e061c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/__tests__/registration-cutoff.test.ts",
+      "digest": "340403eec59650bc1dcf6158b10f24227bcd15a5ae132b4f4394701df55ef3d2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/__tests__/registration-write.test.ts",
+      "digest": "63fee033967453b8ad79cbb51d3798421fa775e6be9c15d2175da05d754024c8",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/cancellation.ts",
+      "digest": "463c15879d4536af042c930e03315909c7ddbc4957acc13906f50c258a5b8977",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/events/registration-cutoff.ts",
+      "digest": "7cd71fc3cd284e1e1e5f70af4c6982265c163eaed156cea0f4f8e454331afb63",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/events/registration-write.ts",
+      "digest": "b5caed406d2be6f48e56dba758bf3c5bd179cf3c2151eab0fb7dcba3167693c1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-356.css-isolation-and-button-floor.layout.test.tsx",
+      "digest": "2f5e525f6fba6ce311278cb448bdd5f71b88da8f6b3bd9870f755112bbc4215d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556: extend the existing Button class resolver to enumerate both conditional branches independently, so the new primitive call sites remain measurable without discarding a branch or combining conflicting height classes. Browser assertions remain unchanged."
     }
   ]
 }

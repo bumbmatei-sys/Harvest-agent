@@ -104,7 +104,13 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: (name: string) => makeCollRef(name), batch: () => ({ update: vi.fn(), set: vi.fn(), commit: vi.fn() }) },
+  adminDb: { collection: (name: string) => makeCollRef(name),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const writes: Array<() => Promise<void>> = [];
+      const result = await work({ get: (ref: any) => ref.get(), update: (ref: any, data: any) => writes.push(() => ref.update(data)) });
+      for (const write of writes) await write();
+      return result;
+    }, batch: () => ({ update: vi.fn(), set: vi.fn(), commit: vi.fn() }) },
   getReceiptsBucket: vi.fn(),
 }));
 

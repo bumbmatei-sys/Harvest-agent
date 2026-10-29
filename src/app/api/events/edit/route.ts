@@ -4,13 +4,14 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireTenantPermission } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { changesSeriesIdentity, SERIES_LOCK_MESSAGE } from '@/lib/events/series-edit';
+import { registrationCutoffHours } from '@/lib/events/registration-cutoff';
 import type { RecurrenceRule } from '@/lib/events/recurrence';
 
 export const dynamic = 'force-dynamic';
 
 const EDIT_FIELDS = new Set([
   'title', 'description', 'coverImage', 'location', 'isOnline', 'onlineLink',
-  'startDate', 'endDate', 'capacity', 'registrationDeadline', 'price', 'currency',
+  'startDate', 'endDate', 'capacity', 'registrationDeadline', 'registrationCutoffHours', 'organizerEmail', 'price', 'currency',
   'status', 'registrationEnabled', 'ticketTypes', 'waitlistEnabled', 'discountCodes',
   'showOnPublicCalendar', 'paymentProviders', 'recurrence', 'timeZone', 'openToAnyone', 'registrationQuestions',
 ]);
@@ -65,6 +66,22 @@ export async function PATCH(request: NextRequest) {
         // Keep nanoseconds and the original DST instant on untouched fields.
         update[key] = before[key]?.toDate?.().toISOString() === value
           ? before[key] : Timestamp.fromDate(new Date(value));
+      }
+      if ('registrationCutoffHours' in update) {
+        try {
+          if (typeof update.registrationCutoffHours !== 'number') throw new Error('Invalid offset');
+          registrationCutoffHours(update.registrationCutoffHours);
+        }
+        catch { throw new EditError('Invalid registration cutoff hours', 400); }
+      }
+      if ('organizerEmail' in update && (typeof update.organizerEmail !== 'string' || (update.organizerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(update.organizerEmail.trim())))) {
+        throw new EditError('Invalid organizer contact email', 400);
+      }
+      if (update.status === 'cancelled' && before.status !== 'cancelled') {
+        throw new EditError('Use Cancel event to notify registrants.', 409);
+      }
+      if (update.recurrence && JSON.stringify(update.recurrence.cancelledRuns || []) !== JSON.stringify(before.recurrence?.cancelledRuns || [])) {
+        throw new EditError('Use Cancel this date to notify registrants.', 409);
       }
       const after = { ...before, ...update };
       try { new Intl.DateTimeFormat('en-US', { timeZone: after.timeZone || 'UTC' }).format(); }

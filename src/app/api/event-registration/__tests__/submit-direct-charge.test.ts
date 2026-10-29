@@ -66,9 +66,15 @@ function makeCollRef(): any {
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
+let latestEventSnapshot: any;
 function makeDocRef(): any {
   return {
-    get: mockDocGet, set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
+    id: 'pending1',
+    get: async () => {
+      const snapshot = await mockDocGet();
+      if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
+      return snapshot;
+    }, set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
     collection: vi.fn(() => makeCollRef()),
   };
 }
@@ -109,7 +115,14 @@ vi.mock('stripe', () => ({
   },
 }));
 
-vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const creates: any[] = [];
+      const result = await work({ get: async () => latestEventSnapshot, create: (_ref: any, data: any) => creates.push(data) });
+      for (const data of creates) await mockAdd(data);
+      return result;
+    },
+  } }));
 vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 vi.mock('@/lib/sms-send', () => ({ sendAutomatedSms: mockSendAutomatedSms }));

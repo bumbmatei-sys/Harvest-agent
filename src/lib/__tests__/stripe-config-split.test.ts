@@ -133,9 +133,15 @@ function makeCollRef(): any {
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
+let latestEventSnapshot: any;
 function makeDocRef(): any {
   return {
-    get: mockDocGet,
+    id: 'pending1',
+    get: async () => {
+      const snapshot = await mockDocGet();
+      if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
+      return snapshot;
+    },
     set: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
     delete: mockDocDelete,
@@ -189,7 +195,14 @@ vi.mock('stripe', () => ({
     checkout = { sessions: { create: mockCheckoutCreate } };
   },
 }));
-vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const creates: any[] = [];
+      const result = await work({ get: async () => latestEventSnapshot, create: (_ref: any, data: any) => creates.push(data) });
+      for (const data of creates) await mockAdd(data);
+      return result;
+    },
+  } }));
 vi.mock('@/lib/tenant-private', () => ({
   getTenantPrivate: mockGetTenantPrivate,
   DODO_ON_HOLD_FIELD: 'dodoOnHoldAt',

@@ -20,6 +20,8 @@ import {
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 import { registrationRuns, registrationMatchesRun, type EventRun } from '@/lib/events/recurrence';
+import { createEventRegistration, RegistrationClosedError } from '@/lib/events/registration-write';
+import { registrationClosed } from '@/lib/events/registration-cutoff';
 import { validateAnswers } from '@/lib/events/registration-questions';
 import type { RecurrenceRule, RegistrationQuestion } from '@/hooks/queries/useEventQueries';
 
@@ -121,12 +123,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // A registration deadline, once set, is enforced here — it was stored but
-    // never read before this change.
-    if (event.registrationDeadline?.toDate && Date.now() > event.registrationDeadline.toDate().getTime()) {
-      return NextResponse.json({ error: 'The registration deadline for this event has passed.' }, { status: 410 });
-    }
-
     // Recurring events (Eden "series with runs") require the registrant to
     // say which run they mean, and that run must still be a real, uncancelled
     // occurrence of the series. Non-recurring events ignore `runDate`
@@ -149,6 +145,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'That date is no longer available for this event.' }, { status: 410 });
       }
       targetRunDate = requestedRunDate;
+    }
+
+    if (registrationClosed(event, targetRunDate)) {
+      return NextResponse.json({ error: 'The registration deadline for this date has passed.' }, { status: 410 });
     }
 
     // Registration questions (Eden one-at-a-time), validated server-side —
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
       // session metadata can carry its id. Pending regs hold no capacity and
       // consume no discount — those happen only at confirmation. `firstName` is
       // stored so the webhook can address the confirmation email.
-      const pendingRef = await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
+      const pendingRef = await createEventRegistration(tenantId, eventId, {
         eventId,
         tenantId,
         userId,
@@ -461,7 +461,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Write registration ──
-    await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
+    await createEventRegistration(tenantId, eventId, {
       eventId,
       tenantId,
       userId,
@@ -662,6 +662,7 @@ export async function POST(request: NextRequest) {
       paymentClaimToken: paymentFields.paymentClaimToken ?? null,
     });
   } catch (e) {
+    if (e instanceof RegistrationClosedError) return NextResponse.json({ error: e.message }, { status: 410 });
     console.error('Event registration submit error:', e);
     // A public visitor's registration didn't happen. They see a generic failure
     // and go away; the ministry has no signal that anyone ever tried.

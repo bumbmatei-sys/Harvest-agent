@@ -55,6 +55,9 @@ export interface Event {
   endDate: Timestamp | null;
   capacity: number | null;
   registrationDeadline: Timestamp | null;
+  /** Recurring runs close this many elapsed hours before their start; absent means 2. */
+  registrationCutoffHours?: number;
+  organizerEmail?: string;
   price: number;
   currency: string;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
@@ -104,6 +107,9 @@ export interface Registration {
   ticketCode: string;
   status: 'confirmed' | 'cancelled' | 'attended' | 'waitlisted' | 'pending_payment' | 'expired';
   amount: number;
+  cancelledAt?: Timestamp;
+  cancellationReason?: 'event_cancelled' | 'registration_closed';
+  refundStatus?: 'pending_manual';
   registeredAt: Timestamp | null;
   ticketTypeId?: string | null;
   ticketTypeName?: string | null;

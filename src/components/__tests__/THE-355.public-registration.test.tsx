@@ -546,3 +546,38 @@ it('renders the question stepper with shadcn controls through submission', async
   await registerAndSubmit(c);
   expect(server.calls.find(call => call.url.includes('submit'))?.body.answers).toEqual({ choice: 'Vegetarian' });
 });
+
+// #556: the real public picker disables expired runs, selects a later one, and updates on an open page.
+describe('per-run registration cutoff in the public picker', () => {
+  const recurring = { ...FREE_EVENT, timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 },
+    startDate: '2031-03-23T09:00:00Z', endDate: '2031-03-23T10:00:00Z',
+    registrationDeadline: '2030-01-01T00:00:00Z',
+  };
+  it('disables the just-closed Berlin DST run and submits the next run', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T06:00:00Z'));
+    try {
+      const c = await mount({ event: recurring });
+      const closed = c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-03-30"]')!;
+      const next = c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-04-06"]')!;
+      expect(closed.disabled).toBe(true);
+      expect(closed.textContent).toContain('Registration closed');
+      expect(next.disabled).toBe(false);
+      await registerAndSubmit(c);
+      expect(server.calls.find(call => call.url.includes('submit'))?.body.runDate).toBe('2031-04-06');
+    } finally { vi.useRealTimers(); }
+  });
+  it('expires a selected run while the page stays open', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T05:59:59.999Z'));
+    try {
+      const c = await mount({ event: { ...recurring, recurrence: { freq: 'weekly', count: 2 } } });
+      expect(c.querySelector<HTMLButtonElement>('[data-public-submit]')!.disabled).toBe(false);
+      const { act } = await import('react');
+      await act(async () => {
+        vi.setSystemTime(new Date('2031-03-30T06:00:00Z'));
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      });
+      expect(c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-03-30"]')!.disabled).toBe(true);
+      expect(c.querySelector<HTMLButtonElement>('[data-public-submit]')!.disabled).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+});

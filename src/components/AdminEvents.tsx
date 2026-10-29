@@ -1,4 +1,5 @@
 "use client";
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +38,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EventStartField } from './events/EventStartField';
+import { authFetch } from '@/utils/auth-fetch';
+import { DEFAULT_REGISTRATION_CUTOFF_HOURS } from '../lib/events/registration-cutoff';
 import { getSeriesEditLock, saveEventEdit } from './events/event-edit-client';
 import { SERIES_LOCK_MESSAGE } from '../lib/events/series-edit';
 import { Switch } from '@/components/ui/switch';
@@ -203,6 +206,8 @@ const emptyForm = {
   endDate: '',
   capacity: '',
   registrationDeadline: '',
+  registrationCutoffHours: String(DEFAULT_REGISTRATION_CUTOFF_HOURS),
+  organizerEmail: '',
   price: '0',
   currency: 'usd',
   status: 'draft' as Event['status'],
@@ -357,6 +362,23 @@ const AdminEvents: React.FC = () => {
   // confirming dialog before a soft "cancel the whole event" write, and
   // which registration row currently has its answers expanded.
   const [showCancelEventConfirm, setShowCancelEventConfirm] = useState(false);
+  const [cancelRunDate, setCancelRunDate] = useState<string | null>(null);
+  const [cancelCount, setCancelCount] = useState<number | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  useEffect(() => {
+    if (!showCancelEventConfirm || !selected || !tenantId) return;
+    let active = true;
+    setCancelCount(null);
+    setCancelError(null);
+    const params = new URLSearchParams({ tenantId, eventId: selected.id, ...(cancelRunDate ? { runDate: cancelRunDate } : {}) });
+    void authFetch(`/api/events/cancel?${params}`).then(async response => {
+      const result = await response.json();
+      if (!response.ok || typeof result.count !== 'number') throw new Error(result.error || 'Could not count cancellation notices');
+      if (active) setCancelCount(result.count);
+    }).catch(error => { if (active) setCancelError(error.message); });
+    return () => { active = false; };
+  }, [showCancelEventConfirm, selected, tenantId, cancelRunDate]);
   const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
 
   // Registration-engine sub-forms (inside the create/edit form)
@@ -438,6 +460,8 @@ const AdminEvents: React.FC = () => {
       endDate: fmtDateInput(ev.endDate, ev.timeZone || BROWSER_TIME_ZONE()),
       capacity: ev.capacity?.toString() || '',
       registrationDeadline: fmtDateInput(ev.registrationDeadline, ev.timeZone || BROWSER_TIME_ZONE()),
+      registrationCutoffHours: String(ev.registrationCutoffHours ?? DEFAULT_REGISTRATION_CUTOFF_HOURS),
+      organizerEmail: ev.organizerEmail || '',
       price: ev.price.toString(),
       currency: ev.currency,
       status: ev.status,
@@ -479,6 +503,12 @@ const AdminEvents: React.FC = () => {
       notifyError('Online event link must be a valid HTTPS URL', null);
       return;
     }
+    if (form.recurrenceFreq !== 'none' && (!form.registrationCutoffHours.trim() || !Number.isFinite(Number(form.registrationCutoffHours)) || Number(form.registrationCutoffHours) < 0)) {
+      notifyError('Enter a non-negative registration cutoff in hours', null); return;
+    }
+    if (form.organizerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.organizerEmail.trim())) {
+      notifyError('Enter a valid organizer contact email', null); return;
+    }
     setSaving(true);
     try {
       // Eden "Repeats" — `null` (not an object with freq 'none') so an event
@@ -507,7 +537,9 @@ const AdminEvents: React.FC = () => {
         startDate: toTimestamp(form.startDate, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.startDate),
         endDate: toTimestamp(form.endDate, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.endDate),
         capacity: form.capacity ? Number(form.capacity) : null,
-        registrationDeadline: toTimestamp(form.registrationDeadline, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.registrationDeadline),
+        registrationDeadline: recurrence ? null : toTimestamp(form.registrationDeadline, form.timeZone || BROWSER_TIME_ZONE(), originalDates?.registrationDeadline),
+        registrationCutoffHours: Number(form.registrationCutoffHours),
+        organizerEmail: form.organizerEmail.trim(),
         // THE-345 - the write gate, and it is deliberately NOT `price: 0`.
         //
         // While no payment rail exists the price input is absent, so a CREATE
@@ -561,6 +593,8 @@ const AdminEvents: React.FC = () => {
           endDate: data.endDate ?? null,
           capacity: data.capacity ?? null,
           registrationDeadline: data.registrationDeadline ?? null,
+          registrationCutoffHours: data.registrationCutoffHours,
+          organizerEmail: data.organizerEmail,
           price: data.price || 0,
           currency: data.currency || 'usd',
           status: data.status || 'draft',
@@ -596,41 +630,34 @@ const AdminEvents: React.FC = () => {
     if (view === 'detail') setView('list');
   };
 
-  /**
-   * THE-379 — "Cancel event" is a SOFT write, never a delete. The founder's
-   * existing Delete button above removes the document outright; this sets
-   * `status: 'cancelled'`, which the public page and the ICS calendar
-   * already exclude on (THE-308/THE-313's own inventory: "Draft/cancelled →
-   * public page 404s, excluded from calendar") — no reader needed a change
-   * for this, because the enum member already existed and nothing wrote it.
-   */
   const cancelEvent = async () => {
     if (!selected || !tenantId) return;
+    setCancelling(true);
+    setCancelError(null);
     try {
-      await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), { status: 'cancelled' });
-      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
-      setSelected({ ...selected, status: 'cancelled' });
-    } catch (e) { notifyError('Failed to cancel event', e); }
+      let remaining: number;
+      do {
+        const response = await authFetch('/api/events/cancel', {
+          method: 'POST', body: JSON.stringify({ tenantId, eventId: selected.id, runDate: cancelRunDate }),
+        });
+        const result = await response.json();
+        await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
+        if (!response.ok) throw new Error(result.error || 'Cancellation notices could not be sent');
+        if (!Number.isInteger(result.remaining) || result.remaining < 0) throw new Error('Could not confirm cancellation notice progress. Please retry.');
+        remaining = result.remaining;
+      } while (remaining > 0);
+      setSelected(cancelRunDate && selected.recurrence ? { ...selected, recurrence: { ...selected.recurrence,
+        cancelledRuns: [...new Set([...(selected.recurrence.cancelledRuns || []), cancelRunDate])] } }
+        : { ...selected, status: 'cancelled' });
+      setShowCancelEventConfirm(false);
+      setCancelRunDate(null);
+    } catch (e) { setCancelError(e instanceof Error ? e.message : 'Cancellation failed. Please retry.'); }
+    finally { setCancelling(false); }
   };
 
-  /**
-   * Cancels ONE run of a recurring event's series, leaving every other run
-   * (and the series itself) untouched. `expandRuns` already excludes a
-   * cancelled date from every reader — the admin form's own run expansion,
-   * the public page's picker and the submit route's validation — so this is
-   * the one write all three already know how to honour.
-   */
-  const cancelRun = async (runDate: string) => {
-    if (!selected || !tenantId || !selected.recurrence) return;
-    const nextRecurrence = {
-      ...selected.recurrence,
-      cancelledRuns: [...(selected.recurrence.cancelledRuns || []), runDate],
-    };
-    try {
-      await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), { recurrence: nextRecurrence });
-      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
-      setSelected({ ...selected, recurrence: nextRecurrence });
-    } catch (e) { notifyError('Failed to cancel that date', e); }
+  const cancelRun = (runDate: string) => {
+    setCancelRunDate(runDate);
+    setShowCancelEventConfirm(true);
   };
 
   const togglePin = async (ev: Event) => {
@@ -1134,9 +1161,24 @@ const AdminEvents: React.FC = () => {
               </>
             )}
             <div>
-              <label className="text-xs font-semibold text-body mb-1.5 block">Registration Deadline</label>
-              <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
-                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+              <label htmlFor="registration-cutoff" className="text-xs font-semibold text-body mb-1.5 block">
+                {form.recurrenceFreq === 'none' ? 'Registration deadline' : 'Registration closes (hours before each run)'}
+              </label>
+              {form.recurrenceFreq === 'none' ? (
+                <Input id="registration-cutoff" type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
+                  className={`min-h-11 ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+              ) : (
+                <Input id="registration-cutoff" type="number" min="0" step="0.5" value={form.registrationCutoffHours}
+                  onChange={e => setForm({ ...form, registrationCutoffHours: e.target.value })}
+                  className={`min-h-11 ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+              )}
+            </div>
+            <div>
+              <label htmlFor="event-organizer-email" className="text-xs font-semibold text-body mb-1.5 block">Organizer contact email</label>
+              <Input id="event-organizer-email" type="email" value={form.organizerEmail}
+                onChange={e => setForm({ ...form, organizerEmail: e.target.value })}
+                placeholder="Defaults to the event owner's email"
+                className={`min-h-11 ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
             </div>
 
             {/* ── Registration engine ── */}
@@ -1375,7 +1417,7 @@ const AdminEvents: React.FC = () => {
                 className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
-                <option value="cancelled">Cancelled</option>
+                {form.status === 'cancelled' && <option value="cancelled" disabled>Cancelled</option>}
                 <option value="completed">Completed</option>
               </select>
             </div>
@@ -1411,7 +1453,7 @@ const AdminEvents: React.FC = () => {
     // narrowed to the rows that actually need it. `manualConfirmationMode()`
     // gates the whole tab: with no manual rail there is nothing to confirm.
     const pendingRegs = manualConfirmationMode()
-      ? registrations.filter(r => paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid')
+      ? registrations.filter(r => r.status !== 'cancelled' && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid'))
       : [];
     // A recurring event's own next runs, read with the SAME `expandRuns` the
     // create form, the public page and the submit route all use, so this
@@ -1473,6 +1515,7 @@ const AdminEvents: React.FC = () => {
               shoulder. The instruction — "Let them in" — is in the title
               attribute, where the volunteer looks and the queue does not.
             */}
+            {r.refundStatus === 'pending_manual' && <Badge variant="outline">Refund pending (manual)</Badge>}
             {(() => {
               const pay = paymentStateOf(r);
               if (pay === 'free') return null;
@@ -1512,7 +1555,7 @@ const AdminEvents: React.FC = () => {
               of it: the founder's decision is that an unconfirmed guest
               walks in, so the door control below is reached on exactly
               the same condition it always was. */}
-          {manualConfirmationMode() && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
+          {manualConfirmationMode() && r.status !== 'cancelled' && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
             <Button variant="default"
               onClick={() => void confirmPayment(r)}
               disabled={confirming === r.id}
@@ -1594,8 +1637,8 @@ const AdminEvents: React.FC = () => {
             <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken">
               <Edit2 size={15} className="text-muted" />
             </button>
-            {selected.status !== 'cancelled' && selected.status !== 'completed' && (
-              <Button variant="outline" onClick={() => setShowCancelEventConfirm(true)} className={`h-auto min-h-11 p-2 rounded-xl border border-line hover:bg-surface-sunken ${CONTROL_DENSITY.action}`} title="Cancel event">
+            {selected.status !== 'completed' && (
+              <Button variant="outline" onClick={() => { setCancelRunDate(null); setShowCancelEventConfirm(true); }} className={`h-auto min-h-11 p-2 rounded-xl border border-line hover:bg-surface-sunken ${CONTROL_DENSITY.action}`} title={selected.status === 'cancelled' ? 'Retry cancellation notices' : 'Cancel event'}>
                 <Ban size={15} className="text-muted" />
               </Button>
             )}
@@ -1610,23 +1653,26 @@ const AdminEvents: React.FC = () => {
             CancelPlanBlock.tsx uses for "Cancel Subscription", not a dedicated
             AlertDialog primitive — adding one would move the shadcn primitive
             count every guard in this repo pins by number. */}
-        <Dialog open={showCancelEventConfirm} onOpenChange={setShowCancelEventConfirm}>
+        <Dialog open={showCancelEventConfirm} onOpenChange={open => { if (!cancelling) setShowCancelEventConfirm(open); }}>
           <DialogContent className="max-w-md" showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-strong font-display">Cancel this event?</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-strong font-display">{cancelRunDate ? `Cancel ${cancelRunDate}?` : 'Cancel this event?'} </DialogTitle>
             </DialogHeader>
             <DialogDescription className="text-muted text-sm">
-              {selected.title} will show as cancelled. Registrations are not deleted and stay visible here.
+              {selected.title}{cancelRunDate ? ` on ${cancelRunDate}` : ' and all its dates'} will be cancelled.
+              {cancelCount === null ? ' Counting people to email…' : ` ${cancelCount} registrant(s) will be emailed.`}
+              {' '}Confirmed and waitlisted registrations will be cancelled and kept in the list. Registrants will be given the organizer contact email for refunds. Paid registrations will show “Refund pending (manual)”. No automatic refunds.
             </DialogDescription>
+            {cancelError && <Alert variant="destructive"><AlertTitle>Cancellation needs attention</AlertTitle><AlertDescription>{cancelError}</AlertDescription></Alert>}
             <DialogFooter>
-              <DialogClose className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
+              <DialogClose disabled={cancelling} className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
                 Keep event
               </DialogClose>
               <Button variant="default"
-                onClick={() => { void cancelEvent(); setShowCancelEventConfirm(false); }}
+                onClick={() => void cancelEvent()} disabled={cancelling || cancelCount === null}
                 className={`h-auto min-h-11 flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               >
-                Cancel event
+                {cancelling ? 'Sending notices…' : cancelError ? 'Retry cancellation' : 'Cancel and email registrants'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1691,6 +1737,13 @@ const AdminEvents: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {selected.recurrence?.cancelledRuns?.map(date => (
+              <Button key={date} variant="outline" onClick={() => cancelRun(date)}
+                className={`h-auto min-h-11 mb-3 ${CONTROL_DENSITY.action}`}>
+                Retry cancellation notices for {date}
+              </Button>
+            ))}
 
             {/* Registration panel — only for registration-enabled events */}
             {selected.registrationEnabled && (

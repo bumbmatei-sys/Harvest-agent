@@ -40,9 +40,15 @@ function makeCollRef(): any {
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
+let latestEventSnapshot: any;
 function makeDocRef(): any {
   return {
-    get: mockDocGet,
+    id: 'pending1',
+    get: async () => {
+      const snapshot = await mockDocGet();
+      if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
+      return snapshot;
+    },
     set: mockDocSet,
     update: mockDocUpdate,
     delete: mockDocDelete,
@@ -87,7 +93,14 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: vi.fn(() => makeCollRef()) },
+  adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const creates: any[] = [];
+      const result = await work({ get: async () => latestEventSnapshot, create: (_ref: any, data: any) => creates.push(data) });
+      for (const data of creates) await mockAdd(data);
+      return result;
+    },
+  },
 }));
 
 // The Connect account id moved to the server-only tenant_private doc — the
@@ -684,14 +697,14 @@ describe('r9.4/5 recurring registration window and SMS', () => {
       expect(mockAdd).not.toHaveBeenCalled();
     } finally { vi.useRealTimers(); }
   });
-  it('r9.4 accepts an ongoing run exactly as the public picker does', async () => {
+  it('r9.4 refuses an ongoing run after its per-run cutoff', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(instant(3, 23, 23).getTime() + 30 * 60000));
     try {
       mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event });
       const response = await POST(makeRequest({ ...baseBody, runDate: '2031-03-24' }));
-      expect(response.status).toBe(200);
-      expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate: '2031-03-24' }));
+      expect(response.status).toBe(410);
+      expect(mockAdd).not.toHaveBeenCalled();
     } finally { vi.useRealTimers(); }
   });
   it('r9.5 sends the chosen run civil date in the event zone in SMS', async () => {
@@ -742,5 +755,42 @@ describe('#556 membership and confirmation follow-ups', () => {
       expect(mockEmailSend).toHaveBeenCalledWith(expect.objectContaining({ html: expect.stringContaining('March 24, 2031') }));
       expect(mockEmailSend.mock.calls[0][0].html).not.toContain('March 17, 2031');
     } finally { vi.useRealTimers(); delete process.env.RESEND_API_KEY; }
+  });
+});
+
+// #556: each date uses its own cutoff, independently of the retired series deadline.
+describe('per-run cutoff at submit across Berlin DST', () => {
+  it.each([
+    ['2031-03-30', '2031-03-30T06:00:00Z', -1, 200],
+    ['2031-03-30', '2031-03-30T06:00:00Z', 0, 410],
+    ['2031-03-30', '2031-03-30T06:00:00Z', 1, 410],
+    ['2031-10-26', '2031-10-26T07:00:00Z', -1, 200],
+    ['2031-10-26', '2031-10-26T07:00:00Z', 0, 410],
+  ])('%s boundary %+dms returns %s', async (runDate, cutoff, delta, status) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(Date.parse(cutoff) + Number(delta)));
+    try {
+      const spring = runDate.startsWith('2031-03');
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 },
+        startDate: { toDate: () => new Date(spring ? '2031-03-23T09:00:00Z' : '2031-10-19T08:00:00Z') },
+        registrationDeadline: { toDate: () => new Date('2030-01-01T00:00:00Z') },
+      }) });
+      const response = await POST(makeRequest({ ...baseBody, runDate }));
+      expect(response.status).toBe(status);
+      if (status === 200) expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate }));
+      else expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('enforces an admin-edited fractional offset', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T03:30:00Z'));
+    try {
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ ...PAID_EVENT_FREE,
+        timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 }, registrationCutoffHours: 4.5,
+        startDate: { toDate: () => new Date('2031-03-23T09:00:00Z') },
+      }) });
+      expect((await POST(makeRequest({ ...baseBody, runDate: '2031-03-30' }))).status).toBe(410);
+      expect(mockAdd).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
   });
 });

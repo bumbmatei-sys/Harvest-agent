@@ -144,6 +144,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
       'main + THE-379 — the registration deadline, the open-to-anyone gate and per-run questions/capacity; the CRM write and the Stripe path are byte-identical'],
     ['b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde', 'THE-379 r9 — shared picker window and chosen-run SMS; payment and CRM writes unchanged'],
     ['ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df', '#556 F1/F3: read current membership and include the chosen run in confirmation email; money and CRM writes retained'],
+    ['6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf', '#556 — per-run registration cutoffs, cancellation records and manual-refund flags; query shapes and CRM records retained'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
@@ -176,6 +177,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // byte-identical.
     ['288455d90e7ae152da8e69ec60b1d3385fa8d71f6481cca91547cdd15686d4c5',
       'main + THE-379 — optional recurrence/question/run fields on Event and Registration; no query, read or fetch shape moved'],
+    ['b72c4c8cd768b552c2d67baa1d8e03909345e4bda9b524e6b4358cfb2f28da64', '#556 — per-run registration cutoffs, cancellation records and manual-refund flags; query shapes and CRM records retained'],
   ],
   /**
    * ✅ #413's drag mechanism. This ticket READ it and reimplemented the same
@@ -514,7 +516,7 @@ describe('no new token, component or dependency was added', () => {
     // the calendar chunk stays out of the list's own bundle.
     expect(imports, 'the events screen adopted an unrecorded primitive')
       // #556 B1 replaces the reviewed raw controls with these exact primitives.
-      .toEqual(['alert', 'button', 'checkbox', 'dialog', 'empty', 'input', 'radio-group', 'select', 'skeleton', 'switch', 'tabs', 'textarea', 'toggle-group']);
+      .toEqual(['alert', 'badge', 'button', 'checkbox', 'dialog', 'empty', 'input', 'radio-group', 'select', 'skeleton', 'switch', 'tabs', 'textarea', 'toggle-group']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -767,6 +769,8 @@ describe('the existing events list, its write paths and paid-event creation are 
       '766f17505ba9333ff0eeb3de37beadd9b2119c065bfdd85006f5c2bc1316ffa4',
       // APPENDED #556 B2: server save rechecks registered series identities; create payload retained.
       '60c307e02ee2d88a429d5428e2cb5ff0ab0349c3b36d87ff3284fe0c8b8a2c33',
+      // APPENDED #556: editable per-run cutoff and organizer contact; existing payment gates retained.
+      'da11ce834e00fa359d26b1e98406729cc21d1351e15cd161df466ffaf0d7210c',
     ];
     const actual = sha256(src);
     expect(
@@ -800,12 +804,13 @@ describe('the existing events list, its write paths and paid-event creation are 
       // the one-at-a-time question builder's output.
       'recurrenceFreq', 'recurrenceEndMode', 'recurrenceUntil', 'recurrenceCount',
       'timeZone', 'openToAnyone', 'registrationQuestions',
+      'registrationCutoffHours', 'organizerEmail',
     ]) {
       expect(src, `emptyForm lost ${field}`).toContain(`${field}:`);
     }
-    // 26 fields and no twenty-seventh — a new one would be a new stored field.
+    // #556 adds registrationCutoffHours and organizerEmail: exactly 28 stored fields.
     // 18 -> 19, THE-351; 19 -> 26, THE-379, and the seven arrivals are named above.
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(26);
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(28);
   });
 
   /**
@@ -976,7 +981,8 @@ describe('the existing events list, its write paths and paid-event creation are 
     const src = EVENTS();
     // APPENDED BY THE-379 review: two redundant create buttons (each with
     // one className on its icon span) were removed; the header CTA remains.
-    expect([306, 304, 305], 'className count moved').toContain((src.match(/className/g) || []).length);
+    // APPENDED #556: cutoff/contact fields, notice retry control and cancellation error Alert.
+    expect([306, 304, 305, 310], 'className count moved').toContain((src.match(/className/g) || []).length);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

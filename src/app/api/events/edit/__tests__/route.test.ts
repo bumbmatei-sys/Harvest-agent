@@ -111,3 +111,17 @@ it('reports a locked editor when the series has registrations', async () => {
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ locked: true });
 });
+
+it.each([-1, '2', Infinity])('refuses invalid per-run cutoff hours %s', async value => {
+  const response = await PATCH(request({ registrationCutoffHours: value }));
+  expect(response.status).toBe(400);
+});
+it('saves an admin-edited per-run offset', async () => {
+  expect((await PATCH(request({ registrationCutoffHours: 4.5 }))).status).toBe(200);
+  expect(state.writes[0].registrationCutoffHours).toBe(4.5);
+});
+it('prevents an edit from bypassing cancellation notices', async () => {
+  expect((await PATCH(request({ status: 'cancelled' }))).status).toBe(409);
+  expect((await PATCH(request({ recurrence: { ...state.event.recurrence, cancelledRuns: ['2031-03-23'] } }))).status).toBe(409);
+  expect(state.writes).toEqual([]);
+});
