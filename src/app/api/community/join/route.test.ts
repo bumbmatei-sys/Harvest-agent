@@ -116,7 +116,7 @@ describe('join and leave API', () => {
     expect(fx.writes).not.toHaveBeenCalled();
     expect(fx.contact).not.toHaveBeenCalled();
   });
-  it('atomically joins without changing primary tenant or writing a CRM contact', async () => {
+  it('atomically joins without changing primary tenant and awaits the CRM upsert', async () => {
     expect((await join(request({ ...joinBody, answers: { q: 'yes' }, rulesAcceptedVersion: 2 }))).status).toBe(200);
     const member = fx.docs[memberPath];
     expect(member).toMatchObject({ uid: 'person', tenantId: 'target', status: 'active', source: 'discover', leftAt: null, answers: { q: 'yes' }, rulesAcceptedVersion: 2 });
@@ -233,7 +233,18 @@ describe('join and leave API', () => {
     expect(fx.docs[indexPath]).toBeUndefined();
     expect(fx.contact).not.toHaveBeenCalled();
   });
-  it('retries the future contact hook after a failure without rewriting membership', async () => {
+  it('retries contact updates after a failed leave without changing the leave timestamp', async () => {
+    await join(request(joinBody));
+    fx.contact.mockRejectedValueOnce(new Error('CRM offline'));
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(503);
+    const leftAt = fx.docs[memberPath].leftAt;
+    fx.writes.mockClear();
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(200);
+    expect(fx.docs[memberPath].leftAt).toEqual(leftAt);
+    expect(fx.writes).not.toHaveBeenCalled();
+    expect(fx.contact).toHaveBeenLastCalledWith({ uid: 'person', tenantId: 'target' });
+  });
+  it('retries the contact upsert after a failure without rewriting membership', async () => {
     fx.contact.mockRejectedValueOnce(new Error('Contact unavailable'));
     expect((await join(request(joinBody))).status).toBe(503);
     const saved = fx.docs[memberPath];

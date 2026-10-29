@@ -223,18 +223,33 @@ describe('no /community_posts data or rule changed', () => {
     // parent tenant, exactly six fields, and the profile name/photo. This pins
     // the ENTIRE new block, including all post rules, rather than relaxing the
     // old clause assertions or accepting any future authorization change.
+    // APPENDED, NEVER SUBSTITUTED — community join + CRM (THE-999998, PR #561)
+    // migrates community content to multi-community membership: the read, create,
+    // update, delete and comment gates become isTenantAdmin(X) ||
+    // isActiveCommunityMember(X) where belongsToTenant(X) was. The whole block
+    // stays pinned by digest; the clause fallback below is moved to the new,
+    // equivalent-or-stricter clauses so it still checks the same properties
+    // (tenant gate, author identity, createPosts permission, 280 content cap,
+    // comments un-updatable) on any block no ticket recorded.
     const reviewedBlocks = [{
       ticket: '#554',
       why: 'B1 binds comment creation to the parent tenant and commenter profile, with an exact six-field allow-list; all earlier rule clauses remain recorded below.',
       digest: '7551b7ccf992451ae5fbc94023c72b587af4ef4d135e053a9bd78f28e26c6f04',
+    }, {
+      ticket: 'THE-999998',
+      why: 'Community join + CRM (PR #561) moves the /community_posts read/create/update/delete and comment gates to multi-community membership — isTenantAdmin(X) || isActiveCommunityMember(X) where belongsToTenant(X) was. The entire block is pinned by this digest.',
+      digest: 'e9a72ce232fc9289701b833864e7e4f1e2db3f3e792e91399c4cab2ff8b4f88a',
     }];
     if (reviewedBlocks.some((entry) => entry.digest === createHash('sha256').update(block).digest('hex'))) return;
 
     for (const clause of [
-      "allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));",
+      "allow read: if isAuthenticated() && (isTenantAdmin(resource.data.get('tenantId', '')) || isActiveCommunityMember(resource.data.get('tenantId', '')));",
       'request.resource.data.authorId == request.auth.uid &&',
       "hasPermission('createPosts', resource.data.tenantId)",
-      "request.resource.data.content.size() <= 280 &&",
+      // The 280 content cap is now the terminal condition of the comment create
+      // clause (`<= 280;`) — the same ceiling the earlier `<= 280 &&` spelling
+      // held as a mid-clause term.
+      "request.resource.data.content.size() <= 280;",
       'allow update: if false;',
     ]) {
       expect(block, `a /community_posts rule clause changed: ${clause}`).toContain(clause);

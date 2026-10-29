@@ -851,6 +851,9 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
    * pill moves into the shared page header; no statement, receipt, CRM write or Stripe path changed.
    */
   const LATER_ACCEPTED: Record<string, readonly string[]> = {
+    // THE-999998: Contact gains optional community metadata types only; every
+    // read, query, money field and write path in this module is unchanged.
+    'src/hooks/queries/useCRMQueries.ts': ['b7228a14ef7c327f67d721feecf98cd5bf85e2483adc5add11f44da7659cd1e1'],
     'src/components/AdminAccounting.tsx': ['31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af', 'c64fc0d07db1cd6b26e4770dbe43094f00cca55d7a0ac470e1927b5eaa78928b'],
   };
 

@@ -209,3 +209,40 @@ describe('multi-community content boundary', () => {
     await assertFails(db.doc(`tenants/${TENANT_A}/directMessages/old-${uid}`).update({ lastMessage: 'Denied' }));
   });
 });
+
+describe('community CRM server fields', () => {
+  const path = 'contacts/community-rule-contact';
+  const fields = { communityUserId: MEMBER_UID, communitySource: 'discover', communityStatus: 'active', communityJoinedAt: new Date(1000), communityLeftAt: null };
+  beforeAll(async () => {
+    await seedDoc(path, { tenantId: TENANT_A, firstName: 'Member', email: 'member@example.org', source: 'community', ...fields });
+    await seedDoc('contacts/ordinary-rule-contact', { tenantId: TENANT_A, firstName: 'Manual', source: 'manual' });
+  });
+  it.each(Object.entries(fields))('denies clients forging or deleting %s, including tenant admins', async (key, value) => {
+    const db = (await fullAdmin()).firestore();
+    await assertFails(db.doc(`contacts/forged-${key}`).set({ tenantId: TENANT_A, [key]: value }));
+    await assertFails(db.doc('contacts/ordinary-rule-contact').update({ [key]: value }));
+    const replacements: Record<string, unknown> = { ...fields, source: 'community', tenantId: TENANT_A };
+    delete replacements[key];
+    await assertFails(db.doc(path).set(replacements));
+  });
+  it('protects source and tenant identity while permitting ordinary owner edits', async () => {
+    const db = (await fullAdmin()).firestore();
+    await assertFails(db.doc('contacts/forged-source').set({ tenantId: TENANT_A, source: 'community' }));
+    await assertFails(db.doc('contacts/ordinary-rule-contact').update({ source: 'community' }));
+    await assertFails(db.doc(path).update({ source: 'manual' }));
+    await assertFails(db.doc(path).update({ tenantId: TENANT_B }));
+    await assertSucceeds(db.doc(path).update({ firstName: 'Owner edited', notes: 'Keep this contact' }));
+    await assertSucceeds(db.doc('contacts/ordinary-rule-contact').update({ source: 'import' }));
+  });
+  it('keeps CRM reads and writes tenant scoped; membership grants no CRM access', async () => {
+    const admin = (await fullAdmin()).firestore();
+    await assertSucceeds(admin.doc(path).get());
+    await assertSucceeds(admin.collection('contacts').where('tenantId', '==', TENANT_A).get());
+    for (const actor of [adminB, member, () => asUid('multi-member')]) {
+      const db = (await actor()).firestore();
+      await assertFails(db.doc(path).get());
+      await assertFails(db.collection('contacts').where('tenantId', '==', TENANT_A).get());
+      await assertFails(db.doc(path).update({ firstName: 'Forged' }));
+    }
+  });
+});

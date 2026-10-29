@@ -1,9 +1,9 @@
-# Community membership, chunks (a) and (b)
+# Community membership and CRM
 
 The join/leave APIs support membership in many communities without moving
 `users/{uid}.tenantId` or changing Auth claims. No URL or membership depends on a
 subdomain. Community content now uses active membership, independently of the account tenant.
-The existing community list consumes the reverse index; UI redesign remains chunk (d).
+The community list consumes the reverse index and opens the same-origin member route.
 
 ## Records
 
@@ -59,14 +59,69 @@ keys, and 4,000-character values. Unknown top-level fields are rejected. The
 neighbouring community routes do not use rate limiting; these follow that pattern.
 Neither handler logs tokens, profile emails, or payloads.
 
-## CRM integration point
+## CRM contacts
 
-`upsertCommunityContact({ uid, tenantId })` in `src/lib/community-contact.ts` is an
-intentional no-op for chunk (c). The join handler awaits it after committing the
-membership transaction and also invokes it for active retries. Chunk (c) must
-implement an idempotent upsert and let failures propagate; retrying a join can
-then repair a failed contact write without rewriting membership timestamps. No
-contact is created in chunk (a), and leave does not remove any contact.
+`upsertCommunityContact({ uid, tenantId })` runs after every successful join or
+leave transaction, including retries. It re-reads membership in its own transaction
+so concurrent leave/rejoin requests cannot publish stale status. Failures answer
+503; retrying the same action repairs CRM without moving membership timestamps.
+Legacy membership without recorded sharing consent does not create a contact.
+
+The upsert reads all `contacts` for this tenant using one equality query, normalises
+both email sides (trim/lowercase), and links an existing UID contact first, then the
+lexically first document with matching email. It preserves owner-entered fields,
+giving records and notes. It never merges or deletes existing duplicates. An email already linked to a
+different community UID fails visibly rather than reassigning that contact. If no
+match exists it uses `community_<tenantId>_<sha256(uid)>`, avoiding ambiguous UID
+separators. The transactional query and deterministic destination prevent retry
+and concurrent-join duplicates. The complete tenant scan accommodates historical
+unnormalised emails without an undeployed composite index; large CRMs may warrant
+a separately migrated normalised-email index later.
+
+Only name and email come from `users/{uid}`, falling back to Auth display name and
+email. A missing name/email after both reads is a visible error, not an invented
+identity. The contact uses the existing firstName/lastName/member CRM shape. Identity
+links and all attribution are flat: `source: community`, `communityUserId`,
+`communitySource`, `communityStatus`, `communityJoinedAt`, `communityLeftAt`.
+No phone, address, photo, role, answers or other memberships are copied. Leaving
+retains the contact, records the membership's exact leave timestamp and sets status
+left; rejoining updates attribution and clears the leave timestamp. A previously
+linked contact remains linked even if the account email changes. Clients cannot
+create/change/remove these community fields, forge/remove source community, or
+move a contact to a different tenant. The existing CRM list/detail shows the source
+badge and a UTC leave date; detail reuses OnboardingAnswers against the original
+member record rather than copying answers to CRM.
+
+## UI and signup return
+
+Discover's Join links use the central member route `/community/<tenantId>`.
+On the central origin they stay relative; a tenant-host discovery view hands off
+to the same path on theharvest.app, where the central-origin sign-in is checked.
+`?join=1&src=discover` identifies Discover; direct `?join=1` links use link, and
+`?src=website` uses website. Signed-in visitors see the existing community entry
+dialog with the current rules/questions and exactly “The owner will see your name
+and email.” Rules must be accepted when enabled; required questions must be
+answered. Join submits explicit consent true. Loading, already-member and API error
+states are visible. Already-member continuation also retries the CRM repair.
+
+Signed-out visitors enter `/auth?signup=free&returnTo=...`. The return helper accepts
+only same-origin relative community paths, rejecting absolute/protocol-relative
+URLs, backslashes, controls and invalid/encoded destinations. Session storage
+retains this validated intent through the existing signup/onboarding flow. The
+completed funnel returns to the community with the consent dialog open.
+
+The member route selects TenantProvider and member query scope by path. Host and
+account resolution and Auth claims are unchanged; admin routes never use that path
+scope. The route gates content on current membership and listens for revocation.
+Joined communities open through this same-origin route from the membership list.
+Leave uses the installed Base UI AlertDialog and shared shadcn buttons; owners,
+scoped admins and roster admins never see it. Confirmation calls the leave API;
+a failed contact repair remains retryable after access ends. Success returns to
+the Communities list, which reloads its reverse index and excludes the leave.
+
+`/dev/join-crm?view=discover|consent|signup-return|member|leave|crm-contact&theme=dark`
+is an untracked screenshot harness of the real presentation components with mock
+records and handlers only. It returns 404 in production.
 
 ## Rules boundary
 
@@ -100,7 +155,7 @@ read policy; there is no separate community event collection. New membership
 alone confers no staff or money authority.
 
 TenantContext continues selecting the host tenant independently of the account's
-primary tenant. Existing community links therefore open joined communities without
+primary tenant. Community member routes and legacy host links open joined communities without
 rewriting user data or claims. The Free shell lists joined communities too; its owned Free personal workspace
 without a subdomain is not a community card. Both
 pending-marker spellings are read; all writes use the legal spelling, and question

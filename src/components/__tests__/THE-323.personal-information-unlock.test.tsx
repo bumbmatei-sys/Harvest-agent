@@ -588,6 +588,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // uses min-h-11. It is not a product screen, and it 404s in production.
       // The local development harness is ignored and may be absent in CI.
       ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
+      // THE-999998: local join/CRM screenshot harness, absent in CI.
+      ...(existsSync(path.join(ROOT, 'src/app/dev/join-crm/preview.tsx')) ? ['src/app/dev/join-crm/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
@@ -816,12 +818,15 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
       'src/components/community/AdminPostComposer.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
+      // THE-999998: join/member and leave actions use the same phone floor.
+      'src/components/community/CommunityMemberPage.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       // #557: Free member shell controls use the phone touch floor.
       'src/components/community/FreeMemberShell.tsx',
       'src/components/community/GroupList.tsx',
+      'src/components/community/LeaveCommunity.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',

@@ -1085,10 +1085,25 @@ service cloud.firestore {
 
     // ─── CRM Contacts & Activities ───────────────────────────────────
 
+    function communityContactKeys() {
+      return ['communityUserId', 'communitySource', 'communityStatus',
+              'communityJoinedAt', 'communityLeftAt'];
+    }
+    function contactCreateKeepsCommunity() {
+      return !request.resource.data.keys().hasAny(communityContactKeys())
+        && request.resource.data.get('source', '') != 'community';
+    }
+    function contactUpdateKeepsCommunity() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(communityContactKeys())
+        && (request.resource.data.get('source', '') == resource.data.get('source', '')
+          || (request.resource.data.get('source', '') != 'community' && resource.data.get('source', '') != 'community'))
+        && request.resource.data.get('tenantId', '') == resource.data.get('tenantId', '');
+    }
+
     match /contacts/{contactId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent();
-      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent();
+      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent() && contactCreateKeepsCommunity();
+      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent() && contactUpdateKeepsCommunity();
       allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
     }
 

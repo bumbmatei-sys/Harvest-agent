@@ -111,7 +111,12 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
   it('comment creation binds the tenant, exact payload keys and profile byline', () => {
     const clause = createClause(ruleBlock('comments'));
     const parent = "get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')";
-    expect(clause).toContain(`belongsToTenant(${parent})`);
+    // The parent-tenant gate moved to multi-community membership: an
+    // isTenantAdmin(X) || isActiveCommunityMember(X) pair where belongsToTenant(X)
+    // was — an inactive tenant member no longer passes, so this is stricter, and
+    // every other check below (exact payload keys, sender identity, profile
+    // byline, content cap) is unchanged.
+    expect(clause).toContain(`(isTenantAdmin(${parent}) || isActiveCommunityMember(${parent}))`);
     expect(clause).toContain(`request.resource.data.tenantId == ${parent}`);
     const keys = "['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']";
     expect(clause).toContain(`request.resource.data.keys().hasOnly(${keys})`);
@@ -130,11 +135,22 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
 
   it('dmMessages create checks participation and an admin counterpart without a payload allowlist', () => {
     const clause = createClause(ruleBlock('dmMessages'));
-    // Identity and thread eligibility remain enforced server-side.
-    expect(clause, 'the tenant check is gone').toContain('belongsToTenant(tenantId)');
+    // Identity and thread eligibility remain enforced server-side. The tenant
+    // check moved to multi-community membership — isTenantAdmin(X) ||
+    // isActiveCommunityMember(X) where belongsToTenant(X) was — and the
+    // participant + admin-counterpart checks now run through canSendDM, which
+    // binds the parent thread once and null-guards it. Both properties are
+    // asserted below on the clause AND inside the helper, one hop removed.
+    expect(clause, 'the tenant check is gone').toContain('(isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId))');
     expect(clause, 'the sender-identity check is gone').toContain('request.resource.data.senderId == request.auth.uid');
-    expect(clause, 'the participant check is gone').toContain("data.get('participants', [])");
-    expect(clause, 'the admin-counterpart check is gone').toContain('dmHasAdminCounterpart(get(');
+    expect(clause, 'the participant and counterpart checks are gone').toContain('canSendDM(request.resource.data.dmId, tenantId)');
+    const canSend = RULES.match(/function canSendDM\(dmId, tenantId\)[\s\S]*?\n    }/);
+    expect(canSend, 'the canSendDM helper no longer exists').not.toBeNull();
+    expect(canSend![0], 'the parent thread is no longer null-guarded').toContain('thread != null');
+    expect(canSend![0], 'the participant check is gone from canSendDM')
+      .toContain("request.auth.uid in thread.data.get('participants', [])");
+    expect(canSend![0], 'the admin-counterpart check is gone from canSendDM')
+      .toContain("dmHasAdminCounterpart(thread.data.get('participants', []), tenantId)");
     // 🔴 And the thing it does NOT: any constraint on the payload's shape.
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
@@ -149,10 +165,15 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
     expect(end).toBeGreaterThan(start);
     const counterpart = RULES.slice(start, end);
     expect(counterpart).toContain('/documents/users/$(uid)');
-    expect(counterpart).toContain('exists(path)');
+    // The existence check is now the null-guarded bound read: get(path) is bound
+    // to `counterpart` once and every field read sits behind `counterpart != null`
+    // — the same missing-document guard exists(path) made, on the very document
+    // whose fields are read, for one access call instead of two.
+    expect(counterpart).toContain('let counterpart = get(path);');
+    expect(counterpart).toContain('counterpart != null');
     expect(counterpart).toContain('isTenantOwner(uid, tenantId)');
-    expect(counterpart).toContain("get(path).data.get('role', 'user') == 'super_admin'");
-    expect(counterpart).toContain("get(path).data.get('tenantId', null) == tenantId");
+    expect(counterpart).toContain("counterpart.data.get('role', 'user') == 'super_admin'");
+    expect(counterpart).toContain("counterpart.data.get('tenantId', null) == tenantId");
     expect(counterpart).toContain("in ['admin', 'church_admin']");
     expect(counterpart).not.toMatch(/\bemail\b|tokenEmail|adminEmails|tenant_private|request\.auth|participantRoles/);
   });
@@ -182,8 +203,10 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
   it('channelMessages create binds sender identity and checks membership without a field allowlist', () => {
     const clause = createClause(ruleBlock('channelMessages'));
     // PR 554 checks sender identity and permits community managers or channel
-    // members; a limited admin role alone no longer grants posting access.
-    expect(clause).toContain('belongsToTenant(tenantId)');
+    // members; a limited admin role alone no longer grants posting access. The
+    // tenant check moved to multi-community membership — isTenantAdmin(X) ||
+    // isActiveCommunityMember(X) where belongsToTenant(X) was.
+    expect(clause).toContain('(isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId))');
     expect(clause).toContain('channelMemberAccess(get(');
     expect(RULES).toContain("request.auth.uid in channel.get('members', [])");
     expect(clause).toContain("request.resource.data.get('senderId', '') == request.auth.uid");

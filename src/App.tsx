@@ -16,6 +16,9 @@ import { doc, getDoc } from 'firebase/firestore';
 
 import AuthPage from './components/AuthPage';
 import MainApp from './components/MainApp';
+import { CommunitySignupReturn } from './components/community/CommunitySignupReturn';
+import { CommunityMemberPage } from './components/community/CommunityMemberPage';
+import { communityIdFromPath, communitySignupPath, safeCommunityReturnPath } from './lib/community/navigation';
 import AffiliateDashboard from './components/AffiliateDashboard';
 import Onboarding from './components/Onboarding';
 import ChurchOnboarding from './components/ChurchOnboarding';
@@ -52,6 +55,12 @@ import { isTenantAdminRole } from './lib/roles';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
+const COMMUNITY_RETURN_KEY = 'harvest_community_return';
+function consumeCommunityReturn(): string | null {
+  const path = safeCommunityReturnPath(sessionStorage.getItem(COMMUNITY_RETURN_KEY));
+  sessionStorage.removeItem(COMMUNITY_RETURN_KEY);
+  return path;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -267,6 +276,11 @@ const AppInner: React.FC = () => {
     });
   }, []);
 
+  useEffect(() => {
+    const path = safeCommunityReturnPath(new URLSearchParams(window.location.search).get('returnTo'));
+    if (path) sessionStorage.setItem(COMMUNITY_RETURN_KEY, path);
+  }, []);
+
   const urlSignup = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
   const storedSignup = typeof window !== 'undefined'
@@ -396,7 +410,10 @@ const AppInner: React.FC = () => {
                 FUNNEL_PATHS.includes(path)
                 || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView)
                 || (isFreeAccount && path.startsWith('/admin'));
-              if (wantsHome) {
+              const communityReturn = wantsHome && !data.signupInProgress ? consumeCommunityReturn() : null;
+              if (communityReturn) {
+                navigate(communityReturn, { replace: true });
+              } else if (wantsHome) {
                 // If the user belongs to a real tenant but is currently on the apex
                 // (e.g. they clicked a "buy a plan" link while already signed in), send
                 // them to THEIR tenant's subdomain admin instead of the apex admin —
@@ -553,7 +570,10 @@ const AppInner: React.FC = () => {
         setIsSuperAdmin(false);
         setUserRole('user');
         setUserTenantId(undefined); // unresolved — no signed-in user to resolve a tenant for
-        navigate('/auth', { replace: true });
+        const communityReturn = communityIdFromPath(window.location.pathname)
+          ? safeCommunityReturnPath(`${window.location.pathname}${window.location.search || '?join=1'}`) : null;
+        if (communityReturn) sessionStorage.setItem(COMMUNITY_RETURN_KEY, communityReturn);
+        navigate(communityReturn ? communitySignupPath(communityReturn) : '/auth', { replace: true });
       }
       setIsAuthReady(true);
       storeSetIsAuthReady(true);
@@ -618,12 +638,14 @@ const AppInner: React.FC = () => {
 
   return (
     <>
+      <CommunitySignupReturn />
       <OnboardingGate>
       <Routes>
+        <Route path="/community/:tenantId" element={<CommunityMemberPage />} />
         <Route path="/auth" element={<AuthPage onNavigate={handleNavigate} />} />
         <Route
           path="/onboarding"
-          element={<Onboarding onComplete={() => navigate('/', { replace: true })} signupPlan={signupPlan} />}
+          element={<Onboarding onComplete={() => navigate(consumeCommunityReturn() || '/', { replace: true })} signupPlan={signupPlan} />}
         />
         <Route
           path="/church-onboarding"

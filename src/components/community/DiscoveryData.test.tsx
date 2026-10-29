@@ -16,7 +16,7 @@ describe('community data', () => {
     mocks.getDoc.mockImplementation(async (path: string) => path === 'users/u' ? snap({ tenantId: 'one' }) : snap({ name: 'Grace', subdomain: 'grace', config: {} }));
     await act(async () => root.render(<CommunitiesData uid="u" currentTenantId="other" onEnter={() => {}} onDiscover={() => {}} />));
     expect(mocks.getDoc.mock.calls.map(call => call[0])).toEqual(['users/u', 'tenants/one/communityMembers/u', 'tenants/one']);
-    expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/one');
   });
   it('surfaces a failed account read', async () => {
     mocks.getDoc.mockRejectedValue(new Error('offline'));
@@ -49,7 +49,7 @@ describe('joined community index', () => {
     await act(async () => root.render(<CommunitiesData uid="u" currentTenantId="one" onEnter={() => {}} onDiscover={() => {}} />));
     expect(host.textContent).toContain('Second community');
     expect(host.querySelectorAll('a')).toHaveLength(1);
-    expect(host.querySelector('a')?.href).toBe('https://second.theharvest.app/');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/two');
     expect(mocks.getDocs).toHaveBeenCalledWith('users/u/memberships');
     expect(mocks.getDoc.mock.calls.filter(([path]) => path === 'tenants/one/communityMembers/u')).toHaveLength(1);
   });
@@ -66,7 +66,7 @@ describe('joined community index', () => {
     expect(host.querySelector('[role="alert"]')).toBeNull();
     expect(host.textContent).toContain('Joined community');
     expect(host.textContent).not.toContain('My Ministry');
-    expect(host.querySelector('a')?.href).toBe('https://joined.theharvest.app/');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/two');
   });
   it('shows an error when the index read fails instead of an empty community list', async () => {
     mocks.getDoc.mockResolvedValue(snap({ tenantId: 'one' }));

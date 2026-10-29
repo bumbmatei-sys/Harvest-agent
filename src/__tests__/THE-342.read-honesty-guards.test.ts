@@ -838,5 +838,11 @@ const THE_342_BASELINE = {
     ['46763248677479d47059a7e1a278d6c50f5c6ed65b59a69868a6fb9e67a7a6ea', 'THE-369 — one activity can be deleted, and a gift takes its receipt with it'],
     ['599607c140ffb55d4f6d1acdea2bbc45ea63ed824ab1852d5f59f036237b7499', '#519 — founder-only Newsletter filter and CSV export in the platform-wide view; no CRM read or write changed'],
     ['6e7dbac96166d0f7987f4dd095029ce2b5357b9a5c10f1d4995638d90633b411', 'Two-plan repricing - the manual-gift copy says giving records where it said accounting; no CRM read or write changed (THE-378)'],
+    // APPENDED for the community join + CRM work (THE-999998, PR #561), never
+    // substituted over any value above: the community contact badge and the
+    // join/leave CRM wiring move AdminCRM.tsx again. The read-honesty claims
+    // this list guards — ordered bounded reads, no composite index — are
+    // asserted against the file on disk and are unchanged.
+    ['7d8216a48dc9272d29187eeeb797df9017e40e168414e24edda705fbb47b5f95', 'THE-999998 (PR #561) — community join + CRM chunk (d): community contact badge and join/leave CRM wiring in AdminCRM; no bounded read or index requirement changed'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

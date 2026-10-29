@@ -5,6 +5,7 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { loadUserCommunityIds } from '@/lib/community/use-community';
 import { auth, db } from '@/firebase';
 import { readPublicListing } from '@/lib/community/public-listing';
+import { communityHref, communityPath } from '@/lib/community/navigation';
 import { canonicalPlanId } from '@/utils/plan-id';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 import { CommunitySwitcher } from './MobileCommunityNav';
@@ -42,7 +43,7 @@ export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, swi
         // subdomain. It must not turn an otherwise valid joined list into an error.
         if (canonicalPlanId(data.plan) === 'free' && data.ownerId === uid && data.subdomain == null) return null;
         if (typeof data.name !== 'string' || !data.name.trim() || !validSlug(data.subdomain)) throw new Error('Invalid community');
-        return { name: data.name, logoUrl: typeof data.config?.logo === 'string' ? data.config.logo : undefined, href: tenantId === currentTenantId ? undefined : `https://${data.subdomain}.theharvest.app` };
+        return { name: data.name, logoUrl: typeof data.config?.logo === 'string' ? data.config.logo : undefined, href: tenantId === currentTenantId ? undefined : communityHref(communityPath(tenantId)) };
       }));
       return communities.filter((community): community is NonNullable<typeof community> => community !== null);
     }

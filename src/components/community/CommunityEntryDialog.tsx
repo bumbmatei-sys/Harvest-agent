@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Input } from '@/components/ui/input';
 import { type CommunitySettings, requiredQuestionsAnswered } from '@/lib/community/settings';
 
-export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {}, communityName = 'the community', logoUrl }: {
+export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {}, communityName = 'the community', logoUrl, joining = false, onCancel }: {
   settings: CommunitySettings;
+  joining?: boolean; onCancel?: () => void;
   communityName?: string; logoUrl?: string;
   initialAnswers?: Record<string, string>;
   onSubmit: (answers: Record<string, string>) => Promise<void>;
@@ -27,7 +28,7 @@ export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {}, 
     setSaving(true);
     setError('');
     try { await onSubmit(answers); }
-    catch { setError('Could not save your answers. Please try again.'); }
+    catch (error) { setError(error instanceof Error ? error.message : 'Could not save your answers. Please try again.'); }
     finally { setSaving(false); }
   };
   return <Dialog open>
@@ -35,9 +36,11 @@ export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {}, 
       <div className="flex items-center gap-3"><Avatar size="lg">{logoUrl && <AvatarImage src={logoUrl} alt="" />}<AvatarFallback><Users size={20} /></AvatarFallback></Avatar><div><DialogTitle>Welcome to {communityName}</DialogTitle><p className="text-sm text-muted">{communityName}</p></div></div>
       <DialogDescription>Please complete these steps to enter.</DialogDescription>
       {settings.rules.enabled && <section className="space-y-3"><h2 className="font-semibold">Community rules</h2><ol className="space-y-2">{settings.rules.items.map((rule, i) => <li className="flex gap-3 rounded-lg border border-line bg-surface-sunken p-3 text-sm" key={i}><span className="font-semibold text-muted">{i + 1}.</span><span>{rule}</span></li>)}</ol><label className="flex items-center gap-3"><Checkbox checked={accepted} onCheckedChange={setAccepted} />I agree to the community rules</label></section>}
-      {settings.questions.enabled && settings.questions.items.map(q => <fieldset key={q.id} className="space-y-2"><legend className="font-medium">{q.label}{q.required ? ' *' : ''}</legend>{q.type === 'short' ? <Input aria-label={q.label} value={answers[q.id] || ''} onChange={e => setAnswers(a => ({ ...a, [q.id]: e.target.value }))} /> : <RadioGroup value={answers[q.id] || ''} onValueChange={value => setAnswers(a => ({ ...a, [q.id]: value }))}>{q.options.map(option => <label className="flex min-h-11 items-center gap-3" key={option}><RadioGroupItem value={option} />{option}</label>)}</RadioGroup>}</fieldset>)}
+      {settings.questions.enabled && settings.questions.items.map(q => <fieldset key={q.id} className="space-y-2"><legend className="font-medium">{q.label}{q.required ? ' *' : ''}</legend>{q.type === 'short' ? <Input className="min-h-11 sm:min-h-0" maxLength={4000} aria-label={q.label} value={answers[q.id] || ''} onChange={e => setAnswers(a => ({ ...a, [q.id]: e.target.value }))} /> : <RadioGroup value={answers[q.id] || ''} onValueChange={value => setAnswers(a => ({ ...a, [q.id]: value }))}>{q.options.map(option => <label className="flex min-h-11 items-center gap-3" key={option}><RadioGroupItem value={option} />{option}</label>)}</RadioGroup>}</fieldset>)}
+      {joining && <p className="text-sm text-body">The owner will see your name and email.</p>}
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      <Button className="min-h-11 sm:min-h-0" disabled={!canSubmit || saving} onClick={submit}>{saving ? 'Saving…' : 'Enter community'}</Button>
+      <Button className="min-h-11 sm:min-h-0" disabled={!canSubmit || saving} onClick={submit}>{saving ? (joining ? 'Joining…' : 'Saving…') : joining ? 'Join community' : 'Enter community'}</Button>
+      {onCancel && <Button variant="ghost" className="min-h-11" disabled={saving} onClick={onCancel}>Cancel</Button>}
     </DialogContent>
   </Dialog>;
 }

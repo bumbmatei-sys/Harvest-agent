@@ -93,8 +93,8 @@ export async function communityMembershipRequest(request: NextRequest, joining: 
         tx.set(indexRef, index);
       }
     });
-    // Chunk (c): failures must propagate; a repeated join retries this upsert.
-    if (joining) await upsertCommunityContact({ uid: user.uid, tenantId });
+    // Both retries repair CRM from the authoritative membership, including leave.
+    await upsertCommunityContact({ uid: user.uid, tenantId });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof MembershipError) return NextResponse.json({ error: error.message }, { status: error.status });
