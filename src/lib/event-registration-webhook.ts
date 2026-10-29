@@ -103,9 +103,13 @@ export async function finalizeEventRegistration(opts: {
   const eventRef = adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId);
   const eventSnap = await eventRef.get();
   const eventData = eventSnap.data() || {};
+  // Stripe signs session.created: honor a Checkout opened before the cutoff,
+  // even if payment completes later. Never use a member-writable registeredAt.
+  if (!Number.isFinite(session.created)) throw new Error('Checkout session creation time is missing');
+  const checkoutCreatedAt = new Date(session.created * 1000);
   const eventCancelled = eventData.status === 'cancelled'
     || (reg.runDate && eventData.recurrence?.cancelledRuns?.includes(reg.runDate));
-  if (!eventSnap.exists || eventCancelled || eventData.status === 'completed' || registrationClosed(eventData, reg.runDate)) {
+  if (!eventSnap.exists || eventCancelled || eventData.status === 'completed' || registrationClosed(eventData, reg.runDate, checkoutCreatedAt)) {
     await regRef.update({
       status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
       cancellationReason: eventCancelled ? 'event_cancelled' : 'registration_closed',
@@ -209,7 +213,7 @@ export async function finalizeEventRegistration(opts: {
     if (currentReg.data()?.status !== 'pending_payment') return false;
     const cancelled = latest?.status === 'cancelled'
       || latest?.recurrence?.cancelledRuns?.includes(reg.runDate);
-    if (!currentEvent.exists || !latest || cancelled || latest.status === 'completed' || registrationClosed(latest, reg.runDate)) {
+    if (!currentEvent.exists || !latest || cancelled || latest.status === 'completed' || registrationClosed(latest, reg.runDate, checkoutCreatedAt)) {
       tx.update(regRef, {
         status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
         cancellationReason: cancelled ? 'event_cancelled' : 'registration_closed',
@@ -261,6 +265,7 @@ export async function finalizeEventRegistration(opts: {
         to: reg.email,
         subject: `Your registration for ${eventData.title}`,
         html: `<p>Hi ${reg.firstName || 'there'}, you're registered for <strong>${eventData.title}</strong>. Your ticket code is <strong>${reg.ticketCode}</strong>.</p>` +
+          (reg.runDate ? `<p>Date: ${reg.runDate}</p>` : '') +
           `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>` +
           `<br><p>— ${tenantName}</p>`,
       });

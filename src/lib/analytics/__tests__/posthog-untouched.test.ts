@@ -527,7 +527,9 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/event-registration-webhook.ts',
     'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184',
     // APPENDED: THE-379 review item 3 deliberately made the webhook capacity re-check per-run.
-    '4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d'],
+    '4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d',
+    // APPENDED #556 r2: honor signed Checkout creation time and include the paid run date.
+    '5477bfad08d885f51acf59a751ba92b3f69a4907b410dc66ca6c87f86e64641b'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
   // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
   //

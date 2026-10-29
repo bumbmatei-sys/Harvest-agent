@@ -73,7 +73,7 @@ function makeDocRef(): any {
     get: async () => {
       const snapshot = await mockDocGet();
       if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
-      return snapshot;
+      return snapshot || latestEventSnapshot;
     }, set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
     collection: vi.fn(() => makeCollRef()),
   };
@@ -176,6 +176,7 @@ function seedPaid(plan = 'plus', event: object = PAID_EVENT) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  latestEventSnapshot = undefined;
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   delete process.env.RESEND_API_KEY;
   // The Connect account id lives on the server-only tenant_private doc.

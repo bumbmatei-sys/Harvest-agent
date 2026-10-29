@@ -145,6 +145,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde', 'THE-379 r9 — shared picker window and chosen-run SMS; payment and CRM writes unchanged'],
     ['ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df', '#556 F1/F3: read current membership and include the chosen run in confirmation email; money and CRM writes retained'],
     ['6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf', '#556 — per-run registration cutoffs, cancellation records and manual-refund flags; query shapes and CRM records retained'],
+    ['4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708', '#556 r2 B4: re-read the deadline before creating Checkout; existing fees, registration and CRM writes retained'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
@@ -983,7 +984,8 @@ describe('the existing events list, its write paths and paid-event creation are 
     // one className on its icon span) were removed; the header CTA remains.
     // APPENDED #556: cutoff/contact fields, notice retry control and cancellation error Alert.
     expect([306, 304, 305, 310], 'className count moved').toContain((src.match(/className/g) || []).length);
-    expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
+    // APPENDED #556 r2 B5: shared Save Button replaces its one inline gold style.
+    expect([7, 6], 'inline style count moved').toContain((src.match(/style=\{\{/g) || []).length);
   });
 
   /**

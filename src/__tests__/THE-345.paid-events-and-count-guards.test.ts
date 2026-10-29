@@ -482,7 +482,9 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
       // APPENDED #556 F1/F3: fresh membership and chosen-run email date; payment logic retained.
       'ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df',
       // APPENDED #556: per-run deadlines and atomic signup; payment fees and CRM payloads retained.
-      '6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
+      '6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf',
+      // APPENDED #556 r2 B4: deadline admission before Checkout creation.
+      '4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

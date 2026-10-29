@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -519,6 +520,8 @@ describe('no other hardcoded term list remains in a validation path', () => {
       'NOT A BILLING TERM. A blog scheduling frequency.',
     'components/AdminBlog.tsx':
       'NOT A BILLING TERM. The same blog scheduling frequency.',
+    'app/api/events/edit/route.ts':
+      'NOT A BILLING TERM (#556). Validates monthly event recurrence alongside weekly and every_2_weeks; no subscription term is read or written.',
     'lib/events/recurrence.ts':
       "NOT A BILLING TERM (THE-379, events remodel). `RecurrenceRule['freq']` " +
       "is Eden's event-repeat vocabulary — 'weekly' | 'every_2_weeks' | " +
@@ -542,9 +545,7 @@ describe('no other hardcoded term list remains in a validation path', () => {
 
   /** Comments stripped: prose explaining a term is documentation, not a list. */
   const codeOf = (file: string) =>
-    readFileSync(file, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^[ \t]*\/\/.*$/gm, '');
+    stripComments(readFileSync(file, 'utf8'));
 
   const TERM_LITERAL = /['"](monthly|quarterly|yearly|annual)['"]/;
   const modules = walk(SRC);

@@ -269,7 +269,9 @@ describe('the split moved code, not money — real fee on both Connect paths', (
     async (plan) => {
       mockDocGet
         .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
-        .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan }) });
+        .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan }) })
+        // #556 B4: Checkout re-reads the event after registration admission.
+        .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT });
 
       const res = await ticketPOST(
         new NextRequest('https://grace.theharvest.app/api/event-registration/submit', {

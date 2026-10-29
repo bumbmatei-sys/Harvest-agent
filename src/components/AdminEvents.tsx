@@ -989,7 +989,7 @@ const AdminEvents: React.FC = () => {
                   {seriesLock === 'locked' ? SERIES_LOCK_MESSAGE : seriesLock === 'loading'
                     ? 'Checking series registrations before unlocking the schedule…'
                     : 'Could not check series registrations. Saving is unavailable until the check succeeds.'}
-                  {seriesLock === 'error' && <Button variant="outline" className={CONTROL_DENSITY.action} onClick={() => setLockRetry(n => n + 1)}>Retry</Button>}
+                  {seriesLock === 'error' && <Button variant="outline" className={`h-auto min-h-11 sm:min-h-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} onClick={() => setLockRetry(n => n + 1)}>Retry</Button>}
                 </AlertDescription>
               </Alert>
             )}
@@ -1413,23 +1413,24 @@ const AdminEvents: React.FC = () => {
 
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Status</label>
-              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
-                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                {form.status === 'cancelled' && <option value="cancelled" disabled>Cancelled</option>}
-                <option value="completed">Completed</option>
-              </select>
+              <Select value={form.status} onValueChange={value => setForm({ ...form, status: value as Event['status'] })}>
+                <SelectTrigger className={`min-h-11 sm:min-h-0 ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  {form.status === 'cancelled' && <SelectItem value="cancelled" disabled>Cancelled</SelectItem>}
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
         <DialogFooter>
-            <button onClick={() => setView('list')} className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving || !form.title.trim() || (view === 'edit' && !!selected?.recurrence && (seriesLock === 'loading' || seriesLock === 'error'))}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
-              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+            <Button variant="outline" onClick={() => setView('list')} className={`h-auto min-h-11 sm:min-h-0 flex-1 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving || !form.title.trim() || (view === 'edit' && !!selected?.recurrence && (seriesLock === 'loading' || seriesLock === 'error'))}
+              className={`h-auto min-h-11 sm:min-h-0 flex-1 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
               {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Create Event'}
-            </button>
+            </Button>
         </DialogFooter>
         </div>
         </DialogContent>

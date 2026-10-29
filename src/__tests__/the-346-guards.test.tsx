@@ -522,7 +522,13 @@ describe('no colour hardcoded, no emoji, no raw Tailwind scale', () => {
 
   it('introduces no colour literal', () => {
     for (const [rel, allowed] of Object.entries(RECORDED_COLOUR_LITERALS)) {
-      expect(code(rel).match(LITERAL) ?? [], `${rel} mints a colour literal`).toEqual(allowed);
+      const accepted = [allowed];
+      // APPENDED #556 r2 B5: the shared Save Button removes its gold
+      // fallback. Keep the original inventory and record the exact new one.
+      if (rel === 'src/components/AdminEvents.tsx') accepted.push([
+        '#d4a017', '#d4a017', '#d4a017', '#6E8E52', '#d4a017', '#d4a017',
+      ]);
+      expect(accepted, `${rel} mints a colour literal`).toContainEqual(code(rel).match(LITERAL) ?? []);
     }
   });
 

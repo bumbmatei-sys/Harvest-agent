@@ -1,3 +1,4 @@
+import { adminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTenantPermission } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -16,6 +17,12 @@ async function handle(request: NextRequest, preview: boolean) {
   try {
     const auth = await requireTenantPermission(request, tenantId, 'manageEvents');
     if (auth instanceof NextResponse) return auth;
+    if (!auth.isSuperAdmin) {
+      const member = await adminDb.collection('users').doc(auth.uid).get();
+      if (!member.exists || member.data()?.tenantId !== tenantId) {
+        return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+      }
+    }
     return NextResponse.json(await (preview ? previewCancellation : cancelEventRegistrations)(tenantId, eventId, runDate));
   } catch (error) {
     captureHandledError(error, { step: 'event-cancel', tenantId, ids: { eventId } });

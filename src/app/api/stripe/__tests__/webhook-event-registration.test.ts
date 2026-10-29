@@ -82,7 +82,8 @@ const REG_META = {
   registrationId: 'reg1', discountCode: '',
 };
 const completedSession = (over: Record<string, unknown> = {}) => ({
-  id: 'cs_1', subscription: null, payment_intent: 'pi_123', amount_total: 5000,
+  id: 'cs_1', subscription: null,
+  created: Math.floor(Date.now() / 1000), payment_intent: 'pi_123', amount_total: 5000,
   metadata: REG_META, ...over,
 });
 

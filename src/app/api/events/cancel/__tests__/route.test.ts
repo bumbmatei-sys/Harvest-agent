@@ -17,7 +17,7 @@ function ref(path: string): any {
     } }),
     get: async () => ({ exists: state.docs.has(path), data: () => state.docs.get(path) }),
     update: async (data: Record<string, any>) => {
-      if (state.failSentMarker && data['cancellationNotice.sentAt']) throw new Error('Marker write failed');
+      if (state.failSentMarker && data.sentAt) throw new Error('Marker write failed');
       const next = { ...state.docs.get(path) };
       for (const [key, value] of Object.entries(data)) {
         if (key === 'cancellationNotice.sentAt') next.cancellationNotice = { ...next.cancellationNotice, sentAt: value };
@@ -34,7 +34,7 @@ vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
   runTransaction: (work: (tx: any) => Promise<unknown>) => {
     const result = tail.then(async () => {
       const writes: Array<() => Promise<void>> = [];
-      const value = await work({ get: (r: any) => r.get(), update: (r: any, data: any) => writes.push(() => r.update(data)) });
+      const value = await work({ get: (r: any) => r.get(), update: (r: any, data: any) => writes.push(() => r.update(data)), set: (r: any, data: any) => writes.push(() => r.update(data)) });
       for (const write of writes) await write();
       return value;
     });
@@ -48,6 +48,7 @@ vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError: vi.fn() }));
 vi.mock('firebase-admin/firestore', () => ({ FieldValue: { serverTimestamp: () => 'SERVER_TS' } }));
 const { GET, POST } = await import('../route');
 const eventPath = 'tenants/t1/events/e1';
+const noticePath = (id: string) => `tenants/t1/eventCancellationNotices/${id}`;
 const rowPath = (id: string) => `tenants/t1/registrations/${id}`;
 const event = () => ({ title: 'Gathering', status: 'published', createdBy: 'creator', timeZone: 'Europe/Berlin',
   startDate: { toDate: () => new Date('2031-03-23T09:00:00Z') }, recurrence: { freq: 'weekly', count: 3 } });
@@ -58,13 +59,14 @@ beforeEach(() => {
   state.docs.clear(); state.queries = []; state.readError = false; state.failSentMarker = false;
   state.send.mockReset().mockResolvedValue({ ok: true }); state.permission.mockReset().mockResolvedValue({ uid: 'admin' });
   state.docs.set(eventPath, event());
+  state.docs.set('users/admin', { tenantId: 't1' });
   state.docs.set('tenants/t1', { ownerId: 'owner' });
   state.docs.set('users/owner', { email: 'owner@example.test' });
   for (const [id, runDate, status, amount] of [
     ['a', '2031-03-23', 'confirmed', 5000], ['b', '2031-03-23', 'waitlisted', 0],
     ['c', '2031-03-30', 'confirmed', 0], ['d', '2031-03-23', 'attended', 5000],
     ['e', '2031-03-23', 'pending_payment', 5000], ['f', '2031-03-23', 'cancelled', 0],
-  ]) state.docs.set(rowPath(String(id)), { eventId: 'e1', runDate, status, amount, email: `${id}@example.test` });
+  ]) state.docs.set(rowPath(String(id)), { eventId: 'e1', runDate, status, amount, ...(id === 'a' ? { paymentStatus: 'confirmed' } : {}), email: `${id}@example.test` });
   state.docs.set('tenants/t2/registrations/other', { eventId: 'e1', status: 'confirmed', email: 'other@example.test' });
 });
 afterEach(() => vi.useRealTimers());
@@ -74,8 +76,9 @@ describe('event cancellation notices', () => {
     expect((await POST(request('2031-03-23'))).status).toBe(200);
     expect(state.send.mock.calls.map(([notice]) => notice.to)).toEqual(['a@example.test', 'b@example.test']);
     for (const id of ['a', 'b']) expect(state.docs.get(rowPath(id))).toMatchObject({
-      status: 'cancelled', cancelledAt: 'SERVER_TS', cancellationReason: 'event_cancelled', cancellationNotice: { sentAt: 'SERVER_TS' },
+      status: 'cancelled', cancelledAt: 'SERVER_TS', cancellationReason: 'event_cancelled',
     });
+    expect(state.docs.get(noticePath('a'))).toMatchObject({ sentAt: 'SERVER_TS', attempts: 1 });
     expect(state.docs.get(rowPath('a')).refundStatus).toBe('pending_manual');
     expect(state.docs.get(rowPath('b')).refundStatus).toBeUndefined();
     expect(state.docs.get(rowPath('c')).status).toBe('confirmed');
@@ -183,9 +186,10 @@ describe('event cancellation notices', () => {
 
 it('marks an entire large series cancelled before bounded sends, then finishes every notice exactly once', async () => {
   state.docs.clear();
-  state.docs.set(eventPath, { ...event(), organizerEmail: 'owner@example.test' });
+  state.docs.set('users/admin', { tenantId: 't1' });
+  state.docs.set(eventPath, { ...event(), recurrence: null, organizerEmail: 'owner@example.test' });
   for (let i = 0; i < 45; i++) state.docs.set(rowPath(`large${i}`), {
-    eventId: 'e1', status: 'confirmed', email: `large${i}@example.test`, amount: 500,
+    eventId: 'e1', status: 'confirmed', email: `large${i}@example.test`, amount: 500, paymentStatus: 'confirmed',
   });
   const first = await POST(request());
   expect(await first.json()).toEqual({ emailed: 20, remaining: 25 });
@@ -202,7 +206,8 @@ it('marks an entire large series cancelled before bounded sends, then finishes e
 it('does not expire notices that have been queued but never attempted', async () => {
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
   state.docs.clear();
-  state.docs.set(eventPath, { ...event(), organizerEmail: 'owner@example.test' });
+  state.docs.set('users/admin', { tenantId: 't1' });
+  state.docs.set(eventPath, { ...event(), recurrence: null, organizerEmail: 'owner@example.test' });
   for (let i = 0; i < 25; i++) state.docs.set(rowPath(`queued${i}`), {
     eventId: 'e1', status: 'waitlisted', waitlisted: true, email: `queued${i}@example.test`, amount: 0,
   });
@@ -211,4 +216,62 @@ it('does not expire notices that have been queued but never attempted', async ()
   vi.setSystemTime(new Date('2030-01-03T00:00:00Z'));
   expect(await (await POST(request())).json()).toEqual({ emailed: 5, remaining: 0 });
   expect(state.send).toHaveBeenCalledTimes(25);
+});
+
+
+it('B1 ignores forged registration notices and retry state, persisting only server-built notices', async () => {
+  const forged = { to: 'victim@example.test', subject: 'Forged subject', text: 'Attacker content',
+    replyTo: 'attacker@example.test', firstAttemptAt: '2000-01-01T00:00:00Z', attempts: 999, sentAt: 'FORGED' };
+  state.docs.set(rowPath('a'), { ...state.docs.get(rowPath('a')), cancellationNotice: forged });
+  state.docs.set(rowPath('b'), { ...state.docs.get(rowPath('b')), cancellationNotice: { ...forged, sentAt: null } });
+  expect(await (await GET(new NextRequest('https://example.test/api/events/cancel?tenantId=t1&eventId=e1&runDate=2031-03-23'))).json()).toEqual({ count: 2 });
+  expect((await POST(request('2031-03-23'))).status).toBe(200);
+  expect(state.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.test',
+    subject: 'Cancelled: Gathering — 2031-03-23', replyTo: 'owner@example.test' }));
+  expect(state.send.mock.calls.some(([notice]) => notice.to === forged.to || notice.text === forged.text)).toBe(false);
+  expect(state.docs.get(noticePath('a'))).toMatchObject({ attempts: 1, sentAt: 'SERVER_TS', to: 'a@example.test' });
+  expect(state.docs.get(noticePath('a')).firstAttemptAt).not.toBe(forged.firstAttemptAt);
+});
+
+it('B2 flags actual payments, never the price on unpaid manual or waitlisted seats', async () => {
+  for (const [id, status, payment] of [
+    ['manual', 'confirmed', { paymentStatus: 'unpaid' }],
+    ['waitlist', 'waitlisted', { paymentStatus: 'unpaid' }],
+    ['claimed', 'confirmed', { paymentStatus: 'claimed' }],
+    ['confirmed', 'confirmed', { paymentStatus: 'confirmed' }],
+    ['stripe', 'confirmed', { stripePaymentIntentId: 'pi_paid' }],
+    ['paidAmount', 'confirmed', { amountPaid: 5000 }],
+  ] as const) state.docs.set(rowPath(id), { eventId: 'e1', runDate: '2031-03-23', status, amount: 5000,
+    email: `${id}@example.test`, ...payment });
+  expect((await POST(request('2031-03-23'))).status).toBe(200);
+  for (const id of ['manual', 'waitlist', 'claimed']) expect(state.docs.get(rowPath(id)).refundStatus).toBeUndefined();
+  for (const id of ['confirmed', 'stripe', 'paidAmount']) expect(state.docs.get(rowPath(id)).refundStatus).toBe('pending_manual');
+});
+
+it('B3 whole-series cancellation preserves past and already-started runs in the event time zone', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T08:00:00Z'));
+  state.docs.set(rowPath('future'), { eventId: 'e1', runDate: '2031-04-06', status: 'confirmed',
+    email: 'future@example.test', paymentStatus: 'confirmed', amount: 5000 });
+  const before = ['a', 'b', 'c'].map(id => structuredClone(state.docs.get(rowPath(id))));
+  expect(await (await GET(new NextRequest('https://example.test/api/events/cancel?tenantId=t1&eventId=e1'))).json()).toEqual({ count: 1 });
+  expect((await POST(request())).status).toBe(200);
+  expect(['a', 'b', 'c'].map(id => state.docs.get(rowPath(id)))).toEqual(before);
+  expect(state.send.mock.calls.map(([notice]) => notice.to)).toEqual(['future@example.test']);
+  expect(state.docs.get(rowPath('future')).refundStatus).toBe('pending_manual');
+});
+
+it('B3 refuses to cancel a one-off event that has already started', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-23T09:00:00Z'));
+  state.docs.set(eventPath, { ...event(), recurrence: null });
+  expect((await POST(request())).status).toBe(409);
+  expect(state.docs.get(eventPath).status).toBe('published');
+  expect(state.send).not.toHaveBeenCalled();
+});
+
+it.each(['other', null])('rejects cancellation and preview when current membership is %s despite a stale token', async tenantId => {
+  state.docs.set('users/admin', { tenantId });
+  expect((await POST(request())).status).toBe(403);
+  expect((await GET(new NextRequest('https://example.test/api/events/cancel?tenantId=t1&eventId=e1'))).status).toBe(403);
+  expect(state.docs.get(eventPath).status).toBe('published');
+  expect(state.send).not.toHaveBeenCalled();
 });

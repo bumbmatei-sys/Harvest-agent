@@ -1003,6 +1003,12 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '4d9d749f00fca99483a2a7d84e0bb10604ed412f786428cb061bb4216586f019',
     // APPENDED #556 final: preserve mobile input floors and the existing left-aligned filter.
     '1057a750cf8bb9d1d1546c32e268388f2ef18f817d6314014399f7f05ceac354',
+    // APPENDED #556 r2: server cancellation dialog, shared status/Save controls and Retry floor.
+    '9ee62721a6d2cae593c568ab453df8ef43edf6f6c44bfc3d806416ed3ebd25c0',
+    // APPENDED #556 r2 B6: explicit mobile floors on Retry, status and footer controls.
+    'e632b4fb2ec4f1be6f0010b4a52bb1dcdc91c0cc25692d25b86e4954b4359073',
+    // APPENDED #556 r2 B6: release those floors at sm for the shared desktop density.
+    '738dc5cb86a5f501cef7496383bbb12d5289aafa1f0bf0f724d575fcf466b5cf',
     /* APPENDED BY the admin event detail (brief item 3), nothing above
        removed or rewritten. The detail view's single scroll became Overview/
        Registrations/Payments pending Tabs, plus a Cancel-event confirm

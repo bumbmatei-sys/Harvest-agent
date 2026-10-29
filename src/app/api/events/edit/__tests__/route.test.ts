@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const state = vi.hoisted(() => ({
   event: {} as Record<string, any>, registrations: 0, readError: false,
   writes: [] as Record<string, any>[], paths: [] as string[],
-  permission: vi.fn(),
+  permission: vi.fn(), member: { tenantId: 't1' } as { tenantId: string | null } | undefined,
 }));
 const timestamp = (iso: string) => ({ toDate: () => new Date(iso) });
 function ref(path: string): any {
@@ -17,7 +17,8 @@ function ref(path: string): any {
       state.paths.push(path);
       return { data: () => ({ count: state.registrations }) };
     } }),
-    get: async () => ({ exists: true, data: () => state.event }),
+    get: async () => path.startsWith('users/')
+      ? { exists: !!state.member, data: () => state.member } : { exists: true, data: () => state.event },
   };
 }
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
@@ -45,6 +46,7 @@ const request = (data: Record<string, unknown>) => new NextRequest('https://t1.t
 });
 beforeEach(() => {
   state.event = { title: 'Series', startDate: timestamp('2031-03-16T18:00:00.000Z'), timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 4 } };
+  state.member = { tenantId: 't1' };
   state.registrations = 1; state.readError = false; state.writes = []; state.paths = [];
   state.permission.mockReset().mockResolvedValue({ uid: 'admin' });
 });
@@ -123,5 +125,13 @@ it('saves an admin-edited per-run offset', async () => {
 it('prevents an edit from bypassing cancellation notices', async () => {
   expect((await PATCH(request({ status: 'cancelled' }))).status).toBe(409);
   expect((await PATCH(request({ recurrence: { ...state.event.recurrence, cancelledRuns: ['2031-03-23'] } }))).status).toBe(409);
+  expect(state.writes).toEqual([]);
+});
+
+
+it.each(['other', null, undefined])('rejects edits and lock reads when current membership is %s despite a stale token', async tenantId => {
+  state.member = tenantId === undefined ? undefined : { tenantId };
+  expect((await PATCH(request({ title: 'Unauthorized' }))).status).toBe(403);
+  expect((await GET(new NextRequest('https://t1.theharvest.app/api/events/edit?tenantId=t1&eventId=e1'))).status).toBe(403);
   expect(state.writes).toEqual([]);
 });

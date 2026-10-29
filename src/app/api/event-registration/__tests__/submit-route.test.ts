@@ -47,7 +47,7 @@ function makeDocRef(): any {
     get: async () => {
       const snapshot = await mockDocGet();
       if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
-      return snapshot;
+      return snapshot || latestEventSnapshot;
     },
     set: mockDocSet,
     update: mockDocUpdate,
@@ -151,6 +151,7 @@ const baseBody = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  latestEventSnapshot = undefined;
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   delete process.env.RESEND_API_KEY;
   mockGetTenantPrivate.mockResolvedValue({ stripeConnectAccountId: 'acct_T' });
@@ -793,4 +794,24 @@ describe('per-run cutoff at submit across Berlin DST', () => {
       expect(mockAdd).not.toHaveBeenCalled();
     } finally { vi.useRealTimers(); }
   });
+});
+
+
+it('B4 refuses to open Checkout if the deadline closes after the pending registration is admitted', async () => {
+  const deadline = new Date('2031-01-01T12:00:00Z');
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-01-01T11:59:59Z'));
+  const event = { ...PAID_EVENT, registrationDeadline: { toDate: () => deadline } };
+  mockDocGet.mockResolvedValueOnce({ exists: true, data: () => event })
+    .mockResolvedValueOnce({ exists: true, data: () => ({ plan: 'plus' }) })
+    .mockImplementationOnce(async () => {
+      vi.setSystemTime(new Date('2031-01-01T12:00:01Z'));
+      return { exists: true, data: () => event };
+    });
+  try {
+    const response = await POST(makeRequest(baseBody));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toContain('closed');
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+    expect(mockDocDelete).toHaveBeenCalledOnce();
+  } finally { vi.useRealTimers(); }
 });

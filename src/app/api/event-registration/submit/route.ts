@@ -411,6 +411,16 @@ export async function POST(request: NextRequest) {
       const directCharge = { stripeAccount: connectAccountId };
 
       try {
+        // Re-read immediately before opening Checkout: validation and registration
+        // writes above may have crossed the deadline or a schedule edit.
+        const checkoutEvent = await eventRef.get();
+        const latest = checkoutEvent.data();
+        if (!checkoutEvent.exists || !latest || latest.status !== 'published'
+          || !latest.registrationEnabled || registrationClosed(latest, targetRunDate)
+          || latest.recurrence?.cancelledRuns?.includes(targetRunDate)) {
+          await pendingRef.delete();
+          return NextResponse.json({ error: 'Registration for this date has closed.' }, { status: 400 });
+        }
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
           // Single line item carrying the FULL headcount charge (price × quantity −

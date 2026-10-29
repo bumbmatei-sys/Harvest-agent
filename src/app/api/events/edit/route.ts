@@ -27,6 +27,12 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireTenantPermission(request, tenantId, 'manageEvents');
     if (auth instanceof NextResponse) return auth;
+    if (!auth.isSuperAdmin) {
+      const member = await adminDb.collection('users').doc(auth.uid).get();
+      if (!member.exists || member.data()?.tenantId !== tenantId) {
+        return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+      }
+    }
     const event = await adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId).get();
     if (!event.exists) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     const count = await adminDb.collection('tenants').doc(tenantId).collection('registrations')
@@ -52,6 +58,12 @@ export async function PATCH(request: NextRequest) {
   try {
     const auth = await requireTenantPermission(request, tenantId, 'manageEvents');
     if (auth instanceof NextResponse) return auth;
+    if (!auth.isSuperAdmin) {
+      const member = await adminDb.collection('users').doc(auth.uid).get();
+      if (!member.exists || member.data()?.tenantId !== tenantId) {
+        return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+      }
+    }
     const ref = adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId);
     await adminDb.runTransaction(async transaction => {
       const snapshot = await transaction.get(ref);

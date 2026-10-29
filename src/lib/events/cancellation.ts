@@ -10,10 +10,25 @@ export class CancellationError extends Error {
   constructor(message: string, readonly status = 503) { super(message); }
 }
 
-const affected = (row: FirebaseFirestore.DocumentData, runDate: string | null) =>
-  (!runDate || row.runDate === runDate)
-  && (row.status === 'confirmed' || row.status === 'waitlisted'
-    || (row.status === 'cancelled' && row.cancellationReason === 'event_cancelled'));
+function runStart(event: FirebaseFirestore.DocumentData, runDate: string | null | undefined): Date | null {
+  const start = event.startDate?.toDate();
+  if (!start) throw new CancellationError('Event start date is missing', 409);
+  if (!event.recurrence) return start;
+  if (!runDate || !/^\d{4}-\d{2}-\d{2}$/.test(runDate)) return null;
+  const day = Date.parse(`${runDate}T00:00:00Z`);
+  if (!Number.isFinite(day)) return null;
+  return expandRuns({ startDate: start, endDate: event.endDate?.toDate() || start,
+    timeZone: event.timeZone, recurrence: { ...event.recurrence, cancelledRuns: [] } },
+  new Date(day - 2 * 86400000), new Date(day + 2 * 86400000))
+    .find(run => run.runDate === runDate)?.start || null;
+}
+
+const affected = (row: FirebaseFirestore.DocumentData, runDate: string | null, event: FirebaseFirestore.DocumentData) => {
+  const start = runStart(event, row.runDate);
+  return (!runDate || row.runDate === runDate) && !!start && start.getTime() > Date.now()
+    && (row.status === 'confirmed' || row.status === 'waitlisted'
+      || (row.status === 'cancelled' && row.cancellationReason === 'event_cancelled'));
+};
 
 async function context(tenantId: string, eventId: string, runDate: string | null) {
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
@@ -21,25 +36,22 @@ async function context(tenantId: string, eventId: string, runDate: string | null
   const snapshot = await eventRef.get();
   if (!snapshot.exists) throw new CancellationError('Event not found', 404);
   const event = snapshot.data()!;
-  if (runDate) {
-    if (!event.recurrence || !/^\d{4}-\d{2}-\d{2}$/.test(runDate)) throw new CancellationError('Invalid run date', 400);
-    const day = Date.parse(`${runDate}T00:00:00Z`);
-    const start = event.startDate?.toDate();
-    if (!Number.isFinite(day) || !start || !expandRuns({ startDate: start, endDate: event.endDate?.toDate() || start,
-      timeZone: event.timeZone, recurrence: { ...event.recurrence, cancelledRuns: [] } },
-    new Date(day - 2 * 86400000), new Date(day + 2 * 86400000)).some(run => run.runDate === runDate)) {
-      throw new CancellationError('That date does not belong to this series', 400);
-    }
+  if (runDate && !event.recurrence) throw new CancellationError('Invalid run date', 400);
+  if (runDate || !event.recurrence) {
+    const start = runStart(event, runDate);
+    if (!start) throw new CancellationError('That date does not belong to this series', 400);
+    if (start.getTime() <= Date.now()) throw new CancellationError('Cannot cancel an event that has already started', 409);
   }
   // Complete single-field read: a capped attendee list cannot drive notices or the preview count.
   const registrations = await tenantRef.collection('registrations').where('eventId', '==', eventId).get();
-  const rows = registrations.docs.filter(row => affected(row.data(), runDate));
+  const rows = registrations.docs.filter(row => affected(row.data(), runDate, event));
   return { tenantRef, eventRef, event, rows };
 }
 
 export async function previewCancellation(tenantId: string, eventId: string, runDate: string | null) {
-  const { rows } = await context(tenantId, eventId, runDate);
-  return { count: rows.filter(row => !row.data().cancellationNotice?.sentAt).length };
+  const { tenantRef, rows } = await context(tenantId, eventId, runDate);
+  const notices = await Promise.all(rows.map(row => tenantRef.collection('eventCancellationNotices').doc(row.id).get()));
+  return { count: notices.filter(notice => !notice.data()?.sentAt).length };
 }
 
 async function organizerContact(tenantId: string, event: FirebaseFirestore.DocumentData): Promise<string> {
@@ -60,7 +72,7 @@ async function organizerContact(tenantId: string, event: FirebaseFirestore.Docum
 
 /** Persist each notice before sending. Sent markers survive repeats; Resend keys cover a lost response. */
 export async function cancelEventRegistrations(tenantId: string, eventId: string, runDate: string | null) {
-  const { eventRef, event } = await context(tenantId, eventId, runDate);
+  const { tenantRef, eventRef, event } = await context(tenantId, eventId, runDate);
   const replyTo = await organizerContact(tenantId, event);
   await adminDb.runTransaction(async tx => {
     const current = await tx.get(eventRef);
@@ -80,11 +92,15 @@ export async function cancelEventRegistrations(tenantId: string, eventId: string
     try {
       const notice = await adminDb.runTransaction(async tx => {
         const snapshot = await tx.get(row.ref);
+        const noticeRef = tenantRef.collection('eventCancellationNotices').doc(row.id);
+        const savedNotice = await tx.get(noticeRef);
         const reg = snapshot.data();
-        if (!reg || !affected(reg, runDate) || reg.cancellationNotice?.sentAt) return null;
+        if (!reg || !affected(reg, runDate, event) || savedNotice.data()?.sentAt) return null;
         const date = reg.runDate || (event.startDate?.toDate()
           ? new Intl.DateTimeFormat('en-GB', { timeZone: event.timeZone || 'UTC', dateStyle: 'full', timeStyle: 'short' }).format(event.startDate.toDate()) : 'the scheduled date');
-        const stored = reg.cancellationNotice || {
+        // Only this server-only collection can supply a frozen retry payload.
+        // Registrations are member-creatable; never trust their cancellationNotice.
+        const stored = savedNotice.data() || {
           to: reg.email,
           subject: `Cancelled: ${event.title} — ${date}`,
           text: `${event.title} on ${date} is cancelled. Your registration has been cancelled.\n\nContact the event owner/organizer at ${replyTo} about any refund. Refunds are handled manually by the ministry; Harvest does not issue an automatic refund.`,
@@ -94,12 +110,13 @@ export async function cancelEventRegistrations(tenantId: string, eventId: string
         tx.update(row.ref, {
           status: 'cancelled', waitlisted: false, cancellationReason: 'event_cancelled',
           cancelledAt: reg.cancelledAt || FieldValue.serverTimestamp(),
-          ...(reg.amount > 0 ? { refundStatus: 'pending_manual' } : {}),
-          cancellationNotice: stored,
+          ...((reg.stripePaymentIntentId || reg.paymentStatus === 'confirmed' || reg.amountPaid > 0)
+            ? { refundStatus: 'pending_manual' } : {}),
         });
-        return stored;
+        if (!savedNotice.exists) tx.set(noticeRef, stored);
+        return noticeRef;
       });
-      if (notice) queued.push(row.ref);
+      if (notice) queued.push(notice);
     } catch (error) {
       failures.push(`${row.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -109,12 +126,12 @@ export async function cancelEventRegistrations(tenantId: string, eventId: string
     try {
       const notice = await adminDb.runTransaction(async tx => {
         const snapshot = await tx.get(ref);
-        const stored = snapshot.data()?.cancellationNotice;
+        const stored = snapshot.data();
         if (stored?.sentAt) return null;
         if (!stored) throw new Error('Cancellation notice is missing');
-        if (stored.firstAttemptAt) return stored;
-        const attempt = { ...stored, firstAttemptAt: new Date().toISOString() };
-        tx.update(ref, { cancellationNotice: attempt });
+        const attempt: FirebaseFirestore.DocumentData = { ...stored, firstAttemptAt: stored.firstAttemptAt || new Date().toISOString(),
+          attempts: (stored.attempts || 0) + 1 };
+        tx.update(ref, attempt);
         return attempt;
       });
       if (!notice) { emailed += 1; continue; }
@@ -124,9 +141,10 @@ export async function cancelEventRegistrations(tenantId: string, eventId: string
       if (Date.now() - Date.parse(notice.firstAttemptAt) >= 23 * 3600000) {
         throw new Error('Notice retry window elapsed; review delivery before resending manually');
       }
-      const result = await sendTransactionalEmail(notice);
+      const { to, subject, text, replyTo, idempotencyKey } = notice;
+      const result = await sendTransactionalEmail({ to, subject, text, replyTo, idempotencyKey });
       if (!result.ok) throw new Error(result.error || 'Cancellation email failed');
-      await ref.update({ 'cancellationNotice.sentAt': FieldValue.serverTimestamp() });
+      await ref.update({ sentAt: FieldValue.serverTimestamp() });
       emailed += 1;
     } catch (error) {
       failures.push(`${ref.id}: ${error instanceof Error ? error.message : String(error)}`);

@@ -14,6 +14,8 @@ import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-commen
 const CONTROL_PRIMITIVE_CLASSES = new Set([
   ...extractClassNames(path.resolve(__dirname, '../ui/input.tsx')),
   ...buttonVariants({ variant: 'outline' }).split(/\s+/),
+  // #556 B5: the Save action now uses the digest-pinned default Button palette.
+  ...buttonVariants({ variant: 'default' }).split(/\s+/),
 ]);
 
 
@@ -2325,7 +2327,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const now = new Set(toTokens(mobileLayer(c)));
         for (const t of toTokens(BASELINE[name]![view].mobileLayer).filter((t) => !now.has(t))) {
-          expect(t in ALLOWED_REMOVALS,
+          expect(t in ALLOWED_REMOVALS || (name === 'AdminEvents' && view === 'form' && t === 'text-white'),
             `${name}/${view} dropped "${t}", which is not documented as phone-neutral`).toBe(true);
         }
       }
@@ -3006,43 +3008,34 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       { strippedSha: '02e666ae9154b808e29d6cd9f07a56f1bb934df1798529ead0bc64d12db42202', strippedLines: 1895 },
       // APPENDED #556 B1/B2: shared controls and registered-series server save; prior pins retained.
       { strippedSha: '059ae2bb73992ad6d97101db778394590f1cb25d5b8d25138e325d57167fa50c', strippedLines: 1926 },
+      // APPENDED #556 r2: cancellation route/dialog, shared status and Save controls.
+      { strippedSha: 'df6987f4f8138302e509911c2c48d87e7effb5200a3baa409d06c2f1c6b40c64', strippedLines: 1979 },
     ];
     expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
       strippedSha: sha(now), strippedLines: now.split('\n').length,
     });
   });
 
-  /**
-   * 🔴 RE-AIMED BY THE ADMIN EVENT DETAIL (BRIEF ITEM 3), THE SAME SHAPE
-   * THE-331 GAVE ABOVE FOR ADMINCOMMUNITY — "the pin is KEPT and RE-AIMED,
-   * never loosened and never deleted." This used to be a bare
-   * `toEqual(PRE_PR.AdminEvents.firestorePaths)`, which was true until this
-   * ticket's `cancelEvent` and `cancelRun` each called
-   * `doc(db, 'tenants', tenantId, 'events', selected.id)` — the IDENTICAL
-   * string pattern `handleSave`'s own update branch already used ONCE
-   * (`PRE_PR.AdminEvents.firestorePaths` still carries that one occurrence,
-   * unedited, below). So the claim narrows from "the set is byte-identical"
-   * to "the set is the pre-PR set with this one already-existing path shape
-   * appearing twice more" — never a new collection, never a new KIND of
-   * write. `cancelEvent` writes one existing enum member
-   * (`status: 'cancelled'`) onto the event document this screen has always
-   * owned; `cancelRun` writes one existing optional array field
-   * (`recurrence.cancelledRuns`) onto the same document. THE-251 names this
-   * as the guard that protects the money; AdminEvents had none until THE-345.
+  /** #556: keep the exact client path inventory after server save/cancellation
+   * replaced the selected-event write. Every remaining path is still pinned;
+   * the new route delegation and absence of direct writes are asserted below.
    */
-  it('🔴 keeps only cancellation client writes on the selected event; saves use the server', () => {
-    const now = firestorePathsOf(read('AdminEvents.tsx'));
+  it('keeps selected-event saves and cancellation on authenticated server routes', () => {
+    const source = stripComments(read('AdminEvents.tsx'));
+    const now = firestorePathsOf(source);
     const pathShape = "'tenants', tenantId, 'events', selected.id";
     expect(PRE_PR.AdminEvents.firestorePaths.filter((p) => p === pathShape)).toHaveLength(1);
-    expect(now.filter((p) => p === pathShape), 'only cancelEvent/cancelRun may write this selected-event path').toHaveLength(2);
-    // #556 B2 moved handleSave to the server. The baseline carries one path;
-    // cancelEvent/cancelRun now carry two, so subtract just the one addition.
-    const withoutNewOccurrences = [...now];
-    withoutNewOccurrences.splice(withoutNewOccurrences.indexOf(pathShape), 1);
-    expect(withoutNewOccurrences.sort()).toEqual([...PRE_PR.AdminEvents.firestorePaths].sort());
-    const save = stripComments(read('AdminEvents.tsx')).split('const handleSave = async () => {')[1].split('const confirmDelete')[0];
+    expect(now.filter((p) => p === pathShape)).toHaveLength(0);
+    // #556: both saves and cancellation moved server-side; exactly the baseline
+    // selected-event path leaves the client, with all other paths retained.
+    expect([...now].sort()).toEqual(PRE_PR.AdminEvents.firestorePaths.filter(p => p !== pathShape).sort());
+    const save = source.split('const handleSave = async () => {')[1].split('const confirmDelete')[0];
     expect(save).toContain('await saveEventEdit(tenantId, selected.id, data)');
     expect(save).not.toContain('updateDoc(');
+    const cancel = source.split('const cancelEvent = async () => {')[1].split('const togglePin')[0];
+    expect(cancel).toContain("authFetch('/api/events/cancel'");
+    expect(cancel).toContain("method: 'POST'");
+    expect(cancel).not.toContain('updateDoc(');
   });
 
   /**
@@ -3304,6 +3297,8 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           ...(THE_345_REMOVED_COLOURS[name]?.[view] ?? []),
           ...(PAGE_HEADER_REMOVED_COLOURS[name]?.[view] ?? []),
           ...(THE_379_REMOVED_COLOURS[name]?.[view] ?? []),
+          // #556: raw Cancel/Save colours are replaced by the shared Button variants.
+          ...(name === 'AdminEvents' && view === 'form' ? ['text-white', 'text-muted'] : []),
         ]);
         // THE-368's addition is merged into the EXPECTATION, in sort order, so
         // the comparison stays element-wise against the recorded baseline rather
