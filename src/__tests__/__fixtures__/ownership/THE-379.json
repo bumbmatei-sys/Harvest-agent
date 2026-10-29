@@ -222,6 +222,21 @@
       "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
       "digest": "41c5e787d0b2a50733b6b5bf40bd1ad466cde94e7c24fbdc4fa049fadd53f271",
       "why": "APPENDED, NOT SUBSTITUTED — THE-379 review item 3 deliberately changed the webhook capacity re-check to per-run. Append its new digest to the existing accepted list while retaining the old digest and every assertion; record the edited guard itself here."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "000b996ab3c78fef8d85d1412c3c3ebd04eadcabcd2ed974e8ba25df78b61382",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "1ae75a0da4e24ea5c1948188d9c16e32c48c3229fe98914e2cdd70d0d104fba0",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "94352e2e50635fe8436f82fbd5f78d8336af9103e5565439cb4421a233421984",
+      "why": "merge of #556 r8 with main #557; both sides' changes kept; prior entries and assertions preserved."
     }
   ]
 }
