@@ -523,8 +523,9 @@ describe('5 — event registration is untouched', () => {
     //   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
     //   20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed  (THE-355)
     //   0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e  (THE-359)
+    //   516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019  (THE-379, pre-r9 review fixes)
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019');
+      .toBe('b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde');
     expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
       .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')
@@ -569,8 +570,9 @@ describe('5 — event registration is untouched', () => {
     // Previous pins:
     //   4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797  (pre-THE-314)
     //   d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec  (THE-314/THE-351)
+    //   f70a30a3080239b5627c69af6c5fbf8b5870dd6b7d3432925074014a05b3d843  (THE-379, pre-r9; r9 only ADDED regression tests)
     expect(digest('src/app/api/event-registration/__tests__/submit-route.test.ts'))
-      .toBe('f70a30a3080239b5627c69af6c5fbf8b5870dd6b7d3432925074014a05b3d843');
+      .toBe('be1dea3d5eb269620e725e28dbe542659d74fe32ff55941ede7dbcfe8cadaefa');
   });
 
   it('the two rules that make it independent of Connect are still there', () => {
