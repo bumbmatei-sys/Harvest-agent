@@ -1,4 +1,6 @@
 'use client';
+import { FollowUpSetting } from '@/components/form-follow-up/FollowUpSetting';
+import type { FollowUp } from '@/lib/form-follow-up/model';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +14,8 @@ import { authFetch } from '@/utils/auth-fetch';
 export const fieldLabels = { name: 'Name', email: 'Email', phone: 'Phone', prayerRequest: 'Prayer request' } as const;
 export const defaultFields: SignupFieldSettings = { name: { enabled: true, required: true }, email: { enabled: true, required: true }, phone: { enabled: false, required: false }, prayerRequest: { enabled: false, required: false } };
 export type Page = SignupPageInput & { id: string; active: boolean };
-export function SignupPageBuilder({ page, onSaved, onCancel, request = authFetch }: { page?: Page; onSaved: () => void; onCancel: () => void; request?: typeof authFetch }) {
+export function SignupPageBuilder({ page, onSaved, onCancel, tenantId, request = authFetch }: { page?: Page; tenantId?: string; onSaved: () => void; onCancel: () => void; request?: typeof authFetch }) {
+  const [followUp, setFollowUp] = useState<FollowUp | null>(page?.followUp ?? null);
   const [title, setTitle] = useState(page?.title ?? '');
   const [message, setMessage] = useState(page?.message ?? '');
   const [handle, setHandle] = useState(page?.handle ?? '');
@@ -22,7 +25,7 @@ export function SignupPageBuilder({ page, onSaved, onCancel, request = authFetch
   const [saving, setSaving] = useState(false);
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    const input = parseSignupPageInput({ title, message, handle, fields });
+    const input = parseSignupPageInput({ title, message, handle, fields, followUp });
     if (!input) { setError('Enter a title, a valid lowercase handle (3–50 letters, numbers or hyphens), and at least one field.'); return; }
     setSaving(true); setError('');
     try {
@@ -36,6 +39,7 @@ export function SignupPageBuilder({ page, onSaved, onCancel, request = authFetch
     <div className="space-y-2"><Label htmlFor="signup-message">Message</Label><Textarea className="min-h-11 sm:min-h-[38px]" id="signup-message" value={message} onChange={e => setMessage(e.target.value)} maxLength={1000} /></div>
     <div className="space-y-2"><Label htmlFor="signup-handle">Handle</Label><Input className="min-h-11 sm:min-h-[38px]" id="signup-handle" value={handle} onChange={e => setHandle(e.target.value)} maxLength={50} required /><p className="text-sm text-muted-foreground">theharvest.app/s/{handle || 'your-handle'}</p></div>
     <fieldset className="space-y-4"><legend className="font-medium">Fields</legend>{SIGNUP_FIELDS.map(field => <div key={field} className="flex flex-wrap items-center gap-4"><Label htmlFor={`field-${field}`} className="min-w-32">{fieldLabels[field]}</Label><Switch id={`field-${field}`} checked={fields[field].enabled} onCheckedChange={enabled => setFields({ ...fields, [field]: { enabled, required: enabled && fields[field].required } })} /><Label htmlFor={`required-${field}`}>Required</Label><Switch id={`required-${field}`} disabled={!fields[field].enabled} checked={fields[field].required} onCheckedChange={required => setFields({ ...fields, [field]: { ...fields[field], required } })} /></div>)}</fieldset>
+    <FollowUpSetting value={followUp} onChange={setFollowUp} tenantId={tenantId} request={request} />
     {page && <div className="flex items-center gap-3"><Switch id="signup-active" checked={active} onCheckedChange={setActive} /><Label htmlFor="signup-active">Page active</Label></div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex gap-2"><Button className="min-h-11 sm:min-h-[38px]" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save page'}</Button><Button className="min-h-11 sm:min-h-[38px]" type="button" variant="outline" onClick={onCancel}>Cancel</Button></div>
   </form></CardContent></Card>;

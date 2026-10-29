@@ -589,6 +589,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // The local development harness is ignored and may be absent in CI.
       ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
+      // THE-999998: public download landing CTA uses the shared touch floor.
+      'src/app/products/[id]/page.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
       // sweep's own sorted order, not the order tickets arrived in.
@@ -876,6 +878,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as
       // AdminDashboard.tsx above: the flyout's "Recent" rows are nav targets in
       // the same `lg:`-only panel, so they take the same ungated 44px floor.
+      // THE-999998: follow-up selection, thank-you retry and QR controls.
+      'src/components/form-follow-up/FollowUpCard.tsx',
+      'src/components/form-follow-up/FollowUpSetting.tsx',
+      'src/components/form-follow-up/QrCodeDialog.tsx',
       'src/components/inbox/TenantInbox.tsx',
     'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
       'src/components/product-wizard/NewProductDialog.tsx',

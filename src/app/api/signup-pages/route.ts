@@ -1,3 +1,4 @@
+import { InvalidFollowUp, validateFollowUp } from '@/lib/form-follow-up/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
     if (permitted instanceof NextResponse) return permitted;
     const input = parseSignupPageInput(await request.json());
     if (!input) return NextResponse.json({ error: 'Invalid page' }, { status: 400 });
+    await validateFollowUp(user.tenantId, input.followUp);
     const ref = adminDb.collection('signup_pages').doc();
     const reservation = adminDb.collection('signup_handles').doc(input.handle);
     const now = new Date().toISOString();
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
     if (!created) return NextResponse.json({ error: 'Handle already in use' }, { status: 409 });
     return NextResponse.json({ id: ref.id }, { status: 201 });
   } catch (error) {
+    if (error instanceof InvalidFollowUp) return NextResponse.json({ error: error.message }, { status: 400 });
     if (error instanceof SyntaxError) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     return NextResponse.json({ error: 'Could not create page' }, { status: 503 });
   }
@@ -62,12 +65,13 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).sort().join(',') !== 'active,fields,handle,message,pageId,title' || typeof body.active !== 'boolean' || !validId(body.pageId)) return NextResponse.json({ error: 'Invalid page' }, { status: 400 });
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).filter(key => key !== 'followUp').sort().join(',') !== 'active,fields,handle,message,pageId,title' || typeof body.active !== 'boolean' || !validId(body.pageId)) return NextResponse.json({ error: 'Invalid page' }, { status: 400 });
     const { pageId, active, ...data } = body;
     const input = parseSignupPageInput(data);
     if (!input) return NextResponse.json({ error: 'Invalid page' }, { status: 400 });
     const access = await authorizePage(request, pageId);
     if (access instanceof NextResponse) return access;
+    await validateFollowUp(access.page.tenantId, input.followUp);
     const result = await adminDb.runTransaction(async (tx) => {
       const current = await tx.get(access.ref);
       if (!current.exists) return 'missing';
@@ -89,6 +93,7 @@ export async function PATCH(request: NextRequest) {
     if (result !== 'ok') return NextResponse.json({ error: result === 'taken' ? 'Handle already in use' : 'Page changed or missing' }, { status: result === 'missing' ? 404 : 409 });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof InvalidFollowUp) return NextResponse.json({ error: error.message }, { status: 400 });
     if (error instanceof SyntaxError) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     return NextResponse.json({ error: 'Could not update page' }, { status: 503 });
   }

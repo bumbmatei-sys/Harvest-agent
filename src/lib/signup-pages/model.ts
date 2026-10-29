@@ -1,3 +1,4 @@
+import { parseFollowUp, type FollowUp } from '@/lib/form-follow-up/model';
 /** Shared constraints for public sign-up pages. Handles are canonical lowercase. */
 export const SIGNUP_FIELDS = ['name', 'email', 'phone', 'prayerRequest'] as const;
 export type SignupField = (typeof SIGNUP_FIELDS)[number];
@@ -8,19 +9,22 @@ export interface SignupPageInput {
   title: string;
   message: string;
   fields: SignupFieldSettings;
+  followUp?: FollowUp | null;
 }
 
 /** Accept only the public page properties that the server is prepared to store. */
 export function parseSignupPageInput(value: unknown): SignupPageInput | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  if (Object.keys(input).sort().join(',') !== 'fields,handle,message,title') return null;
+  if (Object.keys(input).filter(key => key !== 'followUp').sort().join(',') !== 'fields,handle,message,title') return null;
   if (!isValidSignupHandle(input.handle) || typeof input.title !== 'string' ||
       typeof input.message !== 'string' || !isValidSignupFieldSettings(input.fields)) return null;
   const title = input.title.trim();
   const message = input.message.trim();
   if (!title || title.length > 120 || message.length > 1000) return null;
-  return { handle: input.handle, title, message, fields: input.fields };
+  let followUp;
+  try { followUp = parseFollowUp(input.followUp); } catch { return null; }
+  return { handle: input.handle, title, message, fields: input.fields, ...(input.followUp !== undefined ? { followUp } : {}) };
 }
 
 /** Validate against the stored configuration; never accept unconfigured fields. */

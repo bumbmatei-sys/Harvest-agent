@@ -108,6 +108,15 @@ vi.mock('firebase/firestore', () => ({
   writeBatch: () => ({ set: () => {}, update: () => {}, delete: () => {}, commit: async () => {} }),
 }));
 
+// Form metadata now goes through server validation; preserve the original saved-field assertions.
+vi.mock('@/utils/auth-fetch', () => ({ authFetch: async (url: string, init?: RequestInit) => {
+  if (url.startsWith('/api/form-follow-up/options')) return { ok: true, json: async () => ({ options: [] }) };
+  if (url !== '/api/forms/save') throw new Error(`Unexpected request: ${url}`);
+  const { tenantId, formId, ...payload } = JSON.parse(String(init?.body));
+  writes.push({ kind: 'server-save', path: `tenants/${tenantId}/forms/${formId || 'new'}`, payload });
+  return { ok: true, json: async () => ({ id: formId || 'new' }) };
+} }));
+
 vi.mock('../../store/useAppStore', () => ({
   useAppStore: (sel?: (s: unknown) => unknown) => {
     const state = { currentTenantId: 't1', isAuthReady: true, isSuperAdmin: false, currentTenant: { id: 't1' } };
