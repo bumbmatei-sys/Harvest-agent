@@ -231,6 +231,8 @@ const TABS: Tab[] = [
   { label: 'Signups', section: 'signups', cell: (f) => f.signups },
   { label: 'Giving records', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', cell: (f) => f.customForms },
+  // #557 adds sign-up pages under the existing signups entitlement.
+  { label: 'Sign-up pages', section: 'signup-pages', cell: (f) => f.signups },
   { label: 'Check-In', section: 'checkin', cell: null },
   { label: 'Livestream', section: 'livestream', cell: (f) => f.livestream },
   { label: 'SMS', section: 'sms', cell: (f) => f.smsAutomation },
@@ -281,7 +283,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Giving records', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Giving records', 'Forms', 'Sign-up pages', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -403,7 +405,7 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // every tier that had Events gained a row and no tier's reach changed.
     // ⚠️ NINETEEN with the Products page: it is reported together with Courses (see navLabels), so
     // every tier that reaches Courses gains one row and no tier's reach changes.
-    expect(nav.length, 'the free nav is exactly the nineteen').toBe(19);
+    expect(nav.length, '#557 adds sign-up pages to the Free nav').toBe(20);
     expect(nav).toEqual(expectedNav('free'));
 
     // And it is genuinely the see-everything case: free's own cells unlock only
@@ -420,7 +422,7 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // enrolled, with their contact records and the CSV export, and loses the one
     // it was sharing a cell with.
     expect(unlockedByCells, "free's cells unlock something other than Courses, Products and Signups — check the matrix")
-      .toEqual(['Courses', 'Products', 'Signups']);
+      .toEqual(['Courses', 'Products', 'Signups', 'Sign-up pages']);
   });
 
   it('Branding is in no sidebar on any tier: it lives in Settings > Campus & branding', async () => {
@@ -443,7 +445,7 @@ describe('2 — a Church tenant sees exactly its ten', () => {
    * nothing. Harvest now resells and pays for every segment, so the founder made
    * SMS Ministry-only and this tier lost the tab with the capability. */
   const CHURCH_SET = [
-    'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'Fundraising', 'Notes', 'CRM', 'Signups', 'Community',
+    'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'Fundraising', 'Notes', 'CRM', 'Signups', 'Sign-up pages', 'Community',
   ];
 
   /** 🔴 What the spec leaves off Church, by label. Check-In is the recorded
@@ -460,7 +462,7 @@ describe('2 — a Church tenant sees exactly its ten', () => {
     // THE-373 — Check-In was the whole Reach group on the cheapest paid tier.
     expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
     expect(nav, CHECKIN_NOTE).not.toContain('Forms');
-    expect(nav.length, 'Church shows its ten, and nothing else').toBe(10);
+    expect(nav.length, '#557 adds sign-up pages to Church').toBe(11);
     expect(nav).toEqual(expectedNav('church'));
     expect(nav).toEqual([...CHURCH_SET].sort());
   });
@@ -596,7 +598,7 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
     // ⚠️ SEVENTEEN SINCE THE-326 — Services joined the set on the
     // `eventRegistration` cell Ministry already holds, so the tier gained the
     // row it was always entitled to and lost nothing.
-    expect(nav.length, 'Ministry shows all nineteen').toBe(19);
+    expect(nav.length, '#557 adds sign-up pages to Ministry').toBe(20);
     expect(nav).toEqual(expectedNav('ministry'));
   });
 
@@ -812,7 +814,8 @@ describe('9 — the nav is derived from one tab array, not two', () => {
     const gatedTabs = TABS.filter((t) => t.cell !== null).length;
     expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs);
     // 15 -> 16 IS THE PRODUCTS PAGE AND NOTHING ELSE: a nav clause that repeats Courses' own.
-    expect(gatedTabs).toBe(16);
+    // #557 adds the signups-gated sign-up pages entry.
+    expect(gatedTabs).toBe(17);
   });
 
   it('withholds Check-In on Church, and leaves the Campuses entry without a plan clause', () => {

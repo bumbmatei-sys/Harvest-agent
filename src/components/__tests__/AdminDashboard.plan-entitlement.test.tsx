@@ -736,7 +736,7 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // tab, and it asks the Notes tab's own cell (`features?.docs`) through the same helper, so it is
     // refused to exactly the tiers the Notes editor is. Nothing about the helper itself moved.
     // Community setup applies six existing plan cells to its module availability.
-    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1 + 1 + 6);
+    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1 + 1 + 6 + 1 /* #557 sign-up pages */);
   });
 
   it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {

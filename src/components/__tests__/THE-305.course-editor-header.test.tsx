@@ -777,6 +777,12 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
  * ticket is not the place to rewrite guards that are not failing.
  */
 const ADMIN_DASHBOARD_ACCEPTED = [
+    // #557: Initial sign-up pages navigation and shared screen.
+    '2910cbb6e895a1a636cb60710a74bcfd34bbdaf8f410ca8cbb540c6a42018d82',
+    // #557: Add permission-gated sign-up pages navigation and shared screen.
+    '83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a',
+    // #557 merge retains community navigation and sign-up pages.
+    '22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566',
   // main at 133d557 — THE-291 (#434) removed the client-side plan write.
   '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
   // main + THE-326 — service planning split out of Events into its own section.

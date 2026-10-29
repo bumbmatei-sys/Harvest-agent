@@ -1,0 +1,131 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest, NextResponse } from 'next/server';
+
+const mocks = vi.hoisted(() => ({ requireAuth: vi.fn(), requireTenantPermission: vi.fn(), collection: vi.fn(), transaction: vi.fn(), checkRateLimit: vi.fn(), rateLimiters: { auth: {} as object | null, signupSubmit: {} as object | null } }));
+vi.mock('@/lib/api-auth', () => ({ requireAuth: mocks.requireAuth, requireTenantPermission: mocks.requireTenantPermission }));
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: mocks.collection, runTransaction: mocks.transaction } }));
+vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: mocks.checkRateLimit, rateLimiters: mocks.rateLimiters }));
+import { GET as list, POST as create, PATCH as update } from '../route';
+import { POST as submit } from '../submit/route';
+import { GET as publicPage } from '../public/[handle]/route';
+import { GET as submissions } from '../[pageId]/submissions/route';
+import { GET as exportCsv } from '../[pageId]/export/route';
+
+const fields = Object.fromEntries(['name', 'email', 'phone', 'prayerRequest'].map((key) => [key, { enabled: key === 'name', required: key === 'name' }]));
+const stored = Object.entries(fields).map(([key, settings]) => ({ key, ...settings }));
+const page = { tenantId: 'tenant', ownerUid: 'owner', handle: 'hello', title: 'Hello', message: '', fields: stored, active: true };
+const request = (method: string, body?: unknown) => new NextRequest('http://localhost/api/signup-pages', { method, ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }) });
+const params = { params: { pageId: 'page' } };
+let documents: Record<string, Record<string, unknown>>;
+let writes: string[];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.rateLimiters.auth = {};
+  mocks.rateLimiters.signupSubmit = {};
+  mocks.requireAuth.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
+  mocks.requireTenantPermission.mockResolvedValue(NextResponse.json({ error: 'Denied' }, { status: 403 }));
+  mocks.checkRateLimit.mockResolvedValue(null);
+  documents = { 'users/owner': { tenantId: 'tenant' }, 'users/other': { tenantId: 'tenant' }, 'tenants/tenant': { ownerId: 'owner' }, 'signup_pages/page': page, 'signup_handles/hello': { pageId: 'page' } };
+  writes = [];
+  const ref = (path: string): any => ({ id: path.split('/').pop(), path, get: async () => ({ exists: !!documents[path], data: () => documents[path] }), collection: (name: string) => collection(`${path}/${name}`) });
+  const collection = (path: string): any => ({ doc: (id = 'new') => ref(`${path}/${id}`), where: () => ({ get: async () => ({ docs: [{ id: 'page', data: () => page }] }) }), orderBy: () => ({ get: async () => ({ docs: [{ id: 'one', data: () => ({ createdAt: '2040', answers: { name: '=1, "x"' } }) }] }) }) });
+  mocks.collection.mockImplementation(collection);
+  mocks.transaction.mockImplementation(async (fn) => fn({ get: (r: any) => r.get(), create: (r: any) => writes.push(`create:${r.path}`), update: (r: any) => writes.push(`update:${r.path}`), delete: (r: any) => writes.push(`delete:${r.path}`) }));
+});
+
+describe('signup page routes', () => {
+  it('lists only the caller’s pages and propagates auth failures', async () => {
+    expect((await (await list(request('GET'))).json()).pages).toHaveLength(1);
+    mocks.requireAuth.mockResolvedValueOnce(NextResponse.json({}, { status: 401 }));
+    expect((await list(request('GET'))).status).toBe(401);
+  });
+  it('requires forms permission for a tenant-wide list', async () => {
+    const req = new NextRequest('http://localhost/api/signup-pages?tenantId=tenant');
+    documents['tenants/tenant'] = { ownerId: 'another' };
+    expect((await list(req)).status).toBe(403);
+    mocks.requireTenantPermission.mockResolvedValueOnce({ uid: 'admin', tenantId: 'tenant' });
+    expect((await list(req)).status).toBe(200);
+    expect(mocks.requireTenantPermission).toHaveBeenCalledWith(req, 'tenant', 'manageForms');
+  });
+  it('reserves a unique handle with the page atomically', async () => {
+    const input = { handle: 'fresh', title: 'Title', message: '', fields };
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
+    expect((await create(request('POST', input))).status).toBe(201);
+    expect(writes).toEqual(['create:signup_handles/fresh', 'create:signup_pages/new']);
+    expect((await create(request('POST', { ...input, handle: 'hello' }))).status).toBe(409);
+    expect((await create(request('POST', { ...input, handle: 'BAD' }))).status).toBe(400);
+  });
+  it('T1 binds the write to the user record, not the token claim', async () => {
+    const input = { handle: 'fresh', title: 'Title', message: '', fields };
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner', tenantId: 'tenant' });
+    // Token claim says tenant A, the users/{uid} record says tenant B -> 403 and nothing written.
+    documents['users/owner'] = { tenantId: 'other' };
+    expect((await create(request('POST', input))).status).toBe(403);
+    expect(writes).toEqual([]);
+    // Token claim says tenant A, no user record at all -> 403 and nothing written.
+    delete documents['users/owner'];
+    expect((await create(request('POST', input))).status).toBe(403);
+    expect(writes).toEqual([]);
+    // Super admins are excepted from the record check.
+    mocks.requireAuth.mockResolvedValue({ uid: 'platform', tenantId: 'tenant', isSuperAdmin: true });
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'platform', isSuperAdmin: true });
+    expect((await create(request('POST', input))).status).toBe(201);
+    documents['users/platform'] = { tenantId: 'other' };
+    expect((await create(request('POST', input))).status).toBe(201);
+    expect(writes).toEqual(['create:signup_handles/fresh', 'create:signup_pages/new', 'create:signup_handles/fresh', 'create:signup_pages/new']);
+  });
+  it('updates and moves a reservation atomically, refusing conflicts', async () => {
+    const input = { pageId: 'page', active: false, handle: 'fresh', title: 'Title', message: '', fields };
+    expect((await update(request('PATCH', input))).status).toBe(200);
+    expect(writes).toEqual(['create:signup_handles/fresh', 'delete:signup_handles/hello', 'update:signup_pages/page']);
+    documents['signup_handles/fresh'] = { pageId: 'other' };
+    expect((await update(request('PATCH', input))).status).toBe(409);
+  });
+  it('exposes only public enabled fields and hides inactive pages', async () => {
+    const response = await publicPage(request('GET'), { params: { handle: 'hello' } });
+    expect(await response.json()).toEqual({ title: 'Hello', message: '', fields: [stored[0]] });
+    documents['signup_pages/page'] = { ...page, active: false };
+    expect((await publicPage(request('GET'), { params: { handle: 'hello' } })).status).toBe(404);
+  });
+  it('rate limits, validates and stores submissions; traps honeypots', async () => {
+    mocks.rateLimiters.auth = null;
+    const req = request('POST', { handle: 'hello', website: '', answers: { name: 'A' } });
+    expect((await submit(req)).status).toBe(201);
+    expect(mocks.checkRateLimit).toHaveBeenCalledWith(req, 'signupSubmit');
+    expect(writes).toContain('create:signup_pages/page/submissions/new');
+    writes = [];
+    expect((await submit(request('POST', { handle: 'hello', website: 'spam', answers: {} }))).status).toBe(200);
+    expect(writes).toEqual([]);
+    expect((await submit(request('POST', { handle: 'hello', website: '', answers: { email: 'x' } }))).status).toBe(400);
+    mocks.checkRateLimit.mockResolvedValueOnce(new Response(null, { status: 429 }));
+    expect((await submit(request('POST', {}))).status).toBe(429);
+    mocks.rateLimiters.signupSubmit = null;
+    expect((await submit(request('POST', {}))).status).toBe(503);
+  });
+  it('requires live membership and permission even for the page creator', async () => {
+    documents['tenants/tenant'] = { ownerId: 'someone-else' };
+    expect((await submissions(request('GET'), params)).status).toBe(403);
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'owner' });
+    expect((await submissions(request('GET'), params)).status).toBe(200);
+    documents['users/owner'] = { tenantId: 'other' };
+    expect((await (await list(request('GET'))).json()).pages).toEqual([]);
+    expect((await submissions(request('GET'), params)).status).toBe(403);
+  });
+  it('allows a super admin without live tenant membership to manage a tenant page', async () => {
+    mocks.requireAuth.mockResolvedValue({ uid: 'platform', tenantId: null, isSuperAdmin: true });
+    mocks.requireTenantPermission.mockResolvedValue({ uid: 'platform', isSuperAdmin: true });
+    expect((await list(new NextRequest('http://localhost/api/signup-pages?tenantId=tenant'))).status).toBe(200);
+    expect((await update(request('PATCH', { pageId: 'page', active: true, handle: 'hello', title: 'Title', message: '', fields }))).status).toBe(200);
+    expect((await submissions(request('GET'), params)).status).toBe(200);
+    expect((await exportCsv(request('GET'), params)).status).toBe(200);
+  });
+  it('restricts submissions and exports and escapes spreadsheet formulas', async () => {
+    expect((await submissions(request('GET'), params)).status).toBe(200);
+    const csv = await exportCsv(request('GET'), params);
+    expect(await csv.text()).toContain('"\'=1, ""x"""');
+    mocks.requireAuth.mockResolvedValue({ uid: 'other', tenantId: 'tenant' });
+    expect((await submissions(request('GET'), params)).status).toBe(403);
+    expect((await exportCsv(request('GET'), params)).status).toBe(403);
+  });
+});

@@ -69,6 +69,7 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
       data: () => ({
         adminEmails: ['pastor@grace.org'],
         setupCompleted: false,
+        subdomain: 'old-tenant',
         stripeSubscriptionId: 'sub_ref',
         ministryName: 'Grace Church',
       }),
@@ -95,6 +96,7 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
       data: () => ({
         adminEmails: ['pastor@grace.org'],
         setupCompleted: false,
+        subdomain: 'old-tenant',
         stripeSubscriptionId: 'sub_ref',
         stripeCustomerId: 'cus_1',
         ministryName: 'Grace Church',
@@ -117,4 +119,21 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
     // Old tenant doc AND old tenant_private doc both deleted.
     expect(mockDocDelete).toHaveBeenCalledTimes(2);
   });
+});
+
+it('finishes a hostless paid tenant without assigning the requested subdomain', async () => {
+  mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'church', setupCompleted: false }) });
+  const res = await POST(makeRequest({ subdomain: 'new-name' }));
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ tenantId: 'old-tenant' });
+  expect(mockDocUpdate).toHaveBeenCalledWith({ setupCompleted: true, updatedAt: expect.any(String) });
+  expect(mockDocCreate).not.toHaveBeenCalled();
+});
+
+it('refuses to assign a subdomain to a Free tenant', async () => {
+  mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', setupCompleted: false }) });
+  const res = await POST(makeRequest({ subdomain: 'new-name' }));
+  expect(res.status).toBe(403);
+  expect(mockDocUpdate).not.toHaveBeenCalled();
+  expect(mockDocCreate).not.toHaveBeenCalled();
 });

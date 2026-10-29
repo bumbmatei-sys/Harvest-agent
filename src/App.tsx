@@ -29,7 +29,7 @@ import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
-import { AFFILIATE_PROGRAM_ENABLED } from './utils/plan-features';
+import { AFFILIATE_PROGRAM_ENABLED, getEffectiveFeatures } from './utils/plan-features';
 import { canonicalPlanId } from './utils/plan-id';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { SavedItemsProvider } from './contexts/SavedItemsContext';
@@ -121,6 +121,9 @@ const renderLoading = () => (
 const RequireAdmin: React.FC<{ isAdmin: boolean; children: React.ReactElement }> = ({ isAdmin, children }) =>
   isAdmin ? children : <Navigate to="/" replace />;
 
+const isAdminForHost = (role: string, superAdmin: boolean, userTenant: string | null | undefined, hostTenant: string | null) =>
+  superAdmin || (isTenantAdminRole(role) && (!hostTenant || userTenant === hostTenant));
+
 /** Inner App component that uses the TenantContext + React Router. */
 const AppInner: React.FC = () => {
   useClaimsFreshness(); // Force-refresh token when claims change
@@ -152,6 +155,10 @@ const AppInner: React.FC = () => {
   // `isAffiliateSignup && !data.tenantId` reasoning against the real doc field.
   const [userTenantId, setUserTenantId] = useState<string | null | undefined>(undefined);
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan, tenantPlan: ctxTenantPlan } = useTenant();
+  const tenantStateRef = useRef({ tenantId, tenantLoading, ctxTenantPlan });
+  tenantStateRef.current = { tenantId, tenantLoading, ctxTenantPlan };
+  const [tenantResolutionReady, setTenantResolutionReady] = useState(!tenantLoading);
+  useEffect(() => { if (!tenantLoading) setTenantResolutionReady(true); }, [tenantLoading]);
 
   const {
     setCurrentUser,
@@ -182,20 +189,19 @@ const AppInner: React.FC = () => {
   useEffect(() => {
     const effectiveTenantId =
       tenantId ||
-      (storeIsSuperAdmin && getTenantIdFromHost() === null ? PLATFORM_TENANT_ID : null);
+      (storeIsSuperAdmin && getTenantIdFromHost() === null ? PLATFORM_TENANT_ID : userTenantId ?? null);
     setCurrentTenant(null, effectiveTenantId);
-  }, [tenantId, isAuthReady, storeIsSuperAdmin, setCurrentTenant]);
+  }, [tenantId, userTenantId, isAuthReady, storeIsSuperAdmin, setCurrentTenant]);
 
-  // On a tenant subdomain, the tenant's own plan (from the tenant doc, via
+  // On a tenant host, the tenant's own plan (from the tenant doc, via
   // TenantContext) is authoritative for gating — NOT the signed-in user's plan.
   // This makes a super admin browsing nations.theharvest.app see exactly the
   // features nations' plan includes (and gives regular members the correct plan too).
   useEffect(() => {
-    const onSubdomain = getTenantIdFromHost() !== null;
-    if (onSubdomain && ctxTenantPlan) {
+    if (tenantId && ctxTenantPlan) {
       setTenantPlan(ctxTenantPlan);
     }
-  }, [ctxTenantPlan, setTenantPlan]);
+  }, [tenantId, ctxTenantPlan, setTenantPlan]);
 
   // Capture the signup intent (?signup=<plan|church>) into sessionStorage the moment it
   // appears, so it survives the redirect to /auth (which drops the query string) and stays
@@ -286,7 +292,9 @@ const AppInner: React.FC = () => {
   const isAffiliateSignup = typeof window !== 'undefined' && isAffiliateHost(window.location.hostname);
 
   useEffect(() => {
+    if (!tenantResolutionReady) return;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setIsAuthReady(false);
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -310,13 +318,14 @@ const AppInner: React.FC = () => {
               try { sessionStorage.removeItem('harvest_signup'); } catch {}
               try { sessionStorage.removeItem(SIGNUP_BILLING_STORAGE_KEY); } catch {}
               // Plan source of truth:
-              //  - On a tenant subdomain, the TENANT's plan (tenant doc, via
+              //  - On a tenant host, the TENANT's plan (tenant doc, via
               //    TenantContext) is authoritative — applied by the effect above.
               //    Do NOT overwrite it with the signed-in user's own plan here, or a
               //    super admin browsing a tenant would be gated by their (wrong) plan.
-              //  - Off a subdomain (apex/admin domain), fall back to the user doc plan.
+              //  - On the apex or admin domain, fall back to the user doc plan.
               const onSubdomain = getTenantIdFromHost() !== null;
-              if (!onSubdomain && isAdminDomain) {
+              const { tenantId: resolvedTenantId, tenantLoading: resolvingTenant, ctxTenantPlan: resolvedTenantPlan } = tenantStateRef.current;
+              if (!resolvedTenantId && !resolvingTenant) {
                 const userPlan = canonicalPlanId(data.plan) ?? undefined;
                 if (userPlan) {
                   setTenantPlan(userPlan);
@@ -328,7 +337,9 @@ const AppInner: React.FC = () => {
               // A deep link (e.g. /admin/crm) on refresh is left intact so the user
               // stays on the page they were on.
               const hasAdminRole = isTenantAdminRole(role) || isSuperAdminEmail(user?.email);
-              const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
+              const isFreeAccount = (resolvedTenantId ? resolvedTenantPlan : canonicalPlanId(data.plan)) === 'free';
+              const isHostAdmin = isAdminForHost(role, isSuperAdminEmail(user.email), data.tenantId, resolvedTenantId);
+              const homeBase = !isFreeAccount && isHostAdmin ? '/admin' : '/';
 
               // One-shot intent flag: when an admin taps "Go to User App", the admin
               // dashboard sets sessionStorage.intentionalUserView before navigating to
@@ -383,7 +394,8 @@ const AppInner: React.FC = () => {
               // confirmation included.
               const wantsHome =
                 FUNNEL_PATHS.includes(path)
-                || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView);
+                || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView)
+                || (isFreeAccount && path.startsWith('/admin'));
               if (wantsHome) {
                 // If the user belongs to a real tenant but is currently on the apex
                 // (e.g. they clicked a "buy a plan" link while already signed in), send
@@ -397,7 +409,7 @@ const AppInner: React.FC = () => {
                 // time they sign in — hopping them across an origin is a change
                 // to member sign-in that this ticket does not make. With the
                 // guard they keep `navigate(homeBase)` ('/'), byte-for-byte.
-                if (data.tenantId && !onSubdomain && (isAdminDomain || hasAdminRole)) {
+                if (!isFreeAccount && data.tenantId && !onSubdomain && !resolvedTenantId && (isAdminDomain || hasAdminRole)) {
                   // Before hard-redirecting to the tenant's subdomain, confirm the
                   // tenant still exists. An orphaned user doc (tenantId pointing at a
                   // deleted tenant) would otherwise bounce the user to a dead
@@ -405,6 +417,8 @@ const AppInner: React.FC = () => {
                   // stay on the apex admin (the always-valid destination) instead.
                   let tenantExists = false;
                   let tenantSetupCompleted: unknown;
+                  let tenantSubdomain: unknown;
+                  let tenantSnapPlan: unknown;
                   try {
                     const tenantSnap = await getDoc(doc(db, 'tenants', data.tenantId));
                     tenantExists = tenantSnap.exists();
@@ -413,11 +427,13 @@ const AppInner: React.FC = () => {
                     // second get for one boolean would be a second read on the
                     // hottest path in the funnel.
                     tenantSetupCompleted = tenantSnap.data()?.setupCompleted;
+                    tenantSubdomain = tenantSnap.data()?.subdomain;
+                    tenantSnapPlan = tenantSnap.data()?.plan;
                   } catch (e) {
                     // Lookup failed — don't gamble on a possibly-dead subdomain.
                     console.warn('Tenant existence check failed before subdomain redirect:', e);
                   }
-                  if (tenantExists) {
+                  if (tenantExists && (tenantSubdomain === data.tenantId || (tenantSubdomain === undefined && tenantSnapPlan === undefined))) {
                     // 🔴 THE-138. The line below is an ORIGIN HOP, not a
                     // navigation: `theharvest.app` and `<tenant>.theharvest.app`
                     // are different origins and Firebase persists auth in
@@ -465,7 +481,7 @@ const AppInner: React.FC = () => {
                         : workspaceUrl;
                     }
                   } else {
-                    console.warn(
+                    if (!tenantExists) console.warn(
                       `User ${user.uid} references tenant '${data.tenantId}' which no longer exists; staying on apex admin.`
                     );
                     navigate('/admin', { replace: true });
@@ -543,7 +559,7 @@ const AppInner: React.FC = () => {
       storeSetIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, [isChurchSignup, signupPlan, isAffiliateSignup, isAdminDomain, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
+  }, [isChurchSignup, signupPlan, isAffiliateSignup, isAdminDomain, tenantResolutionReady, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
 
   // Map legacy string-based navigation (onNavigate('admin'|'home'|...)) to routes
   // so child components keep their existing API while routing is URL-driven.
@@ -555,10 +571,7 @@ const AppInner: React.FC = () => {
     window.scrollTo(0, 0);
   }, [navigate]);
 
-  const isAdmin =
-    isTenantAdminRole(userRole) ||
-    isAdminDomain ||
-    isSuperAdminEmail(auth.currentUser?.email);
+  const isHostAdmin = isAdminForHost(userRole, storeIsSuperAdmin, userTenantId, tenantId);
 
   if (!isAuthReady || (tenantLoading && tenantId)) {
     return renderLoading();
@@ -568,8 +581,9 @@ const AppInner: React.FC = () => {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
+  const dashboardAllowed = !tenantPlan || getEffectiveFeatures(tenantPlan).adminDashboard;
   const adminElement = (
-    <RequireAdmin isAdmin={isAdmin}>
+    <RequireAdmin isAdmin={isHostAdmin && dashboardAllowed}>
       <ErrorBoundary>
         <AdminDashboard onNavigate={handleNavigate} />
         {/* THE-255. The add-to-home-screen step, at the END of onboarding.
@@ -638,7 +652,7 @@ const AppInner: React.FC = () => {
                   Hiding the dashboard must not re-open that. */}
               {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
-                : <MainApp onNavigate={handleNavigate} isAdminPreview={isAdmin} />}
+                : <MainApp onNavigate={handleNavigate} isAdminPreview={isHostAdmin && dashboardAllowed} accountTenantId={userTenantId} />}
               {/* THE-292 — the same prompt on the member surface. Coverage is a
                   TENANT SETTING, not a funnel property: `Onboarding` pushes its
                   location step only when `default_country`/`default_city` is in

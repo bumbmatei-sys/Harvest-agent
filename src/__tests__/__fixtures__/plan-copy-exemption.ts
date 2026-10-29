@@ -260,6 +260,13 @@ export const PLAN_FEATURES: RecordedExemption = {
       ],
     },
     { approval: R6_APPROVAL, digest: R6_PLAN_FEATURES.digest, hunks: R6_PLAN_FEATURES.hunks },
+    // #557 adds explicit Free shell and community-creation entitlements; prices remain unchanged.
+    { approval: '#557 Free shell entitlements', digest: 'a41e58a79582091a0fe066b990171d52036af94508a91f31bef7c50d635d444a', hunks: [
+      { before: 'export interface PlanFeatures {\n  /** Show blog tab', after: 'export interface PlanFeatures {\n  /** Access to the administrative dashboard. */\n  adminDashboard: boolean;\n  /** Ability to create a community. */\n  createCommunity: boolean;\n  /** Show blog tab' },
+      { before: '  free: {\n    blog: false,', after: '  free: {\n    adminDashboard: false,\n    createCommunity: false,\n    blog: false,' },
+      { before: '  church: {\n    blog: true,', after: '  church: {\n    adminDashboard: true,\n    createCommunity: true,\n    blog: true,' },
+      { before: '  ministry: {\n    blog: true,', after: '  ministry: {\n    adminDashboard: true,\n    createCommunity: true,\n    blog: true,' },
+    ] },
   ],
 };
 

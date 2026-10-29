@@ -90,7 +90,7 @@ const payload = (over: Record<string, unknown> = {}) => ({
 });
 
 function tenantOn(plan: string) {
-  mockTenantGet.mockResolvedValue({ exists: true, data: () => ({ plan, name: 'Grace Church' }) });
+  mockTenantGet.mockResolvedValue({ exists: true, data: () => ({ plan, name: 'Grace Church', ownerId: 'u1' }) });
 }
 function privateDoc(data: Record<string, unknown> | null) {
   mockPrivateGet.mockResolvedValue({ exists: data !== null, data: () => data ?? {} });
@@ -130,8 +130,16 @@ describe('attaching a first subscription to a free tenant', () => {
     expect(r).toMatchObject({ outcome: 'attached', tenantId: 't1', plan: 'plus' });
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ plan: 'plus' }),
+      expect.objectContaining({ plan: 'plus', setupCompleted: true }),
     );
+    expect(mockBatchUpdate.mock.calls[0][1]).not.toHaveProperty('subdomain');
+  });
+
+  it('refuses a non-owner before writing anything', async () => {
+    mockTenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', ownerId: 'other' }) });
+    await expect(attachFirstSubscriptionToTenant(payload() as any)).resolves.toEqual({ outcome: 'refused', tenantId: 't1', reason: 'buyer-is-not-owner' });
+    expect(mockBatchCommit).not.toHaveBeenCalled();
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
   it('records the identifiers and the owning processor in the same batch', async () => {

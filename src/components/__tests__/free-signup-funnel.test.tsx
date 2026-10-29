@@ -316,6 +316,16 @@ describe('a free signup never says thank you for your payment', () => {
     expect(text()).toContain('Account created');
   });
 
+  it('does not offer first-run subdomain setup to a hostless upgraded tenant', async () => {
+    mount(<OnboardingGate><div>{MEMBER_APP}</div></OnboardingGate>);
+    await signIn();
+    await pushUser({ tenantId: 'matei', role: 'admin', plan: 'church' });
+    await pushTenant('matei', { setupCompleted: false, plan: 'church' });
+    await flush();
+    expect(text()).toContain(MEMBER_APP);
+    expect(text()).not.toContain('Finish setting up your ministry');
+  });
+
   it('the confirmation screen itself says only what it was told to say', async () => {
     // The component's own contract, isolated from any caller: it cannot know
     // whether money moved and must not guess. Both renders below are the SAME
@@ -654,35 +664,22 @@ describe('a free tenant is never left with signupInProgress set', () => {
     expect(sentBody()).toMatchObject({ subdomain: 'matei' });
   });
 
-  it('the tenant is created setup-complete when the address was already chosen', async () => {
-    // 🔴 What actually removes the extra step. First-run setup exists to ask
-    // for a subdomain; when signup already asked, leaving `setupCompleted`
-    // false would put that screen back in front of the evangelist — the exact
-    // step the founder called out — and would ask them to choose an address
-    // they have already chosen.
+  it('creates a setup-complete free tenant without a host when an address was supplied', async () => {
     const chosen = await freeProvisioningHarness();
     chosen.mockGet.mockResolvedValue({ exists: false, data: () => null });
     await chosen.run();
-    expect(tenantWrite(chosen.mockBatchSet)).toMatchObject({ setupCompleted: true, subdomain: 'matei' });
+    expect(tenantWrite(chosen.mockBatchSet)).toMatchObject({ setupCompleted: true, plan: 'free' });
+    expect(tenantWrite(chosen.mockBatchSet)).not.toHaveProperty('subdomain');
   });
 
-  it('and still gated on first-run when no address was chosen, exactly as before', async () => {
-    // The pre-THE-214 shape, still reachable from any caller holding only a
-    // name. Nothing about that path changed: the id is generated from the name
-    // and first-run setup is still owed.
+  it('creates a setup-complete free tenant without a host when no address was supplied', async () => {
     const unchosen = await freeProvisioningHarness();
     unchosen.mockGet.mockResolvedValue({ exists: false, data: () => null });
     await unchosen.runWithoutAddress();
-    expect(tenantWrite(unchosen.mockBatchSet)).toMatchObject({ setupCompleted: false });
+    expect(tenantWrite(unchosen.mockBatchSet)).toMatchObject({ setupCompleted: true, plan: 'free' });
+    expect(tenantWrite(unchosen.mockBatchSet)).not.toHaveProperty('subdomain');
   });
 
-  it('a collision on the chosen address still provisions, rather than refusing', () => {
-    // 🔴 The direction this must fail in. Refusing would leave the marker set
-    // with no tenant behind it — the stuck account — to protect an exact
-    // string. `generateUniqueSubdomain` re-checks and suffixes instead.
-    const provisioning = readSrc('lib/free-provisioning.ts');
-    expect(provisioning).toMatch(/generateUniqueSubdomain\(chosenAddress \|\| name\)/);
-  });
 });
 
 /** The free-provisioning module, wired to inspectable admin-SDK doubles. */
@@ -718,7 +715,7 @@ async function freeProvisioningHarness() {
 const tenantWrite = (
   batchSet: { mock: { calls: Array<[unknown, Record<string, unknown>]> } },
 ): Record<string, unknown> => {
-  const call = batchSet.mock.calls.find((c) => c[1] && 'subdomain' in c[1]);
+  const call = batchSet.mock.calls.find((c) => c[1] && c[1].plan === 'free');
   expect(call, 'no tenant document was written').toBeTruthy();
   return call![1];
 };

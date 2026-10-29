@@ -1043,6 +1043,23 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
     }
 
+    // Sign-up pages are written only by the server; submissions inherit access
+    // from their parent page so a caller cannot forge their tenant or owner.
+    match /signup_pages/{pageId} {
+      allow read: if isAuthenticated() &&
+        (userDocExists() && userData().get('tenantId', null) == resource.data.tenantId && hasPermission('manageForms', resource.data.tenantId));
+      allow write: if false;
+      match /submissions/{submissionId} {
+        allow read: if isAuthenticated() &&
+          (userDocExists() && userData().get('tenantId', null) == get(/databases/$(database)/documents/signup_pages/$(pageId)).data.tenantId &&
+           hasPermission('manageForms', get(/databases/$(database)/documents/signup_pages/$(pageId)).data.tenantId));
+        allow write: if false;
+      }
+    }
+    match /signup_handles/{handle} {
+      allow read, write: if false;
+    }
+
     // ─── Donations ───────────────────────────────────────────────────
 
     // Legacy/dead collection — nothing in the app reads or writes it (donation

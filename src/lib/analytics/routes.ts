@@ -175,6 +175,7 @@ const ROUTE_TABLE = [
   { pattern: '/checkin/[sessionId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/courses/[id]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/discover', entry: 'next-page', surface: 'public', public: true },
+  { pattern: '/s/[handle]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/event/[eventId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/form/[formId]', entry: 'next-page', surface: 'public', public: true },
   // THE-303 — the church's own giving page, public by construction. The URL

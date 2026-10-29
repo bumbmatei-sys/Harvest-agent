@@ -1226,7 +1226,8 @@ describe("the admin shell's container is unchanged", () => {
       // all check `manageEvents` server-side. A NEW name appearing in this list
       // would be a roles-matrix row no rule enforces — which is exactly what
       // this multiset exists to catch.
-      'manageCommunity', 'manageDocs', 'manageEvents', 'manageEvents', 'manageForms',
+      // #557 checks forms permission for the sign-up pages nav and rendering.
+      'manageCommunity', 'manageDocs', 'manageEvents', 'manageEvents', 'manageForms', 'manageForms', 'manageForms',
       'manageFundraising', 'manageGivingStatements', 'manageGivingStatements',
       'manageLivestream', 'manageNewsletter', 'manageQR', 'manageQR',
       'manageSettings', 'manageSms', 'modifyChurches', 'uploadRag',
