@@ -109,13 +109,22 @@ interface SlashState {
 }
 
 function createSlashExtension(ctrl: { current: SlashState | null }, sync: (state: SlashState | null) => void, hooks: SlashHooks) {
+  // Escape dismisses the suggestion, not just its React menu. A fresh slash
+  // key re-arms it; query edits, cursor moves and backspace do not.
+  let dismissed = false;
   return Extension.create({
     name: 'slashMenu',
+    addKeyboardShortcuts() {
+      return {
+        '/': () => { dismissed = false; return false; },
+      };
+    },
     addProseMirrorPlugins() {
       return [
         Suggestion<SlashItem>({
           editor: this.editor,
           char: '/',
+          allow: () => !dismissed,
           items: ({ query }) => {
             const q = query.trim().toLowerCase();
             return SLASH_ITEMS.filter((i) => i.title.toLowerCase().includes(q));
@@ -123,6 +132,7 @@ function createSlashExtension(ctrl: { current: SlashState | null }, sync: (state
           command: ({ editor, range, props }) => props.run(editor, range, hooks),
           render: () => {
             const update = (props: SuggestionProps<SlashItem>) => {
+              if (dismissed) return;
               const state: SlashState = {
                 items: props.items,
                 index: 0,
@@ -135,7 +145,10 @@ function createSlashExtension(ctrl: { current: SlashState | null }, sync: (state
             return {
               onStart: update,
               onUpdate: update,
-              onKeyDown: ({ event }: SuggestionKeyDownProps) => handleSlashKey(event, ctrl, sync),
+              onKeyDown: ({ event }: SuggestionKeyDownProps) => {
+                if (event.key === 'Escape' && ctrl.current) dismissed = true;
+                return handleSlashKey(event, ctrl, sync);
+              },
               onExit: () => {
                 ctrl.current = null;
                 sync(null);

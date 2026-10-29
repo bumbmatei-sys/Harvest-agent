@@ -13,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   BOX_DEFAULTS,
   BOX_TINTS,
-  blockText,
   boxAttrs,
   boxTintBase,
   safeBlockUrl,
@@ -136,19 +135,10 @@ const VARIANT_OPTIONS: readonly Option<BoxVariant>[] = [
 ];
 
 function BoxView({ node, updateAttributes, selected }: NodeViewProps) {
-  const attrs = boxAttrs(rawFromNode(node.attrs));
-
-  const commit = (next: Partial<BoxAttrs>) => {
-    updateAttributes(boxAttrs({
-      label: next.label ?? attrs.label,
-      title: next.title ?? attrs.title,
-      blurb: next.blurb ?? attrs.blurb,
-      buttonText: next.buttonText ?? attrs.buttonText,
-      buttonUrl: next.buttonUrl ?? attrs.buttonUrl,
-      tint: next.tint ?? attrs.tint,
-      variant: next.variant ?? attrs.variant,
-    }) as unknown as Record<string, unknown>);
-  };
+  // Parsing and serialization validate these attributes. Keep the live values
+  // raw so a space at the end of a keystroke survives the next one.
+  const attrs = node.attrs as BoxAttrs;
+  const commit = (next: Partial<BoxAttrs>) => updateAttributes(next);
 
   const urlOk = attrs.buttonUrl === '' || safeBlockUrl(attrs.buttonUrl) !== '';
   const tint = swatchColor(attrs.tint);
@@ -221,23 +211,23 @@ function BoxFields({ attrs, commit, urlOk }: {
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="box-label">Label</Label>
-        <Input id="box-label" value={attrs.label} onChange={(e) => commit({ label: blockText(e.target.value, 120) })} placeholder="Give" />
+        <Input id="box-label" value={attrs.label} maxLength={120} onChange={(e) => commit({ label: e.target.value })} placeholder="Give" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="box-title">Title</Label>
-        <Input id="box-title" value={attrs.title} onChange={(e) => commit({ title: blockText(e.target.value) })} placeholder="Sunday supper" />
+        <Input id="box-title" value={attrs.title} maxLength={400} onChange={(e) => commit({ title: e.target.value })} placeholder="Sunday supper" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="box-blurb">Blurb</Label>
-        <Textarea id="box-blurb" value={attrs.blurb} onChange={(e) => commit({ blurb: blockText(e.target.value, 1000) })} placeholder="Bring a friend." rows={3} />
+        <Textarea id="box-blurb" value={attrs.blurb} maxLength={1000} onChange={(e) => commit({ blurb: e.target.value })} placeholder="Bring a friend." rows={3} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="box-button-text">Button text</Label>
-        <Input id="box-button-text" value={attrs.buttonText} onChange={(e) => commit({ buttonText: blockText(e.target.value, 120) })} placeholder="Reserve a seat" />
+        <Input id="box-button-text" value={attrs.buttonText} maxLength={120} onChange={(e) => commit({ buttonText: e.target.value })} placeholder="Reserve a seat" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="box-button-url">Button link</Label>
-        <Input id="box-button-url" value={attrs.buttonUrl} onChange={(e) => commit({ buttonUrl: blockText(e.target.value, 600) })} placeholder="https://" aria-invalid={!urlOk} />
+        <Input id="box-button-url" value={attrs.buttonUrl} maxLength={600} onChange={(e) => commit({ buttonUrl: e.target.value })} placeholder="https://" aria-invalid={!urlOk} />
         {!urlOk && <p className="text-sm text-danger">Use an https:// link.</p>}
       </div>
       <div className="flex flex-col gap-1.5">
@@ -249,7 +239,7 @@ function BoxFields({ attrs, commit, urlOk }: {
               value={t.key}
               aria-label={t.label}
               title={t.label}
-              className={cn('size-11 min-w-11 rounded-full border-2 sm:size-[38px] sm:min-w-[38px]', TAP, attrs.tint === t.key ? 'border-strong ring-2 ring-brand' : 'border-line')}
+              className={cn('size-11 min-w-11 rounded-full border-2 after:hidden sm:size-[38px] sm:min-w-[38px]', TAP, attrs.tint === t.key ? 'border-strong ring-2 ring-brand' : 'border-line')}
               style={{ background: swatchColor(t.key) }}
             />
           ))}

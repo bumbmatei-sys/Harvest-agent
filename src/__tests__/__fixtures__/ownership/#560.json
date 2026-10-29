@@ -55,6 +55,11 @@
       "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
       "digest": "b121ed71409f6e1887f5e21140738e8381fff94805126fa75d22be5dccda3101",
       "why": "PR #560 merged with main #557: retain main's /s/[handle] analytics route coverage alongside 64293d6's /dev/email-themes preview checks. The preview must still call notFound in production and remain outside public analytics; all route assertions are preserved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "69bdd5fad9ef478bfd786d4d929057c3d1cff13b3fb2ad526bbf358cdc2d5470",
+      "why": "PR #560 r2 records the Box swatches hiding the radio primitive's extra hit slop so their targets cannot overlap. Only the existing Box adopter explanation changed; every adopter, primitive digest, assertion and prior accepted ownership digest is preserved."
     }
   ]
 }

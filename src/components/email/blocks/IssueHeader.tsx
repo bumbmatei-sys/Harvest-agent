@@ -11,7 +11,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch';
 import {
   ISSUE_HEADER_DEFAULTS,
-  blockText,
   issueHeaderAttrs,
   safeBlockUrl,
   type IssueAlign,
@@ -120,18 +119,10 @@ const ALIGN_OPTIONS: readonly Option<IssueAlign>[] = [
 ];
 
 function IssueHeaderView({ node, updateAttributes, selected }: NodeViewProps) {
-  const attrs = issueHeaderAttrs(rawFromNode(node.attrs));
-
-  const commit = (next: Partial<IssueHeaderAttrs>) => {
-    updateAttributes(issueHeaderAttrs({
-      title: next.title ?? attrs.title,
-      subtitle: next.subtitle ?? attrs.subtitle,
-      size: next.size ?? attrs.size,
-      align: next.align ?? attrs.align,
-      reading: (next.readingTime ?? attrs.readingTime) ? 'true' : 'false',
-      readOnline: next.readOnline ?? attrs.readOnline,
-    }) as unknown as Record<string, unknown>);
-  };
+  // Parsing and serialization validate these attributes. Keep the live values
+  // raw so a space at the end of a keystroke survives the next one.
+  const attrs = node.attrs as IssueHeaderAttrs;
+  const commit = (next: Partial<IssueHeaderAttrs>) => updateAttributes(next);
 
   const urlOk = attrs.readOnline === '' || safeBlockUrl(attrs.readOnline) !== '';
 
@@ -183,11 +174,11 @@ function IssueHeaderFields({ attrs, commit, urlOk }: {
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="issue-title">Title</Label>
-        <Input id="issue-title" value={attrs.title} onChange={(e) => commit({ title: blockText(e.target.value) })} placeholder="This Sunday" />
+        <Input id="issue-title" value={attrs.title} maxLength={400} onChange={(e) => commit({ title: e.target.value })} placeholder="This Sunday" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="issue-subtitle">Subtitle</Label>
-        <Input id="issue-subtitle" value={attrs.subtitle} onChange={(e) => commit({ subtitle: blockText(e.target.value, 600) })} placeholder="Why we gather" />
+        <Input id="issue-subtitle" value={attrs.subtitle} maxLength={600} onChange={(e) => commit({ subtitle: e.target.value })} placeholder="Why we gather" />
       </div>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
@@ -210,7 +201,7 @@ function IssueHeaderFields({ attrs, commit, urlOk }: {
       {attrs.readOnline !== '' && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="issue-online-url">Web address</Label>
-          <Input id="issue-online-url" value={attrs.readOnline} onChange={(e) => commit({ readOnline: blockText(e.target.value, 600) })} placeholder="https://" aria-invalid={!urlOk} />
+          <Input id="issue-online-url" value={attrs.readOnline} maxLength={600} onChange={(e) => commit({ readOnline: e.target.value })} placeholder="https://" aria-invalid={!urlOk} />
           {!urlOk && <p className="text-sm text-danger">Use an https:// link.</p>}
         </div>
       )}

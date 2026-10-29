@@ -1,3 +1,5 @@
+import { act } from 'react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BodyEditor } from '@/components/email/BodyEditor';
@@ -47,6 +49,41 @@ describe('the "/" menu', () => {
     expect(titles).toContain('Heading 1');
   });
 
+  it('Escape stays dismissed through query edits and cursor moves until a new slash is typed', async () => {
+    await typeSlash(vi.fn());
+    expect(menu()).toBeTruthy();
+    const el = editable();
+    const key = async (value: string) => {
+      await act(async () => { el.dispatchEvent(new KeyboardEvent('keydown', { key: value, bubbles: true })); });
+      await settle();
+    };
+    const edit = async (value: string) => {
+      await act(async () => { need(el.querySelector('p'), 'paragraph').textContent = value; });
+      await settle();
+    };
+    await key('Escape');
+    expect(document.querySelector('[role=listbox]')).toBeNull();
+    // Keep a matching query: without the dismissal this reopens the Box result.
+    await key('b');
+    await edit('hello /b');
+    expect(document.querySelector('[role=listbox]')).toBeNull();
+    await key('Backspace');
+    await edit('hello /');
+    expect(document.querySelector('[role=listbox]')).toBeNull();
+    await key('ArrowLeft');
+    await key('ArrowRight');
+    expect(document.querySelector('[role=listbox]')).toBeNull();
+    // Even leaving and returning to the original match must not re-arm it.
+    await edit('hello /b ');
+    await edit('hello /b');
+    expect(document.querySelector('[role=listbox]')).toBeNull();
+    await edit('hello /b ');
+    await key('/');
+    await edit('hello /b /');
+    expect(menu()).toBeTruthy();
+    expect(item('Box')).toBeTruthy();
+  });
+
   it('picking Issue header inserts the block and consumes the slash', async () => {
     const onChange = vi.fn();
     await typeSlash(onChange);
@@ -72,6 +109,46 @@ describe('the "/" menu', () => {
     await click(swatch);
     await settle();
     expect(onChange.mock.calls.at(-1)?.[0]).toContain('data-tint="warm"');
+  });
+});
+
+describe('block fields preserve spaces while typing', () => {
+  it.each([
+    ['box', 'Box options', 'box-label', 'data-label'],
+    ['box', 'Box options', 'box-title', 'data-title'],
+    ['box', 'Box options', 'box-blurb', 'data-blurb'],
+    ['box', 'Box options', 'box-button-text', 'data-button-text'],
+    ['box', 'Box options', 'box-button-url', 'data-button-url'],
+    ['issue-header', 'Issue header options', 'issue-title', 'data-title'],
+    ['issue-header', 'Issue header options', 'issue-subtitle', 'data-subtitle'],
+    ['issue-header', 'Issue header options', 'issue-online-url', 'data-read-online'],
+  ])('%s: %s / %s keeps word boundaries in the input and saved HTML', async (block, options, id, attribute) => {
+    const onChange = vi.fn();
+    await mount(<BodyEditor html={`<div data-hv-block="${block}"></div><p></p>`} onChange={onChange} />);
+    await settle();
+    await click(need(byName('button', options), 'block settings'));
+    if (attribute === 'data-read-online') {
+      await click(need(document.querySelector<HTMLElement>('#issue-online'), 'online toggle'));
+      await flush();
+    }
+    const field = need(document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null, id);
+    const user = userEvent.setup();
+    await act(async () => { await user.click(field); field.select(); });
+    // userEvent.type delivers each character separately, including the space.
+    await act(async () => { await user.type(field, 'Sunday supper', { skipClick: true }); });
+    expect(field.value).toBe('Sunday supper');
+    await act(async () => { await user.type(field, ' '); });
+    expect(field.value).toBe('Sunday supper ');
+    const saved = need(onChange.mock.calls.at(-1), 'serialized update')[0] as string;
+    const stored = new DOMParser().parseFromString(saved, 'text/html');
+    expect(need(stored.querySelector(`[data-hv-block="${block}"]`), 'stored block').getAttribute(attribute)).toBe('Sunday supper');
+    if (attribute === 'data-title') {
+      const out = renderEmail({
+        design: DEFAULT_EMAIL_DESIGN, preheader: '', churchName: 'Grace', mailingAddress: '1 Main St',
+        unsubscribeUrl: 'https://x.org/u', firstName: 'Ana', senderName: 'Grace', themeId: 'letter', bodyHtml: saved,
+      }).html;
+      expect(out).toContain('Sunday supper');
+    }
   });
 });
 
