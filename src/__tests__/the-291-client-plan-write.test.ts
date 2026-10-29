@@ -630,8 +630,12 @@ describe('5 · the money path is byte-identical', () => {
     const signupRoutes = ['route.ts', 'submit/route.ts', 'public/[handle]/route.ts', '[pageId]/export/route.ts', '[pageId]/submissions/route.ts'].map(suffix => `src/app/api/signup-pages/${suffix}`);
     for (const route of signupRoutes) expect(routes).toContain(route);
     // Community join/leave only write membership records; plan writers remain pinned.
-    const membershipRoutes = ['join', 'leave'].map(action => `src/app/api/community/${action}/route.ts`);
-    for (const route of membershipRoutes) expect(routes).toContain(route);
+    // #561 adds owner/self erasure of CRM data and onboarding; it grants no plan entitlement.
+    const membershipRoutes = ['join', 'leave', 'delete-data'].map(action => `src/app/api/community/${action}/route.ts`);
+    for (const route of membershipRoutes) {
+      expect(routes).toContain(route);
+      expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);
+    }
     expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route) && !membershipRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),

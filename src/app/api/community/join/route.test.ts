@@ -8,9 +8,15 @@ const fx = vi.hoisted(() => ({
   docs: {} as Record<string, Record<string, unknown>>,
   failRead: '', failWrite: false,
 }));
-type Ref = { path: string; collection: (id: string) => { doc: (id: string) => Ref } };
+type Ref = { path: string; id: string; field?: string; op?: string; value?: unknown; collection: (id: string) => Ref; doc: (id: string) => Ref; where: (field: string, op: string, value: unknown) => Ref; get: () => Promise<any> };
+function read(reference: Ref): any {
+  if (fx.failRead === reference.path) throw new Error('Read unavailable');
+  if (reference.field || reference.path.split('/').length % 2 === 1) return { docs: Object.entries(fx.docs).filter(([path, data]) => path.startsWith(reference.path + '/') && path.split('/').length === reference.path.split('/').length + 1 && (!reference.field || (reference.op === 'array-contains' ? Array.isArray(data[reference.field!]) && (data[reference.field!] as unknown[]).includes(reference.value) : data[reference.field!] === reference.value))).map(([path]) => read(ref(path))) };
+  return { id: reference.id, ref: reference, exists: !!fx.docs[reference.path], data: () => fx.docs[reference.path] };
+}
 function ref(path: string): Ref {
-  return { path, collection: id => ({ doc: key => ref(`${path}/${id}/${key}`) }) };
+  const result: Ref = { path, id: path.split('/').at(-1)!, collection: id => ref(`${path}/${id}`), doc: id => ref(`${path}/${id}`), where: (field, op, value) => ({ ...ref(path), field, op, value }), get: async function () { return read(this); } };
+  return result;
 }
 // Firestore merge:true recursively retains map keys, including the pending
 // marker. Model that behavior so the rejoin test catches accidental map merges.
@@ -27,15 +33,17 @@ function mergeDocument(old: Record<string, unknown>, next: Record<string, unknow
 vi.mock('@/lib/api-auth', () => ({ requireAuth: fx.auth }));
 vi.mock('@/lib/community-contact', () => ({ upsertCommunityContact: fx.contact }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
-  collection: (name: string) => ({ doc: (id: string) => ref(`${name}/${id}`) }),
+  collection: (name: string) => ref(name),
   runTransaction: async (fn: (tx: unknown) => Promise<void>) => {
     const pending: Array<{ ref: Ref; data: Record<string, unknown>; merge: boolean }> = [];
     await fn({
       get: async (reference: Ref) => {
         if (pending.length) throw new Error('Transaction reads must precede writes');
         if (fx.failRead === reference.path) throw new Error('Read unavailable');
-        return { exists: !!fx.docs[reference.path], data: () => fx.docs[reference.path] };
+        return read(reference);
       },
+      delete: (reference: Ref) => pending.push({ ref: reference, data: { __delete: true }, merge: false }),
+      update: (reference: Ref, data: Record<string, unknown>) => pending.push({ ref: reference, data, merge: true }),
       set: (reference: Ref, data: Record<string, unknown>, options?: { merge: boolean }) => {
         pending.push({ ref: reference, data, merge: options?.merge === true });
       },
@@ -43,15 +51,20 @@ vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
     if (fx.failWrite) throw new Error('Write unavailable');
     for (const write of pending) {
       fx.writes(write.ref.path, write.data);
+      if (write.data.__delete) { delete fx.docs[write.ref.path]; continue; }
       fx.docs[write.ref.path] = write.merge ? mergeDocument(fx.docs[write.ref.path] ?? {}, write.data) : write.data;
     }
   },
 } }));
 import { POST as join } from './route';
 import { POST as leave } from '../leave/route';
+import { POST as erase } from '../delete-data/route';
+import { firestoreEmailStore } from '@/lib/email/firestore-store';
+import { resolveAudience } from '@/lib/email/audience';
+import { tenantEmailBlocked } from '@/lib/community-privacy';
 const memberPath = 'tenants/target/communityMembers/person';
 const indexPath = 'users/person/memberships/target';
-const joinBody = { tenantId: 'target', source: 'discover', consent: true };
+const joinBody = { tenantId: 'target', source: 'discover', consent: true, acceptedConsentVersion: 2 };
 function request(body: unknown) { return new NextRequest('http://localhost/api/community/join', { method: 'POST', body: JSON.stringify(body) }); }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -99,6 +112,7 @@ describe('join and leave API', () => {
     { answers: [] }, { answers: { q: false } }, { answers: { q: 'a'.repeat(4001) } },
     { answers: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [i, 'x'])) },
     { uid: 'victim' }, { joinedAt: 'forged' }, { status: 'active' },
+    { consentScope: 'forged' }, { consentVersion: 1 }, { acceptedConsentVersion: 1 }, { acceptedConsentVersion: undefined },
   ])('rejects invalid or forged join input %j', async invalid => {
     expect((await join(request({ ...joinBody, ...invalid }))).status).toBe(400);
     expect(fx.writes).not.toHaveBeenCalled();
@@ -122,6 +136,8 @@ describe('join and leave API', () => {
     expect(member).toMatchObject({ uid: 'person', tenantId: 'target', status: 'active', source: 'discover', leftAt: null, answers: { q: 'yes' }, rulesAcceptedVersion: 2 });
     expect(member.joinedAt).toBeInstanceOf(Timestamp);
     expect(member.consentAt).toEqual(member.joinedAt);
+    expect(member.consentScope).toBe('owner_contact_and_view_name_email_answers');
+    expect(member.consentVersion).toBe(2);
     expect(member.updatedAt).toEqual(member.joinedAt);
     expect(fx.docs[indexPath]).toEqual({ tenantId: 'target', status: 'active', joinedAt: member.joinedAt, leftAt: null });
     expect(fx.writes.mock.calls.map(call => call[0])).toEqual([memberPath, indexPath]);
@@ -253,5 +269,92 @@ describe('join and leave API', () => {
     expect(fx.contact).toHaveBeenCalledTimes(2);
     expect(fx.writes).not.toHaveBeenCalled();
     expect(fx.docs[memberPath]).toEqual(saved);
+  });
+});
+
+describe('departure privacy', () => {
+  beforeEach(async () => {
+    await join(request(joinBody));
+    fx.docs['users/person'].email = ' MEMBER@Example.org ';
+    fx.docs['contacts/linked'] = { tenantId: 'target', communityUserId: 'person', email: 'member@example.org', emailStatus: 'subscribed', notes: 'private' };
+    fx.docs['contacts/duplicate'] = { tenantId: 'target', email: ' MEMBER@example.org ', emailStatus: 'subscribed' };
+    fx.docs['contacts/foreign'] = { tenantId: 'foreign', communityUserId: 'person', email: 'member@example.org', emailStatus: 'subscribed' };
+    fx.docs['tenants/target/channels/private'] = { members: ['person', 'other'], audience: 'selected' };
+    fx.docs['tenants/target/channels/all'] = { members: ['person'], audience: 'all' };
+    fx.docs['tenants/foreign/channels/private'] = { members: ['person'] };
+  });
+  it('blocks email and removes all channel rosters atomically even if CRM repair fails', async () => {
+    fx.contact.mockRejectedValueOnce(new Error('CRM offline'));
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(503);
+    expect(fx.docs[memberPath].status).toBe('left');
+    expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'left', emailStatus: 'unsubscribed', communityLeftAt: fx.docs[memberPath].leftAt });
+    expect(fx.docs['contacts/duplicate'].emailStatus).toBe('unsubscribed');
+    expect(fx.docs['contacts/foreign'].emailStatus).toBe('subscribed');
+    expect(await tenantEmailBlocked('target', ' Member@EXAMPLE.org ')).toBe(true);
+    expect(await tenantEmailBlocked('foreign', 'member@example.org')).toBe(false);
+    expect(fx.docs['tenants/target/channels/private'].members).toEqual(['other']);
+    expect(fx.docs['tenants/target/channels/all'].members).toEqual([]);
+    expect(fx.docs['tenants/foreign/channels/private'].members).toEqual(['person']);
+    expect((await join(request(joinBody))).status).toBe(200);
+    expect(fx.docs['tenants/target/channels/private'].members).toEqual(['other']);
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(true);
+  });
+  it('excludes left members and duplicates from the real newsletter store and audience', async () => {
+    fx.docs['contacts/allowed'] = { tenantId: 'target', email: 'allowed@example.org', emailStatus: 'subscribed' };
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(200);
+    // Even a stale server-side opt-in cannot override the left marker.
+    fx.docs['contacts/linked'].emailStatus = 'subscribed';
+    const contacts = await firestoreEmailStore.listContacts('target');
+    expect(contacts.find(contact => contact.id === 'linked')?.status).toBe('unsubscribed');
+    const suppressed = await firestoreEmailStore.listSuppressed('target');
+    expect(suppressed.has('member@example.org')).toBe(true);
+    expect(resolveAudience(contacts, [], suppressed).recipients.map(contact => contact.email)).toEqual(['allowed@example.org']);
+    delete fx.docs['contacts/linked']; delete fx.docs['contacts/duplicate'];
+    fx.docs['contacts/reimported'] = { tenantId: 'target', email: 'member@example.org', emailStatus: 'subscribed' };
+    expect(resolveAudience(await firestoreEmailStore.listContacts('target'), [], await firestoreEmailStore.listSuppressed('target')).recipients.map(contact => contact.email)).toEqual(['allowed@example.org']);
+  });
+  it('rolls back membership when channel/contact reads or writes fail', async () => {
+    for (const path of ['contacts', 'tenants/target/channels']) {
+      fx.failRead = path;
+      expect((await leave(request({ tenantId: 'target' }))).status).toBe(503);
+      expect(fx.docs[memberPath].status).toBe('active');
+    }
+    fx.failRead = ''; fx.failWrite = true;
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(503);
+    expect(fx.docs[memberPath].status).toBe('active');
+    expect(fx.docs['contacts/linked'].emailStatus).toBe('subscribed');
+  });
+  it.each(['member', 'owner'])('allows the %s to erase CRM and answers without restoring access or email', async actor => {
+    fx.docs['contactActivities/one'] = { tenantId: 'target', contactId: 'linked', description: 'private' };
+    fx.docs['contactActivities/foreign'] = { tenantId: 'foreign', contactId: 'linked' };
+    fx.docs['invoices/gift'] = { tenantId: 'target', amount: 100 };
+    if (actor === 'owner') fx.auth.mockResolvedValue({ uid: 'owner' });
+    expect((await erase(request({ tenantId: 'target', uid: 'person' }))).status).toBe(200);
+    expect(fx.docs['contacts/linked']).toBeUndefined();
+    expect(fx.docs['contactActivities/one']).toBeUndefined();
+    expect(fx.docs['contacts/foreign']).toBeDefined();
+    expect(fx.docs['contactActivities/foreign']).toBeDefined();
+    expect(fx.docs['invoices/gift']).toEqual({ tenantId: 'target', amount: 100 });
+    expect(fx.docs[memberPath]).toMatchObject({ status: 'left', dataDeletedAt: expect.any(Timestamp) });
+    expect(fx.docs[memberPath]).not.toHaveProperty('answers');
+    expect(fx.docs[memberPath]).not.toHaveProperty('consentAt');
+    expect(fx.docs[indexPath]).toBeUndefined();
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(true);
+    expect((await erase(request({ tenantId: 'target', uid: 'person' }))).status).toBe(200);
+  });
+  it('rejects other members, foreign owners and staff, regardless of token admin claims', async () => {
+    for (const uid of ['outsider', 'foreign-owner', 'staff']) {
+      fx.auth.mockResolvedValue({ uid, tenantId: 'target', isAdmin: true, isSuperAdmin: true });
+      expect((await erase(request({ tenantId: 'target', uid: 'person' }))).status).toBe(403);
+      expect(fx.docs['contacts/linked']).toBeDefined();
+    }
+  });
+  it('does not claim deletion succeeded when reads or writes fail', async () => {
+    fx.failRead = 'contactActivities';
+    expect((await erase(request({ tenantId: 'target' }))).status).toBe(503);
+    expect(fx.docs['contacts/linked']).toBeDefined();
+    fx.failRead = ''; fx.failWrite = true;
+    expect((await erase(request({ tenantId: 'target' }))).status).toBe(503);
+    expect(fx.docs['contacts/linked']).toBeDefined();
   });
 });

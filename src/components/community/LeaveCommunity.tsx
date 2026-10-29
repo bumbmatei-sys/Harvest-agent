@@ -22,7 +22,7 @@ export function LeaveCommunity({ name, onLeave, isAdmin = false, initiallyOpen =
     <AlertDialog.Portal><AlertDialog.Backdrop className="fixed inset-0 z-[101] bg-background/80" />
       <AlertDialog.Popup className="fixed left-1/2 top-1/2 z-[102] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-xl border border-line bg-surface-raised p-6 text-strong shadow-lg">
         <AlertDialog.Title className="font-display text-xl font-semibold">Leave {name}?</AlertDialog.Title>
-        <AlertDialog.Description className="text-sm text-body">You will lose access to this community. The owner keeps your contact record and the date you left.</AlertDialog.Description>
+        <AlertDialog.Description className="text-sm text-body">You will lose access to this community. The owner keeps your contact record and the date you left, but cannot email you through Harvest. You can delete your community contact data from your account settings.</AlertDialog.Description>
         {error && <p role="alert" className="text-destructive">{error}</p>}
         <div className="flex justify-end gap-2"><AlertDialog.Close render={<Button variant="outline" className="min-h-11" disabled={saving} />}>Cancel</AlertDialog.Close><Button className="min-h-11" disabled={saving} onClick={leave}>{saving ? 'Leaving…' : 'Confirm leave'}</Button></div>
       </AlertDialog.Popup>

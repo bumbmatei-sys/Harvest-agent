@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/firebase';
 import { TenantProvider } from '@/contexts/TenantContext';
 import { useAppStore } from '@/store/useAppStore';
-import { isActiveMember, isCommunityTenantId } from '@/lib/community-membership';
+import { COMMUNITY_CONSENT_VERSION, isActiveMember, isCommunityTenantId } from '@/lib/community-membership';
 import { readCommunitySettings, type CommunitySettings } from '@/lib/community/settings';
 import { communityHref, communityPath, communitySource } from '@/lib/community/navigation';
 import { membershipRequest } from '@/lib/community/membership-request';
@@ -64,7 +64,7 @@ export function CommunityMemberPage() {
   if (!state) return <p role="status" className="p-6">Loading community…</p>;
   const enter = () => { setEntering(true); navigate(communityPath(tenantId), { replace: true }); };
   const join = async (answers?: Record<string, string>) => {
-    await membershipRequest('join', { tenantId, source: communitySource(location.search), consent: true,
+    await membershipRequest('join', { tenantId, source: communitySource(location.search), consent: true, acceptedConsentVersion: COMMUNITY_CONSENT_VERSION,
       ...(state.settings.rules.enabled ? { rulesAcceptedVersion: state.settings.rules.version } : {}),
       ...(answers ? { answers } : {}),
     });

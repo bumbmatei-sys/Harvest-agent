@@ -30,7 +30,7 @@ describe('community membership model', () => {
   it('builds a complete member with supplied server time and consent', () => {
     expect(buildCommunityMember({ uid: 'u', tenantId: 't', source: 'website', now: 'server-time', rulesAcceptedVersion: 2, answers: { q: 'Yes' } })).toEqual({
       uid: 'u', tenantId: 't', source: 'website', status: 'active', joinedAt: 'server-time',
-      leftAt: null, consentAt: 'server-time', updatedAt: 'server-time',
+      leftAt: null, consentAt: 'server-time', updatedAt: 'server-time', consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2,
       rulesAcceptedVersion: 2, answers: { q: 'Yes' }, answeredAt: 'server-time',
     });
   });

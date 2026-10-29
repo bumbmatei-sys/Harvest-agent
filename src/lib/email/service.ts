@@ -157,6 +157,8 @@ export interface EmailStore {
   purgeExpiredFeedbackEvents(nowIso: string): Promise<number>;
   /** Addresses that opted out, bounced or complained. Survives the CRM person being deleted. */
   listSuppressed(tenantId: string): Promise<ReadonlySet<string>>;
+  /** Recheck immediately before delivery: leave/opt-out may follow audience resolution. */
+  isSuppressedNow(tenantId: string, email: string): Promise<boolean>;
   listBroadcasts(tenantId: string): Promise<readonly Broadcast[]>;
   /** CRM people (`contacts`) for this ministry, with their email status. One list. */
   listContacts(tenantId: string): Promise<readonly EmailContact[]>;
@@ -474,6 +476,8 @@ export function createEmailService(deps: {
         const [index, person] = next;
         const firstName = person.name.split(/\s+/)[0] ?? '';
         try {
+          if (await store.isSuppressedNow(broadcast.tenantId, person.email)) continue;
+          if (clockMs() >= deadline) continue;
           const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: broadcast.tenantId, email: person.email, broadcastId: broadcast.id }));
           const { html, text } = renderEmail({
             design: broadcast.design,

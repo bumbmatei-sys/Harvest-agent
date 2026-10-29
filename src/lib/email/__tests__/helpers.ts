@@ -158,6 +158,7 @@ export function memoryStore(seed: {
     async purgeExpiredFeedbackEvents() { const n = feedbackEvents.size; feedbackEvents.clear(); return n; },
     async getDomainOwner(domain) { return domainOwners.get(domain) ?? null; },
     async listSuppressed() { return suppressedEmails; },
+    async isSuppressedNow(_t, email) { return suppressedEmails.has(email); },
     async listBroadcasts() { return [...broadcasts.values()]; },
     async listContacts() { return [...contacts.values()]; },
     async createContacts(_t, rows) {

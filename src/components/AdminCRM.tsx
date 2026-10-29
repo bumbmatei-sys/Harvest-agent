@@ -1,4 +1,5 @@
 "use client";
+import { DeleteCommunityData } from './community/DeleteCommunityData';
 import { CommunityContactBadge } from './community/CommunityContactBadge';
 import { OnboardingAnswers } from './community/OnboardingAnswers';
 
@@ -1096,6 +1097,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           'Removing yourself would lock you out of this church, and you may be the only '
           + 'admin left in it. Another admin can change your role on the Roles tab.',
       }
+    : deleteTarget.communityUserId ? {
+        title: 'Delete community contact data',
+        body: 'The community owner can use Delete community contact data in this contact’s detail to remove the contact and onboarding answers together. The member can also do this from their account settings.',
+      }
     : deleteTarget.accountOnly ? {
         title: `${[deleteTarget.firstName, deleteTarget.lastName].filter(Boolean).join(' ') || 'This person'} has an app account`,
         body:
@@ -1896,6 +1901,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div className="min-w-0">
               <h2 className="text-2xl font-black text-strong leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
               <CommunityContactBadge contact={selected} />
+              {selected.communityUserId && tenantId && <DeleteCommunityData tenantId={tenantId} uid={selected.communityUserId} onDeleted={async () => { await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] }); await queryClient.invalidateQueries({ queryKey: ['crmCounts', tenantId] }); setSelected(null); setView('list'); }} />}
               {selected.communityUserId && tenantId && <OnboardingAnswers tenantId={tenantId} uid={selected.communityUserId} />}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span data-testid="crm-type-badge" className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${typeColor(selected.type)}`}>

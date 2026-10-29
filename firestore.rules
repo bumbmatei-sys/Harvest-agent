@@ -315,7 +315,9 @@ service cloud.firestore {
     // Email-only roster/platform admins are recognised as CALLERS through
     // isTenantAdmin and their token email, never as counterparts by profile email.
     // Never trust participantRoles from the creator.
-    // Bind the nullable document before reading its fields: exists()+get() can
+    // Missing documents must deny this branch; the guard below does not grant
+    // access on a failed get(). Unlike the legacy membership fallback, this
+    // branch needs no alternate grant when the document is missing. exists()+get() can
     // cost two access calls even on the same path. Membership adds a sixth
     // distinct document to a send; the full DM access-call budget is below.
     function uidIsTenantAdmin(uid, tenantId) {
@@ -885,7 +887,7 @@ service cloud.firestore {
       // thread get = 1. Thus directMessages create/update <= 8; read/delete <= 7.
       // dmMessages create <= 9; read/update/delete <= 8, including a failed
       // moderator branch. Six distinct docs is NOT necessarily six calls:
-      // exists() before get() can consume two. Missing docs are null-guarded.
+      // exists() before get() can consume two. A missing get() denies this branch.
       match /directMessages/{dmId} {
         allow read: if canModerateDMs(tenantId) || (isActiveCommunityMember(tenantId) &&
           request.auth.uid in resource.data.get('participants', []));
@@ -1087,7 +1089,7 @@ service cloud.firestore {
 
     function communityContactKeys() {
       return ['communityUserId', 'communitySource', 'communityStatus',
-              'communityJoinedAt', 'communityLeftAt'];
+              'communityJoinedAt', 'communityLeftAt', 'consentAt', 'consentScope', 'consentVersion'];
     }
     function contactCreateKeepsCommunity() {
       return !request.resource.data.keys().hasAny(communityContactKeys())
@@ -1104,7 +1106,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent() && contactCreateKeepsCommunity();
       allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent() && contactUpdateKeepsCommunity();
-      allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
+      // Community erasure must also remove onboarding answers through the server.
+      allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''))
+        && resource.data.get('communityUserId', '') == '';
     }
 
     match /contactActivities/{activityId} {

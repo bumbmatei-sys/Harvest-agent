@@ -1,3 +1,4 @@
+import { tenantEmailBlocked } from '@/lib/community-privacy';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
@@ -29,6 +30,12 @@ export async function POST(request: NextRequest) {
 
     if (!to || !subject || (!html && !text)) {
       return NextResponse.json({ error: 'Missing required fields: to, subject, and html or text' }, { status: 400 });
+    }
+
+    if (!userOrErr.tenantId) return NextResponse.json({ error: 'A ministry is required to send email.' }, { status: 403 });
+    if (typeof to !== 'string' || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(to.trim())) return NextResponse.json({ error: 'One recipient address is required.' }, { status: 400 });
+    if (await tenantEmailBlocked(userOrErr.tenantId, to)) {
+      return NextResponse.json({ error: 'This contact has opted out of email.', code: 'email_blocked' }, { status: 409 });
     }
 
     const resendKey = process.env.RESEND_API_KEY;

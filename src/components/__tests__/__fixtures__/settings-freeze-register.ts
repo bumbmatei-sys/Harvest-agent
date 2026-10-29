@@ -523,6 +523,12 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'still reads the plan it is handed.',
     digest: 'c9656aa334141dfd62c21bab9b092c91d1c5fe39c131a9d5b51cafcfe900a4fd',
   },
+  {
+    file: 'src/components/PersonalInformationModal.tsx',
+    ticket: '#561',
+    why: 'Adds the shadcn community data management entry to account settings, including former memberships, without changing profile, export, account deletion, password or sign-in behavior.',
+    digest: 'daf30b233b0e899abe0827e97384cb1d11c606e5e963478e2404c6422e256d1a',
+  },
 ];
 
 /** A ticket reference the register will accept. */

@@ -1,3 +1,5 @@
+import { tenantBlockedEmails, tenantAddressSuppressed } from '@/lib/community-privacy';
+import { normalizeEmail } from '@/lib/donation-history';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { Resend } from 'resend';
@@ -41,6 +43,9 @@ export async function POST(request: NextRequest) {
 
     const snapshot = await q.get();
 
+    // Resolve opt-outs before any delivery. A failed read must withhold email.
+    const blockedEmails = tenantId ? await tenantBlockedEmails(tenantId) : new Set<string>();
+
     // Collect all FCM tokens, plus the email of every non-opted-out user who
     // has no token at all (they get the announcement by email instead).
     const tokens: string[] = [];
@@ -58,12 +63,12 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(data.fcmTokens) && data.fcmTokens.length > 0) {
         tokens.push(...data.fcmTokens);
         userTokenMap.set(doc.id, data.fcmTokens);
-        if (email) {
+        if (email && !blockedEmails.has(normalizeEmail(email))) {
           uidEmail.set(doc.id, email);
           uidHasAnySuccess.set(doc.id, false);
           for (const token of data.fcmTokens) tokenOwner.set(token, doc.id);
         }
-      } else if (email) {
+      } else if (email && !blockedEmails.has(normalizeEmail(email))) {
         noTokenEmails.push(email);
       }
     });
@@ -165,6 +170,7 @@ export async function POST(request: NextRequest) {
       const uniqueEmails = Array.from(new Set(noTokenEmails));
       for (const to of uniqueEmails) {
         try {
+          if (tenantId && await tenantAddressSuppressed(tenantId, to)) continue;
           const { error } = await resend.emails.send({
             from: 'Harvest <noreply@theharvest.app>',
             to,

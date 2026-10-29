@@ -3,6 +3,7 @@ import { toSafeDate, type DateLike } from '@/utils/format-date';
 import type { CommunitySource, MembershipStatus } from '@/lib/community-membership';
 export type CommunityContactFields = {
   source?: string; communityUserId?: string; communitySource?: CommunitySource;
+  consentAt?: DateLike; consentScope?: string; consentVersion?: number;
   communityStatus?: MembershipStatus; communityJoinedAt?: DateLike; communityLeftAt?: DateLike;
 };
 const labels = { discover: 'Discover', link: 'Link', website: 'Website' };

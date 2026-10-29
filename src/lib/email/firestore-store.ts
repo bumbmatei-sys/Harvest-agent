@@ -268,6 +268,11 @@ export const firestoreEmailStore: EmailStore = {
     return typeof owner === 'string' ? owner : null;
   },
 
+  async isSuppressedNow(tenantId, email) {
+    const id = createHash('sha256').update(normalizeEmail(email)).digest('hex');
+    return (await tenantDoc(tenantId).collection(SUPPRESSIONS).doc(id).get()).exists;
+  },
+
   async listSuppressed(tenantId) {
     const snap = await tenantDoc(tenantId).collection(SUPPRESSIONS).get();
     return new Set(snap.docs.map((d) => d.data().email).filter((e): e is string => typeof e === 'string'));
@@ -293,7 +298,7 @@ export const firestoreEmailStore: EmailStore = {
         id: d.id,
         email,
         name: contactName(data),
-        status: readEmailStatus(data[EMAIL_STATUS_FIELD]),
+        status: data.communityStatus === 'left' ? 'unsubscribed' : readEmailStatus(data[EMAIL_STATUS_FIELD]),
         tags: Array.isArray(data.tags) ? (data.tags as unknown[]).filter((t): t is string => typeof t === 'string') : [],
         groups: [...kind, ...extra],
         source: typeof data[EMAIL_OPT_IN_SOURCE_FIELD] === 'string' ? (data[EMAIL_OPT_IN_SOURCE_FIELD] as string) : '',

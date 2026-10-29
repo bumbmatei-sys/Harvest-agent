@@ -49,6 +49,14 @@ describe('server community membership boundary', () => {
     await expect(isActiveCommunityMember('u', 'b')).rejects.toThrow('offline');
     expect((await requireCommunityMember(request(), 'b') as NextResponse).status).toBe(503);
   });
+  it('preserves the super admin grant without reading membership', async () => {
+    h.token.mockResolvedValue({ uid: 'u', tenantId: 'a', admin: true, superAdmin: true });
+    h.fail = true;
+    const result = await requireCommunityMember(request(), 'b');
+    expect(result).not.toBeInstanceOf(NextResponse);
+    expect(result).toMatchObject({ uid: 'u', isSuperAdmin: true });
+    expect(h.gets).toEqual([]);
+  });
   it('uses the transaction reader for an atomic membership recheck', async () => {
     const get = vi.fn(async (ref: { path: string }) => ({ data: () => ref.path.startsWith('users/') ? { tenantId: 'a' } : { status: 'left' } }));
     expect(await isActiveCommunityMember('u', 'b', { get } as unknown as FirebaseFirestore.Transaction)).toBe(false);

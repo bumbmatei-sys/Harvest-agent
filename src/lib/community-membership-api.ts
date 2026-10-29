@@ -4,8 +4,9 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { isTenantAdminRole } from '@/lib/roles';
-import { buildCommunityMember, isActiveMember, isCommunityTenantId, normaliseSource, type CommunityMember, type UserMembership } from './community-membership';
+import { COMMUNITY_CONSENT_VERSION, buildCommunityMember, isActiveMember, isCommunityTenantId, normaliseSource, type CommunityMember, type UserMembership } from './community-membership';
 import { readCommunitySettings, requiredQuestionsAnswered } from './community/settings';
+import { readCommunityDeparture, writeCommunityDeparture } from './community-privacy';
 import { upsertCommunityContact } from './community-contact';
 
 class MembershipError extends Error {
@@ -16,10 +17,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> => !!value &
 
 function parseBody(value: unknown, joining: boolean) {
   if (!isRecord(value) || !isCommunityTenantId(value.tenantId)) throw badRequest();
-  const allowed = joining ? ['tenantId', 'source', 'rulesAcceptedVersion', 'answers', 'consent'] : ['tenantId'];
+  const allowed = joining ? ['tenantId', 'source', 'rulesAcceptedVersion', 'answers', 'consent', 'acceptedConsentVersion'] : ['tenantId'];
   if (Object.keys(value).some(key => !allowed.includes(key))) throw badRequest();
   if (!joining) return { tenantId: value.tenantId };
   if (value.consent !== true) throw new MembershipError('Consent is required to join this community.', 400);
+  if (value.acceptedConsentVersion !== COMMUNITY_CONSENT_VERSION) throw new MembershipError('Read and accept the current community consent notice before joining.', 400);
   let source;
   try { source = normaliseSource(value.source); } catch { throw badRequest(); }
   const version = value.rulesAcceptedVersion;
@@ -86,8 +88,11 @@ export async function communityMembershipRequest(request: NextRequest, joining: 
             (user.email && Array.isArray(roster) && roster.some(email => typeof email === 'string' && email.toLowerCase() === user.email!.toLowerCase()))) {
           throw new MembershipError('Owners and admins cannot leave their own community.', 400);
         }
-        if (!isActiveMember(previous, profile, tenantId)) return;
-        const now = Timestamp.now();
+        if (!isActiveMember(previous, profile, tenantId) && previous?.status !== 'left') return;
+        const departure = await readCommunityDeparture(tx, tenantId, user.uid, profile?.email);
+        const now = previous?.status === 'left' && previous.leftAt ? previous.leftAt : Timestamp.now();
+        writeCommunityDeparture(tx, departure, user.uid, now);
+        if (previous?.status === 'left') return;
         tx.set(memberRef, { uid: user.uid, tenantId, status: 'left', leftAt: now, updatedAt: now }, { merge: true });
         const index: UserMembership<Timestamp> = { tenantId, status: 'left', joinedAt: previous?.joinedAt ?? null, leftAt: now };
         tx.set(indexRef, index);

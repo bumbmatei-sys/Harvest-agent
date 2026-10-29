@@ -11,6 +11,7 @@ const entry = { rulesAcceptedVersion: 1, answers: { q: 'yes' }, answeredAt: new 
 const membership = {
   ...entry, uid: MEMBER_UID, tenantId: TENANT_A, status: 'active', source: 'discover',
   joinedAt: new Date(1000), leftAt: null, consentAt: new Date(1000), updatedAt: new Date(1000),
+  consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2,
 };
 
 beforeAll(async () => {
@@ -33,12 +34,12 @@ afterAll(teardownEnv);
 describe('community membership server authority', () => {
   it.each([
     ['status', 'left'], ['source', 'website'], ['joinedAt', new Date(2000)], ['leftAt', new Date(2000)],
-    ['consentAt', new Date(2000)], ['updatedAt', new Date(2000)], ['uid', 'victim'], ['tenantId', TENANT_B],
+    ['consentAt', new Date(2000)], ['consentScope', 'forged'], ['consentVersion', 1], ['updatedAt', new Date(2000)], ['uid', 'victim'], ['tenantId', TENANT_B],
   ])('refuses client updates to %s', async (field, value) => {
     const db = (await member()).firestore();
     await assertFails(db.doc(memberPath).update({ [field as string]: value }));
   });
-  it.each(['status', 'source', 'joinedAt', 'leftAt', 'consentAt', 'updatedAt', 'uid', 'tenantId'])('refuses forging %s during legacy entry creation', async field => {
+  it.each(['status', 'source', 'joinedAt', 'leftAt', 'consentAt', 'consentScope', 'consentVersion', 'updatedAt', 'uid', 'tenantId'])('refuses forging %s during legacy entry creation', async field => {
     const db = (await member2()).firestore();
     const path = `tenants/${TENANT_A}/communityMembers/member2-uid`;
     await assertFails(db.doc(path).set({ ...entry, [field]: membership[field as keyof typeof membership] }));
@@ -57,6 +58,8 @@ describe('community membership server authority', () => {
     expect(saved.status).toBe('active');
     expect(saved.source).toBe('discover');
     expect(saved.consentAt.toMillis()).toBe(1000);
+    expect(saved.consentScope).toBe('owner_contact_and_view_name_email_answers');
+    expect(saved.consentVersion).toBe(2);
   });
   it('permits legacy onboarding create and update for an actual primary member', async () => {
     const db = (await member2()).firestore();
@@ -91,6 +94,8 @@ describe('community membership server authority', () => {
   it.each([fullAdmin, owner, rosterAdmin, superAdmin])('does not allow an admin client to mutate membership', async actor => {
     const db = (await actor()).firestore();
     await assertFails(db.doc(memberPath).update({ status: 'left' }));
+    await assertFails(db.doc(memberPath).update({ consentScope: 'forged' }));
+    await assertFails(db.doc(memberPath).update({ consentVersion: 1 }));
     await assertFails(db.doc(memberPath).set(membership));
     await assertFails(db.doc(memberPath).delete());
   });
@@ -212,7 +217,7 @@ describe('multi-community content boundary', () => {
 
 describe('community CRM server fields', () => {
   const path = 'contacts/community-rule-contact';
-  const fields = { communityUserId: MEMBER_UID, communitySource: 'discover', communityStatus: 'active', communityJoinedAt: new Date(1000), communityLeftAt: null };
+  const fields = { communityUserId: MEMBER_UID, communitySource: 'discover', communityStatus: 'active', communityJoinedAt: new Date(1000), communityLeftAt: null, consentAt: new Date(1000), consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2 };
   beforeAll(async () => {
     await seedDoc(path, { tenantId: TENANT_A, firstName: 'Member', email: 'member@example.org', source: 'community', ...fields });
     await seedDoc('contacts/ordinary-rule-contact', { tenantId: TENANT_A, firstName: 'Manual', source: 'manual' });
@@ -221,6 +226,7 @@ describe('community CRM server fields', () => {
     const db = (await fullAdmin()).firestore();
     await assertFails(db.doc(`contacts/forged-${key}`).set({ tenantId: TENANT_A, [key]: value }));
     await assertFails(db.doc('contacts/ordinary-rule-contact').update({ [key]: value }));
+    await assertFails(db.doc(path).update({ [key]: key === 'consentVersion' ? 99 : 'forged' }));
     const replacements: Record<string, unknown> = { ...fields, source: 'community', tenantId: TENANT_A };
     delete replacements[key];
     await assertFails(db.doc(path).set(replacements));
@@ -231,6 +237,7 @@ describe('community CRM server fields', () => {
     await assertFails(db.doc('contacts/ordinary-rule-contact').update({ source: 'community' }));
     await assertFails(db.doc(path).update({ source: 'manual' }));
     await assertFails(db.doc(path).update({ tenantId: TENANT_B }));
+    await assertFails(db.doc(path).delete());
     await assertSucceeds(db.doc(path).update({ firstName: 'Owner edited', notes: 'Keep this contact' }));
     await assertSucceeds(db.doc('contacts/ordinary-rule-contact').update({ source: 'import' }));
   });
@@ -244,5 +251,16 @@ describe('community CRM server fields', () => {
       await assertFails(db.collection('contacts').where('tenantId', '==', TENANT_A).get());
       await assertFails(db.doc(path).update({ firstName: 'Forged' }));
     }
+  });
+});
+
+describe('departure email suppression is server-only', () => {
+  it.each([member, fullAdmin, owner, superAdmin])('denies client reads, writes and deletion of suppression records', async actor => {
+    const path = `tenants/${TENANT_A}/emailSuppressions/community-leave`;
+    await seedDoc(path, { email: 'member@example.org', status: 'unsubscribed' });
+    const db = (await actor()).firestore();
+    await assertFails(db.doc(path).get());
+    await assertFails(db.doc(path).set({ email: 'forged@example.org' }));
+    await assertFails(db.doc(path).delete());
   });
 });

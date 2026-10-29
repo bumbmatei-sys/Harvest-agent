@@ -1,5 +1,6 @@
 "use client";
 
+import { CommunityDataRequests } from '@/components/community/CommunityDataRequests';
 import React, { useEffect, useRef, useState } from 'react';
 import { updatePassword, updateProfile, signOut, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -521,6 +522,7 @@ export default function ProfileSection() {
           </Button>
         )}
       </div>
+      <CommunityDataRequests />
     </div>
   );
 }

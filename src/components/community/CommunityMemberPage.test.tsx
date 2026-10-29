@@ -32,10 +32,10 @@ afterEach(async () => { await act(async () => root.render(null)); });
 describe('community member route', () => {
   it.each([['discover', 'discover'], ['website', 'website'], ['', 'link']])('joins with %s source, consent and enters the community', async (src, expected) => {
     await mount(`/community/a?join=1${src ? `&src=${src}` : ''}`);
-    expect(document.body.textContent).toContain('The owner will see your name and email.');
+    expect(document.body.textContent).toContain('By joining, you agree that the community owner can contact you and can see your name, email and answers.');
     expect(host.textContent).not.toContain('Real member view mounted');
     await act(async () => button('Join community').click());
-    expect(JSON.parse(h.request.mock.calls[0][1].body)).toMatchObject({ tenantId: 'a', source: expected, consent: true });
+    expect(JSON.parse(h.request.mock.calls[0][1].body)).toMatchObject({ tenantId: 'a', source: expected, consent: true, acceptedConsentVersion: 2 });
     expect(host.textContent).toContain('Real member view mounted');
   });
   it('shows already-member state and repairs the contact before opening', async () => {

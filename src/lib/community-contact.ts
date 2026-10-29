@@ -28,6 +28,7 @@ export async function upsertCommunityContact({ uid, tenantId }: { uid: string; t
     // Legacy membership has no sharing consent. Do not fabricate it on retries
     // or leave. The next explicit rejoin records consent through the join API.
     if (!member) return;
+    if (member.dataDeletedAt) return;
     if (!member.consentAt) {
       if (member.source !== undefined || member.joinedAt !== undefined) throw new Error('Missing community sharing consent.');
       return;
@@ -57,6 +58,11 @@ export async function upsertCommunityContact({ uid, tenantId }: { uid: string; t
     if (destination.exists && destination.data()?.tenantId !== tenantId) throw new Error('Contact tenant mismatch.');
     const now = Timestamp.now();
     const metadata = {
+      // Never invent scope/version for a historical timestamp-only consent.
+      ...(member.consentScope !== undefined ? { consentScope: member.consentScope } : {}),
+      ...(member.consentVersion !== undefined ? { consentVersion: member.consentVersion } : {}),
+      consentAt: member.consentAt,
+      ...(member.status === 'left' ? { emailStatus: 'unsubscribed' } : {}),
       source: 'community', communityUserId: uid, communitySource: source,
       communityStatus: member.status, communityJoinedAt: member.joinedAt,
       communityLeftAt: member.status === 'left' ? member.leftAt : null,

@@ -1,4 +1,9 @@
 /** Flat membership records; timestamps are supplied by the server, never the browser. */
+// Version 2 adds owner contact permission and visibility of onboarding answers.
+export const COMMUNITY_CONSENT_VERSION = 2;
+export const COMMUNITY_CONSENT_SCOPE = 'owner_contact_and_view_name_email_answers';
+export const COMMUNITY_CONSENT_NOTICE = 'By joining, you agree that the community owner can contact you and can see your name, email and answers.';
+
 export const COMMUNITY_SOURCES = ['discover', 'link', 'website'] as const;
 export type CommunitySource = typeof COMMUNITY_SOURCES[number];
 export type MembershipStatus = 'active' | 'left';
@@ -11,6 +16,8 @@ export type CommunityMember<T = unknown> = {
   joinedAt: T;
   leftAt: T | null;
   consentAt: T;
+  consentScope: string;
+  consentVersion: number;
   updatedAt: T;
   rulesAcceptedVersion: number;
   answers: Record<string, string>;
@@ -64,6 +71,7 @@ export function buildCommunityMember<T>(input: {
   return {
     uid, tenantId, status: 'active', source: normaliseSource(source),
     joinedAt: now, leftAt: null, consentAt: now, updatedAt: now,
+    consentScope: COMMUNITY_CONSENT_SCOPE, consentVersion: COMMUNITY_CONSENT_VERSION,
     rulesAcceptedVersion: rulesAcceptedVersion ?? previous?.rulesAcceptedVersion ?? 0,
     answers: writableCommunityAnswers(answers ?? previous?.answers ?? { [COMMUNITY_QUESTIONS_PENDING]: 'true' }),
     answeredAt: answers !== undefined ? now : previous?.answeredAt ?? now,

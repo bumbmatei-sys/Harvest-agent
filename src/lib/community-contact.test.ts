@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.clearAllMocks(); h.docs.clear(); h.fail = false;
   h.getUser.mockResolvedValue({ displayName: 'Auth Name', email: 'auth@example.org', phoneNumber: 'PRIVATE' });
   h.docs.set('users/u', { name: 'Ada Lovelace', email: ' ADA@Example.org ', phone: 'PRIVATE', address: 'PRIVATE', memberships: ['PRIVATE'], tenantId: 'other', role: 'admin' });
-  h.docs.set('tenants/target/communityMembers/u', { status: 'active', source: 'discover', joinedAt: joined, consentAt: joined, leftAt: null, answers: { private: 'PRIVATE' } });
+  h.docs.set('tenants/target/communityMembers/u', { status: 'active', source: 'discover', joinedAt: joined, consentAt: joined, consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2, leftAt: null, answers: { private: 'PRIVATE' } });
 });
 describe('community contact upsert', () => {
   it('creates a flat, tenant-scoped CRM contact with only consented profile fields', async () => {
@@ -32,7 +32,7 @@ describe('community contact upsert', () => {
     expect(contactRows()).toHaveLength(1);
     const [path, data] = contactRows()[0];
     expect(path).toMatch(/^contacts\/community_target_[a-f0-9]{64}$/);
-    expect(data).toMatchObject({ tenantId: 'target', name: 'Ada Lovelace', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.org', type: 'member', source: 'community', communityUserId: 'u', communitySource: 'discover', communityStatus: 'active', communityJoinedAt: joined, communityLeftAt: null, phone: '' });
+    expect(data).toMatchObject({ tenantId: 'target', name: 'Ada Lovelace', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.org', type: 'member', source: 'community', communityUserId: 'u', communitySource: 'discover', communityStatus: 'active', communityJoinedAt: joined, communityLeftAt: null, phone: '', consentAt: joined, consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2 });
     expect(JSON.stringify(data)).not.toContain('PRIVATE');
     expect(data).not.toHaveProperty('role'); expect(data).not.toHaveProperty('memberships'); expect(data).not.toHaveProperty('answers');
     expect(h.getUser).not.toHaveBeenCalled();
@@ -55,7 +55,7 @@ describe('community contact upsert', () => {
     Object.assign(h.docs.get('tenants/target/communityMembers/u')!, { status: 'left', leftAt: left });
     await upsertCommunityContact(input);
     expect(contactRows()).toHaveLength(1);
-    expect(contactRows()[0][1]).toMatchObject({ email: 'ada@example.org', communityStatus: 'left', communityJoinedAt: joined, communityLeftAt: left });
+    expect(contactRows()[0][1]).toMatchObject({ email: 'ada@example.org', communityStatus: 'left', communityJoinedAt: joined, communityLeftAt: left, emailStatus: 'unsubscribed' });
     await upsertCommunityContact(input);
     expect(contactRows()[0][1].communityLeftAt).toEqual(left);
   });
@@ -94,7 +94,7 @@ describe('community contact upsert', () => {
     h.docs.set('users/u', {}); h.getUser.mockRejectedValue(new Error('Auth offline'));
     Object.assign(h.docs.get('tenants/target/communityMembers/u')!, { status: 'left', leftAt: left });
     await upsertCommunityContact(input);
-    expect(contactRows()[0][1]).toMatchObject({ communityStatus: 'left', communityLeftAt: left });
+    expect(contactRows()[0][1]).toMatchObject({ communityStatus: 'left', communityLeftAt: left, emailStatus: 'unsubscribed' });
     expect(h.getUser).not.toHaveBeenCalled();
   });
   it('does not quietly accept a corrupt server membership with missing consent', async () => {
@@ -107,6 +107,12 @@ describe('community contact upsert', () => {
     await upsertCommunityContact(input);
     h.docs.delete('tenants/target/communityMembers/u');
     await upsertCommunityContact(input);
+    expect(h.writes).not.toHaveBeenCalled();
+  });
+  it('never recreates erased contact data on a delayed join/leave repair', async () => {
+    h.docs.set('tenants/target/communityMembers/u', { status: 'left', dataDeletedAt: left });
+    await upsertCommunityContact(input);
+    expect(contactRows()).toEqual([]);
     expect(h.writes).not.toHaveBeenCalled();
   });
   it('propagates failed reads rather than reporting an empty CRM', async () => {

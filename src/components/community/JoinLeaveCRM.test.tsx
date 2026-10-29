@@ -14,13 +14,13 @@ describe('join consent', () => {
   it('requires enabled rules, shows the exact consent, sends consent and exposes the API error', async () => {
     const settings = defaultCommunitySettings(); settings.rules = { enabled: true, version: 3, items: ['Be kind.'] };
     const request = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'This community is not open to join.' }) });
-    await act(async () => root.render(<CommunityEntryDialog joining settings={settings} onSubmit={answers => membershipRequest('join', { tenantId: 'a', source: 'discover', consent: true, rulesAcceptedVersion: 3, answers }, request)} />));
-    expect(document.body.textContent).toContain('The owner will see your name and email.');
+    await act(async () => root.render(<CommunityEntryDialog joining settings={settings} onSubmit={answers => membershipRequest('join', { tenantId: 'a', source: 'discover', consent: true, acceptedConsentVersion: 2, rulesAcceptedVersion: 3, answers }, request)} />));
+    expect(document.body.textContent).toContain('By joining, you agree that the community owner can contact you and can see your name, email and answers.');
     expect(button('Join community').disabled).toBe(true);
     await act(async () => document.querySelector<HTMLElement>('label')!.click());
     expect(button('Join community').disabled).toBe(false);
     await act(async () => button('Join community').click());
-    expect(request).toHaveBeenCalledWith('/api/community/join', expect.objectContaining({ method: 'POST', body: JSON.stringify({ tenantId: 'a', source: 'discover', consent: true, rulesAcceptedVersion: 3, answers: {} }) }));
+    expect(request).toHaveBeenCalledWith('/api/community/join', expect.objectContaining({ method: 'POST', body: JSON.stringify({ tenantId: 'a', source: 'discover', consent: true, acceptedConsentVersion: 2, rulesAcceptedVersion: 3, answers: {} }) }));
     expect(document.querySelector('[role=alert]')?.textContent).toBe('This community is not open to join.');
   });
   it('allows joining when rules are disabled and disables repeat clicks while pending', async () => {

@@ -229,7 +229,8 @@ describe('1 · the layout fixture has a documented append path', () => {
     // THE-312 shipped its register empty for the same reason: THE-323 moves no
     // phone rendering, so it has no layer to record. An entry added "in
     // advance" is dead weight a later reader has to disprove.
-    expect(loadRegister()).toEqual([]);
+    // Later tickets use the append path; THE-323 itself still records no layer.
+    expect(loadRegister().filter(entry => entry.ticket === 'THE-323')).toEqual([]);
     expect(read('src/components/__tests__/__fixtures__/mobile-layer/README.md'))
       .toContain('Do not add an entry in');
   });
@@ -303,9 +304,12 @@ describe('2 · an UNRECORDED change to the modal still fails', () => {
     expect(acceptedFor(MODAL, base, [recorded])).toHaveLength(2);
   });
 
-  it('and the modal as it stands renders the BASELINE layer — THE-323 moved no phone rendering', () => {
+  it('and the modal renders an exact registered layer, retaining the baseline', () => {
     const host = mount(<PersonalInformationModal isOpen onClose={() => {}} />);
-    expect(mobileLayer(host)).toEqual(baselineLayer(MODAL));
+    // #561 records the account data-request control through this suite's own append path.
+    const actual = mobileLayer(host);
+    const failure = layerFailureFor(MODAL, baselineLayer(MODAL), actual);
+    expect(failure, failure ?? '').toBeNull();
   });
 });
 
@@ -817,11 +821,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // THE-555: shadcn admin composer controls state their mobile touch floor.
       // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
       'src/components/community/AdminPostComposer.tsx',
+      'src/components/community/CommunityDataRequests.tsx', // #561: account privacy actions use the phone floor.
       'src/components/community/CommunityEntryDialog.tsx',
       // THE-999998: join/member and leave actions use the same phone floor.
       'src/components/community/CommunityMemberPage.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
+      'src/components/community/DeleteCommunityData.tsx', // #561: erasure confirmation uses shadcn controls.
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       // #557: Free member shell controls use the phone touch floor.
       'src/components/community/FreeMemberShell.tsx',
