@@ -55,6 +55,16 @@
       "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
       "digest": "319b3ab1e269689d534298b09f4b509318f03591ff90f130e4ac5d9d9713041a",
       "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "ac4cc5960584f6991a1c3f9bd4f3c34a4f2b59004f90cc71adefee031bf90239",
+      "why": "APPENDED, NOT SUBSTITUTED — #566 after merging main (#561): both sides' additions combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2b27ed37884f236d841a0e1986454af681a03f88fb003ce7a3896c74ba85eb5e",
+      "why": "APPENDED, NOT SUBSTITUTED — #566 after merging main (#561): both sides' additions combined by the merge; nothing removed."
     }
   ]
 }
