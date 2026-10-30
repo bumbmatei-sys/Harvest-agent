@@ -308,6 +308,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
   const [subdomain, setSubdomain] = useState('');
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [subdomainLoaded, setSubdomainLoaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   /**
    * The tenant's own subdomain — the address every church is served on, gated by
@@ -326,13 +327,16 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           if (userDoc.exists()) {
             const tid = userDoc.data().tenantId;
             if (tid) {
-              setSubdomain(tid);
+              const tenant = await getDoc(doc(db, 'tenants', tid));
+              if (!tenant.exists()) throw new Error('Workspace not found.');
+              setSubdomain(typeof tenant.data().subdomain === 'string' ? tenant.data().subdomain : '');
               setTenantId(tid);
             }
           }
         }
       } catch (e) {
         console.error('Failed to load domain settings:', e);
+        setLoadError('Could not load your website address. Please reload to try again.');
       }
       setSubdomainLoaded(true);
     })();
@@ -357,10 +361,12 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
       <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-2">Web Address</h3>
         <p className="text-sm text-muted mb-4">
-          Manage your ministry&apos;s web address. Your subdomain is <strong className="text-strong">{subdomain}.theharvest.app</strong>.
+          Your app lives at <strong className="text-strong">theharvest.app</strong>. Subdomains are reserved for published websites.
         </p>
 
-        {/* Subdomain (read-only) */}
+        {loadError && <p role="alert" className="text-sm text-strong">{loadError}</p>}
+        {subdomain && <>
+        {/* Existing website address (read-only) */}
         <label className="block text-sm font-medium text-strong mb-2">Subdomain</label>
         <div className="flex items-center">
           <input
@@ -375,6 +381,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
         </p>
 
+        </>}
         {/* Custom Domain (Community / max+) */}
         {!CUSTOM_DOMAIN_ENABLED ? (
           /* 🔴 THE-280 — the switch is read BEFORE the plan, deliberately. Both

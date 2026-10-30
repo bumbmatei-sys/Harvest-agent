@@ -68,8 +68,9 @@ let container: HTMLDivElement;
 let root: Root | null = null;
 
 function restartBody(): Record<string, unknown> {
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  return JSON.parse(fetchMock.mock.calls[0][1].body);
+  const checkout = fetchMock.mock.calls.find(([url]) => url === '/api/dodo/checkout');
+  expect(checkout).toBeTruthy();
+  return JSON.parse(checkout![1].body);
 }
 
 /**
@@ -92,7 +93,7 @@ async function abandonAndRestart(marker: Record<string, unknown>) {
   vi.useRealTimers();
 
   const restart = Array.from(container.querySelectorAll('button')).find(
-    (b) => /continue to payment/i.test(b.textContent || ''),
+    (b) => /try again/i.test(b.textContent || ''),
   );
   expect(restart, '"Complete your payment" restart button not rendered').toBeTruthy();
   await act(async () => { restart!.click(); });
@@ -103,7 +104,7 @@ async function abandonAndRestart(marker: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  fetchMock.mockResolvedValue({ json: async () => ({}) });
+  fetchMock.mockImplementation(async (url: string) => ({ ok: true, json: async () => url.startsWith('/api/dodo/signup-status') ? { status: 'failed' } : {} }));
   vi.stubGlobal('fetch', fetchMock);
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -150,7 +151,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     // so this one keeps passing for a reason that does not depend on the history.
     await abandonAndRestart({ signupPlan: 'church', signupBilling: 'biennial', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
-    expect(fetchMock.mock.calls[0][1].body).not.toContain('biennial');
+    expect(JSON.stringify(restartBody())).not.toContain('biennial');
   });
 
   it("Dodo's own word for the annual term is still refused", async () => {
@@ -167,7 +168,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     // word onward; it lands on monthly like any other unrecognised value.
     await abandonAndRestart({ signupPlan: 'church', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
-    expect(fetchMock.mock.calls[0][1].body).not.toContain('quarterly');
+    expect(JSON.stringify(restartBody())).not.toContain('quarterly');
   });
 
   it('a yearly restart keeps yearly — failing closed must not mean failing ALWAYS', async () => {

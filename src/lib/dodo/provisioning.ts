@@ -3,7 +3,7 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { PROVISIONED_TENANT_OWNER_ROLE } from '@/lib/roles';
 import { tenantPrivateRef, TENANT_PRIVATE_COLLECTION } from '@/lib/tenant-private';
-import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
+import { createHash } from 'node:crypto';
 import { readTenantAddons } from '@/utils/plan-features';
 import type { TenantAddons, TenantPlan } from '@/types/tenant.types';
 import { resolvePlanFromProductId } from './catalogue';
@@ -21,14 +21,10 @@ import { handleFirstSubscriptionAttach } from './first-subscription';
  * Build-on-payment, on Dodo: turn a paid Dodo subscription into a tenant.
  *
  * 🔴 THIS IS THE MONEY PATH. It is the ONLY way a church becomes a customer once
- * `DODO_BILLING_ENABLED` is true, and it is a field-for-field reproduction of the
- * `checkout.session.completed` new-tenant block in
- * `src/app/api/stripe/webhook/route.ts` — not an approximation. Every field that
- * handler writes is written here, on the same two documents, with the same
- * values and the same ordering. A field missed here is a tenant that LOOKS
- * provisioned and is subtly broken, and nobody finds out until a customer hits
- * it. `dodo-provisioning.test.ts` asserts the two field sets agree, key by key,
- * rather than asserting "a tenant exists".
+ * `DODO_BILLING_ENABLED` is true. The billing and membership records follow the
+ * legacy Stripe shape, with Dodo identifiers and explicit add-on entitlements.
+ * The identity is now internal and stable; only website publishing may claim
+ * a host. The parity test names that deliberate public-field difference.
  *
  * ─── The three things that are genuinely different ───────────────────────────
  *
@@ -149,9 +145,8 @@ export function readSignupMetadata(raw: unknown): DodoSignupMetadata | null {
  * importer of `generateUniqueSubdomain` from here is unaffected.
  */
 export { generateUniqueSubdomain } from '@/lib/tenant-subdomain';
-// Imported as well as re-exported: `provisionTenantFromDodoSubscription`
-// below calls it, and a bare re-export does not bind the name in this scope.
-import { generateUniqueSubdomain } from '@/lib/tenant-subdomain';
+// Retained for the unexposed website claim flow; signup never calls it.
+
 
 /** What `provisionTenantFromDodoSubscription` decided. */
 export type DodoProvisioningOutcome =
@@ -265,6 +260,10 @@ export async function provisionTenantFromDodoSubscription(
     );
   }
 
+  if (sub.status !== 'active') {
+    throw new DodoProvisioningError('subscription-not-active', 'Only an active subscription can provision a tenant.');
+  }
+
   // Fail on an unknown product BEFORE writing anything.
   const { plan, period } = requirePlanForProduct(productId);
 
@@ -300,7 +299,8 @@ export async function provisionTenantFromDodoSubscription(
     return { outcome: 'already-provisioned', tenantId: existingTenantId };
   }
 
-  const newTenantId = await generateUniqueSubdomain(meta.ministryName);
+  // Stable under concurrent redelivery; this ID does not reserve a DNS label.
+  const newTenantId = `tenant-${createHash('sha256').update(subscriptionId).digest('hex').slice(0, 32)}`;
   const ids = { subscriptionId, userId: meta.userId, newTenantId, productId };
   const userEmail = await resolveOwnerEmail(meta.userId, sub, ids);
 
@@ -332,7 +332,6 @@ export async function provisionTenantFromDodoSubscription(
   const batch = adminDb.batch();
   batch.set(adminDb.collection('tenants').doc(newTenantId), {
     name: meta.ministryName || 'My Ministry',
-    subdomain: newTenantId,
     plan,
     // MEANINGS ONLY — never a Dodo add-on id on this world-readable doc.
     addons,

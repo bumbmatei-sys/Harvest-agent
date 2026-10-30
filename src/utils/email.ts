@@ -3,9 +3,7 @@
  * Sends emails via the /api/send-email route.
  */
 
-const APP_URL = typeof window !== 'undefined' 
-  ? window.location.origin 
-  : (process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app');
+const APP_URL = 'https://theharvest.app';
 
 interface EmailOptions {
   to: string;

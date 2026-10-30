@@ -585,3 +585,9 @@ export async function isDodoSubscriptionInTrial(
   const items: Array<{ total_amount?: number }> = (payments as unknown as { items?: Array<{ total_amount?: number }> })?.items ?? [];
   return items.length === 1 && items[0]?.total_amount === 0;
 }
+
+/** The session is read only from our server-owned signup record, never a query parameter. */
+export async function getDodoCheckoutPaymentStatus(reference: string): Promise<string | null> {
+  const session = await client().checkoutSessions.retrieve(reference);
+  return session.payment_status ?? null;
+}

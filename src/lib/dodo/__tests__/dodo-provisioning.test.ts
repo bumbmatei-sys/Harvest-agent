@@ -188,7 +188,6 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
 
     expect(tenant).toEqual({
       name: 'Grace Community Church',
-      subdomain: tenantId,
       // From the PRODUCT, not from metadata. See test 4.
       plan: 'ministry',
       // 🔴 An EMPTY write, not an absent field (REP-5a). Nothing sells an add-on
@@ -272,12 +271,13 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
     expect(db.current.store.get(`users/${OWNER_UID}`).termsAccepted).toBe(true);
   });
 
-  it('derives the subdomain from the ministry name, like the Stripe path', async () => {
+  it('creates an internal ID without claiming the ministry name as a host', async () => {
     await provisionTenantFromDodoSubscription(
       subscription({ metadata: { ...subscription().metadata, ministryName: 'Grace Community Church' } }),
     );
     const [tenantKey] = tenantDoc()!;
-    expect(tenantKey).toBe('tenants/grace-community-church');
+    expect(tenantKey).toMatch(/^tenants\/tenant-[a-f0-9-]+$/);
+    expect(tenantDoc()![1]).not.toHaveProperty('subdomain');
   });
 
   it('falls back to "My Ministry" / "ministry" when no name was given', async () => {
@@ -285,7 +285,8 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       subscription({ metadata: { newTenant: 'true', userId: OWNER_UID } }),
     );
     const [tenantKey, tenant] = tenantDoc()!;
-    expect(tenantKey).toBe('tenants/ministry');
+    expect(tenantKey).toMatch(/^tenants\/tenant-[a-f0-9-]+$/);
+    expect(tenant).not.toHaveProperty('subdomain');
     expect(tenant.name).toBe('My Ministry');
   });
 
@@ -309,6 +310,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
     // so writing the field there would record a set nothing can ever change.
     // Everything else must still agree key for key — that is what this guards.
     const DODO_ONLY = ['addons'];
+    expect(dodoFields).not.toContain('subdomain');
     const withoutDodoOnly = (fields: string[]) => fields.filter((f) => !DODO_ONLY.includes(f)).sort();
 
     expect(stripeFields.length).toBeGreaterThan(0);
@@ -316,7 +318,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
     // path, so removing it from provisioning.ts fails here rather than silently
     // satisfying the filter.
     expect(dodoFields).toContain('addons');
-    expect(withoutDodoOnly(dodoFields)).toEqual(withoutDodoOnly(stripeFields));
+    expect(withoutDodoOnly(dodoFields)).toEqual(withoutDodoOnly(stripeFields.filter(f => f !== 'subdomain')));
   });
 
   it('writes the same tenant_private field set, with dodo* in place of stripe*', () => {
@@ -704,5 +706,14 @@ describe('existing tenant signup provisioning', () => {
     db.current.store.set('tenants/paid-tenant', { plan: 'church' });
     expect(await provisionTenantFromDodoSubscription(subscription())).toEqual({ outcome: 'already-provisioned', tenantId: 'paid-tenant' });
     expect(db.current.store.get('tenants/paid-tenant')).toEqual({ plan: 'church' });
+  });
+});
+
+// Failed checkout payloads cannot create a tenant or consume a website address.
+describe('provisioning requires an active mandate', () => {
+  it.each(['failed', 'cancelled', 'pending'])('refuses %s without tenant writes', async status => {
+    await expect(provisionTenantFromDodoSubscription(subscription({ status }))).rejects.toThrow('Only an active subscription');
+    expect(tenantDoc()).toBeUndefined();
+    expect(privateDoc()).toBeUndefined();
   });
 });

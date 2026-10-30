@@ -19,12 +19,13 @@ import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff, { CONFIRMS_ACCOUNT, CONFIRMS_PAYMENT } from './WorkspaceHandoff';
+import CheckoutRecovery from './CheckoutRecovery';
 import { isTenantAdminRole } from '../lib/roles';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 const BRAND = 'var(--brand-color, #B8962E)';
 
-type GateStatus = 'loading' | 'ready' | 'paying' | 'needs-payment' | 'first-run';
+type GateStatus = 'loading' | 'ready' | 'paying' | 'needs-payment' | 'first-run' | 'payment-failed' | 'payment-timeout' | 'load-error';
 
 /** Soft gold halo shared by the transitional screens. */
 const Halo = () => (
@@ -55,6 +56,8 @@ const CenteredScreen: React.FC<{ title: string; subtitle?: string; spin?: boolea
  * Super admins (and everyone not mid-signup) pass straight through to `children`.
  */
 const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Auth navigation can remove the query before the asynchronous check finishes.
+  const [checkoutSearch] = useState(() => typeof window === 'undefined' ? '' : window.location.search);
   const [status, setStatus] = useState<GateStatus>('loading');
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [signupPlan, setSignupPlan] = useState<TenantPlan | null>(null);
@@ -64,12 +67,6 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [signupBilling, setSignupBilling] = useState<SignupBillingPeriod>('monthly');
   const [signupMinistryName, setSignupMinistryName] = useState<string>('');
   /**
-   * THE-214: the address a free signup chose on the signup screen, carried on
-   * the same marker as the plan so a restart re-provisions at the SAME address
-   * rather than quietly moving the evangelist to a different one.
-   */
-  const [signupSubdomain, setSignupSubdomain] = useState<string>('');
-  /**
    * The tenant's own plan, off the user doc — the DURABLE answer to "was this
    * signup free?", written by whichever path provisioned the account. Read
    * alongside the `signupPlan` intent marker because the two fail in opposite
@@ -77,7 +74,9 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
    * the marker. Both absent means "unknown", which is treated as paid.
    */
   const [accountPlan, setAccountPlan] = useState<TenantPlan | null>(null);
-  const [pollTimedOut, setPollTimedOut] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [checkAttempt, setCheckAttempt] = useState(0);
+  const [paymentError, setPaymentError] = useState('');
   const [restarting, setRestarting] = useState(false);
   // The tenant id first-run setup finished on, i.e. the workspace this user is
   // being handed off to. Non-null means the handoff screen is showing.
@@ -91,13 +90,10 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
    */
   const freeSignupInFlight = useRef(false);
 
-  // Is the user returning from the payment processor right now? BOTH spellings
-  // count (?stripe=success and ?dodo=success): a customer who was mid-checkout
-  // when DODO_BILLING_ENABLED was flipped comes back carrying the other
-  // processor's marker, and failing to recognise it would show someone who has
-  // just paid the "Complete your payment" button — an invitation to pay twice.
+  // Navigation hints only: payment and membership are checked server-side.
   const onCheckoutSuccess = typeof window !== 'undefined'
-    && isReturningFromCheckout(window.location.search);
+    && (isReturningFromCheckout(checkoutSearch) || new URLSearchParams(checkoutSearch).has('dodo'));
+  const checksDodo = typeof window !== 'undefined' && new URLSearchParams(checkoutSearch).has('dodo');
 
   /**
    * 🔴 THE-138. The tenant whose subdomain hop App.tsx is holding back because
@@ -142,7 +138,6 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         // closed to 'monthly' rather than travel into a checkout body.
         setSignupBilling(readSignupBillingPeriod(data?.signupBilling));
         setSignupMinistryName((data?.signupMinistryName as string) || '');
-        setSignupSubdomain((data?.signupSubdomain as string) || '');
         setAccountPlan(canonicalPlanId(data?.plan));
 
         /**
@@ -183,57 +178,85 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
         if (tId) {
           setTenantId(tId);
+          if (checksDodo && !paymentConfirmed) { setStatus('paying'); return; }
           stopTenant();
           tenantUnsub = onSnapshot(doc(db, 'tenants', tId), (tSnap) => {
             const t = tSnap.exists() ? tSnap.data() : null;
             // Only a brand-new tenant (explicit false) gates first-run, and only
             // for its admin. Legacy tenants (no field) and members pass through.
-            if (!t || t.setupCompleted !== false || (t.plan && t.plan !== 'free' && !t.subdomain)) { setStatus('ready'); return; }
+            if (!t) { setStatus('load-error'); return; }
+            if (t.setupCompleted !== false) { setStatus('ready'); return; }
             if (isTenantAdminRole(role)) { setStatus('first-run'); return; }
             // Roster fallback: the adminEmails roster moved off the public
             // tenant doc to the server-only tenant_private doc, so ask the API.
             checkRosterAdmin(tId)
               .then((isRoster) => setStatus(isRoster ? 'first-run' : 'ready'))
-              .catch(() => setStatus('ready'));
-          }, () => setStatus('ready'));
+              .catch(() => setStatus('load-error'));
+          }, () => setStatus('load-error'));
         } else {
           stopTenant();
           setTenantId(null);
-          // A signup is in flight but no tenant exists yet. ALWAYS start in
-          // 'paying' (poll) — even without the ?…=success marker — so a user who paid
-          // but refreshed/returned without the param is never shown a re-checkout
-          // button (which would double-charge). The webhook flips us to first-run
-          // when the tenant lands; only a genuinely abandoned signup falls through
-          // to 'needs-payment' after the poll times out (see the poll effect).
+          // Always check interrupted signups before offering checkout again.
           if (inProgress) setStatus('paying');
           else setStatus('ready');
         }
-      }, () => setStatus('ready'));
+      }, () => setStatus('load-error'));
     });
 
     return () => { authUnsub(); stopUser(); stopTenant(); };
-  }, [onCheckoutSuccess]);
+  }, [onCheckoutSuccess, checksDodo, paymentConfirmed]);
 
-  // 'paying': the webhook is asynchronous. onSnapshot flips us to first-run the
-  // moment tenantId lands; meanwhile force-refresh the token so claims propagate,
-  // and after ~30s soften the message.
+  // A URL never proves payment. Bound the entire wait, including a hung fetch,
+  // independently of the polling schedule. Ignore late responses after timeout.
   useEffect(() => {
-    if (status !== 'paying') { setPollTimedOut(false); return; }
-    let elapsed = 0;
-    const interval = setInterval(async () => {
-      elapsed += 2000;
-      try { if (auth.currentUser) await getIdToken(auth.currentUser, true); } catch { /* ignore */ }
-      if (elapsed >= 30000) {
-        clearInterval(interval);
-        // Returned via a processor success marker → they definitely paid; keep
-        // waiting with a softer message. Otherwise the signup looks abandoned →
-        // let them pay.
-        if (onCheckoutSuccess) setPollTimedOut(true);
-        else setStatus('needs-payment');
+    if (status !== 'paying' && !(status === 'loading' && checksDodo)) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    const deadline = setTimeout(() => {
+      stopped = true;
+      controller.abort();
+      if (timer) clearTimeout(timer);
+      setStatus(signupPlan === 'free' ? 'needs-payment' : 'payment-timeout');
+    }, 60_000);
+    const poll = async () => {
+      try {
+        if (signupPlan === 'free') return;
+        const user = auth.currentUser;
+        if (!user) throw new Error('Please sign in again to check your payment.');
+        const query = new URLSearchParams();
+        const params = new URLSearchParams(checkoutSearch);
+        const subscriptionId = params.get('subscription_id');
+        if (subscriptionId) query.set('subscription_id', subscriptionId);
+        if (params.get('dodo') === 'cancel') query.set('cancelled', 'true');
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/dodo/signup-status?${query}`, {
+          headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store',
+        });
+        const result = await response.json();
+        if (stopped) return;
+        if (!response.ok) throw new Error(result.error || 'Could not check your payment.');
+        if (result.status === 'failed' || result.status === 'cancelled') {
+          setPaymentError(''); setStatus('payment-failed'); return;
+        }
+        if (result.status === 'ready') {
+          await getIdToken(user, true);
+          if (!stopped) {
+            setPaymentConfirmed(true);
+            setConfirmingTenantId(hasSeenPaymentConfirmation() ? null : result.tenantId);
+            setStatus('loading');
+          }
+          return;
+        }
+        setPaymentError('');
+      } catch (error) {
+        if (!stopped) setPaymentError(error instanceof Error ? error.message : 'Could not check your payment.');
       }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [status, onCheckoutSuccess]);
+      if (!stopped) timer = setTimeout(poll, 2000);
+    };
+    if (!paymentConfirmed) void poll();
+    return () => { stopped = true; controller.abort(); clearTimeout(deadline); if (timer) clearTimeout(timer); };
+  }, [status, checksDodo, signupPlan, checkAttempt, paymentConfirmed, checkoutSearch]);
 
   /**
    * 🔴 THE-138 part 2 — would the post-first-run handoff below merely REPEAT a
@@ -284,8 +307,8 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     (handoffTenantId !== null && !handoffRepeatsGivenConfirmation) ||
     confirmingTenantId !== null ||
     status === 'paying' ||
-    status === 'needs-payment' ||
-    status === 'first-run' ||
+    status === 'needs-payment' || status === 'payment-failed' || status === 'payment-timeout' ||
+    status === 'first-run' || status === 'load-error' ||
     (status === 'loading' && onCheckoutSuccess);
   useForcedLightTheme(rendersFunnelScreen);
 
@@ -325,12 +348,8 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       const resp = await fetch('/api/tenants/provision-free', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        // THE-214: the address travels with the plan, exactly as the term does
-        // on the paid lane. Restarting without it would hand the evangelist a
-        // different address from the one they chose and were shown.
         body: JSON.stringify({
           ministryName: signupMinistryName || '',
-          subdomain: signupSubdomain || '',
         }),
       });
       const data = await resp.json();
@@ -346,6 +365,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     const user = auth.currentUser;
     if (!user) return;
     setRestarting(true);
+    setPaymentError('');
     try {
       let referrerId: string | undefined;
       try {
@@ -360,13 +380,15 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
           plan: signupPlan || 'church',
           billing: signupBilling,
           ministryName: signupMinistryName || '',
+          subscriptionId: new URLSearchParams(checkoutSearch).get('subscription_id'),
           ...(referrerId ? { referrerId } : {}),
         }),
       });
       const data = await resp.json();
-      if (data.url) window.location.href = data.url;
-      else setRestarting(false);
+      if (resp.ok && data.url) window.location.href = data.url;
+      else { setPaymentError(data.error || 'Could not open checkout. Please try again.'); setRestarting(false); }
     } catch {
+      setPaymentError('Could not open checkout. Please try again.');
       setRestarting(false);
     }
   };
@@ -407,23 +429,25 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
    * `WorkspaceHandoff` decides that from the live host, so nothing here has to
    * tell it which variant to be.
    */
-  if (confirmingTenantId) {
+  if (confirmingTenantId && (!checksDodo || paymentConfirmed)) {
     return (
       <WorkspaceHandoff
         tenantId={confirmingTenantId}
         fallbackMinistryName={signupMinistryName}
-        /* Always the payment claim, and not via `confirms` above: this render
-           is reachable only through `readPendingPaymentConfirmation`, which
-           refuses unless the URL says the user is back from a checkout. A
-           signup that reached a checkout is a signup that was charged. */
+        /* Dodo reaches this claim only after the server confirms active status
+           and the webhook's membership write. A return URL alone cannot. */
         confirms={CONFIRMS_PAYMENT}
-        onContinue={completePaymentConfirmation}
+        onContinue={() => { completePaymentConfirmation(); setConfirmingTenantId(null); }}
         /* THE-138 part 2: this is the render whose acknowledgement has to
            outlive the origin hop, so its action carries the hint that stops the
            destination saying all of this again. */
         suppressRepeatAtDestination
       />
     );
+  }
+
+  if (status === 'load-error') {
+    return <div className="min-h-screen bg-surface px-6 py-20 text-center"><h1 className="font-display text-3xl">Could not load your workspace</h1><p className="mt-3 text-body">Please reload to try again. If the problem continues, contact support.</p><a className="mt-6 inline-flex min-h-11 items-center underline" href="">Reload</a></div>;
   }
 
   if (status === 'ready') return <>{children}</>;
@@ -435,19 +459,16 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       : <>{children}</>;
   }
 
+  if (status === 'payment-failed' || status === 'payment-timeout') {
+    return <CheckoutRecovery timedOut={status === 'payment-timeout'} busy={restarting} error={paymentError}
+      onRetry={() => { setPaymentError(''); setCheckAttempt(n => n + 1); setStatus('paying'); }}
+      onTryAgain={isFreeSignup ? restartFreeProvisioning : restartCheckout} />;
+  }
+
   if (status === 'paying') {
-    // 🔴 THE-214. `pollTimedOut` is only ever set when the URL carries a
-    // processor success marker (see the poll effect), so its copy is reachable
-    // by a payer alone and stays as it was. The waiting copy is NOT: a free
-    // signup sits here for the length of one server request, and "Confirming
-    // your payment" was the second place it was told about a payment it never
-    // made.
-    if (pollTimedOut) {
-      return <CenteredScreen spin={false} title="Payment received — finishing setup" subtitle="Almost there. Refresh in a moment if this screen doesn't update on its own." />;
-    }
     return isFreeSignup
       ? <CenteredScreen title="Creating your ministry…" subtitle="This only takes a moment." />
-      : <CenteredScreen title="Setting up your account…" subtitle="Confirming your payment and creating your ministry. This usually takes a few seconds." />;
+      : <CenteredScreen title="Checking your checkout…" subtitle="We are checking the payment status before setting up your ministry." />;
   }
 
   if (status === 'first-run' && tenantId) {

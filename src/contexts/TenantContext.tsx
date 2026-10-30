@@ -1,8 +1,9 @@
 'use client';
 import { tenantMatchesSubdomain } from '@/utils/tenant-host-validation';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '../firebase';
 import { TenantPlan, TenantAddons, TenantConfig, TenantStatus, Tenant } from '../types/tenant.types';
 import {
   EffectiveFeatures,
@@ -18,7 +19,7 @@ import {
   TENANT_STATUS_ACTIVE,
   type TenantCapability,
 } from '../lib/tenant-lifecycle';
-import { hasPlatformOverride } from '../utils/tenant-scope';
+import { clearTenantCache, hasPlatformOverride } from '../utils/tenant-scope';
 import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 import { isReturningFromCheckout } from '../utils/signup-checkout';
 import { applyBrandAccent } from '../lib/brand-accent';
@@ -368,9 +369,53 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       setTenantId(initialTenantId);
       return;
     }
-    const hostname = window.location.hostname;
-    const cookieTenantId = getCookie('tenantId');
-    setTenantId(resolveTenantIdFromHostname(hostname, cookieTenantId));
+    const hostTenant = resolveTenantIdFromHostname(window.location.hostname, null);
+    if (hostTenant) { setTenantId(hostTenant); return; }
+    let stopUser: (() => void) | undefined;
+    let generation = 0;
+    const stopAuth = onAuthStateChanged(auth, (user) => {
+      const currentGeneration = ++generation;
+      stopUser?.();
+      clearTenantCache();
+      setTenantId(null);
+      setTenantPlanState(undefined);
+      setTenantName(null);
+      setTenantAddonsState(NO_ADDONS);
+      setBranding({});
+      setTenantStatus(undefined);
+      setStripeConnectStatus(undefined);
+      setError(null);
+      planInitialized.current = false;
+      addonsInitialized.current = false;
+      if (!user) { setIsLoading(false); return; }
+      setIsLoading(true);
+      let previousId: unknown;
+      stopUser = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+        if (currentGeneration !== generation) return;
+        const id = snap.data()?.tenantId;
+        if (id !== previousId) {
+          clearTenantCache();
+          planInitialized.current = false;
+          addonsInitialized.current = false;
+          setTenantPlanState(undefined);
+          setTenantName(null);
+          setTenantAddonsState(NO_ADDONS);
+          setBranding({});
+          setTenantStatus(undefined);
+          setStripeConnectStatus(undefined);
+          setError(null);
+          previousId = id;
+        }
+        setTenantId(typeof id === 'string' && id ? id : null);
+        setIsLoading(false);
+      }, () => {
+        if (currentGeneration !== generation) return;
+        setTenantId(null);
+        setError('Could not load your workspace. Please reload to try again.');
+        setIsLoading(false);
+      });
+    });
+    return () => { generation++; stopAuth(); stopUser?.(); };
   }, [initialTenantId]);
 
   // Validate tenant exists in Firestore and load branding

@@ -140,7 +140,7 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
           where: vi.fn().mockReturnThis(),
           limit: vi.fn().mockReturnThis(),
           get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
-          doc: vi.fn(() => ({ get: vi.fn(), set: vi.fn(), update: vi.fn() })),
+          doc: vi.fn(() => ({ get: vi.fn(async () => ({ exists: false })), set: vi.fn(), update: vi.fn() })),
         })),
       },
       adminAuth: {},

@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         amountCents: typeof reg.amount === 'number' ? reg.amount : 0,
         reference: typeof reg.paymentReference === 'string' ? reg.paymentReference : '',
         providerLabel: provider ? provider.label : null,
-        inboxUrl: `https://${tenantId}.theharvest.app/admin`,
+        inboxUrl: 'https://theharvest.app/admin',
       });
       if (result.noRecipients || result.emailed < result.attempted) {
         // 🔴 NOT AN ERROR TO THE MEMBER, and not a silence either. The claim is

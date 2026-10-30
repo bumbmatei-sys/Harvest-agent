@@ -210,7 +210,7 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [tenantId]);
 
-  const address = `${tenantId}.theharvest.app`;
+  const address = 'theharvest.app';
   const displayName = ministryName || fallbackMinistryName || 'Your ministry';
 
   /**
@@ -249,7 +249,7 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
    * mounted `ssr: false` (`src/app/[[...slug]]/page.tsx:8`), and App.tsx:150
    * already calls it this way.
    */
-  const crossOrigin = tenantId !== getTenantIdFromHost();
+  const crossOrigin = window.location.hostname !== 'theharvest.app' && window.location.hostname !== 'localhost';
 
   /**
    * Where the single action goes.

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
-import { dodoBillingProvider } from '@/lib/dodo/dodo-provider';
+import { dodoBillingProvider, getDodoCheckoutPaymentStatus } from '@/lib/dodo/dodo-provider';
 import type { BillingPeriod } from '@/lib/dodo/provider';
 import { BILLING_TERMS, DODO_BILLING_ENABLED, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 import type { PricedPlan } from '@/types/tenant.types';
@@ -146,6 +147,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You already belong to an organization.' }, { status: 400 });
     }
 
+    // Reuse an unsettled session rather than risking a second subscription.
+    // A browser-supplied id is only read after checking its owner at Dodo.
+    if (typeof body.subscriptionId === 'string' && body.subscriptionId) {
+      const previous = await dodoBillingProvider.getSubscription(body.subscriptionId);
+      if (previous.metadata.userId !== userOrErr.uid) {
+        return NextResponse.json({ error: 'Checkout does not belong to you.' }, { status: 403 });
+      }
+      if (!['failed', 'cancelled', 'expired'].includes(previous.status)) {
+        return NextResponse.json({ error: 'Your checkout may still be processing. Retry the payment status check or contact support.' }, { status: 409 });
+      }
+    }
+    const saved = await adminDb.collection('signup_checkouts').doc(userOrErr.uid).get();
+    if (saved.exists) {
+      const previous = saved.data()!;
+      const paymentStatus = await getDodoCheckoutPaymentStatus(previous.reference);
+      if (!['failed', 'cancelled', 'expired'].includes(paymentStatus || 'pending')) {
+        if (previous.plan !== plan || previous.billing !== period) {
+          return NextResponse.json({ error: 'An earlier checkout is still open. Finish or cancel it before choosing a different plan.' }, { status: 409 });
+        }
+        if (paymentStatus === 'succeeded') {
+          return NextResponse.json({ error: 'Your payment is being processed. Retry the status check or contact support.' }, { status: 409 });
+        }
+        return NextResponse.json({ url: previous.url, reference: previous.reference });
+      }
+    }
+
     // ── Affiliate attribution. ────────────────────────────────────────────────
     // The resolved id goes into the SUBSCRIPTION metadata, which is the only
     // place the webhook can read it from, and #253's 12-month window is measured
@@ -156,12 +183,9 @@ export async function POST(request: NextRequest) {
     const resolved = await resolveAffiliateReferrer(referrerId, referralContext);
     logReferralCapture(resolved, referralContext);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-    // Return the customer to the SAME origin they signed up on, so their Firebase
-    // session survives the round trip, and mark it so the first-run gate picks
-    // them up. `?dodo=success` mirrors `?stripe=success`; OnboardingGate treats
-    // the two identically.
-    const origin = request.headers.get('origin') || baseUrl;
+    // The app lives on the apex. The success spelling is only a return hint;
+    // signup-status checks Dodo before any account/payment confirmation.
+    const origin = 'https://theharvest.app';
 
     const checkout = await dodoBillingProvider.createPlanCheckout({
       plan,
@@ -188,6 +212,9 @@ export async function POST(request: NextRequest) {
       // applies. See `catalogue.ts` for why that number is not restated here.
     });
 
+    await adminDb.collection('signup_checkouts').doc(userOrErr.uid).set({
+      reference: checkout.reference, url: checkout.url, plan, billing: period, ministryName: ministryName || '',
+    });
     return NextResponse.json({ url: checkout.url, reference: checkout.reference });
   } catch (error: any) {
     console.error('Dodo checkout error:', error?.message || error);

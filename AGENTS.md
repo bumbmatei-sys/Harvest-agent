@@ -1,7 +1,7 @@
 # Harvest Agent — Project Context
 
 ## What This Is
-Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. A tenant signs up, gets a subdomain (e.g. `gracechurch.theharvest.app`), and runs its community from an admin dashboard. Members reach the same tenant through a mobile-first web app. Most tenants are churches; not all of them are, and user-facing copy says **"Ministries"**, never "churches".
+Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. A tenant signs up and runs its community on `theharvest.app`, resolved from the signed-in user's tenant membership. A subdomain belongs only to a published website; existing tenant subdomains remain supported. Members reach the same tenant through a mobile-first web app. Most tenants are churches; not all of them are, and user-facing copy says **"Ministries"**, never "churches".
 
 ## The Silent-Failure Rule
 Read this before writing anything.
@@ -163,7 +163,7 @@ What you cannot read off the table, and therefore needs saying:
   `UNLIMITED_CAP = -1`, and it is a *number*, so any new consumer comparing with `>=` or
   `<` must learn the sentinel or it will report a church as at its limit forever.
 - **A campus is a sub-entity of a tenant, never a tenant of its own.** The cap that counts
-  them is `maxChurches`. A multi-campus ministry is one tenant, one subdomain, one
+  them is `maxChurches`. A multi-campus ministry is one tenant, one optional website subdomain, one
   subscription — do not model a second campus by provisioning a second tenant.
 - **There are exactly four add-ons**: AI Assistant, Admin Seats, Unlimited Contacts,
   and Social scheduler (`TenantAddons` in `src/types/tenant.types.ts`). Social scheduler

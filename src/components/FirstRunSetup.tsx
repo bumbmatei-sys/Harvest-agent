@@ -1,19 +1,15 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { CheckCircle2, AlertCircle, Loader2, Sparkles, Rocket } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles, Rocket } from 'lucide-react';
 import { auth, db } from '../firebase';
-import { isSubdomainAvailable } from '../utils/tenant.utils';
 import { getPlanFeatures, toTenantPlan } from '../utils/plan-features';
 import { TenantPlan } from '../types/tenant.types';
 import { authFetch } from '../utils/auth-fetch';
 import BrandingSection from './settings/BrandingSection';
-import DomainSection from './settings/DomainSection';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
-const SUCCESS = 'var(--brand-success, #6E8E52)';
-const DANGER = 'var(--brand-danger, #C4553B)';
 
 interface FirstRunSetupProps {
   tenantId: string;
@@ -34,11 +30,8 @@ const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  */
 const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) => {
   const [plan, setPlan] = useState<TenantPlan | null>(null);
-  const [subdomain, setSubdomain] = useState('');
-  const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
-  const [subFocus, setSubFocus] = useState(false);
 
   // Load the tenant's plan + current (auto-generated) subdomain.
   useEffect(() => {
@@ -48,45 +41,25 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
         if (snap.exists()) {
           const data = snap.data();
           setPlan(toTenantPlan(data.plan));
-          setSubdomain((data.subdomain as string) || tenantId);
         } else {
-          setSubdomain(tenantId);
-          setPlan(toTenantPlan(undefined));
+          setError('Workspace not found. Please contact support.');
         }
       } catch {
-        setSubdomain(tenantId);
-        setPlan(toTenantPlan(undefined));
+        setError('Could not load setup. Please reload to try again.');
       }
     })();
   }, [tenantId]);
 
-  // Live availability check. The tenant's current id is "yours" — never taken.
-  useEffect(() => {
-    if (!subdomain || subdomain.length < 3) { setStatus('idle'); return; }
-    if (subdomain === tenantId) { setStatus('available'); return; }
-    setStatus('checking');
-    const timer = setTimeout(async () => {
-      try {
-        const available = await isSubdomainAvailable(subdomain);
-        setStatus(available ? 'available' : 'taken');
-      } catch {
-        setStatus('available');
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [subdomain, tenantId]);
-
   const features = plan ? getPlanFeatures(plan) : null;
-  const canFinish = subdomain.length >= 3 && (subdomain === tenantId || status === 'available');
+  const canFinish = plan !== null;
 
   const handleFinish = async () => {
-    if (status === 'taken') { setError('That subdomain is taken. Try another.'); return; }
     setFinishing(true);
     setError('');
     try {
       const resp = await authFetch('/api/tenants/finish-setup', {
         method: 'POST',
-        body: JSON.stringify({ subdomain }),
+        body: JSON.stringify({}),
       });
       const data = await resp.json();
       if (!resp.ok) {
@@ -103,8 +76,6 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
       setFinishing(false);
     }
   };
-
-  const subBorder = status === 'taken' ? DANGER : status === 'available' ? SUCCESS : (subFocus ? BRAND : 'var(--stone-300, #D6CCBE)');
 
   // Once the user commits, replace the editable form with a dedicated transition
   // instead of leaving it on screen behind a spinning button — the finish-setup
@@ -126,7 +97,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
             Taking you to your ministry…
           </h1>
           <p className="mt-2.5 max-w-sm text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-            One more sign-in on your new address and you&rsquo;re in.
+            Your workspace will open here on Harvest.
           </p>
         </div>
       </div>
@@ -165,15 +136,13 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
                 signup and arrive with `setupCompleted: true`, so they never
                 reach this screen at all — this is for the ones provisioned
                 before that, who otherwise meet the same false claim here. */}
-            <Sparkles size={13} /> {plan === 'free' ? 'Account created' : 'Payment received'}
+            <Sparkles size={13} /> Account created
           </div>
           <h1 className="font-display" style={{ fontWeight: 300, fontSize: 32, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
             Finish setting up your ministry
           </h1>
           <p className="mx-auto mt-2.5 max-w-[46ch] text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-            {features?.customBranding || features?.customDomain
-              ? 'Claim your web address and brand your app. You can change all of this later in Settings.'
-              : 'Claim your web address. You can change it later in Settings.'}
+            Your workspace lives on theharvest.app. You can update your branding in Settings.
           </p>
         </div>
 
@@ -184,40 +153,6 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           </div>
         )}
 
-        {/* Subdomain claim */}
-        <div className="mt-8 rounded-brand-lg border border-line bg-surface-raised p-5 shadow-[var(--ds-sh-sm)]">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted, #8B7355)' }}>Your web address</h3>
-          <div className="flex items-stretch">
-            <input
-              type="text"
-              value={subdomain}
-              onChange={(e) => { setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); }}
-              onFocus={() => setSubFocus(true)}
-              onBlur={() => setSubFocus(false)}
-              className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-hidden transition-colors"
-              style={{ height: 46, border: `1px solid ${subBorder}`, borderRight: 'none', color: 'var(--text-heading, #2D2519)', background: 'white' }}
-              placeholder="gracechurch"
-            />
-            <span
-              className="flex items-center whitespace-nowrap rounded-r-lg px-4 text-sm"
-              style={{ border: '1px solid var(--stone-300, #D6CCBE)', background: 'var(--surface-sunken, #F3EEE7)', color: 'var(--text-body, #4A4038)' }}
-            >
-              .theharvest.app
-            </span>
-          </div>
-          <div className="mt-2 h-5 text-xs">
-            {status === 'checking' && (
-              <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted, #8B7355)' }}><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
-            )}
-            {status === 'available' && (
-              <span className="inline-flex items-center gap-1.5" style={{ color: SUCCESS }}><CheckCircle2 size={13} /> {subdomain}.theharvest.app is available</span>
-            )}
-            {status === 'taken' && (
-              <span className="inline-flex items-center gap-1.5" style={{ color: DANGER }}><AlertCircle size={13} /> That subdomain is taken — try another.</span>
-            )}
-          </div>
-        </div>
-
         {/* Branding — only for plans that include custom branding (Community / max+).
             Renders the shared BrandingSection (its own titled cards); gated exactly
             as before on features.customBranding. */}
@@ -226,16 +161,6 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
             <SectionLabel>Branding</SectionLabel>
             <BrandingSection currentFeatures={features ?? undefined} />
           </>
-        )}
-
-        {/* Custom domain — only for plans that include it (Community / max+).
-            Renders the shared DomainSection (its own titled card — it self-labels
-            "Web Address" / "Custom domain"); gated on features.customDomain
-            exactly as before. */}
-        {features?.customDomain && (
-          <div className="mt-8">
-            <DomainSection hasCustomDomain={!!features?.customDomain} />
-          </div>
         )}
 
         {/* Finish */}

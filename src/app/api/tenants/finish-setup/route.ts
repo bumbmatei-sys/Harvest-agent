@@ -1,260 +1,27 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import Stripe from 'stripe';
-import { adminDb } from '@/lib/firebase-admin';
+import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
-import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { setCustomClaims } from '@/lib/set-custom-claims';
-import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
-import {
-  tenantPrivateRef, getTenantPrivate, pickTenantPrivateFields, TENANT_PRIVATE_FIELDS,
-} from '@/lib/tenant-private';
+import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
-// A tenant can never claim a non-tenant subdomain (www/app/admin/affiliate) or a
-// platform-reserved label (api/harvest/nations/platform). Derived from the shared
-// NON_TENANT_SUBDOMAINS so a new non-tenant subdomain is automatically unclaimable.
-const RESERVED = new Set([...NON_TENANT_SUBDOMAINS, 'api', 'harvest', 'nations', 'platform']);
-
-function normalizeSubdomain(raw: string): string {
-  return (raw || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-}
-
-/**
- * POST /api/tenants/finish-setup
- * Completes the one-time first-run setup for the caller's (just-created) tenant.
- *
- * Body: { subdomain?: string }
- *  - If a new subdomain is supplied (and free), the tenant is renamed: because the
- *    tenant doc id IS the routing key (`<id>.theharvest.app`), a rename moves the
- *    doc to the new id and re-points the admin's user doc + claims. This is safe
- *    only during first-run — the tenant was just created, so it has no
- *    subcollections to migrate.
- *  - Always flips `setupCompleted` to true so the first-run gate lets the admin in.
- *
- * Auth: Bearer token. Caller must own the tenant (their own tenantId) and it must
- * still be in first-run (`setupCompleted !== true`) to rename.
- */
+/** First-run setup changes branding, never the tenant's address or identity. */
 export async function POST(request: NextRequest) {
   try {
     const caller = await requireAuth(request);
     if (caller instanceof Response) return caller;
-
-    const oldId = caller.tenantId;
-    if (!oldId) {
-      return NextResponse.json({ error: 'No tenant to finish setting up.' }, { status: 400 });
+    if (!caller.tenantId) return NextResponse.json({ error: 'No workspace.' }, { status: 400 });
+    const ref = adminDb.collection('tenants').doc(caller.tenantId);
+    const snap = await ref.get();
+    if (!snap.exists) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+    const privateData = await getTenantPrivate(caller.tenantId);
+    const roster = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
+    if (!caller.isAdmin && !caller.isSuperAdmin && !roster.some((email: string) => email.toLowerCase() === caller.email?.toLowerCase())) {
+      return NextResponse.json({ error: 'Not authorized for this workspace.' }, { status: 403 });
     }
-
-    const tenantRef = adminDb.collection('tenants').doc(oldId);
-    const tenantSnap = await tenantRef.get();
-    if (!tenantSnap.exists) {
-      return NextResponse.json({ error: 'Tenant not found.' }, { status: 404 });
-    }
-    const tenantData = tenantSnap.data() || {};
-
-    // Authorize: super admin, an admin claim, or listed in the tenant's admin
-    // roster (server-only tenant_private doc).
-    const privateData = await getTenantPrivate(oldId);
-    const callerEmail = (caller.email || '').toLowerCase();
-    const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
-    const isOwner =
-      caller.isSuperAdmin ||
-      caller.isAdmin ||
-      adminEmails.some((e) => (e || '').toLowerCase() === callerEmail);
-    if (!isOwner) {
-      return NextResponse.json({ error: 'Not authorized for this tenant.' }, { status: 403 });
-    }
-
-    // Free tenants have no host, including older tenants still in first-run.
-    if (tenantData.plan === 'free') {
-      return NextResponse.json({ error: 'A paid plan is required for a subdomain.' }, { status: 403 });
-    }
-
-    // Already finished → idempotent no-op.
-    if (tenantData.setupCompleted === true) {
-      return NextResponse.json({ tenantId: oldId, alreadyCompleted: true });
-    }
-
-    // A hostless tenant has no first-run subdomain to rename. Publishing a site
-    // will choose its address separately.
-    if (!tenantData.subdomain) {
-      await tenantRef.update({ setupCompleted: true, updatedAt: new Date().toISOString() });
-      return NextResponse.json({ tenantId: oldId });
-    }
-
-    const body = await request.json().catch(() => ({}));
-    const desired = normalizeSubdomain(body?.subdomain || '');
-    const now = new Date().toISOString();
-
-    // No rename (kept the auto subdomain, or invalid/too-short input) → just finish.
-    if (!desired || desired.length < 3 || desired === oldId) {
-      await tenantRef.update({ subdomain: oldId, setupCompleted: true, updatedAt: now });
-      return NextResponse.json({ tenantId: oldId });
-    }
-
-    if (RESERVED.has(desired)) {
-      return NextResponse.json({ error: 'That subdomain is reserved. Try another.' }, { status: 409 });
-    }
-
-    const desiredRef = adminDb.collection('tenants').doc(desired);
-
-    // Write the new tenant doc with create() (not set()) so a concurrent claim of
-    // the same subdomain fails with ALREADY_EXISTS instead of silently clobbering
-    // another tenant — this closes the read-then-write race. If the target already
-    // exists but is OUR OWN in-progress rename (same subscription, retry after a
-    // crash), resume instead of erroring.
-    try {
-      // Strip any leftover private-doc fields from the public copy — a legacy
-      // tenant doc not yet scrubbed must not re-publish them at the new id.
-      const publicCopy: Record<string, unknown> = { ...tenantData };
-      for (const field of TENANT_PRIVATE_FIELDS) delete publicCopy[field];
-      await desiredRef.create({
-        ...publicCopy,
-        subdomain: desired,
-        setupCompleted: true,
-        updatedAt: now,
-      });
-    } catch (createErr: any) {
-      const existing = await desiredRef.get();
-      // The subscription id lives on tenant_private now — compare there. (A
-      // half-applied rename wrote the private doc right after the create.)
-      const ours = existing.exists
-        && (await getTenantPrivate(desired)).stripeSubscriptionId === privateData.stripeSubscriptionId;
-      if (!ours) {
-        // Only report when create() failed with NOTHING at the target: that is not
-        // the ALREADY_EXISTS collision this catch exists for (a routine 409 on a
-        // taken subdomain, which must not page anyone) but a real Firestore fault
-        // being reported to the caller as "already taken" — and it never reaches
-        // the outer catch. The 409 below is returned either way.
-        if (!existing.exists) {
-          captureMoneyPathError(createErr, {
-            step: 'finish-setup-claim-subdomain',
-            level: 'warning',
-            tenantId: oldId,
-            ids: { desiredTenantId: desired },
-          });
-        }
-        return NextResponse.json({ error: 'That subdomain is already taken.' }, { status: 409 });
-      }
-      // Our own partially-applied rename — make sure it's marked complete.
-      await desiredRef.set({ subdomain: desired, setupCompleted: true, updatedAt: now }, { merge: true });
-    }
-
-    // Move the tenant_private doc with the rename — it is now the ONLY home of
-    // the roster + Stripe ids, and the rules' roster get() targets the new id.
-    try {
-      await tenantPrivateRef(desired).set({ ...pickTenantPrivateFields(privateData), updatedAt: now });
-    } catch (privErr) {
-      console.error('finish-setup: failed to move tenant_private doc:', privErr);
-      // Without the private doc at the new id the renamed tenant has an EMPTY
-      // roster (the rules' get() default) — its roster admins lose access until
-      // the backfill/verify script is re-run. Error-level for that reason.
-      captureMoneyPathError(privErr, {
-        step: 'finish-setup-move-tenant-private',
-        level: 'error',
-        tenantId: oldId,
-        ids: { desiredTenantId: desired },
-      });
-    }
-
-    // Re-point every user on the old tenant (just the admin at this stage) + claims.
-    const usersSnap = await adminDb.collection('users').where('tenantId', '==', oldId).get();
-    if (!usersSnap.empty) {
-      const batch = adminDb.batch();
-      usersSnap.docs.forEach((d) => batch.update(d.ref, { tenantId: desired, updatedAt: now }));
-      await batch.commit();
-      await Promise.all(usersSnap.docs.map((d) => setCustomClaims(d.id)));
-    }
-
-    // Migrate the custom-domain lookup doc(s) so a domain saved during first-run
-    // keeps resolving after the rename (domains/{domain} = { tenantId }).
-    try {
-      const domainsSnap = await adminDb.collection('domains').where('tenantId', '==', oldId).get();
-      if (!domainsSnap.empty) {
-        const dbatch = adminDb.batch();
-        domainsSnap.docs.forEach((d) => dbatch.update(d.ref, { tenantId: desired }));
-        await dbatch.commit();
-      }
-    } catch (domErr) {
-      console.error('finish-setup: failed to migrate domain lookup docs:', domErr);
-      // The rename completes anyway, so any custom domain saved during first-run is
-      // left pointing at the tenant id that gets deleted below — the domain stops
-      // resolving, permanently, with nothing to retry it.
-      captureMoneyPathError(domErr, {
-        step: 'finish-setup-migrate-domains',
-        level: 'error',
-        tenantId: oldId,
-        ids: { desiredTenantId: desired },
-      });
-    }
-
-    // Keep the Stripe subscription pointed at the new tenant id so future
-    // lifecycle events (cancellation, payment failure) resolve to this tenant.
-    // Stripe metadata updates REPLACE the whole object, so read the existing
-    // metadata and merge — re-pointing tenantId must not wipe `referrerId` (the
-    // recurring affiliate-commission path keys off it), `plan`, or `billing`.
-    // This is the new-church first-run rename, exactly where referrals live, so
-    // a blind replace would silently stop the affiliate's recurring payout.
-    const subId = privateData.stripeSubscriptionId;
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (subId && stripeKey) {
-      try {
-        const stripe = new Stripe(stripeKey);
-        const existingSub = await stripe.subscriptions.retrieve(subId);
-        await stripe.subscriptions.update(subId, {
-          metadata: { ...(existingSub.metadata || {}), tenantId: desired },
-        });
-      } catch (subErr) {
-        console.error('finish-setup: failed to update subscription metadata:', subErr);
-        // The subscription still points at the tenant id deleted below, so every
-        // future lifecycle event (cancellation, payment failure, renewal + its
-        // affiliate commission) resolves to a tenant that no longer exists.
-        captureMoneyPathError(subErr, {
-          step: 'finish-setup-update-subscription-metadata',
-          level: 'error',
-          tenantId: oldId,
-          ids: { desiredTenantId: desired, subscriptionId: subId },
-        });
-      }
-    }
-
-    // Delete the old tenant doc LAST, so a crash earlier leaves the old (still
-    // routable) doc intact rather than stranding the user with no tenant.
-    // The old tenant_private mirror goes with it (no-op if it never existed).
-    await tenantPrivateRef(oldId).delete().catch((privDelErr) => {
-      console.error('finish-setup: failed to delete old tenant_private doc:', privDelErr);
-      captureMoneyPathError(privDelErr, {
-        step: 'finish-setup-delete-old-tenant-private',
-        level: 'warning',
-        tenantId: oldId,
-        ids: { desiredTenantId: desired },
-      });
-    });
-    await tenantRef.delete().catch((delErr) => {
-      console.error('finish-setup: failed to delete old tenant doc:', delErr);
-      // Deliberately non-fatal (see above), but it leaves a duplicate, still-routable
-      // tenant doc at the old subdomain carrying the same stripeSubscriptionId.
-      captureMoneyPathError(delErr, {
-        step: 'finish-setup-delete-old-tenant',
-        level: 'warning',
-        tenantId: oldId,
-        ids: { desiredTenantId: desired },
-      });
-    });
-
-    return NextResponse.json({ tenantId: desired });
-  } catch (error: any) {
-    console.error('finish-setup error:', error?.message || error);
-    // First-run provisioning failing mid-way is the worst case here: the rename can
-    // be half-applied (new tenant doc written, users not yet re-pointed). No
-    // identifiers are attached because `oldId`/`desired` are scoped to the try.
-    captureMoneyPathError(error, { step: 'finish-setup', level: 'error' });
-    return NextResponse.json({ error: error?.message || 'Failed to finish setup' }, { status: 500 });
+    await ref.update({ setupCompleted: true, updatedAt: new Date().toISOString() });
+    return NextResponse.json({ tenantId: caller.tenantId });
+  } catch {
+    return NextResponse.json({ error: 'Could not finish setup. Please try again.' }, { status: 503 });
   }
 }

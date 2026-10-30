@@ -122,15 +122,13 @@ export function resolveSignupBillingPeriod(search: string): SignupBillingPeriod 
 /**
  * The query flag the processor appends when it sends a payer back to the app.
  *
- * `OnboardingGate` reads BOTH spellings rather than only the current one: a
- * customer who was mid-checkout when the flag was flipped returns carrying the
- * OTHER processor's marker, and the gate must still recognise them as
- * "definitely paid". Getting this wrong shows a paying customer the "Complete
- * your payment" button — i.e. invites a double charge.
+ * Both legacy processors' return hints are recognized for navigation and plan
+ * refresh. This is not evidence that payment succeeded; the return gate checks
+ * the actual subscription/payment status on the server.
  */
 export const CHECKOUT_RETURN_FLAGS = ['stripe', 'dodo'] as const;
 
-/** True when the current URL says the user has just come back from paying. */
+/** True when the URL carries a legacy checkout return hint, not proof of payment. */
 export function isReturningFromCheckout(search: string): boolean {
   const params = new URLSearchParams(search);
   return CHECKOUT_RETURN_FLAGS.some((flag) => params.get(flag) === 'success');

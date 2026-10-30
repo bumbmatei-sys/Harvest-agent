@@ -16,10 +16,11 @@ process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
 process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('checkout-secret').toString('base64');
 process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
 
-const { mockCreatePlanCheckout, mockRequireAuth, mockCollGet } = vi.hoisted(() => ({
+const { mockCreatePlanCheckout, mockRequireAuth, mockCollGet, mockSavedGet, mockSavedSet, mockGetSubscription, mockSessionStatus } = vi.hoisted(() => ({
   mockCreatePlanCheckout: vi.fn(),
   mockRequireAuth: vi.fn(),
   mockCollGet: vi.fn(),
+  mockSavedGet: vi.fn(), mockSavedSet: vi.fn(), mockGetSubscription: vi.fn(), mockSessionStatus: vi.fn(),
 }));
 
 // The route refuses with 503 while `DODO_BILLING_ENABLED` is false, which is how
@@ -35,13 +36,15 @@ vi.mock('@/utils/plan-features', async (importOriginal) => ({
 }));
 
 vi.mock('@/lib/dodo/dodo-provider', () => ({
-  dodoBillingProvider: { id: 'dodo', createPlanCheckout: mockCreatePlanCheckout },
+  dodoBillingProvider: { id: 'dodo', createPlanCheckout: mockCreatePlanCheckout, getSubscription: mockGetSubscription },
+  getDodoCheckoutPaymentStatus: mockSessionStatus,
 }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: vi.fn() }));
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(() => ({
+      doc: vi.fn(() => ({ get: mockSavedGet, set: mockSavedSet })),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
       get: mockCollGet,
@@ -76,6 +79,8 @@ beforeEach(() => {
     isAdmin: false,
   });
   mockCollGet.mockResolvedValue({ empty: true, docs: [] });
+  mockSavedGet.mockResolvedValue({ exists: false });
+  mockSavedSet.mockResolvedValue(undefined);
   mockCreatePlanCheckout.mockResolvedValue({
     url: 'https://test.checkout.dodopayments.com/session/cks_1',
     reference: 'cks_1',
@@ -114,6 +119,8 @@ describe('referrerId survives into Dodo subscription metadata', () => {
   it('still forwards a code that resolves to nobody, and warns', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockCollGet.mockResolvedValue({ empty: true, docs: [] });
+  mockSavedGet.mockResolvedValue({ exists: false });
+  mockSavedSet.mockResolvedValue(undefined);
 
     await POST(request({ ...SIGNUP, referrerId: 'NOSUCH' }));
 
@@ -210,5 +217,36 @@ describe('the checkout it asks Dodo for', () => {
 
     expect(res.status).toBe(500);
     err.mockRestore();
+  });
+});
+
+
+describe('safe checkout recovery', () => {
+  it('failed checkout retries preserve the selected plan, period and ministry name', async () => {
+    mockGetSubscription.mockResolvedValue({ status: 'failed', metadata: { userId: 'uid_owner_1' } });
+    mockSavedGet.mockResolvedValue({ exists: true, data: () => ({ reference: 'old-session' }) });
+    mockSessionStatus.mockResolvedValue('failed');
+    const response = await POST(request({ ...SIGNUP, subscriptionId: 'failed-sub' }));
+    expect(response.status).toBe(200);
+    expect(mockCreatePlanCheckout).toHaveBeenCalledOnce();
+    expect(mockCreatePlanCheckout.mock.calls[0][0]).toMatchObject({ plan: SIGNUP.plan, period: SIGNUP.billing, customer: { name: SIGNUP.ministryName } });
+    expect(mockSavedSet).toHaveBeenCalledWith(expect.objectContaining({ reference: 'cks_1', ministryName: SIGNUP.ministryName, plan: SIGNUP.plan }));
+  });
+  it.each(['active', 'pending', 'grace'])('does not create a second subscription when Dodo says %s', async status => {
+    mockGetSubscription.mockResolvedValue({ status, metadata: { userId: 'uid_owner_1' } });
+    expect((await POST(request({ ...SIGNUP, subscriptionId: 'in-flight' }))).status).toBe(409);
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
+    expect(mockSavedSet).not.toHaveBeenCalled();
+  });
+  it('refuses another user subscription even if it failed', async () => {
+    mockGetSubscription.mockResolvedValue({ status: 'failed', metadata: { userId: 'other-user' } });
+    expect((await POST(request({ ...SIGNUP, subscriptionId: 'other-sub' }))).status).toBe(403);
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
+  });
+  it('reopens an abandoned same-plan session instead of creating another', async () => {
+    mockSavedGet.mockResolvedValue({ exists: true, data: () => ({ reference: 'old', url: 'https://checkout.dodopayments.com/old', plan: SIGNUP.plan, billing: SIGNUP.billing }) });
+    mockSessionStatus.mockResolvedValue(null);
+    expect(await (await POST(request(SIGNUP))).json()).toEqual({ reference: 'old', url: 'https://checkout.dodopayments.com/old' });
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
   });
 });

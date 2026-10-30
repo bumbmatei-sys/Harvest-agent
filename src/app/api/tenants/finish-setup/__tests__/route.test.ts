@@ -42,6 +42,7 @@ vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 vi.mock('@/lib/set-custom-claims', () => ({ setCustomClaims: vi.fn().mockResolvedValue(undefined) }));
 
 const { POST } = await import('../route');
+const { finishLegacyWebsiteSubdomainClaim } = await import('@/lib/website-subdomain-claim');
 
 function makeRequest(body: object): NextRequest {
   return new NextRequest('https://example.com/api/tenants/finish-setup', {
@@ -58,7 +59,7 @@ beforeEach(() => {
   mockCollGet.mockResolvedValue({ empty: true, docs: [], forEach: vi.fn() });
 });
 
-describe('POST /api/tenants/finish-setup — subscription metadata merge on rename', () => {
+describe('unexposed legacy website claim — subscription metadata survives rename', () => {
   it('preserves referrerId/plan/billing when re-pointing the subscription to the new tenant id', async () => {
     // The first-run rename re-tags the subscription with the new tenant id. Stripe
     // metadata updates REPLACE the whole object, so this is the SECOND place (after
@@ -79,7 +80,7 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
       metadata: { tenantId: 'old-tenant', plan: 'pro', billing: 'monthly', referrerId: 'refUser' },
     });
 
-    const res = await POST(makeRequest({ subdomain: 'grace-church' }));
+    const res = await finishLegacyWebsiteSubdomainClaim(makeRequest({ subdomain: 'grace-church' }));
     expect(res.status).toBe(200);
     expect((await res.json()).tenantId).toBe('grace-church');
 
@@ -104,7 +105,7 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
     });
     mockSubsRetrieve.mockResolvedValue({ id: 'sub_ref', metadata: {} });
 
-    const res = await POST(makeRequest({ subdomain: 'grace-church' }));
+    const res = await finishLegacyWebsiteSubdomainClaim(makeRequest({ subdomain: 'grace-church' }));
     expect(res.status).toBe(200);
 
     // The private mirror at the NEW id is written from the same tenantData the
@@ -130,10 +131,10 @@ it('finishes a hostless paid tenant without assigning the requested subdomain', 
   expect(mockDocCreate).not.toHaveBeenCalled();
 });
 
-it('refuses to assign a subdomain to a Free tenant', async () => {
+it('completes Free setup while ignoring a requested subdomain', async () => {
   mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'free', setupCompleted: false }) });
   const res = await POST(makeRequest({ subdomain: 'new-name' }));
-  expect(res.status).toBe(403);
-  expect(mockDocUpdate).not.toHaveBeenCalled();
+  expect(res.status).toBe(200);
+  expect(mockDocUpdate).toHaveBeenCalledWith({ setupCompleted: true, updatedAt: expect.any(String) });
   expect(mockDocCreate).not.toHaveBeenCalled();
 });

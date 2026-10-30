@@ -129,8 +129,7 @@ export async function POST(request: NextRequest) {
     const resolved = await resolveAffiliateReferrer(body?.referrerId, referralContext);
     logReferralCapture(resolved, referralContext);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-    const origin = request.headers.get('origin') || baseUrl;
+    const origin = 'https://theharvest.app';
 
     const checkout = await dodoBillingProvider.createPlanCheckout({
       plan,

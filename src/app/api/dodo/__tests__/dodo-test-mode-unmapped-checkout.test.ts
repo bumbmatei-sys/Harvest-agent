@@ -86,3 +86,5 @@ describe('a test-mode signup checkout for the new plans is refused, not substitu
     expect(mockCheckoutCreate).not.toHaveBeenCalled();
   });
 });
+
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: () => ({ doc: () => ({ get: async () => ({ exists: false }), set: vi.fn(async () => {}) }) }) } }));

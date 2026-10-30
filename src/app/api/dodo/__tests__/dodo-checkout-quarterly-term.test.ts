@@ -88,6 +88,7 @@ async function loadCheckoutRoute(billingTerms?: readonly string[]): Promise<Post
   vi.doMock('@/lib/firebase-admin', () => ({
     adminDb: {
       collection: vi.fn(() => ({
+        doc: vi.fn(() => ({ get: async () => ({ exists: false }), set: vi.fn(async () => {}) })),
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         get: mockCollGet,
@@ -626,8 +627,8 @@ describe('the checkout payload and return_url logic are unchanged', () => {
     // would drop the session they need to finish setup.
     await POST(request(YEARLY_SIGNUP, 'https://grace.theharvest.app'));
 
-    expect(checkoutArg().returnUrl).toBe('https://grace.theharvest.app/?dodo=success');
-    expect(checkoutArg().cancelUrl).toBe('https://grace.theharvest.app/?dodo=cancel');
+    expect(checkoutArg().returnUrl).toBe('https://theharvest.app/?dodo=success');
+    expect(checkoutArg().cancelUrl).toBe('https://theharvest.app/?dodo=cancel');
   });
 
   it('falls back to the configured app URL when a request carries no origin', async () => {
@@ -642,7 +643,7 @@ describe('the checkout payload and return_url logic are unchanged', () => {
 
       await POST(bare);
 
-      expect(checkoutArg().returnUrl).toBe('https://canonical.example/?dodo=success');
+      expect(checkoutArg().returnUrl).toBe('https://theharvest.app/?dodo=success');
     } finally {
       if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
       else process.env.NEXT_PUBLIC_APP_URL = previous;

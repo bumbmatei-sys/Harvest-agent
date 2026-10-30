@@ -1080,6 +1080,7 @@ describe('reactivation restores full entitlement', () => {
       type: 'subscription.active',
       data: {
         payload_type: 'Subscription',
+        status: 'active',
         subscription_id: SUB_ID,
         product_id: 'pdt_0NlAMMp4QndR3qPzlD8sG',
         metadata: { newTenant: 'true', userId: 'user_1', ministryName: 'Grace Church' },

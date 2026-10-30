@@ -344,3 +344,5 @@ describe('🔴 a plan with no product in this mode is REFUSED, never carted as s
     },
   );
 });
+
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: () => ({ doc: () => ({ get: async () => ({ exists: false }), set: vi.fn(async () => {}) }) }) } }));

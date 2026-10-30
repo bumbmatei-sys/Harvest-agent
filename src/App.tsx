@@ -41,11 +41,7 @@ import { isAffiliateHost } from './utils/non-tenant-subdomains';
 import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
 import { SIGNUP_BILLING_STORAGE_KEY } from './utils/signup-checkout';
 import {
-  beginPaymentConfirmation,
   capturePaymentConfirmationHandoff,
-  hasSeenPaymentConfirmation,
-  shouldConfirmPaymentBeforeHandoff,
-  withPaymentConfirmationHandoff,
 } from './utils/paid-arrival';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 import { isTenantAdminRole } from './lib/roles';
@@ -293,11 +289,14 @@ const AppInner: React.FC = () => {
 
   useEffect(() => {
     if (!tenantResolutionReady) return;
+    let authGeneration = 0;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      const currentGeneration = ++authGeneration;
       setIsAuthReady(false);
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (currentGeneration !== authGeneration) return;
           const path = pathnameRef.current;
 
           // Initialize store with authenticated user
@@ -397,102 +396,8 @@ const AppInner: React.FC = () => {
                 || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView)
                 || (isFreeAccount && path.startsWith('/admin'));
               if (wantsHome) {
-                // If the user belongs to a real tenant but is currently on the apex
-                // (e.g. they clicked a "buy a plan" link while already signed in), send
-                // them to THEIR tenant's subdomain admin instead of the apex admin —
-                // which resolves no tenant and shows a broken/limited view. Super admins
-                // (no tenantId) stay on the apex admin as before.
-                //
-                // ⚠️ `(isAdminDomain || hasAdminRole)` is carried onto the hop
-                // itself rather than left on the '/' arm. A MEMBER also has a
-                // tenantId, and members reach this code on a funnel path every
-                // time they sign in — hopping them across an origin is a change
-                // to member sign-in that this ticket does not make. With the
-                // guard they keep `navigate(homeBase)` ('/'), byte-for-byte.
-                if (!isFreeAccount && data.tenantId && !onSubdomain && !resolvedTenantId && (isAdminDomain || hasAdminRole)) {
-                  // Before hard-redirecting to the tenant's subdomain, confirm the
-                  // tenant still exists. An orphaned user doc (tenantId pointing at a
-                  // deleted tenant) would otherwise bounce the user to a dead
-                  // subdomain that renders "Organization Not Found". If it's gone,
-                  // stay on the apex admin (the always-valid destination) instead.
-                  let tenantExists = false;
-                  let tenantSetupCompleted: unknown;
-                  let tenantSubdomain: unknown;
-                  let tenantSnapPlan: unknown;
-                  try {
-                    const tenantSnap = await getDoc(doc(db, 'tenants', data.tenantId));
-                    tenantExists = tenantSnap.exists();
-                    // Read off the SAME snapshot — the payment gate below needs
-                    // to know whether this is a just-provisioned tenant, and a
-                    // second get for one boolean would be a second read on the
-                    // hottest path in the funnel.
-                    tenantSetupCompleted = tenantSnap.data()?.setupCompleted;
-                    tenantSubdomain = tenantSnap.data()?.subdomain;
-                    tenantSnapPlan = tenantSnap.data()?.plan;
-                  } catch (e) {
-                    // Lookup failed — don't gamble on a possibly-dead subdomain.
-                    console.warn('Tenant existence check failed before subdomain redirect:', e);
-                  }
-                  if (tenantExists && (tenantSubdomain === data.tenantId || (tenantSubdomain === undefined && tenantSnapPlan === undefined))) {
-                    // 🔴 THE-138. The line below is an ORIGIN HOP, not a
-                    // navigation: `theharvest.app` and `<tenant>.theharvest.app`
-                    // are different origins and Firebase persists auth in
-                    // origin-scoped storage, so it ends the only session the
-                    // payer has. A church returning from checkout therefore used
-                    // to be redirected off the origin that just took its money
-                    // BEFORE anything told it the payment succeeded — it signed
-                    // in again, completed first-run setup, and met "Your payment
-                    // went through" on the far side, in the same-origin variant
-                    // that says no second sign-in is needed. By then it had done
-                    // one.
-                    //
-                    // So the hop WAITS for the confirmation. It is not removed,
-                    // not reordered and not conditioned on the funnel: the
-                    // moment the payer acknowledges the screen the redirect
-                    // resumes byte-for-byte, and any arrival that did not just
-                    // pay never enters the branch at all. The confirmation is
-                    // painted by OnboardingGate (which already owns every
-                    // screen in this funnel) on THIS origin, where the session
-                    // is still alive.
-                    if (shouldConfirmPaymentBeforeHandoff({
-                      search: window.location.search,
-                      tenantSetupCompleted,
-                    })) {
-                      beginPaymentConfirmation(data.tenantId);
-                    } else {
-                      // THE-138 part 2. This is also the RESUMED hop: a payer
-                      // who acknowledged the confirmation and then came back to
-                      // the apex (browser back, a reopened link) is sent onward
-                      // from here rather than through the screen's own action.
-                      // It must carry the acknowledgement for the same reason
-                      // that action does, or the destination shows the
-                      // confirmation again and the duplicate survives on this
-                      // path alone.
-                      //
-                      // Carried ONLY when it demonstrably happened:
-                      // `completePaymentConfirmation` is the sole writer of that
-                      // flag and only the screen's own action calls it. Every
-                      // other arrival here — a church that did not just pay, an
-                      // established tenant on a stale success URL — hops
-                      // byte-for-byte as before.
-                      const workspaceUrl = `https://${data.tenantId}.theharvest.app/admin`;
-                      window.location.href = hasSeenPaymentConfirmation()
-                        ? withPaymentConfirmationHandoff(workspaceUrl)
-                        : workspaceUrl;
-                    }
-                  } else {
-                    if (!tenantExists) console.warn(
-                      `User ${user.uid} references tenant '${data.tenantId}' which no longer exists; staying on apex admin.`
-                    );
-                    navigate('/admin', { replace: true });
-                  }
-                } else {
-                  // No tenant (a super admin), already on the subdomain, or a
-                  // member: the in-origin destination, exactly as before. On the
-                  // '/' arm `homeBase` is '/admin' by that arm's own guard, so
-                  // this is the same value it always navigated to.
-                  navigate(homeBase, { replace: true });
-                }
+                // Every account uses the apex app; legacy tenant hosts remain usable.
+                navigate(homeBase, { replace: true });
               }
               // else: keep the current deep-linked path
             } else if (data.signupInProgress && !data.tenantId) {
@@ -540,6 +445,7 @@ const AppInner: React.FC = () => {
             );
           }
         } catch (error) {
+          if (currentGeneration !== authGeneration) return;
           try {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
           } catch (e) { /* handled */ }
@@ -558,7 +464,7 @@ const AppInner: React.FC = () => {
       setIsAuthReady(true);
       storeSetIsAuthReady(true);
     });
-    return () => unsubscribe();
+    return () => { authGeneration++; unsubscribe(); };
   }, [isChurchSignup, signupPlan, isAffiliateSignup, isAdminDomain, tenantResolutionReady, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
 
   // Map legacy string-based navigation (onNavigate('admin'|'home'|...)) to routes

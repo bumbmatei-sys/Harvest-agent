@@ -1,0 +1,195 @@
+{
+  "ticket": "THE-322",
+  "entries": [
+    {
+      "file": "AGENTS.md",
+      "digest": "1279dc8298bd1360062e651e24bb67e0757928f8fd52fdd016bb93b37f078fd2",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "33ac0887c554c3b9f142d7cd69a097753030b62e3ecd45e19bb87675eef24f54",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "baff33cab2bdacb63b98d656e1b620462ac480409437918bfffa9a6cb45b90e7",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/__tests__/workspace-handoff.test.tsx",
+      "digest": "675477d929c41f150aeb5baed3abf237432c8e6f1fb898eb409984a28f4c9ae3",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
+      "digest": "664cab872f796c6e60a4578baed3931c50fc7ee04413e4de7d9321a11f07ceb4",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-route.test.ts",
+      "digest": "bc472f23cdaf96a3fe074ff4777dd458c19ead850615265d7aa54091590b920e",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-test-mode-unmapped-checkout.test.ts",
+      "digest": "710560af49a504d74e95110cbd0e9a4d1e6f14dd201444c4dd40573d09194ef0",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/the-226-plan-change-term.test.ts",
+      "digest": "0686a048ab99b489fc26d0cba055d265d6b1b26ab9aa0f53a811ba3125ebbfd0",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/checkout/route.ts",
+      "digest": "adac445ede198f9e3028283650af38fb253ff7736bb62e42aee8a0a17c3a3951",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/app/api/dodo/first-subscription/route.ts",
+      "digest": "c231789f932d710fb29e6b1ec43d83ad5a5023196013395973bb2d31348851f0",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/app/api/dodo/signup-status/__tests__/status.test.ts",
+      "digest": "20527533e2af981e177947525e634dc7eee0241b0dd48cd452890ab66a34a834",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/dodo/signup-status/route.ts",
+      "digest": "119bd84b30bbe08d84c30dffb063df75dbc8d0bf5b1f906d1f2ff946b683302e",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/app/api/event-payment/claim/route.ts",
+      "digest": "71bb526b6f06748e806d37fd0f2c6518f72f40906b9c6b1942cab526e0b2df0d",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/app/api/event-payment/public-claim/route.ts",
+      "digest": "8ee434009c3b51c8c8497075a8f3c4a8c4213f730170e569fc08f4e589bf0e83",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/app/api/tenants/finish-setup/__tests__/no-subdomain.test.ts",
+      "digest": "22d914aeef857659160c6e36f9b69d1e916da72ab41338d3588a5f3048672a0b",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/tenants/finish-setup/__tests__/route.test.ts",
+      "digest": "04464671f7e91c923b84c01a594ea0b9b7681c42a6c5d0a19d99f7e368229736",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/app/api/tenants/finish-setup/route.ts",
+      "digest": "d6cabff1f35d85581bb500299c4d8ac67c721f2ad6e12a0921417796c5ec16be",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/CheckoutRecovery.tsx",
+      "digest": "7b9427ca296e03f616d682847ea6c29ac3c30a7f0026206ba61e84e495eaaae5",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/ChurchOnboarding.tsx",
+      "digest": "35847c27adabfbf09243dfe3f31ce7f459449468a93640d227f66b3cdf328060",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/FirstRunSetup.tsx",
+      "digest": "fb328008cd80da7bba623805327e5a003de2be2c0300799a082e29499d332ee6",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/OnboardingGate.tsx",
+      "digest": "6e61bfac3daa8173f68319e23e9fdcf60269b1ed4aa4fa37cb93c3716fc91d18",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/WorkspaceHandoff.tsx",
+      "digest": "914da8c86f731ae54249e690e0f9a8ba01875a4b5d94c12b41c93ae367005243",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/components/__tests__/CheckoutRecovery.mobile.test.tsx",
+      "digest": "de66c66b1f78c32367c672851a8ef20f14144b3b7535e3e484c9ba6023835a73",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/components/__tests__/CheckoutRecovery.test.tsx",
+      "digest": "0bc97ea8c4a91a790debb7ea9e764ae059782398302add292788b7b5ae6e16b6",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/components/__tests__/OnboardingGate.restart-period.test.tsx",
+      "digest": "394fd50e383610ae1a4e445edf2b769b560f0d077a1641c67b796512757bbf79",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/components/__tests__/free-signup-funnel.test.tsx",
+      "digest": "eb0eda1091913ab860ba79abecbeaac4ce720297ad1dbf1c33ebbc143dd35845",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/components/settings/DomainSection.tsx",
+      "digest": "f729f80c5a3282acaa35df9555917368fa56a584e99c761399ffc7fb7a345654",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "053bd878d1c4ebacc5f4524864a54a93e4600eb737728b410a4773f32d5bbae5",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/contexts/__tests__/TenantContext.apex-isolation.test.tsx",
+      "digest": "a7e0185de627c5123f465851319f05f978a50d612b51afcb2bb60e0b16480414",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-annual-signup-checkout.test.ts",
+      "digest": "f86084f6a8787ae248f9ecabe94e53d3a93ebe3625c4194c914c5902124e7358",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-billing-flag.test.ts",
+      "digest": "1c99d9457c19d2b24550697fa0e47d1349b7e9d87225f3123035c3a05f58bdfb",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-provisioning.test.ts",
+      "digest": "30f1f384f33d55df1fe6f8c02eac328c01fe744f1ec6e6ccc1e5a79b693f03cb",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-subscription-lifecycle.test.ts",
+      "digest": "fb8477ad5a5c70f33adc1dd409eda05165bc7c00c630e2bdf08d17ba0caddb13",
+      "why": "Founder checkout recovery and apex routing regression coverage: preserve existing billing, provisioning and isolation checks while replacing obsolete signup-subdomain expectations with the new website-only contract."
+    },
+    {
+      "file": "src/lib/dodo/dodo-provider.ts",
+      "digest": "f62eece836e7d7299bd3c2a687f79c0aff9a13eae71767612e39dc7b02af2765",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/lib/dodo/provisioning.ts",
+      "digest": "d0f204ea266015dd7848426ff1b71f49b4454dfdfd5ad47d3721823941fb6ffc",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/lib/website-subdomain-claim.ts",
+      "digest": "d14ce32eb0e3e7f9f8c7b9e9a39352f7f34e84f3d9f97c98487bcaa2b4a8069b",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/utils/email.ts",
+      "digest": "dcb892b5c081bb36375f29a4e799dec26a33e2316f629a8631972b81c92e5cef",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    },
+    {
+      "file": "src/utils/signup-checkout.ts",
+      "digest": "de0e1b36f548eb254943efaf8153c140c6e51edbcae15a3fcdec4f5684c58d4c",
+      "why": "Founder payment recovery and website-only subdomain rule: verify Dodo state before confirmation, bound interrupted signup waits, preserve recoverable intent and keep account routing on the apex with legacy hosts supported."
+    }
+  ]
+}

@@ -181,11 +181,7 @@ const sentTo = (): string => {
 const freeSignup = async (address = 'matei') => {
   mount(<ChurchOnboarding onComplete={() => {}} signupPlan={'free' as never} />);
   await flush();
-  const field = fieldUnderLabel('Your web address');
-  expect(field, 'the free lane rendered no web-address field').toBeTruthy();
-  await type(field!, address);
-  // The availability check is debounced exactly as first-run setup's is.
-  await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+  expect(fieldUnderLabel('Your web address')).toBeNull();
   const create = control(/create my account/i);
   expect(create, 'the free lane rendered no create action').toBeTruthy();
   await act(async () => { create!.click(); });
@@ -296,9 +292,9 @@ describe('a free signup never says thank you for your payment', () => {
 
     // The reassurance the paid screen gives is owed here too: the workspace
     // really is on another origin and the sign-in really is coming.
-    expect(text()).toContain('matei.theharvest.app');
-    expect(text()).toContain('sign in once more');
-    expect(text()).toContain('nothing was lost');
+    expect(text()).toContain('theharvest.app');
+    expect(text()).not.toContain('sign in once more');
+    expect(text()).toContain('already signed in');
   });
 
   it('a free tenant still carrying setupCompleted: false is not congratulated on a payment either', async () => {
@@ -322,8 +318,8 @@ describe('a free signup never says thank you for your payment', () => {
     await pushUser({ tenantId: 'matei', role: 'admin', plan: 'church' });
     await pushTenant('matei', { setupCompleted: false, plan: 'church' });
     await flush();
-    expect(text()).toContain(MEMBER_APP);
-    expect(text()).not.toContain('Finish setting up your ministry');
+    expect(text()).toContain('Finish setting up your ministry');
+    expect(fieldUnderLabel('Your web address')).toBeNull();
   });
 
   it('the confirmation screen itself says only what it was told to say', async () => {
@@ -406,7 +402,7 @@ describe('a paying church still sees its payment confirmation exactly once, befo
    */
   const arriveFromCheckout = async () => {
     setURL('https://theharvest.app/?dodo=success');
-    // What App.tsx's callback does when it holds the hop back.
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'ready', tenantId: 'gracechurch' }) });
     beginPaymentConfirmation('gracechurch');
     getDoc.mockResolvedValue({ exists: () => true, data: () => ({ name: 'Grace Community Church', plan: 'plus' }) });
     mount(<OnboardingGate><div>{MEMBER_APP}</div></OnboardingGate>);
@@ -427,7 +423,7 @@ describe('a paying church still sees its payment confirmation exactly once, befo
 
   it('and is not shown a second time once acknowledged', async () => {
     await arriveFromCheckout();
-    const go = control(/continue to gracechurch\.theharvest\.app/i);
+    const go = control(/go to your dashboard|continue to theharvest/i);
     expect(go, 'the confirmation offered no way onward').toBeTruthy();
     await act(async () => { go!.click(); });
 
@@ -445,10 +441,10 @@ describe('a paying church still sees its payment confirmation exactly once, befo
 
   it('the acknowledgement rides the hop, so the destination origin does not repeat it', async () => {
     await arriveFromCheckout();
-    const go = control(/continue to gracechurch\.theharvest\.app/i);
-    expect(go!.getAttribute('href')).toContain('https://gracechurch.theharvest.app/admin');
+    const go = control(/go to your dashboard|continue to theharvest/i);
+    expect(go!.getAttribute('href')).toBe('/admin');
     expect(go!.getAttribute('href'), 'the hint that suppresses the duplicate was dropped')
-      .toContain('payment_confirmed=1');
+      .not.toContain('payment_confirmed=1');
   });
 
   it('the pre-hop confirmation is reached only from the paid-arrival lane', () => {
@@ -482,14 +478,14 @@ describe('a paying church still sees its payment confirmation exactly once, befo
    3 — the church that does not exist
    ═══════════════════════════════════════════════════════════════════════════ */
 
-describe('a free signup asks for a subdomain, not a church name', () => {
-  it('offers a web-address field and no ministry-name field', async () => {
+describe('a free signup asks for neither a host nor an organization name', () => {
+  it('offers no web-address or ministry-name field', async () => {
     mount(<ChurchOnboarding onComplete={() => {}} signupPlan={'free' as never} />);
     await flush();
 
-    expect(fieldUnderLabel('Your web address'), 'no address field').toBeTruthy();
+    expect(fieldUnderLabel('Your web address')).toBeNull();
     expect(fieldUnderLabel('Ministry name'), 'the free lane still asks to name a church').toBeNull();
-    expect(text()).toContain('Choose your web address');
+    expect(text()).toContain('Create your workspace');
     expect(text()).not.toContain('Name your ministry');
   });
 
@@ -499,12 +495,12 @@ describe('a free signup asks for a subdomain, not a church name', () => {
     expect(sentTo()).toBe('/api/tenants/provision-free');
     // Both, from one field: the address the tenant lives at, and the display
     // name every surface reading `tenant.name` falls back on.
-    expect(sentBody()).toMatchObject({ subdomain: 'matei', ministryName: 'matei' });
+    expect(sentBody()).toEqual({ ministryName: 'My workspace' });
   });
 
   it('the chosen address travels on the marker, so a restart lands on the same one', async () => {
     await freeSignup('matei');
-    expect(writtenMarker()).toMatchObject({ signupSubdomain: 'matei' });
+    expect(writtenMarker()).not.toHaveProperty('signupSubdomain');
   });
 
   it('a free tenant is never given a blank display name', async () => {
@@ -514,15 +510,14 @@ describe('a free signup asks for a subdomain, not a church name', () => {
     const provisioning = readSrc('lib/free-provisioning.ts');
     expect(provisioning).toMatch(/name:\s*name\s*\|\|\s*'My Ministry'/);
     const body = sentBodyAfter(() => freeSignup('matei'));
-    await expect(body).resolves.toMatchObject({ ministryName: 'matei' });
+    await expect(body).resolves.toMatchObject({ ministryName: 'My workspace' });
   });
 
-  it('the address is sanitised to something that can actually be a subdomain', async () => {
+  it('no address availability checks run during signup', async () => {
     mount(<ChurchOnboarding onComplete={() => {}} signupPlan={'free' as never} />);
     await flush();
-    const field = fieldUnderLabel('Your web address')!;
-    await type(field, 'Matei Bumb!! 42');
-    expect(field.value).toBe('mateibumb42');
+    expect(container.querySelector('input')).toBeNull();
+    expect(isSubdomainAvailable).not.toHaveBeenCalled();
   });
 
   it('the paid lane still asks for a ministry name', async () => {
@@ -596,9 +591,9 @@ describe('a free signup does not route through the member app', () => {
 
     // One action, pointing at the new origin — the second sign-in is not
     // removed (it cannot be), it is announced and it happens exactly once.
-    const go = control(/continue to matei\.theharvest\.app/i);
+    const go = control(/go to your dashboard|continue to theharvest/i);
     expect(go, 'no way onward from the confirmation').toBeTruthy();
-    expect(go!.getAttribute('href')).toBe('https://matei.theharvest.app/admin');
+    expect(go!.getAttribute('href')).toBe('/admin');
   });
 });
 
@@ -646,7 +641,7 @@ describe('a free tenant is never left with signupInProgress set', () => {
 
     // The gate waits, then stops waiting. No processor is coming back with a
     // success marker on this lane, so it falls through to the resumable screen.
-    await act(async () => { await vi.advanceTimersByTimeAsync(31000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(61000); });
     await flush();
 
     expect(text()).toContain('Finish setting up');
@@ -661,7 +656,7 @@ describe('a free tenant is never left with signupInProgress set', () => {
 
     expect(sentTo()).toBe('/api/tenants/provision-free');
     // …at the SAME address, not a fresh one they never chose.
-    expect(sentBody()).toMatchObject({ subdomain: 'matei' });
+    expect(sentBody()).not.toHaveProperty('subdomain');
   });
 
   it('creates a setup-complete free tenant without a host when an address was supplied', async () => {

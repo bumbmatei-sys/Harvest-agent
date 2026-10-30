@@ -435,6 +435,7 @@ describe('a subscription created by first-subscription records the same term as 
       mockGetUser.mockResolvedValue({ email: 'new@church.example' });
       await provisionTenantFromDodoSubscription({
         subscription_id: 'sub_signup',
+        status: 'active',
         product_id: product,
         customer: { customer_id: 'cus_2', email: 'new@church.example' },
         metadata: { newTenant: 'true', userId: 'user_new', ministryName: 'New Church' },

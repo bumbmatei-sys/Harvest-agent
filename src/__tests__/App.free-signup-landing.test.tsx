@@ -251,8 +251,8 @@ afterEach(() => {
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
 
-describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
-  it('a freshly provisioned paid tenant lands on its own subdomain', async () => {
+describe('1 — a provisioned paid tenant stays on the apex app', () => {
+  it('a freshly provisioned paid tenant stays on the apex app', async () => {
     // Exactly where the free lane leaves the evangelist: on the apex, on the
     // church-onboarding funnel path, with a tenant that now exists.
     startAt(`${APEX_ORIGIN}/church-onboarding`);
@@ -265,12 +265,12 @@ describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
 
     // 🔴 THE REPORT. Before the fix this was `[]` and the browser sat on apex
     // /admin — the origin with no tenant, and so with no roster and no nav.
-    expect(hops, 'the paid tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
-    expect(window.location.pathname, 'the founder was parked on apex /admin').not.toBe('/admin');
+    expect(hops, 'the paid tenant was left on the apex instead of its own subdomain').toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
   });
 
   it.each(FUNNEL_SCREENS)(
-    'a provisioned owner re-entering on $label is handed to its subdomain',
+    'a provisioned owner re-entering on $label stays on the apex app',
     async ({ path: funnelPath }) => {
       // The founder hit this WITHOUT refreshing, and `api/tenants/delete` is why
       // a second signup can: it detaches the user (tenantId null, role 'user')
@@ -285,7 +285,7 @@ describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
       mount();
       await flush();
 
-      expect(hops).toEqual([WORKSPACE_URL]);
+      expect(hops).toEqual([]);
     },
   );
 
@@ -395,7 +395,7 @@ describe('7 — the paid signup landing is unchanged', () => {
     mount();
     await flush();
 
-    expect(hops).toEqual([WORKSPACE_URL]);
+    expect(hops).toEqual([]);
   });
 
   it('the THE-138 payment confirmation still holds the hop for a just-provisioned church', async () => {
