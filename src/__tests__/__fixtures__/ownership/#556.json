@@ -440,6 +440,21 @@
       "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
       "digest": "edba5f964f2b733245cbecbec6ccd2779209259dc8a0a21b3f89bf911ca1b931",
       "why": "APPENDED, NOT SUBSTITUTED — #556 CI timeout fix: prefilter impossible term matches before the shared parser and reuse one working-tree inventory across both sweep assertions. Preserve all term validation and stale-entry checks; an untracked executable annual literal fails, while a comment-only literal passes. Normalize relative paths for Windows."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "c710d34015b5a0f2fc68674668e29c8966dd525bdc3db10dd8da9db627ad16eb",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the save transaction also refuses turning a registered one-off event into a series, and refuses an end date or count that would drop a run holding active registrations. Both answer 409 with a visible message; no write happens."
+    },
+    {
+      "file": "src/lib/events/series-edit.ts",
+      "digest": "309d9476893db5b9f8af47ab7c58cc481df550836aa005a097f4e1eab5acf17a",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds droppedRegisteredRuns and the one-off/dropped-run conflict messages. changesSeriesIdentity is unchanged."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "c30a1a4416c0741af7e3f9c44ae4d7155d3f45f4e9c1144b6077225f714f0fd4",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: regression coverage for one-off-to-series conversion, shortening by count and by end date, waitlisted and cancelled rows, extension and a failed read. Reverting either fix fails these cases; existing assertions retained."
     }
   ]
 }

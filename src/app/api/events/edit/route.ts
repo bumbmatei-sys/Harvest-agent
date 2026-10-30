@@ -3,7 +3,9 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireTenantPermission } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
-import { changesSeriesIdentity, SERIES_LOCK_MESSAGE } from '@/lib/events/series-edit';
+import {
+  changesSeriesIdentity, droppedRegisteredRuns, droppedRunsMessage, ONE_OFF_LOCK_MESSAGE, SERIES_LOCK_MESSAGE,
+} from '@/lib/events/series-edit';
 import { registrationCutoffHours } from '@/lib/events/registration-cutoff';
 import type { RecurrenceRule } from '@/lib/events/recurrence';
 
@@ -101,14 +103,31 @@ export async function PATCH(request: NextRequest) {
       if (after.recurrence && !['weekly', 'every_2_weeks', 'monthly'].includes(after.recurrence.freq)) {
         throw new EditError('Invalid repeat frequency', 400);
       }
-      if (before.recurrence && changesSeriesIdentity(
-        { startDate: before.startDate?.toDate() || null, timeZone: before.timeZone, recurrence: before.recurrence as RecurrenceRule },
+      // A one-off event's registrations carry no runDate, so turning it into a
+      // series would orphan them from capacity and cancellation notices.
+      if ((before.recurrence || after.recurrence) && changesSeriesIdentity(
+        { startDate: before.startDate?.toDate() || null, timeZone: before.timeZone, recurrence: before.recurrence as RecurrenceRule | null },
         { startDate: after.startDate?.toDate() || null, timeZone: after.timeZone, recurrence: after.recurrence as RecurrenceRule | null },
       )) {
         // Single-field query, complete projection; no index or arbitrary list cap.
         const registrations = await transaction.get(adminDb.collection('tenants').doc(tenantId).collection('registrations')
           .where('eventId', '==', eventId).select());
-        if (!registrations.empty) throw new EditError(SERIES_LOCK_MESSAGE, 409);
+        if (!registrations.empty) throw new EditError(before.recurrence ? SERIES_LOCK_MESSAGE : ONE_OFF_LOCK_MESSAGE, 409);
+      } else if (before.recurrence && after.recurrence && before.startDate?.toDate && after.startDate?.toDate
+        && (before.recurrence.until !== after.recurrence.until || before.recurrence.count !== after.recurrence.count)) {
+        // A shorter end date or count must not drop a registered run silently:
+        // its tickets would read cancelled while nobody is notified.
+        const registrations = await transaction.get(adminDb.collection('tenants').doc(tenantId).collection('registrations')
+          .where('eventId', '==', eventId).select('runDate', 'status'));
+        const registered = registrations.docs.map(row => row.data())
+          .filter(row => row.status !== 'cancelled' && typeof row.runDate === 'string')
+          .map(row => row.runDate as string);
+        const series = (event: Record<string, any>) => ({
+          startDate: event.startDate.toDate(), endDate: (event.endDate || event.startDate).toDate(),
+          timeZone: event.timeZone, recurrence: event.recurrence as RecurrenceRule,
+        });
+        const dropped = droppedRegisteredRuns(series(before), series(after), registered);
+        if (dropped.length) throw new EditError(droppedRunsMessage(dropped), 409);
       }
       transaction.update(ref, { ...update, updatedAt: FieldValue.serverTimestamp() });
     });

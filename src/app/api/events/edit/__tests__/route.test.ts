@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const state = vi.hoisted(() => ({
   event: {} as Record<string, any>, registrations: 0, readError: false,
+  registeredRuns: [] as { runDate?: string; status: string }[],
   writes: [] as Record<string, any>[], paths: [] as string[],
   permission: vi.fn(), member: { tenantId: 't1' } as { tenantId: string | null } | undefined,
 }));
@@ -28,7 +29,7 @@ vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
       state.paths.push(r.path);
       if (r.path.includes('registrations')) {
         if (state.readError) throw new Error('unavailable');
-        return { empty: state.registrations === 0 };
+        return { empty: state.registrations === 0, docs: state.registeredRuns.map(row => ({ data: () => row })) };
       }
       return { exists: true, data: () => state.event };
     },
@@ -47,7 +48,7 @@ const request = (data: Record<string, unknown>) => new NextRequest('https://t1.t
 beforeEach(() => {
   state.event = { title: 'Series', startDate: timestamp('2031-03-16T18:00:00.000Z'), timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 4 } };
   state.member = { tenantId: 't1' };
-  state.registrations = 1; state.readError = false; state.writes = []; state.paths = [];
+  state.registrations = 1; state.readError = false; state.writes = []; state.paths = []; state.registeredRuns = [];
   state.permission.mockReset().mockResolvedValue({ uid: 'admin' });
 });
 
@@ -134,4 +135,57 @@ it.each(['other', null, undefined])('rejects edits and lock reads when current m
   expect((await PATCH(request({ title: 'Unauthorized' }))).status).toBe(403);
   expect((await GET(new NextRequest('https://t1.theharvest.app/api/events/edit?tenantId=t1&eventId=e1'))).status).toBe(403);
   expect(state.writes).toEqual([]);
+});
+
+describe('edits never orphan existing registrations', () => {
+  const oneOff = () => ({ title: 'One-off', startDate: timestamp('2031-03-16T18:00:00.000Z'), timeZone: 'Europe/Berlin', recurrence: null });
+
+  it('refuses turning a registered one-off event into a series', async () => {
+    state.event = oneOff();
+    const response = await PATCH(request({ recurrence: { freq: 'weekly', count: 4 } }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain('cannot be turned into a repeating series');
+    expect(state.writes).toEqual([]);
+    expect(state.paths).toContain('tenants/t1/registrations?eventId==e1');
+  });
+  it('still lets a one-off event become a series before anyone registers', async () => {
+    state.event = oneOff(); state.registrations = 0;
+    expect((await PATCH(request({ recurrence: { freq: 'weekly', count: 4 } }))).status).toBe(200);
+    expect(state.writes).toHaveLength(1);
+  });
+  it('still lets a registered one-off event move its date', async () => {
+    state.event = oneOff();
+    expect((await PATCH(request({ startDate: '2031-03-20T18:00:00.000Z' }))).status).toBe(200);
+  });
+
+  // Weekly from Monday 2031-03-16, count 4: runs 03-16, 03-23, 03-30, 04-06.
+  it.each([
+    { count: 2 },
+    { until: '2031-03-24' },
+  ])('refuses shortening a series past a registered run: %j', async end => {
+    state.registeredRuns = [{ runDate: '2031-03-30', status: 'confirmed' }, { runDate: '2031-03-16', status: 'confirmed' }];
+    const response = await PATCH(request({ recurrence: { freq: 'weekly', ...end } }));
+    expect(response.status).toBe(409);
+    const { error } = await response.json();
+    expect(error).toContain('2031-03-30');
+    expect(error).not.toContain('2031-03-16');
+    expect(state.writes).toEqual([]);
+  });
+  it('refuses when a waitlisted registrant would be dropped', async () => {
+    state.registeredRuns = [{ runDate: '2031-04-06', status: 'waitlisted' }];
+    expect((await PATCH(request({ recurrence: { freq: 'weekly', count: 3 } }))).status).toBe(409);
+  });
+  it('allows shortening when the dropped runs hold only cancelled registrations', async () => {
+    state.registeredRuns = [{ runDate: '2031-04-06', status: 'cancelled' }, { runDate: '2031-03-16', status: 'confirmed' }];
+    expect((await PATCH(request({ recurrence: { freq: 'weekly', count: 3 } }))).status).toBe(200);
+  });
+  it('allows extending a registered series', async () => {
+    state.registeredRuns = [{ runDate: '2031-04-06', status: 'confirmed' }];
+    expect((await PATCH(request({ recurrence: { freq: 'weekly', count: 10 } }))).status).toBe(200);
+  });
+  it('fails visibly and writes nothing if the run check cannot read registrations', async () => {
+    state.readError = true;
+    expect((await PATCH(request({ recurrence: { freq: 'weekly', count: 2 } }))).status).toBe(503);
+    expect(state.writes).toEqual([]);
+  });
 });
