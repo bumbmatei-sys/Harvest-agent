@@ -331,6 +331,21 @@
       "file": "src/lib/email/suppression-key.ts",
       "digest": "eed0bf88b520dc26d0828d4c10412a1fc846db1204e984173cbd38ec55deef14",
       "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "f44fd62308260dcf6de0a3b2624f67f9dad54be6ffb177ff87530d56116dac90",
+      "why": "#561 r3 review B1 fix: rejoin no longer matches blocks or contacts by a contact's admin-editable email/userId. readCommunityRejoin now clears only the single suppression doc keyed to the caller's own address and reads only contacts with communityUserId == uid, so a manageCRM admin repointing a contact's email can no longer make a rejoining member clear a stranger's opt-out block."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "dd19fd023872725b8b879979f0a509b32f841eb9ca373681589dfc3e497dfdcc",
+      "why": "#561 r3 review B1 fix: the join route now passes readCommunityRejoin the verified token email (user.emailVerified ? user.email : undefined) instead of the Firestore profile's email, so an unverified or forged token email clears no block and a stale/mismatched profile email can no longer be used to unblock an address the caller does not control."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "ae96e8e27b28594630080e1277b5e6c11d3d9965eb027906d81d997c8c0cb843",
+      "why": "#561 r3 review B1 required tests: adds regression coverage proving a manageCRM-edited contact email cannot unblock a victim's address on rejoin, a profile email that differs from the verified token email leaves that other address blocked, and an unverified token email clears nothing; adjusts the departure-privacy fixture's auth mock to carry an explicit verified token email matching the member's real address so the existing happy-path unblock assertions still exercise that path, and narrows the unlinked-duplicate-contact assertion to reflect that rejoin now only touches contacts owned by the caller's own uid."
     }
   ]
 }

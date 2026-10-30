@@ -71,8 +71,11 @@ export async function communityMembershipRequest(request: NextRequest, joining: 
         }
         const data = buildCommunityMember({ uid: user.uid, tenantId, source: body.source!, now: Timestamp.now(),
           previous, rulesAcceptedVersion: body.rulesAcceptedVersion, answers: body.answers });
-        const rejoin = previous?.status === 'left' ? await readCommunityRejoin(tx, tenantId, user.uid, profile?.email) : null;
-        if (rejoin) writeCommunityRejoin(tx, rejoin, user.uid);
+        // Only a verified token email can clear another address's opt-out block;
+        // an unverified or forged email on the token clears nothing (see B1, r3 review).
+        const rejoin = previous?.status === 'left'
+          ? await readCommunityRejoin(tx, tenantId, user.uid, user.emailVerified ? user.email : undefined) : null;
+        if (rejoin) writeCommunityRejoin(tx, rejoin);
         const index: UserMembership<Timestamp> = { tenantId, status: data.status, joinedAt: data.joinedAt, leftAt: null };
         // Replace the complete record so submitted answers also clear the old
         // pending-questions marker instead of recursively merging it back in.

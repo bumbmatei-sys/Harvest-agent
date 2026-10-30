@@ -72,7 +72,7 @@ function request(body: unknown) { return new NextRequest('http://localhost/api/c
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('EMAIL_UNSUBSCRIBE_SECRET', 'community-test-secret');
-  fx.auth.mockResolvedValue({ uid: 'person', email: 'person@test.com', tenantId: 'original', isAdmin: false });
+  fx.auth.mockResolvedValue({ uid: 'person', email: 'person@test.com', emailVerified: true, tenantId: 'original', isAdmin: false });
   fx.contact.mockResolvedValue(undefined);
   fx.failRead = ''; fx.failWrite = false;
   fx.docs = {
@@ -278,6 +278,9 @@ describe('join and leave API', () => {
 
 describe('departure privacy', () => {
   beforeEach(async () => {
+    // The token email is the one rejoin trusts; keep it equal to the member's
+    // real address here so happy-path unblocking still exercises that path.
+    fx.auth.mockResolvedValue({ uid: 'person', email: 'member@example.org', emailVerified: true, tenantId: 'original', isAdmin: false });
     await join(request(joinBody));
     fx.docs['users/person'].email = ' MEMBER@Example.org ';
     fx.docs['contacts/linked'] = { tenantId: 'target', communityUserId: 'person', email: 'member@example.org', emailStatus: 'subscribed', notes: 'private' };
@@ -304,8 +307,43 @@ describe('departure privacy', () => {
     expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(false);
     expect(fx.docs[memberPath].consentVersion).toBe(2);
     expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'active', communityLeftAt: null, emailStatus: 'none' });
-    expect(fx.docs['contacts/duplicate'].emailStatus).toBe('none');
+    // Unlinked (no communityUserId) means rejoin never touches it, even though
+    // its address matches: that match is exactly the forgeable surface in B1.
+    expect(fx.docs['contacts/duplicate'].emailStatus).toBe('unsubscribed');
     expect(fx.docs['contacts/foreign'].emailStatus).toBe('subscribed');
+  });
+  it('does not let a manageCRM-edited contact email unblock a victim address on rejoin (B1)', async () => {
+    await leave(request({ tenantId: 'target' }));
+    // The victim separately left this same community, so their address is
+    // genuinely blocked under their own 'community-leave' record.
+    fx.docs[`tenants/target/emailSuppressions/${communitySuppressionId('victim@example.org')}`] =
+      { emailHash: communitySuppressionId('victim@example.org'), status: 'unsubscribed', from: 'community-leave', at: '2020-01-01' };
+    // An admin with manageCRM repoints the left member's own contact at the
+    // victim's address after both leave blocks were already written.
+    fx.docs['contacts/linked'].email = 'victim@example.org';
+    expect((await join(request(joinBody))).status).toBe(200);
+    // The member's own address is legitimately unblocked by their rejoin...
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(false);
+    // ...but the victim's block, reachable only through the forged contact
+    // email, must survive.
+    expect(await tenantEmailBlocked('target', 'victim@example.org')).toBe(true);
+    expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'active', email: 'victim@example.org' });
+  });
+  it('does not unblock an address from a stale profile email that differs from the verified token email (B1)', async () => {
+    await leave(request({ tenantId: 'target' }));
+    // The Firestore profile document still carries the member's address, but
+    // the signed-in token (what rejoin must trust) now has a different email.
+    fx.auth.mockResolvedValue({ uid: 'person', email: 'other@example.org', emailVerified: true, tenantId: 'original', isAdmin: false });
+    expect((await join(request(joinBody))).status).toBe(200);
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(true);
+    expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'active', emailStatus: 'unsubscribed' });
+  });
+  it('clears nothing on rejoin when the token email is unverified (B1)', async () => {
+    await leave(request({ tenantId: 'target' }));
+    fx.auth.mockResolvedValue({ uid: 'person', email: 'member@example.org', emailVerified: false, tenantId: 'original', isAdmin: false });
+    expect((await join(request(joinBody))).status).toBe(200);
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(true);
+    expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'active', emailStatus: 'unsubscribed' });
   });
   it('excludes left members and duplicates from the real newsletter store and audience', async () => {
     fx.docs['contacts/allowed'] = { tenantId: 'target', email: 'allowed@example.org', emailStatus: 'subscribed' };

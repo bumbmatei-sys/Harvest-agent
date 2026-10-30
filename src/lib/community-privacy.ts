@@ -25,25 +25,34 @@ export async function readCommunityDeparture(tx: FirebaseFirestore.Transaction, 
   return { ...contacts, channels: channels.docs };
 }
 
-/** Fresh v2 consent clears only community departure blocks. Newsletter opt-outs,
- * bounces and complaints remain independent of community membership.
+/** Fresh v2 consent clears only community departure blocks, and only the
+ * rejoining user's OWN verified address and OWN linked contacts: a contact's
+ * `email`/`userId` is admin-editable CRM data, so matching rejoin unblocks
+ * against it would let a rejoining member clear a stranger's opt-out just by
+ * having an admin point a contact at that stranger's address first.
  */
-export async function readCommunityRejoin(tx: FirebaseFirestore.Transaction, tenantId: string, uid: string, email: unknown) {
-  return readCommunityContacts(tx, tenantId, uid, email);
+export async function readCommunityRejoin(tx: FirebaseFirestore.Transaction, tenantId: string, uid: string, email: string | undefined) {
+  const tenant = adminDb.collection('tenants').doc(tenantId);
+  const address = typeof email === 'string' ? normalizeEmail(email) : '';
+  const [contacts, block] = await Promise.all([
+    tx.get(adminDb.collection('contacts').where('tenantId', '==', tenantId)),
+    address ? tx.get(tenant.collection('emailSuppressions').doc(communitySuppressionId(address))) : Promise.resolve(null),
+  ]);
+  return { tenant, address, block, contacts: contacts.docs.filter(doc => doc.data().communityUserId === uid) };
 }
 
-export function writeCommunityRejoin(tx: FirebaseFirestore.Transaction, rejoin: Awaited<ReturnType<typeof readCommunityRejoin>>, uid: string) {
-  const cleared = new Set(rejoin.blocks.filter(doc => doc.data()?.from === 'community-leave').map(doc => doc.id));
-  for (const block of rejoin.blocks) if (cleared.has(block.id)) tx.delete(block.ref);
+export function writeCommunityRejoin(tx: FirebaseFirestore.Transaction, rejoin: Awaited<ReturnType<typeof readCommunityRejoin>>) {
+  const cleared = !!rejoin.block?.exists && rejoin.block.data()?.from === 'community-leave';
+  if (cleared) tx.delete(rejoin.block!.ref);
   for (const contact of rejoin.contacts) {
     const data = contact.data();
     const patch = {
-      ...(data.communityUserId === uid ? { communityStatus: 'active', communityLeftAt: null } : {}),
+      communityStatus: 'active', communityLeftAt: null,
       // Joining permits owner contact; newsletter subscription still needs its own opt-in.
-      ...(typeof data.email === 'string' && cleared.has(communitySuppressionId(data.email)) && data.emailStatus === 'unsubscribed'
+      ...(cleared && typeof data.email === 'string' && normalizeEmail(data.email) === rejoin.address && data.emailStatus === 'unsubscribed'
         ? { emailStatus: 'none', emailUnsubscribedAt: FieldValue.delete() } : {}),
     };
-    if (Object.keys(patch).length) tx.update(contact.ref, patch);
+    tx.update(contact.ref, patch);
   }
 }
 
