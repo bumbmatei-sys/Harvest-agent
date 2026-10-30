@@ -17,6 +17,9 @@ import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
+import { buttonVariants } from '../ui/button';
+import { cn } from '../../lib/utils';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import { CONTROL_DENSITY } from '../layout/form-layout';
 
 /**
@@ -53,7 +56,7 @@ const PAGE = 'src/components/PublicEventRegistration.tsx';
  * discovery guard exists to prevent.
  */
 function discover(re: RegExp, what: string): string {
-  const m = read(PAGE).match(re);
+  const m = stripComments(read(PAGE)).match(re);
   if (!m) throw new Error(`${what}: no match for ${re} in ${PAGE} — the surface moved`);
   return m[1];
 }
@@ -84,10 +87,12 @@ const payLinkClass = withDensity(
   discover(/data-public-pay-link\b[\s\S]{0,300}?className=\{`([^`]+)`\}/, 'a payment link'),
   'the payment link',
 );
-const submitClass = discover(
-  /data-public-submit\b[\s\S]{0,200}?className="([^"]+)"/,
+// #556: submit is now a shared Button with a density template, so resolve
+// its actual primitive classes and overrides before measuring the same target.
+const submitClass = cn(buttonVariants({ variant: 'default' }), withDensity(discover(
+  /data-public-submit\b[\s\S]{0,300}?className=\{`([^`]+)`\}/,
   'the submit button',
-);
+), 'the submit button'));
 
 /**
  * THE SCENE: the confirmation panel exactly as the page builds it — the Shell's

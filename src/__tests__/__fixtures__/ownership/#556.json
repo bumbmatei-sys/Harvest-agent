@@ -1,0 +1,530 @@
+{
+  "ticket": "#556",
+  "entries": [
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "4d9d749f00fca99483a2a7d84e0bb10604ed412f786428cb061bb4216586f019",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1/B2 replace reviewed controls with shadcn primitives, lock registered series date/frequency/zone, show check failures, and route edits through a server transaction. Existing creation, payment and navigation behavior retained."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "71061b91e16d2f92ab9923ce0ae9a52b437aa35da58a7f90eadaa48a3d8e5fd6",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 replaces calendar, run selection, question stepper and submit controls with shared primitives, preserving existing handlers and payment copy."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "4158eed9e32a957a4d7e68783cde2a6031c598d0750e760d69452e2eef494fe8",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 changes only the reviewed Add to calendar control to the shared Button with existing handler and density."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: F1/F3 require current users/{uid} tenant membership for restricted events and include the selected civil run date in confirmation emails. Payment and CRM writes retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "a3753014480662fed32c316dc041f03b36413c554c72de0d974709cb27b6377f",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1/B2 append real-DOM primitive assertions, disabled schedule fields, editable start time and failed-read coverage. Existing save assertions use the new server-save client boundary; all original tests retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "9bb55dd70d76a44e85e9ff01f6331a0926def578f88881f21fe3c99eae9d2005",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 appends a rendered question-stepper regression covering Input, Textarea, RadioGroup, exclusive selection and Button through submission. Prior assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "96278f3a283df8ed78af52d31b9d23a6ada7cbc02f07eb458a91b95626865c75",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: F1/F3 append stale-token, removed membership, read-failure and selected-run email regressions. Existing signed-in tests now supply the authoritative user document; prior assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "e696ada313d570852f45d68d138c571e01c432553282e86ec44f0ef46e77581e",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed event-save and submit-route digest pins; prior pins and all assertions retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "16048ffaec5377862edb5152e08252fe301f51a5c69312335f03b9447a92e8f1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append reviewed event-save and submit-route digest pins, and assert the exact shadcn primitive imports required by B1. No raw-control exemptions; prior pins and all other assertions retained."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "ac98259a1450359888f40799c192c8698fef7b97adde6931343c5a1e5e5374d4",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed submit-route digest for F1/F3; preserve previous pin and every money-path, height and date guard."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "fcffb13b40b674359822249220fb3008f2314c12c2014b07a8c6ee3593c42801",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append only the reviewed AdminEvents digest for B1/B2; previous pins and all navigation, permission and sidebar assertions retained."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "a363f4c8983d8ad1a290e4029a94b094ee76946ad2be3692ceb688e7d9a46385",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 adds a manageEvents-protected server edit endpoint with a current registration check inside the save transaction, refusing series identity changes with a visible conflict. Lock-state reads fail visibly."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "4e991c46d25390171efe615d23dbc1686b84230ced8393caa298f502f38f1812",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 covers day, frequency, zone and recurrence removal conflicts, registrations arriving after the editor opens, allowed details/time changes, failed reads and tenant permission checks. Removing the lock fails five cases."
+    },
+    {
+      "file": "src/lib/events/series-edit.ts",
+      "digest": "6fb726e19c1d7d72dc1aa9134db18ac2981c07dc643bf9ed6a8b6914ef78d9d3",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 compares recurrence identity using the event-zone civil start day, frequency and time zone while permitting time-of-day changes."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "98544eb2c0799764b8a1b32a785513f9b7d16058808b64b7fe786115499bc729",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 composes shared Inputs into a disabled start date and editable start time for locked series, retaining the normal datetime field for unlocked edits."
+    },
+    {
+      "file": "src/components/events/event-edit-client.ts",
+      "digest": "2013862571383965b334424830c0796a32ad1776b3bcde89cfc91698b5e3e106",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 sends authenticated edit/lock requests, serializes event dates for the server and throws server/read failures instead of silently unlocking or reporting success."
+    },
+    {
+      "file": "src/__tests__/THE-379.review-guards.test.ts",
+      "digest": "e1eb604e50d4bc789fe004f6e9f7e2b607b350be3a3fe3fb9ca7d073154ca997",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 checks parser-stripped JSX controls, raw-control count ceilings and the question editor/stepper primitive-only subtrees. Replacing the Add button with a raw control fails this guard and the UI regression."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "1057a750cf8bb9d1d1546c32e268388f2ef18f817d6314014399f7f05ceac354",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 final shared input density and left-aligned filter treatment, with B2 lock and transactional server save retained. No primitive edits or raw-control allowlist additions."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "675e7c5b29f5f94f596d472b41fa278baa3c6862f76f53073e0f84791a54b57d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 final public input uses shared control density; question and calendar behavior, payment copy and guards retained."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "075d03ee7f65193b1933865850ec8bc0c3a63c9a8bd964342bfbbbe914980846",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 final split field keeps the mobile touch floor and existing desktop density for the disabled day and editable time."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "8dd65e2ee22be0abdc16b030dd539311448f4446e379c1678117e38e60c0274c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: Append final AdminEvents digest only, keeping every previous digest and navigation assertion."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "2aa931b79a604ac1d34c82688866f01c9320ad35c2c84fc3ee0956e120a0cae1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B1 reuses unchanged digest-pinned Input classes and the existing Button outline variant instead of adding per-class allowlist entries; all ministry measurements and baseline fixtures remain. B2 pins the exact smaller client path set and explicitly requires server-save delegation with no direct edit updateDoc. Append the correlated source digest/line count; retain prior pins. A custom palette/height mutation is rejected."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "41695328037d1e5fce4d848e2d92cfb9d749e35f076a0285ce230a64e0daca51",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 append untouched Timestamp precision and affirmative editor-lock tests; retain all schedule-conflict, permission, failure and stale-editor regressions."
+    },
+    {
+      "file": "src/components/events/__tests__/event-edit-client.test.ts",
+      "digest": "a878b0dad2702f39b1123431938369e77837d5a7872af4e2dce00c4b6ae4fde1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 review: B2 verifies authenticated date serialization, explicit lock booleans and rejected server/malformed responses so the client cannot report false success or silently unlock."
+    },
+    {
+      "file": "src/components/events/event-edit-client.ts",
+      "digest": "677bb4f9374e6c9b174a86c3c92c7f91c42cdee5f7b3591a46b1b0751e0061d2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Keep omitted date fields absent on partial updates, while explicit nulls clear them and actual timestamps serialize. Existing failure propagation retained."
+    },
+    {
+      "file": "src/components/events/__tests__/event-edit-client.test.ts",
+      "digest": "c1d4a04fd6ba400ed2aa3ee50bb491099479c71eff2707afe9af4469fb3cddda",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Append regression proving partial updates cannot silently clear omitted event dates; all prior serialization and failure assertions retained."
+    },
+    {
+      "file": "src/__tests__/THE-379.review-guards.test.ts",
+      "digest": "889e2c01d91d1b51993dc49e72d1164c67d0a95163abb19a6103306469637d61",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 final: Expand primitive assertions to the reviewed search, sharing, answer expansion, cancellation, calendar and date/ticket selection controls. No raw-control allowance changes."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "0f0b2f37a33c1adc3da4330b90fff3ada0f434a526f28ab776fbcb028f36957e",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "08f214981a407fb826abb7b31c2f764cdacd102c84f1b91ddd5fd8bb61837d19",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "a1db8400797d1a07a0d468264209e82ac44b6f00944a336c8878f2d9313be53c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-direct-charge.test.ts",
+      "digest": "6e70c330f9bf11f129d640b6f3e104278f85335d3eb469164b433c73a1e71c95",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "e894347f37a33c4d901f0509715e2decc06640125720f3f2894e6f8007fd5e4b",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "3344bbd13dc896c74006de9ba4fa1a5a99c6da9c1180ac65d7f51014e3777d37",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "a601e9215ab093e4bdf7fd5ddc4abbe84437d583dadcccd0545406879808afc0",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/connect-webhook-event-registration.test.ts",
+      "digest": "700c0e861af967e52a820f75ee5b5590d9d57bd86e77ab7b056041cdedf90278",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/webhook-event-registration.test.ts",
+      "digest": "911167b142e2426ece37ce1f5ef80c146fe32db6454c8af1ef9d8df7b161b9d6",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "9aee0c248aefb159dc3517ff403eedd06873c98e8f4fb69affb7c7678ad4c3a2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "814c132c2dd4dda63f5ba56eb45936eba10e9697aa8a5b9dbffe43a7a7f4188d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/PublicEventRegistration.tsx",
+      "digest": "715035cc4527a2e6fd437030740afadea67f76e0f9fa3da3db07837b62d8bbfa",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "299771492c1823af6086b2727d583725abf50c7d1f0045bc4f2f3169ae7a37a3",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-registration.test.tsx",
+      "digest": "a38ce6ee79278488ef2f7980b59c00302b6bb2b2e129df9eceb825f0613d70e5",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/hooks/queries/useEventQueries.ts",
+      "digest": "b72c4c8cd768b552c2d67baa1d8e03909345e4bda9b524e6b4358cfb2f28da64",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/__tests__/stripe-config-split.test.ts",
+      "digest": "3555163c74f2d8cddc35b101160f9bb720a9287aa51951f81ed1564ddc9173df",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "5ec84d3907d18a48255fc1a33082f27ad3c1187a584c9e77ba8ec126ccf6a930",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/transactional-email.ts",
+      "digest": "c8cd0411cd19f228f612ff8f2856d24d718463bb706a705fb75e8d5c4b28cefc",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/app/api/events/cancel/__tests__/route.test.ts",
+      "digest": "c6fb8490bdf262a3cec6d121e047490fffc038c1e9fee1b0d6ed763a301969bd",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/app/api/events/cancel/route.ts",
+      "digest": "36d3bde05dd2a0809b3dba5fcbb8a417a3ea15e279d4798d7d115458bb11a4a4",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/__tests__/event-cancellation-email.test.ts",
+      "digest": "10c66591a9a8462711b09d11fe7c596e195fb856b652f08efd1a6151cf1e061c",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/__tests__/registration-cutoff.test.ts",
+      "digest": "340403eec59650bc1dcf6158b10f24227bcd15a5ae132b4f4394701df55ef3d2",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/__tests__/registration-write.test.ts",
+      "digest": "63fee033967453b8ad79cbb51d3798421fa775e6be9c15d2175da05d754024c8",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: regression coverage for scoped cancellation, durable notice retries, batched completion and per-run cutoffs at Berlin DST boundaries. Existing assertions and digest pins remain; doubles now stage transactional registration writes."
+    },
+    {
+      "file": "src/lib/events/cancellation.ts",
+      "digest": "463c15879d4536af042c930e03315909c7ddbc4957acc13906f50c258a5b8977",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/events/registration-cutoff.ts",
+      "digest": "7cd71fc3cd284e1e1e5f70af4c6982265c163eaed156cea0f4f8e454331afb63",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/lib/events/registration-write.ts",
+      "digest": "b5caed406d2be6f48e56dba758bf3c5bd179cf3c2151eab0fb7dcba3167693c1",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556 founder decisions: cancellation emails through the existing funnel, organizer refund contact and manual-refund flags; editable per-run cutoffs and transactional signup/payment checks. Existing query shapes, payment fees and CRM records retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-356.css-isolation-and-button-floor.layout.test.tsx",
+      "digest": "2f5e525f6fba6ce311278cb448bdd5f71b88da8f6b3bd9870f755112bbc4215d",
+      "why": "APPENDED, NOT SUBSTITUTED \u2014 #556: extend the existing Button class resolver to enumerate both conditional branches independently, so the new primitive call sites remain measurable without discarding a branch or combining conflicting height classes. Browser assertions remain unchanged."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
+      "digest": "adac676f700ce0d08d8a0ffa48b350f092ebaa04325981156a17997dc5240f26",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-direct-charge.test.ts",
+      "digest": "2c3b6560311a510bdc15fc20b21f067c21ba1dc52a84e2b3a6c92931fd869130",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "8d5716d9640765da9b8aeb9e342b9c10172b84239d5c9d5438ab7b68eb08f529",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/events/cancel/__tests__/route.test.ts",
+      "digest": "06ab5ed36e45cf89be5bccdd3a742aa3a8192f06ccf3d0f01454cf5c2a855d86",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/events/cancel/route.ts",
+      "digest": "c147bc1c25a6ee57d700a9c09f7f4d1f91e43843b017239e76a4cba91692325b",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "2a67da003956a901fd7e58c0450d1f10ff0b2e4b9625ddf8980e4300eb1efc4e",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "96e19fe7925a8059e4c45185090c705ea0c15538a99272dd7e7ff2cbaee98ec3",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/connect-webhook-event-registration.test.ts",
+      "digest": "5a1c106a28047283bb33d2db2ee374a0739e519cf28ce0f4c920c8d49a404479",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/webhook-event-registration.test.ts",
+      "digest": "4e7cfb47ba089eda7eecdc2aff3be932aa6e0f858e56c01e8418bd792fe90396",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "9ee62721a6d2cae593c568ab453df8ef43edf6f6c44bfc3d806416ed3ebd25c0",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "3505cd5f12153d9e83a82dade317efd03d3e8644125fa681cf186c021445c78d",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "d62bc901026b760aea660a5d91df9e974048020633839f0c6b70a8ce69931a84",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/lib/__tests__/the-256-stripe-connect-hidden.test.ts",
+      "digest": "78ad19d8e1203e4a7e1bdca39d07321dd9daab8b3a14d3e71bb2f051e889d8fe",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "ce42cadd4905db794de1603350680ac8c9c61be2ae3e91b5f3eab3ff332d4484",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "5477bfad08d885f51acf59a751ba92b3f69a4907b410dc66ca6c87f86e64641b",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/lib/events/cancellation.ts",
+      "digest": "944bd621d45d3ab8481bc2e25b3cd6ac2a36d3f091a0a30d9ca37dab6ead3424",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: server-owned cancellation notices and retry state, payment-based refunds, future-run scope, Checkout deadline admission, current tenant membership, shared UI controls and regression tests. Prior pins and assertions retained."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "f65008aff8f3c8b3a7e0b2044f87ec4d1f574fd6e21f5b09a2cc61461ddb20fd",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "df334cb9123933ba1aecfecc02bf3a0f911db48c5d787de6f139e71f7fc54c2b",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "3980982601c6315174cd5d4c7d428f6316b32429a23705ca3cb0b2fca949f158",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "856e353b4fb1b7f3016e78e724e6b00aa16deda5a81f66ae987f0a6fdde8795d",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "0e76fb01f92fc62c120aa8be0eb28c33dd2993c214b94291fd41c9f5b2e83a2f",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
+      "digest": "582afd3f1fa965a01aabccb80ef35baf93e707aad7ec5ba57204753a539ef0f1",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "23bd7e0f8a833263ff18b78455ce791f904c33548cdda1ba22efe56eb2f6a63c",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "0644d8dc0cdd71c34acde4c221d83843ed5d164e5498f641ca43da48cbfa3b1c",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-355.public-payment.layout.test.tsx",
+      "digest": "24d0c18842b7dd2504202532cf82cf1d9c272f6d2952b444f5336b4471d2cbc6",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/lib/__tests__/stripe-config-split.test.ts",
+      "digest": "eadbd560bc055c67ea59d4ec41d9842f56c685965358ec6d4e2f07a40d44953c",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2: record final security fixes, current membership checks, deadline admission and signed Checkout completion, shared control floors and exact source inventories. Regression mutations fail; earlier digest pins and guard assertions remain."
+    },
+    {
+      "file": "src/__tests__/the-346-guards.test.tsx",
+      "digest": "83953d88683dbafb4e8be6ed88bfcbd3d9db1e2af2651f09f8db2cb0d1093db4",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B5: pin the exact remaining literal order after the shared Save Button removes one earlier gold fallback. The original inventory remains accepted; every new or moved literal still fails."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "e632b4fb2ec4f1be6f0010b4a52bb1dcdc91c0cc25692d25b86e4954b4359073",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B6: Retry and new shared footer Buttons explicitly carry h-auto min-h-11; the status trigger carries min-h-11. Shared responsive density releases the floor above sm; previous hashes remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "559b6a2afe117e7ceee3fa07d0aa375d956fd6103fd02d89d8528eefd098a3a4",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B6: Retry and new shared footer Buttons explicitly carry h-auto min-h-11; the status trigger carries min-h-11. Shared responsive density releases the floor above sm; previous hashes remain."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "738dc5cb86a5f501cef7496383bbb12d5289aafa1f0bf0f724d575fcf466b5cf",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B6: explicit min-h-11 on new controls and Retry clears mobile floors, and sm:min-h-0 lets the existing control/action density take over on desktop. Existing navigation and behavior guards remain."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "ce8da4725990f7a35c9e1d5a36782e0ac30f8c152953fdcac692c94398017a8f",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 r2 B6: explicit min-h-11 on new controls and Retry clears mobile floors, and sm:min-h-0 lets the existing control/action density take over on desktop. Existing navigation and behavior guards remain."
+    },
+    {
+      "file": "src/app/api/dodo/__tests__/dodo-checkout-quarterly-term.test.ts",
+      "digest": "edba5f964f2b733245cbecbec6ccd2779209259dc8a0a21b3f89bf911ca1b931",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 CI timeout fix: prefilter impossible term matches before the shared parser and reuse one working-tree inventory across both sweep assertions. Preserve all term validation and stale-entry checks; an untracked executable annual literal fails, while a comment-only literal passes. Normalize relative paths for Windows."
+    },
+    {
+      "file": "src/app/api/events/edit/route.ts",
+      "digest": "c710d34015b5a0f2fc68674668e29c8966dd525bdc3db10dd8da9db627ad16eb",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the save transaction also refuses turning a registered one-off event into a series, and refuses an end date or count that would drop a run holding active registrations. Both answer 409 with a visible message; no write happens."
+    },
+    {
+      "file": "src/lib/events/series-edit.ts",
+      "digest": "309d9476893db5b9f8af47ab7c58cc481df550836aa005a097f4e1eab5acf17a",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds droppedRegisteredRuns and the one-off/dropped-run conflict messages. changesSeriesIdentity is unchanged."
+    },
+    {
+      "file": "src/app/api/events/edit/__tests__/route.test.ts",
+      "digest": "c30a1a4416c0741af7e3f9c44ae4d7155d3f45f4e9c1144b6077225f714f0fd4",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: regression coverage for one-off-to-series conversion, shortening by count and by end date, waitlisted and cancelled rows, extension and a failed read. Reverting either fix fails these cases; existing assertions retained."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "f0e300b359dc75fa8349ff264292b81bd6528e9f6d16513eecfe5fc555982e72",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a paid ticket cancelled at confirmation (event or date cancelled, registration closed) now sends the payer a notice through sendTransactionalEmail saying the ministry handles the refund manually; a failed send reports to Sentry. The confirmation email prints the run date in words. Confirm, oversell refund and status writes unchanged."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/connect-webhook-event-registration.test.ts",
+      "digest": "56408ad2eac1cfba873be9f24bc51616d0814c2e25ba7fe7ebe8b4d654346265",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: covers the closed-registration and cancelled-run payer notices, wording, reply-to and idempotency, and no second notice on redelivery. The B4 date assertion now expects the date in words. Disabling the notice fails three cases."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "11cd7322f89c84292c209c270f92c265fd3cb734be8b03727550ef75b211b1c0",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one webhook digest with its reason; prior pins and all assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "744de3e5c52b08a847817da4b0d2bddd93c32bb62a18126b5d45d09381753aab",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: per-run capacity is read by runDate (single-field) and filtered to this event, ordered by name and bounded; past the bound a capped ticket fails closed with 503 instead of overselling. Fees, registration, payment and CRM writes unchanged."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "633262521b316c19b167db1636880c300b9910c421d7efc9f7181e21ed1395e2",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds same-date-other-event, capped overflow (503, no write) and uncapped overflow cases; the same-run fixture now carries its eventId as real rows do. Prior assertions retained."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "90feef863bdfc6374b044fe0a7639c3d079de311ac0a59703d99bf50806e7aba",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: an overflowing capacity read shows no spots-left figure and reports to Sentry instead of failing the public page with a 500. A truncated count is still never shown."
+    },
+    {
+      "file": "src/app/event/[eventId]/__tests__/page.test.tsx",
+      "digest": "b1620bce003fbee16ed4cff931a2fae9f984c6a093dd816d112fd2ae89fdeab3",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the overflow case now asserts no figure, the page renders and the overflow is reported (it asserted the 500 the security review flagged). Other assertions retained."
+    },
+    {
+      "file": "src/app/api/my-registrations/route.ts",
+      "digest": "56eb5b2f9b5e75537d2537d974298f09f7d52ee24e591513a4467f9c2769f850",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a ticket whose run no longer expands keeps its scheduled date (and is marked cancelled) so it can age into Past instead of reading Date TBA."
+    },
+    {
+      "file": "src/app/api/my-registrations/__tests__/route.test.ts",
+      "digest": "299f45c6dc1052f3579dd3b591130ca29a99dd2a9dc087482623b17c1bf1b53b",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds the cancelled-run dating case; reverting the route fix fails it. Prior assertions retained."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "493ff09d91721289ca5f6026b02dc16e473f57560483850c6318e3494b8edabe",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a series is listed at its next run and not beside the member's own run tickets, and a cancelled event or run leaves Upcoming. Covered by UserEvents.series-rows.test.tsx; reverting fails all three cases."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "512efa9775f89e9e4fd9661e79c4619f134b53277f754960ec6aeb610c261f2f",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the locked start time keeps only HH:mm from the time input, matching parseEventDateTime."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "0b12605fe9e0638a2561db0092bfca2c01d912d43fb8e56252ac9c5e6a27dfb9",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "ac842b4b54b23f878c24f2b71630ac60ad458f5f2891f42ff3d80b1bdf6a9312",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "5e47f4098bb70e7b21ee1d80bacfe09129f49b1c5bd4bac6f394ba41522382fb",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
+    }
+  ]
+}

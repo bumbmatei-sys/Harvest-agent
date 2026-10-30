@@ -167,13 +167,31 @@ function attendeeRow(root: ParentNode, name: string): HTMLElement {
 let mounted: { container: HTMLElement; unmount: () => void } | null = null;
 async function screen() {
   mounted = await mountScreen(<AdminEvents />);
-  return mounted.container;
+  // THE-379 (events remodel) — see the identical note in
+  // THE-345.paid-events.test.tsx: the create/edit form moved into a shadcn
+  // Dialog, which portals to `document.body`, a strict superset of
+  // `mounted.container`.
+  return document.body;
 }
 async function detail(): Promise<HTMLElement> {
   const c = await screen();
   const rows = Array.from(c.querySelectorAll('div'))
     .filter((d) => /Autumn Retreat/.test(d.textContent ?? ''));
   await click(rows[rows.length - 1] as HTMLElement);
+  await settle();
+  return c;
+}
+
+/**
+ * THE-379 (events remodel) — the attendee list moved behind the detail
+ * screen's own "Registrations" tab (Overview/Registrations/Payments
+ * pending); the registration stat test above stays on the default Overview
+ * tab deliberately, so this is a second helper rather than a change to
+ * `detail()` itself.
+ */
+async function detailRegistrations(): Promise<HTMLElement> {
+  const c = await detail();
+  await click(buttonContaining(c, 'Registrations'));
   await settle();
   return c;
 }
@@ -189,7 +207,7 @@ beforeEach(() => {
 
 describe('10 · the two meanings of "confirmed" are distinguishable', () => {
   it('\u{1F534} one row no longer says "confirmed" twice about two different things', async () => {
-    const c = await detail();
+    const c = await detailRegistrations();
     const row = attendeeRow(c, 'Unpaid Attendee');
 
     // The PAYMENT side keeps the word — it is the founder's own word for the
@@ -230,7 +248,7 @@ describe('10 · the two meanings of "confirmed" are distinguishable', () => {
   });
 
   it('\u{1F534} every payment state reads differently from the registration badge', async () => {
-    const c = await detail();
+    const c = await detailRegistrations();
     const labels = (name: string) => {
       const row = attendeeRow(c, name);
       return {
@@ -272,7 +290,7 @@ describe('10 · the two meanings of "confirmed" are distinguishable', () => {
 
 describe('12 · check-in still never blocks on payment', () => {
   it('\u{1F534} EVERY seated registration has a Check In control, paid or not', async () => {
-    const c = await detail();
+    const c = await detailRegistrations();
     for (const name of ['Free Attendee', 'Unpaid Attendee', 'Claimed Attendee', 'Confirmed Attendee']) {
       const row = attendeeRow(c, name);
       const checkIn = Array.from(row.querySelectorAll('button'))
@@ -303,7 +321,7 @@ describe('12 · check-in still never blocks on payment', () => {
 
 describe('16 · the surrounding event machinery is untouched', () => {
   it('\u{1F534} the ticket code the QR encodes is still the ticket code, and is NOT the reference', async () => {
-    const c = await detail();
+    const c = await detailRegistrations();
     // Every fixture's ticket code renders on its row, and no reference code
     // appears where a ticket code belongs.
     for (const [name, code] of [

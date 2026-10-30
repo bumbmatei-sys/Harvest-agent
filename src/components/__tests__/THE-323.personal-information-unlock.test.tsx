@@ -595,6 +595,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // THE-999998: local join/CRM screenshot harness, absent in CI.
       ...(existsSync(path.join(ROOT, 'src/app/dev/join-crm/preview.tsx')) ? ['src/app/dev/join-crm/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
+      // #556: the ignored screenshot harness is a local-only 404 in production.
+      ...(existsSync(path.join(ROOT, 'src/app/events-harness/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/events-harness/preview.tsx')) ? ['src/app/events-harness/preview.tsx'] : []),
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
       // sweep's own sorted order, not the order tickets arrived in.
@@ -882,6 +884,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/TemplatesDialog.tsx',
       'src/components/email/UsageMeter.tsx',
       'src/components/email/kit.tsx',
+      // #556: split series start fields retain the mobile floor on their shared Inputs.
+      'src/components/events/EventStartField.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as

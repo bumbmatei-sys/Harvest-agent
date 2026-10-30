@@ -327,3 +327,78 @@ describe('10 · a missing tenant name does not render a blank sentence', () => {
     expect(COPY.TENANT_NAME_FALLBACK, 'the fallback names Harvest').not.toMatch(/harvest/i);
   });
 });
+
+
+describe('THE-379 — safe online join links', () => {
+  it.each([
+    ['https://meet.example.com/room', true],
+    ['javascript:alert(1)', false],
+    ['http://meet.example.com/room', false],
+    ['data:text/html,test', false],
+    ['//meet.example.com/room', false],
+    ['https://meet.example.com/%zz', false],
+    ['%6a%61vascript:alert(1)', false],
+  ])('join link %s is offered: %s', async (onlineLink, allowed) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(START_MS - 5 * 60 * 1000));
+    try {
+      const modal = await openTicket('free', { event: {
+        title: 'Online gathering', startMillis: START_MS, endMillis: START_MS + 3600000,
+        location: null, isOnline: true, status: 'published', onlineLink,
+      } });
+      const link = modal.querySelector('[data-ticket-join-link]');
+      if (allowed) expect(link?.getAttribute('href')).toBe(onlineLink);
+      else expect(link).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+describe('r9.3 distinct member runs', () => {
+  it('keeps two future runs and a past run of one event reachable in their tabs and calendar exports', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(START_MS - 5 * 60000));
+    let calendar = '';
+    const RealBlob = globalThis.Blob;
+    const create = URL.createObjectURL;
+    const revoke = URL.revokeObjectURL;
+    const anchor = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    try {
+      globalThis.Blob = class { constructor(parts: string[]) { calendar = parts.join(''); } } as unknown as typeof Blob;
+      URL.createObjectURL = () => 'blob:calendar';
+      URL.revokeObjectURL = () => {};
+      const runTicket = (offset: number) => ticketFor('free', {
+        id: `reg-${offset}`, runDate: `2031-09-${20 + offset * 7}`, ticketCode: `RUN-${offset}`,
+        event: { title: 'Weekly gathering', startMillis: START_MS + offset * 7 * 86400000,
+          endMillis: START_MS + offset * 7 * 86400000 + 3600000, isOnline: true,
+          onlineLink: 'https://meet.example.com/weekly', status: 'published' },
+      });
+      tickets.current = [runTicket(-1), runTicket(0), runTicket(1)];
+      container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+      await act(async () => { root.render(<UserEvents onBack={() => {}} />); });
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+      const views = () => [...container.querySelectorAll('button')].filter(button => button.textContent?.includes('View ticket'));
+      const tab = async (value: string) => {
+        const button = container.querySelector<HTMLElement>(`[data-events-tab="${value}"]`)!;
+        await act(async () => { button.click(); });
+      };
+      expect(views()).toHaveLength(2);
+      await tab('going'); expect(views()).toHaveLength(2);
+      await act(async () => { views()[0].click(); });
+      expect(container.querySelector('[data-ticket-join-link]')?.getAttribute('href')).toBe('https://meet.example.com/weekly');
+      await act(async () => { container.querySelector<HTMLButtonElement>('[data-ticket-add-to-calendar]')!.click(); });
+      expect(calendar).toContain('DTSTART:20310920T180000Z');
+      expect(calendar).toContain('DTEND:20310920T190000Z');
+      const close = container.querySelector('.fixed.inset-0 button') as HTMLButtonElement;
+      await act(async () => { close.click(); });
+      await act(async () => { views()[1].click(); });
+      expect(container.querySelector('[data-ticket-join-link]')).toBeNull();
+      await act(async () => { container.querySelector<HTMLButtonElement>('[data-ticket-add-to-calendar]')!.click(); });
+      expect(calendar).toContain('DTSTART:20310927T180000Z');
+      expect(calendar).toContain('DTEND:20310927T190000Z');
+      await act(async () => { (container.querySelector('.fixed.inset-0 button') as HTMLButtonElement).click(); });
+      await tab('past'); expect(views()).toHaveLength(1);
+    } finally {
+      globalThis.Blob = RealBlob; URL.createObjectURL = create; URL.revokeObjectURL = revoke; anchor.mockRestore(); vi.useRealTimers();
+    }
+  });
+});
