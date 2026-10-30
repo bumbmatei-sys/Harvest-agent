@@ -1,0 +1,10 @@
+{
+  "ticket": "#565",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "6135b67ad7e3e71ac90b9d71455f00cae8418165d4594e6128e1bdae416136d4",
+      "why": "APPENDED, NOT SUBSTITUTED — #565 (#556 follow-up): two tightenings. Client event updates may not change startDate, endDate, timeZone, recurrence or status (server routes own them); client-created registrations may not carry seat, payment, run, refund or cancellation fields. No new access. Covered by tests/rules/events-registrations.rules.test.ts."
+    }
+  ]
+}
