@@ -174,10 +174,10 @@ const FULL_TENANT_PERMS = {
   manageCheckin: true, manageSms: true, manageLivestream: true, manageSettings: true,
 };
 
-async function mount(opts: { superAdmin?: boolean; perms?: Record<string, boolean>; role?: string } = {}) {
+async function mount(opts: { superAdmin?: boolean; perms?: Record<string, boolean>; role?: string; section?: string } = {}) {
   isSuperAdminMock.mockReturnValue(!!opts.superAdmin);
   hasPlatformOverrideMock.mockReturnValue(!!opts.superAdmin);
-  params.current = {};
+  params.current = opts.section ? { section: opts.section } : {};
   userQuery.current = {
     data: {
       role: opts.role ?? 'owner',
@@ -1100,3 +1100,34 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     '12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d',
   ],
 };
+
+describe('the sidebar side follows the page', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1440 });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true, writable: true,
+      value: (query: string) => {
+        const min = /min-width:\s*(\d+)px/.exec(query);
+        return { matches: min ? 1440 >= Number(min[1]) : false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent() { return false; }, onchange: null };
+      },
+    });
+  });
+  const side = () => container.querySelector('[data-shell-side]')?.getAttribute('data-shell-side');
+
+  it('a page on the Public side opens with the Public sidebar, not People', async () => {
+    await mount({ superAdmin: true, section: 'events' });
+    expect(side()).toBe('public');
+  });
+  it('a route change to a Public page moves the sidebar there, and back', async () => {
+    await mount({ superAdmin: true });
+    expect(side()).toBe('people');
+    params.current = { section: 'events' };
+    await act(async () => { root.render(<AdminDashboard onNavigate={() => {}} />); });
+    await flush();
+    expect(side()).toBe('public');
+    params.current = { section: 'crm' };
+    await act(async () => { root.render(<AdminDashboard onNavigate={() => {}} />); });
+    await flush();
+    expect(side()).toBe('people');
+  });
+});

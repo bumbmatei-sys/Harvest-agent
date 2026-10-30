@@ -277,7 +277,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
-  const [shellSide, setShellSide] = useState<ShellSideId>('people');
+  // The side follows the page: a direct load or a remount on a Public page
+  // must not draw the People sidebar, and neither may any route change.
+  const [shellSide, setShellSide] = useState<ShellSideId>(() => sideForTab(activeTab) ?? 'people');
+  useEffect(() => {
+    const side = sideForTab(activeTab);
+    if (side) setShellSide(side);
+  }, [activeTab]);
   const [shellPlaceholder, setShellPlaceholder] = useState<ShellPlaceholderId | null>(null);
   const lgUp = useLgUp();
   useLayoutEffect(() => { ensureLightDefault(); }, []);

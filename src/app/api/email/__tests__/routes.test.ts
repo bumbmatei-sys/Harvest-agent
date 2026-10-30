@@ -222,3 +222,20 @@ describe('/api/email/unsubscribe', () => {
     expect(await res.text()).not.toContain('You are unsubscribed');
   });
 });
+
+describe('POST /api/email/actions without database credentials', () => {
+  it('says the database is unavailable, never that drafts can still be saved', async () => {
+    assertAdminConfigured.mockImplementation(() => {
+      const error = new Error('FIREBASE_SERVICE_ACCOUNT is not set; admin Firestore is unavailable.');
+      error.name = 'AdminNotConfiguredError';
+      throw error;
+    });
+    const res = await actions.POST(post({ action: 'overview' }));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body).toMatchObject({ ok: false, error: 'database_unavailable' });
+    expect(body.message).toMatch(/not connected to the database/);
+    expect(body.message).not.toMatch(/draft/i);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+});

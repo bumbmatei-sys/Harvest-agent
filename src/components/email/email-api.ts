@@ -114,6 +114,8 @@ async function run<T>(call: Call, body: Record<string, unknown>): Promise<T> {
   if (res.status === 503) {
     // The switch being off is not a setup problem: say so, in the server's own words.
     if (res.json.error === 'newsletter_hidden') throw new EmailApiError(NEWSLETTER_HIDDEN_MESSAGE, 'newsletter_hidden', false);
+    // No database: drafts cannot be saved either, so the drafts promise below would be false.
+    if (res.json.error === 'database_unavailable' && typeof res.json.message === 'string') throw new EmailApiError(res.json.message, 'database_unavailable', false);
     throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true);
   }
   if (res.status >= 200 && res.status < 300 && res.json.ok !== false) return res.json as T;
