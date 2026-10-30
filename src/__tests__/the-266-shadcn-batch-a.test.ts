@@ -692,6 +692,14 @@ describe('the out-of-scope files are untouched', () => {
       // APPENDED BY UI-POLISH. The sidebar's Boards section folds its list and each board's notes
       // with the primitive, the way the sidebar's own groups do.
       'src/components/admin-shell/BoardsSection.tsx',
+      // APPENDED BY the newsletter email-themes work — recording the chunk-3
+      // adopter this map had never been told about (the guard caught it red on
+      // the committed tree), NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN. The
+      // theme settings panels fold each settings section with the primitive:
+      // Colours, Fonts, Header and the rest are disclosures, so the
+      // aria-expanded / aria-controls pairing is the primitive's, not a
+      // hand-rolled fold.
+      'src/components/email/ThemeSettingsPanels.tsx',
     ],
     // The first three are pre-existing and were invisible to the alias-only
     // matcher until THE-316 closed it; recorded here so the set stays closed.

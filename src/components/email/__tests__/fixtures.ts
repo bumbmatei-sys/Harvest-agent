@@ -9,6 +9,10 @@ export const SETTINGS: EmailSettings = {
   fromLocal: 'hello',
   replyTo: 'office@grace.org',
   mailingAddress: '1 Main St, Springfield',
+  logoUrl: '',
+  footerNote: '',
+  socialLinks: [],
+  defaultThemeId: null,
   domain: 'grace.org',
   domainState: 'verified',
   domainRecords: [],
@@ -27,7 +31,7 @@ export const broadcast = (over: Partial<Broadcast> = {}): Broadcast => ({
 });
 
 export const overview = (over: Partial<Overview> = {}): Overview => ({
-  broadcasts: [], subscribers: [person('a@x.org', { tags: ['youth'] }), person('b@x.org')], settings: SETTINGS, usage: USAGE, sending: { paused: false }, canEditLimits: false, limits: null, ...over,
+  broadcasts: [], subscribers: [person('a@x.org', { tags: ['youth'] }), person('b@x.org')], settings: SETTINGS, customThemes: [], usage: USAGE, sending: { paused: false }, canEditLimits: false, limits: null, ...over,
 });
 
 export function fakeApi(over: Partial<EmailApi> = {}): EmailApi & { [K in keyof EmailApi]: ReturnType<typeof vi.fn> } {
@@ -40,6 +44,9 @@ export function fakeApi(over: Partial<EmailApi> = {}): EmailApi & { [K in keyof 
     sendTest: vi.fn(async () => {}),
     importContacts: vi.fn(async () => ({ added: 1, merged: 0, alreadySubscribed: 0, blocked: 0, invalid: 0, repeatedInFile: 0 })),
     saveSettings: vi.fn(async (s) => ({ ...SETTINGS, ...s })),
+    saveTheme: vi.fn(async (input) => ({ id: 't1', name: input.name, tokens: input.tokens, createdAt: '2031-01-01T00:00:00.000Z' })),
+    deleteTheme: vi.fn(async () => {}),
+    setDefaultTheme: vi.fn(async (themeId) => ({ ...SETTINGS, defaultThemeId: themeId })),
     domain: vi.fn(async () => SETTINGS),
     saveLimits: vi.fn(async (l) => l),
     resumeSending: vi.fn(async () => {}),

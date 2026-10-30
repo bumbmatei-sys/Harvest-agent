@@ -9,12 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DEFAULT_EMAIL_DESIGN, THEME_LABELS, type EmailDesign } from '@/lib/email/design';
+import { DEFAULT_THEME_TOKENS, getCustomTheme, getThemePreset, type CustomTheme, type EmailThemeTokens } from '@/lib/email/themes';
 import { BodyEditor } from '@/components/email/BodyEditor';
 import { DesignDialog } from '@/components/email/DesignDialog';
 import { PreviewDialog } from '@/components/email/PreviewDialog';
+import { ThemeWarning } from '@/components/email/ThemeWarning';
 import { SendStep } from '@/components/email/SendStep';
 import { TemplatesDialog } from '@/components/email/TemplatesDialog';
-import { ErrorNote, TAP, formatStamp, plural } from '@/components/email/kit';
+import { ErrorNote, Segmented, TAP, formatStamp, plural, type Option } from '@/components/email/kit';
 import { inboxCheck, inboxSummary, plainWords } from '@/components/email/inbox-check';
 import { EmailApiError, type SettingsFocus, type AudienceFilter, type Broadcast, type DraftFields, type EmailApi, type Overview, type SendResponse } from '@/components/email/email-api';
 import { cn } from '@/lib/utils';
@@ -26,8 +28,29 @@ type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
 
 const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved', error: 'Not saved' };
 
+/** The inline preview's three windows. `''` means the pane is closed. */
+type InlinePreview = 'computer' | 'phone' | 'dark' | '';
+const INLINE_PREVIEW: readonly Option<InlinePreview>[] = [
+  { value: 'computer', label: 'Computer' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'dark', label: 'Dark' },
+];
+
+/**
+ * A brand-new email starts on the default theme when the ministry has set one;
+ * an email being reopened keeps exactly the look it was saved with.
+ */
+function defaultThemeFrom(overview: Overview): { id: string | null; tokens: EmailThemeTokens | null } {
+  const id = overview.settings.defaultThemeId ?? null;
+  if (!id) return { id: null, tokens: null };
+  const preset = getThemePreset(id);
+  if (preset) return { id, tokens: preset.tokens };
+  const custom = getCustomTheme(overview.customThemes ?? [], id);
+  return custom ? { id: custom.id, tokens: custom.tokens } : { id: null, tokens: null };
+}
+
 /** What would be saved, without the id: two drafts with the same snapshot are the same email. */
-const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters]);
+const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters, d.themeId ?? null, d.themeTokens ?? null]);
 
 function SideAction({ icon, children, onClick, disabled, danger }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
@@ -60,6 +83,11 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [preheader, setPreheader] = useState(initial?.preheader ?? '');
   const [bodyHtml, setBodyHtml] = useState(initial?.bodyHtml ?? '<p>Hi {{first_name}},</p><p></p><p>{{sender_name}}</p>');
   const [design, setDesign] = useState<EmailDesign>(initial?.design ?? DEFAULT_EMAIL_DESIGN);
+  const auto = defaultThemeFrom(data);
+  const [themeId, setThemeId] = useState<string | null>(initial ? (initial.themeId ?? null) : auto.id);
+  const [themeTokens, setThemeTokens] = useState<EmailThemeTokens | null>(initial ? (initial.themeTokens ?? null) : auto.tokens);
+  const [customThemes, setCustomThemes] = useState<readonly CustomTheme[]>(data.customThemes ?? []);
+  const [defaultThemeId, setDefaultThemeId] = useState<string | null>(data.settings.defaultThemeId ?? null);
   const [filters, setFilters] = useState<AudienceFilter[]>([...(initial?.filters ?? [])]);
   const [step, setStep] = useState<Step>('write');
   const [saving, setSaving] = useState<Saving>(initial ? 'saved' : 'unsaved');
@@ -71,12 +99,15 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [result, setResult] = useState<Extract<SendResponse, { outcome: string }> | null>(null);
   const [pending, setPending] = useState<'back' | 'next' | 'test' | null>(null);
+  const [inlinePreview, setInlinePreview] = useState<InlinePreview>('');
+  const [inlineHtml, setInlineHtml] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   const idRef = useRef(id);
   const wasScheduled = useRef(initial?.status === 'scheduled');
   const dirty = useRef(false);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
-  const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters });
+  const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters, themeId, themeTokens });
   const latest = useRef(draft);
   latest.current = draft;
   // The email as last saved (or as opened). An edit is "unsaved" only while it differs from this,
@@ -120,9 +151,56 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
     if (wasScheduled.current) return;
     const t = setTimeout(() => { void persist(); }, 800);
     return () => clearTimeout(t);
-  }, [subject, subjectB, preheader, bodyHtml, design, filters, persist]);
+  }, [subject, subjectB, preheader, bodyHtml, design, filters, themeId, themeTokens, persist]);
+
+  /**
+   * The inline pane renders the same HTML a send would, through the server's
+   * own renderer. It waits a beat after typing so keystrokes do not each queue
+   * a request, and keeps the last frame up while the next one is built.
+   */
+  useEffect(() => {
+    if (inlinePreview === '') return;
+    let live = true;
+    setInlineError(null);
+    const t = setTimeout(() => {
+      api.preview({ ...latest.current(), dark: inlinePreview === 'dark' }).then(
+        (h) => { if (live) setInlineHtml(h); },
+        (e: unknown) => { if (live) setInlineError(e instanceof Error ? e.message : 'The preview could not be built.'); },
+      );
+    }, 400);
+    return () => { live = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlinePreview, snapshotOf(draft())]);
+
+  /** A pick or an edit sets the token snapshot the renderer reads; classic clears both. */
+  const applyTheme = (nextId: string | null, nextTokens: EmailThemeTokens | null) => {
+    setThemeId(nextId);
+    setThemeTokens(nextId ? nextTokens : null);
+  };
+
+  /** Saves the current look as a named theme and puts this email in it. */
+  async function saveAsTheme(name: string) {
+    const theme = await api.saveTheme({ name, tokens: themeTokens ?? DEFAULT_THEME_TOKENS });
+    setCustomThemes((list) => [...list.filter((t) => t.id !== theme.id), theme]);
+    applyTheme(theme.id, theme.tokens);
+  }
+
+  async function deleteTheme(id: string) {
+    await api.deleteTheme(id);
+    setCustomThemes((list) => list.filter((t) => t.id !== id));
+    // The service clears a default pointing at this theme; mirror that here.
+    if (defaultThemeId === id) setDefaultThemeId(null);
+  }
+
+  async function setDefault(themeIdToSet: string | null) {
+    const next = await api.setDefaultTheme(themeIdToSet);
+    setDefaultThemeId(next.defaultThemeId);
+  }
 
   const tips = inboxCheck({ subject, preheader, bodyHtml });
+  /** The tokens the contrast warning and the inline preview reason about. */
+  const previewTokens = themeTokens
+    ?? (themeId ? getThemePreset(themeId)?.tokens ?? getCustomTheme(customThemes, themeId)?.tokens ?? null : null);
   const ready = Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
 
   // The way back is the top bar's breadcrumb (Newsletter > this email), not a button
@@ -298,6 +376,34 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               )}
             </div>
             <div className="mt-3 border-t border-line">
+              <div className="flex flex-wrap items-center gap-2 bg-surface-raised px-4 py-3 sm:gap-3 sm:px-5 [&_[data-slot=toggle-group-item]]:px-2.5 [&_[data-slot=toggle-group-item]]:text-xs">
+                <span className="text-xs text-faint">Preview</span>
+                <Segmented label="Inline preview as" value={inlinePreview} onChange={setInlinePreview} options={INLINE_PREVIEW} />
+                {inlinePreview !== '' && (
+                  <Button variant="ghost" size="icon" className="ml-auto min-h-11" aria-label="Hide the inline preview" onClick={() => setInlinePreview('')}>
+                    <X />
+                  </Button>
+                )}
+              </div>
+              {inlinePreview !== '' && (
+                <div className="flex flex-col gap-3 px-3 pb-4 sm:px-5">
+                  <ThemeWarning tokens={previewTokens} />
+                  {inlineError ? (
+                    <ErrorNote>{inlineError}</ErrorNote>
+                  ) : inlineHtml === null ? (
+                    <p role="status" className="text-sm text-muted">Building the preview…</p>
+                  ) : (
+                    <div className={cn('flex justify-center overflow-auto rounded-xl border border-line p-2 sm:p-4', inlinePreview === 'dark' ? 'bg-surface-night' : 'bg-surface-sunken')}>
+                      <iframe
+                        title="Inline email preview"
+                        sandbox=""
+                        srcDoc={inlineHtml}
+                        className={cn('h-96 max-w-full shrink-0 bg-card shadow-xs', inlinePreview === 'phone' ? 'w-[375px] rounded-[24px] border-[6px] border-surface-night shadow-lg' : 'w-full rounded-lg border border-line')}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <BodyEditor html={bodyHtml} onChange={setBodyHtml} />
             </div>
             <Collapsible open={tipsOpen} onOpenChange={setTipsOpen} className="border-t border-line">
@@ -308,7 +414,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
                 <span className="ml-auto flex items-center gap-1 text-faint">{plural(plainWords(bodyHtml), 'word', 'words')}{tipsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <ul className="flex flex-col gap-3 px-5 pb-4">
+                <ul className="flex flex-col gap-3 px-3 pb-4 sm:px-5">
                   {tips.map((t) => (
                     <li key={t.id} className="flex gap-2.5 text-sm">
                       <span aria-hidden className={cn('mt-1.5 size-2 shrink-0 rounded-full', t.kind === 'fix' ? 'bg-gold' : 'bg-muted-foreground')} />
@@ -328,7 +434,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
             <h2 className="px-2 pb-1 text-xs text-faint">Design</h2>
             <Button type="button" variant="ghost" onClick={() => setDesignOpen(true)} className="h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl border-line bg-card p-3 text-left font-normal hover:bg-muted">
               <span aria-hidden className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Palette className="size-4" /></span>
-              <span className="flex-1"><span className="block font-medium text-strong">{THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">Colors, fonts, header, buttons</span></span>
+              <span className="flex-1"><span className="block font-medium text-strong">{themeId ? getThemePreset(themeId)?.name ?? customThemes.find((t) => t.id === themeId)?.name ?? 'Custom theme' : THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">{themeId ? 'Colours, fonts, layout and more' : 'Colors, fonts, header, buttons'}</span></span>
             </Button>
             <Separator />
             <h2 className="px-2 pb-1 pt-3 text-xs text-faint">Check it</h2>
@@ -362,8 +468,22 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         </DialogContent>
       </Dialog>
 
-      <DesignDialog open={designOpen} onOpenChange={setDesignOpen} design={design} onChange={setDesign} brandColor={brandColor} />
-      <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design }} />
+      <DesignDialog
+        open={designOpen}
+        onOpenChange={setDesignOpen}
+        design={design}
+        onChange={setDesign}
+        brandColor={brandColor}
+        themeId={themeId}
+        themeTokens={themeTokens}
+        customThemes={customThemes}
+        defaultThemeId={defaultThemeId}
+        onThemeChange={applyTheme}
+        onSaveTheme={saveAsTheme}
+        onDeleteTheme={deleteTheme}
+        onSetDefaultTheme={setDefault}
+      />
+      <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design, themeId, themeTokens }} />
       <TemplatesDialog
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}

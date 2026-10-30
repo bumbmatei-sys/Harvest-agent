@@ -13,6 +13,7 @@ const FOOTER_OPEN = new RegExp(['<Dialog', 'Footer\\b[^>]*>'].join(''), 'g');
 // In the dark theme --muted is near-black (the recessed fill), so a SELECTED state painted with it is a black block.
 const SELECTED_AS_MUTED = new RegExp(['(?:aria-pressed|data-\\[pressed\\]|data-pressed|data-active|data-\\[state=on\\])', ':bg-(?:muted|surface-sunken)\\b'].join(''));
 const RAW_BUTTON = new RegExp(['<', 'button\\b'].join(''));
+const RAW_INPUT = new RegExp(['<', 'input\\b'].join(''));
 
 describe('dark mode: the polish items hold', () => {
   it('sweeps a non-empty set of files', () => {
@@ -49,7 +50,19 @@ describe('dark mode: the polish items hold', () => {
     expect(code('TemplatesDialog.tsx')).not.toMatch(RAW_BUTTON);
   });
 
+  // PR #560 review: these controls must stay on the installed primitives.
+  it.each(['ThemePicker.tsx', 'ThemeSettingsPanels.tsx', 'blocks/Box.tsx', 'kit.tsx'])(
+    '%s: theme controls use primitives rather than native controls', (file) => {
+      expect(code(file)).not.toMatch(RAW_BUTTON);
+      expect(code(file)).not.toMatch(RAW_INPUT);
+    },
+  );
+
   it('the guards can fail: planted violations are caught', () => {
+    expect('<button type="button" />').toMatch(RAW_BUTTON);
+    expect('<input type="color" />').toMatch(RAW_INPUT);
+    expect('<Button />').not.toMatch(RAW_BUTTON);
+    expect('<Input type="color" />').not.toMatch(RAW_INPUT);
     expect('className="aria-pressed:bg-muted"').toMatch(SELECTED_AS_MUTED);
     expect('className="data-[pressed]:bg-surface-sunken"').toMatch(SELECTED_AS_MUTED);
     expect('className="aria-pressed:bg-accent hover:bg-muted"').not.toMatch(SELECTED_AS_MUTED);

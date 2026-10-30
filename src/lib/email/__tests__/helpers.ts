@@ -4,6 +4,7 @@ import { contentHash, decideClaim, sendingMarkerId } from '@/lib/email/claim';
 import { dayKey, monthKey } from '@/lib/email/volume-cap';
 import type { EmailContact } from '@/lib/email/audience';
 import type { DomainStatus, EmailProvider, OutboundEmail } from '@/lib/email/provider';
+import type { CustomTheme } from '@/lib/email/themes';
 import {
   EMPTY_SETTINGS,
   createEmailService,
@@ -57,9 +58,12 @@ export function memoryStore(seed: {
   suppressed?: string[];
   tenantCreatedAt?: unknown;
   health?: Partial<{ bounced: number; complained: number }>;
+  /** The ministry's saved themes. */
+  themes?: CustomTheme[];
 } = {}) {
   const contacts = new Map<string, EmailContact>((seed.contacts ?? []).map((c) => [c.id, c]));
   const broadcasts = new Map<string, Broadcast>();
+  const themes = new Map<string, CustomTheme>((seed.themes ?? []).map((t) => [t.id, t]));
   let settings: EmailSettings = {
     ...EMPTY_SETTINGS,
     fromName: 'Grace Church',
@@ -191,8 +195,11 @@ export function memoryStore(seed: {
       suppressedEmails.add(email);
       for (const [id, c] of contacts) if (c.email === email) contacts.set(id, { ...c, status: 'unsubscribed' });
     },
+    async listThemes() { return [...themes.values()]; },
+    async saveTheme(_t, theme) { themes.set(theme.id, theme); },
+    async deleteTheme(_t, id) { themes.delete(id); },
   };
-  return { store, contacts, broadcasts, queue, sendingMarkers, domainOwners, released, feedbackEvents, suppressedEmails, created, updated, usage, feedback, get used() { return usage.get(monthKey(NOW)) ?? 0; }, get today() { return usage.get(dayKey(NOW)) ?? 0; }, get sending() { return sending; }, get limits() { return limits; } };
+  return { store, contacts, broadcasts, queue, sendingMarkers, domainOwners, released, feedbackEvents, suppressedEmails, created, updated, usage, feedback, themes, get used() { return usage.get(monthKey(NOW)) ?? 0; }, get today() { return usage.get(dayKey(NOW)) ?? 0; }, get sending() { return sending; }, get limits() { return limits; } };
 }
 
 export function person(email: string, over: Partial<EmailContact> = {}): EmailContact {

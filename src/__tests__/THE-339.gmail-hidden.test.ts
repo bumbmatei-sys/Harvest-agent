@@ -189,10 +189,11 @@ describe('4 — NO file was deleted', () => {
    * that setting it true brings every surface back exactly as it was, and that
    * promise is only worth something if nothing was removed to hide it.
    *
-   * ⚠️ The brief said 21 files; there are 23. `transactional-email.ts` arrived
+   * ⚠️ The brief said 21 files; there are 24. `transactional-email.ts` arrived
    * with THE-340 and mentions Gmail in the note explaining why rota mail left
-   * it, and `gmail-feature.ts` is this ticket's own switch. The list is verified
-   * rather than taken.
+   * it, `themes.ts` arrived with the #560 newsletter themes work and mentions
+   * Gmail in the note on web-font fallbacks, and `gmail-feature.ts` is this
+   * ticket's own switch. The list is verified rather than taken.
    */
   const GMAIL_FILES = [
     'src/components/settings/IntegrationsSection.tsx',
@@ -216,6 +217,7 @@ describe('4 — NO file was deleted', () => {
     'src/lib/newsletter-feature.ts',
     'src/app/api/tenants/provision-free/route.ts',
     'src/lib/transactional-email.ts',
+    'src/lib/email/themes.ts',
     'src/lib/gmail-feature.ts',
     'functions/src/index.ts',
   ] as const;

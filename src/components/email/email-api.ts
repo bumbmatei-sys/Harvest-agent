@@ -1,6 +1,7 @@
 import type { AudienceFilter, EmailContact } from '@/lib/email/audience';
 import type { EmailDesign } from '@/lib/email/design';
 import type { EmailLimits } from '@/lib/email/limits';
+import type { CustomTheme, EmailThemeTokens, SocialLink, SocialPlatform } from '@/lib/email/themes';
 import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/lib/email/service';
 import { NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 
@@ -10,7 +11,7 @@ import { NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
  * server is invisible here and a test or screenshot harness can pass a fake.
  */
 
-export type { Broadcast, EmailSettings, SendPreview, BroadcastStats, EmailContact, AudienceFilter, EmailDesign, EmailLimits };
+export type { Broadcast, EmailSettings, SendPreview, BroadcastStats, EmailContact, AudienceFilter, EmailDesign, EmailLimits, CustomTheme, EmailThemeTokens, SocialLink, SocialPlatform };
 
 export interface Usage {
   readonly used: number;
@@ -33,6 +34,8 @@ export interface Overview {
   readonly broadcasts: readonly Broadcast[];
   readonly subscribers: readonly EmailContact[];
   readonly settings: EmailSettings;
+  /** The ministry's saved themes, oldest first. */
+  readonly customThemes: readonly CustomTheme[];
   readonly usage: Usage;
   readonly sending: SendingStatus;
   /** True only for a super admin, who may edit the platform-wide limits. */
@@ -48,6 +51,9 @@ export interface DraftFields {
   readonly bodyHtml?: string;
   readonly design?: Partial<EmailDesign>;
   readonly filters?: readonly AudienceFilter[];
+  /** The theme this draft renders with, and the token snapshot that goes with it. */
+  readonly themeId?: string | null;
+  readonly themeTokens?: EmailThemeTokens | null;
 }
 
 export interface ImportRowInput {
@@ -97,6 +103,11 @@ export interface EmailApi {
   sendTest(id: string): Promise<void>;
   importContacts(rows: readonly ImportRowInput[], consentConfirmed: boolean): Promise<ImportSummary>;
   saveSettings(settings: Partial<EmailSettings>): Promise<EmailSettings>;
+  /** Saves a named copy of a token set. Server-side cap: 10 saved themes. */
+  saveTheme(input: { id?: string | null; name: string; tokens: EmailThemeTokens }): Promise<CustomTheme>;
+  deleteTheme(id: string): Promise<void>;
+  /** Sets the theme new emails start with. Null clears the default. */
+  setDefaultTheme(themeId: string | null): Promise<EmailSettings>;
   saveLimits(limits: EmailLimits): Promise<EmailLimits>;
   resumeSending(tenantId: string | null): Promise<void>;
   domain(op: 'register' | 'check', domain?: string): Promise<EmailSettings>;
@@ -134,6 +145,9 @@ export function createEmailApi(tenantId: string | null, call: Call): EmailApi {
     sendTest: async (id) => { await run(call, { ...t, action: 'sendTest', id }); },
     importContacts: (rows, consentConfirmed) => run<ImportSummary>(call, { ...t, action: 'import', rows, consentConfirmed }),
     saveSettings: async (settings) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'saveSettings', settings })).settings,
+    saveTheme: async (theme) => (await run<{ theme: CustomTheme }>(call, { ...t, action: 'saveTheme', theme })).theme,
+    deleteTheme: async (id) => { await run(call, { ...t, action: 'deleteTheme', id }); },
+    setDefaultTheme: async (themeId) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'setDefaultTheme', themeId })).settings,
     saveLimits: async (limits) => (await run<{ limits: EmailLimits }>(call, { ...t, action: 'saveLimits', limits })).limits,
     resumeSending: async (tenantId) => { await run(call, { action: 'resumeSending', tenantId }); },
     domain: async (op, domain) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'domain', op, domain })).settings,

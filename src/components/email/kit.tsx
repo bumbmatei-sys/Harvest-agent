@@ -1,7 +1,8 @@
 'use client';
 
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +11,16 @@ import { cn } from '@/lib/utils';
 
 /** Below `sm` a control is at least 44px tall; the 38px floor above it is a global rule. */
 export const TAP = 'min-h-11';
+
+/** Button owns the ref and renders the Base UI close primitive, which forwards it on React 18. */
+export function EmailDialogClose() {
+  return (
+    <Button render={<DialogPrimitive.Close />} type="button" variant="ghost" size="icon" className="absolute right-2 top-2 min-h-11 min-w-11 text-muted">
+      <X className="size-4" aria-hidden />
+      <span className="sr-only">Close</span>
+    </Button>
+  );
+}
 
 /** The soft gold strip Eden uses for "finish setup" nudges. */
 export function SetupBanner({ children, actionLabel, onAction }: { children: ReactNode; actionLabel: string; onAction: () => void }) {
