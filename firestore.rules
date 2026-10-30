@@ -702,7 +702,14 @@ service cloud.firestore {
 
       match /events/{eventId} {
         allow read: if isAuthenticated();
-        allow write: if hasPermission('manageEvents', tenantId);
+        allow create, delete: if hasPermission('manageEvents', tenantId);
+        // #556 follow-up: schedule and status changes go through the server
+        // (/api/events/edit and /api/events/cancel), which refuse an edit that
+        // would orphan registrations and send cancellation notices. A client
+        // update that skipped them would do neither, so it may not touch them.
+        allow update: if hasPermission('manageEvents', tenantId)
+          && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['startDate', 'endDate', 'timeZone', 'recurrence', 'status']);
       }
 
       // THE-313 — the order of service. Write is manageEvents verbatim:
@@ -718,8 +725,17 @@ service cloud.firestore {
 
       match /registrations/{regId} {
         allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
+        // #556 follow-up: members register through /api/event-registration/submit.
+        // A client-created row may not claim a seat, a payment, a run, a refund
+        // or a cancellation, so it can never consume capacity, raise a refund
+        // flag, or receive a cancellation notice.
         allow create: if isAuthenticated() && belongsToTenant(tenantId) &&
-          request.resource.data.get('userId', '') == request.auth.uid;
+          request.resource.data.get('userId', '') == request.auth.uid &&
+          !request.resource.data.keys().hasAny([
+            'status', 'waitlisted', 'quantity', 'runDate', 'ticketCode',
+            'amount', 'amountPaid', 'paymentStatus', 'paymentClaimToken', 'stripePaymentIntentId',
+            'refundStatus', 'refunded', 'cancellationReason', 'cancelledAt', 'confirmedAt',
+          ]);
         allow update: if isAuthenticated() && hasPermission('manageEvents', tenantId);
         allow delete: if isAuthenticated() && hasPermission('manageEvents', tenantId);
       }
