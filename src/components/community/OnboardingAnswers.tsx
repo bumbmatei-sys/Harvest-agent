@@ -20,7 +20,7 @@ export function OnboardingAnswers({ tenantId, uid }: { tenantId: string; uid: st
       const raw = member.exists() ? member.data().answers : {};
       if (!raw || typeof raw !== 'object' || Array.isArray(raw) || Object.values(raw).some(value => typeof value !== 'string')) throw new Error('Invalid answers');
       const labels = new Map(settings.questions.items.map(q => [q.id, q.label]));
-      const answers = Object.entries(raw as Record<string, string>).filter(([id]) => id !== '__community_questions_pending__').map(([id, value]) => ({ id, label: labels.get(id) || `Question ${id}`, value }));
+      const answers = Object.entries(raw as Record<string, string>).filter(([id]) => id !== '__community_questions_pending__' && id !== 'communityQuestionsPending').map(([id, value]) => ({ id, label: labels.get(id) || `Question ${id}`, value }));
       if (!cancelled) setState({ key, answers, error: null });
     }).catch(() => { if (!cancelled) setState({ key, answers: [], error: 'Could not load onboarding answers.' }); });
     return () => { cancelled = true; };

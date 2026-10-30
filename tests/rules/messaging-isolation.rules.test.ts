@@ -264,6 +264,7 @@ describe('dmMessages isolation: scoped to the parent thread participants', () =>
     const path = (rest: string) => `tenants/${tenantId}/${rest}`;
     await seedDoc(`tenants/${tenantId}`, { ownerId: 'owner-without-profile' });
     const env = await getEnv();
+    await seedDoc(`tenants/${tenantId}/communityMembers/${MEMBER_UID}`, { status: 'active' });
     const db = env.authenticatedContext(MEMBER_UID, { tenantId, email: 'member@test.com' }).firestore();
     await assertSucceeds(db.doc(path(`directMessages/${dmId}`)).set({ participants: [MEMBER_UID, 'owner-without-profile'] }));
     await assertSucceeds(db.doc(path(`dmMessages/${dmId}`)).set({ dmId, senderId: MEMBER_UID }));

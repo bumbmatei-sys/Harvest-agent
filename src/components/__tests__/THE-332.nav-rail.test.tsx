@@ -1098,6 +1098,12 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     // APPENDED BY PR 554 review: the group search uses shadcn Input with h-auto
     // so its 44px phone touch floor applies; no nav rail or permission gate moved.
     '12a331675fa4bca8ebc8d30b3d91e1d2b3e2383a8fce55cd369eaeb6868a261d',
+    /* APPENDED BY the community join + CRM work (THE-999998, PR #561), never
+       substituted. The DM admin gate is now tenant-bound — the role must belong
+       to the resolved tenant — so a role carried from another tenant no longer
+       starts DMs in this one. NOTHING THE-332 OWNS MOVED: no nav group, rail
+       entry, flyout or admin permission gate changed. */
+    '8f56507a08e98d184a0605f42b6b2f9c423d7ee57f2a9ca2d289ee2d75524cd9',
   ],
 };
 

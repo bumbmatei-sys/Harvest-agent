@@ -699,7 +699,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
   );
 
   if (!tenantId && resolvedPlan && getEffectiveFeatures(resolvedPlan, tenantAddons).adminDashboard === false) {
-    return <FreeMemberShell uid={currentUser?.uid} tenantId={accountTenantId} email={currentUser?.email} canCreateCommunity={getEffectiveFeatures(resolvedPlan, tenantAddons).createCommunity} />;
+    return <FreeMemberShell initialTab={typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('communities') ? 'communities' : 'discover'} uid={currentUser?.uid} tenantId={accountTenantId} email={currentUser?.email} canCreateCommunity={getEffectiveFeatures(resolvedPlan, tenantAddons).createCommunity} />;
   }
 
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();

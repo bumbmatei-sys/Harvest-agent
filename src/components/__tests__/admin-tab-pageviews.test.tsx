@@ -601,10 +601,11 @@ describe('4 — the member app is state-driven, so it has the same symptom by a 
   });
 
   it('and the registry declares no member-tab route to carry one', () => {
-    // Nothing was renamed or invented for the member app in this PR: its only
-    // declared route is the SPA root, which is what its events already carry.
+    // Nothing was renamed or invented for the member app's tabs: its declared
+    // routes are the SPA root and the community page (/community/:tenantId),
+    // which is a route of its own rather than a tab.
     const member = ANALYTICS_ROUTES.filter((r) => r.surface === 'member').map((r) => r.pattern);
-    expect(member).toEqual(['/']);
+    expect(member).toEqual(['/', '/community/[tenantId]']);
   });
 });
 
