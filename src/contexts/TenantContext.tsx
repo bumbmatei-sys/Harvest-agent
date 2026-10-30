@@ -1,4 +1,5 @@
 'use client';
+import { tenantMatchesSubdomain } from '@/utils/tenant-host-validation';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -339,6 +340,12 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
       if (tenantDoc.exists()) {
         const data = tenantDoc.data();
+        // A Free tenant has an internal ID, but no tenant host.
+        if (data.plan === 'free' && window.location.hostname.endsWith('.theharvest.app')) {
+          setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
+          setIsLoading(false);
+          return;
+        }
         if (data.config) {
           applyBranding(data.config as TenantConfig);
         }
@@ -382,8 +389,12 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         return;
       }
 
-      // If we already have an initial plan and tenantId, skip the fetch
-      if (initialPlan && initialTenantId === tenantId) {
+      const hostname = window.location.hostname.toLowerCase();
+      const hostLabel = hostname.split('.')[0];
+      const isTenantSubdomain = hostname.endsWith('.theharvest.app') && !isNonTenantSubdomain(hostLabel);
+
+      // Tenant subdomains must always be validated against the tenant document.
+      if (initialPlan && initialTenantId === tenantId && !isTenantSubdomain) {
         setIsLoading(false);
         return;
       }
@@ -403,6 +414,10 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         }
 
         const data = tenantDoc.data();
+        if (isTenantSubdomain && !tenantMatchesSubdomain(data, hostLabel)) {
+          setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
+          return;
+        }
         // Unchanged: still one-shot, still guarded on `data.plan` being present
         // (a tenant doc without a plan has nothing to say). What changed is that
         // the latch now has a refresh counterpart — `refreshTenantPlan` — so a

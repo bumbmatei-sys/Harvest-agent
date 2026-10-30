@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Church,
+  ClipboardList,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -64,6 +65,7 @@ const PREVIEW_TABS = new Map<string, ShellTabRef>([
   ['services', { id: 'services', label: 'Services', icon: Church }],
   ['docs', { id: 'docs', label: 'Notes', icon: FileText }],
   ['forms', { id: 'forms', label: 'Forms', icon: FileText }],
+  ['signup-pages', { id: 'signup-pages', label: 'Sign-up pages', icon: ClipboardList }],
   ['events', { id: 'events', label: 'Events', icon: FileText }],
   ['checkin', { id: 'checkin', label: 'Check-In', icon: FileText }],
   ['fundraising', { id: 'fundraising', label: 'Fundraising', icon: Church }],

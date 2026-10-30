@@ -47,14 +47,17 @@ const state = vi.hoisted(() => ({
   userDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   tenantDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   authListeners: [] as Array<(u: unknown) => void>,
+  subscriptions: 0,
   /** Every tenant id the app looked up, in order. A super admin must look up none. */
   tenantLookups: [] as unknown[],
+  userDocWait: null as Promise<void> | null,
 }));
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (_auth: unknown, cb: (u: unknown) => void) => {
+    state.subscriptions++;
     state.authListeners.push(cb);
     Promise.resolve().then(() => cb(state.user));
     return () => {
@@ -74,6 +77,7 @@ vi.mock('firebase/auth', () => ({
 vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, col: string, id: string) => ({ col, id, path: `${col}/${id}` }),
   getDoc: async (ref: { col: string; id: unknown }) => {
+    if (ref.col === 'users' && state.userDocWait) await state.userDocWait;
     if (ref.col === 'tenants') state.tenantLookups.push(ref.id);
     const d = ref.col === 'users' ? state.userDoc : state.tenantDoc;
     return { exists: () => !!d?.exists, data: () => d?.data };
@@ -86,7 +90,7 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('../components/AuthPage', () => ({ default: () => <div data-testid="auth-page" /> }));
-vi.mock('../components/MainApp', () => ({ default: () => <div data-testid="main-app" /> }));
+vi.mock('../components/MainApp', () => ({ default: ({ isAdminPreview }: { isAdminPreview: boolean }) => <div data-testid="main-app">{isAdminPreview && <button>Admin</button>}</div> }));
 vi.mock('../components/AffiliateDashboard', () => ({ default: () => <div data-testid="affiliate-dashboard" /> }));
 vi.mock('../components/Onboarding', () => ({ default: () => <div data-testid="member-onboarding" /> }));
 vi.mock('../components/ChurchOnboarding', () => ({ default: () => <div data-testid="church-onboarding" /> }));
@@ -112,7 +116,7 @@ const tenantCtx = vi.hoisted(() => ({
   error: null,
   isLoading: false,
   setTenantPlan: () => {},
-  tenantPlan: null,
+  tenantPlan: null as null | 'church' | 'free' | 'ministry',
 }));
 vi.mock('../contexts/TenantContext', () => ({
   TenantProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -160,7 +164,7 @@ const provisionedOwnerDoc = (over: Record<string, unknown> = {}) => ({
     tenantId: TENANT,
     onboardingCompleted: true,
     signupInProgress: false,
-    plan: 'free',
+    plan: 'church',
     ...over,
   },
 });
@@ -168,7 +172,7 @@ const provisionedOwnerDoc = (over: Record<string, unknown> = {}) => ({
 /** A free tenant whose address was chosen at signup, so nothing is left to ask. */
 const freshFreeTenant = () => ({
   exists: true,
-  data: { name: 'Grace Community Church', setupCompleted: true },
+  data: { name: 'Grace Community Church', setupCompleted: true, subdomain: TENANT },
 });
 
 let container: HTMLDivElement;
@@ -219,16 +223,19 @@ beforeEach(() => {
   state.userDoc = null;
   state.tenantDoc = null;
   state.authListeners.length = 0;
+  state.subscriptions = 0;
   state.tenantLookups.length = 0;
+  state.userDocWait = null;
   tenantCtx.tenantId = null;
   tenantCtx.isAdminDomain = false;
+  tenantCtx.tenantPlan = null;
   hops = [];
   useAppStore.setState({
     currentUser: null,
     isAuthReady: false,
     currentTenant: null,
     currentTenantId: null,
-    tenantPlan: null,
+    tenantPlan: null as null | 'church' | 'free' | 'ministry',
     isSuperAdmin: false,
   });
   container = document.createElement('div');
@@ -244,8 +251,8 @@ afterEach(() => {
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
 
-describe('1 — a freshly provisioned free tenant lands on its own subdomain, not the apex', () => {
-  it('a freshly provisioned free tenant lands on its own subdomain, not the apex', async () => {
+describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
+  it('a freshly provisioned paid tenant lands on its own subdomain', async () => {
     // Exactly where the free lane leaves the evangelist: on the apex, on the
     // church-onboarding funnel path, with a tenant that now exists.
     startAt(`${APEX_ORIGIN}/church-onboarding`);
@@ -258,7 +265,7 @@ describe('1 — a freshly provisioned free tenant lands on its own subdomain, no
 
     // 🔴 THE REPORT. Before the fix this was `[]` and the browser sat on apex
     // /admin — the origin with no tenant, and so with no roster and no nav.
-    expect(hops, 'the free tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
+    expect(hops, 'the paid tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
     expect(window.location.pathname, 'the founder was parked on apex /admin').not.toBe('/admin');
   });
 
@@ -383,7 +390,7 @@ describe('7 — the paid signup landing is unchanged', () => {
     state.userDoc = provisionedOwnerDoc({ plan: 'pro' });
     // setupCompleted true ⇒ not a just-provisioned church mid-confirmation, so
     // the THE-138 hold does not apply and the hop is the whole behaviour.
-    state.tenantDoc = { exists: true, data: { name: 'Grace', setupCompleted: true } };
+    state.tenantDoc = { exists: true, data: { name: 'Grace', setupCompleted: true, subdomain: TENANT } };
 
     mount();
     await flush();
@@ -448,5 +455,138 @@ describe('8 — the post-auth route order is unchanged', () => {
     // Every funnel screen this suite exercises is one of them, so the table
     // above cannot silently drift from the array under test.
     for (const { path: p } of FUNNEL_SCREENS) expect(src).toContain(`'${p}'`);
+  });
+});
+
+
+describe('#557 Free account routing', () => {
+  it.each(['https://theharvest.app', 'http://localhost:3000', 'https://preview.vercel.app'])('keeps a hostless upgraded owner on %s with paid admin access', async (origin) => {
+    startAt(`${origin}/auth`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'church' });
+    state.tenantDoc = { exists: true, data: { plan: 'church', setupCompleted: true } };
+    mount();
+    await flush();
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
+    expect(useAppStore.getState().tenantPlan).toBe('church');
+    expect(useAppStore.getState().currentTenantId).toBe(TENANT);
+    expect(rendered('admin-dashboard')).toBe(true);
+    const subscriptions = state.subscriptions;
+    tenantCtx.tenantPlan = 'ministry';
+    tenantCtx.isLoading = true;
+    act(() => root!.render(<App />));
+    tenantCtx.isLoading = false;
+    act(() => root!.render(<App />));
+    await flush();
+    expect(state.subscriptions).toBe(subscriptions);
+    expect(hops).toEqual([]);
+    tenantCtx.tenantPlan = null;
+  });
+  it.each([
+    ['another tenant', 'other', 'free', '/'],
+    ['own tenant', TENANT, 'church', '/admin'],
+  ])('routes an admin on a paid host for %s', async (_label, userTenant, userPlan, destination) => {
+    startAt('https://paid.theharvest.app/auth');
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ tenantId: userTenant, plan: userPlan });
+    mount();
+    await flush();
+    expect(window.location.pathname).toBe(destination);
+    tenantCtx.tenantPlan = null;
+  });
+  it.each(['/auth', '/admin', '/admin/crm'])('denies a foreign admin on a paid host from %s', async (path) => {
+    startAt(`https://paid.theharvest.app${path}`);
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ tenantId: 'other', plan: 'church' });
+    mount();
+    await flush();
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('[data-testid="main-app"] button')).toBeNull();
+  });
+
+  it.each([
+    ['own tenant admin', 'owner@example.com', TENANT, PROVISIONED_TENANT_OWNER_ROLE],
+    ['super admin', SUPER_ADMIN_EMAILS[0], 'other', 'user'],
+  ])('allows %s on a paid host', async (_label, email, userTenant, role) => {
+    startAt('https://paid.theharvest.app/admin');
+    tenantCtx.tenantId = TENANT;
+    tenantCtx.tenantPlan = 'church';
+    state.user = { uid: 'u1', email };
+    state.userDoc = provisionedOwnerDoc({ tenantId: userTenant, role });
+    mount();
+    await flush();
+    expect(rendered('admin-dashboard')).toBe(true);
+    act(() => {
+      window.history.pushState({}, '', '/');
+      sessionStorage.setItem('intentionalUserView', 'true');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await flush();
+    expect(container.querySelector('[data-testid="main-app"] button')?.textContent).toBe('Admin');
+  });
+  it('keeps the tenant plan on a custom domain when the user has a different plan', async () => {
+    startAt('https://ministry.example/');
+    tenantCtx.tenantId = 'tenant';
+    tenantCtx.tenantPlan = 'ministry';
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    expect(useAppStore.getState().tenantPlan).toBe('ministry');
+    tenantCtx.tenantPlan = null;
+  });
+  it.each(['/auth', '/church-onboarding', '/admin', '/admin/crm'])('lands on the member app from %s', async (path) => {
+    startAt(`${APEX_ORIGIN}${path}`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('main-app')).toBe(true);
+    expect(useAppStore.getState().tenantPlan).toBe('free');
+    expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('[data-testid="main-app"] button')).toBeNull();
+  });
+
+  it('shows loading until the user document resolves, then allows an admin with no plan', async () => {
+    startAt(`${APEX_ORIGIN}/admin/crm`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: undefined });
+    let resolveRead!: () => void;
+    state.userDocWait = new Promise<void>((resolve) => { resolveRead = resolve; });
+    mount();
+    await flush();
+    expect(container.querySelector('.animate-spin')).not.toBeNull();
+    expect(rendered('admin-dashboard')).toBe(false);
+    await act(async () => { resolveRead(); });
+    await flush();
+    expect(useAppStore.getState().tenantPlan).toBeNull();
+    expect(container.querySelector('.animate-spin')).toBeNull();
+    expect(rendered('admin-dashboard')).toBe(true);
+    expect(window.location.pathname).toBe('/admin/crm');
+  });
+
+  it('denies a Free user navigating back to admin without a redirect loop', async () => {
+    startAt(`${APEX_ORIGIN}/`);
+    state.user = { uid: 'u1', email: 'owner@example.com' };
+    state.userDoc = provisionedOwnerDoc({ plan: 'free' });
+    mount();
+    await flush();
+    act(() => {
+      window.history.pushState({}, '', '/admin');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await flush();
+    expect(window.location.pathname).toBe('/');
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('admin-dashboard')).toBe(false);
+    expect(container.querySelector('.animate-spin')).toBeNull();
   });
 });

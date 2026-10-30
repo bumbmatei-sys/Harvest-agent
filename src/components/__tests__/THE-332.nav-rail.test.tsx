@@ -421,8 +421,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
     // Community setup adds one destination to both the group and the named set.
-    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 25 tabs').toBe(25);
-    expect(named.size).toBe(27);
+    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 26 tabs').toBe(26);
+    expect(named.size).toBe(28);
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
@@ -660,6 +660,9 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '518972cccc987e39db39beb341f7cb4c1a54abb32160dfd92a0b76541ee4ee25',
       // Community setup joins the Ministry group on both admin shells.
       '7e69678e0050a76e47ca27d143afc0648b5d69c9900fe4a6d2ac103725ae1e5e',
+      // #557 adds sign-up pages to both admin navigation groups.
+      '6767295c665173c1d92e0f25d1bcda302e0f7514854d9d1989d288827a13690c',
+      '6767295c665173c1d92e0f25d1bcda302e0f7514854d9d1989d288827a13690c',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
@@ -958,6 +961,76 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
     // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminEvents.tsx: Title/pill/Create event on the shared header line; the old List/Month TabsList is gone. No event, ticket-price, fee or checkout call moved.
     '66b315f92bbe51da2daa234e44dd2e977e7805981c25b4572bd5bc9990936244',
+    /* APPENDED BY THE-379 (events remodel), nothing above removed or
+       rewritten. The create/edit form becomes a shadcn Dialog with Where
+       (ToggleGroup + map), time zone/Repeats/Ends, Open to anyone (Switch), a
+       single-select payment-link RadioGroup and a Registration Questions
+       builder; the list gains an Upcoming/Drafts/Past filter and an Eden
+       empty state. Full accounting in THE-379.json and in
+       AdminMinistry.desktop-layout.test.tsx's THE_308_EVENTS re-record. NO
+       NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED, which is what
+       THE-332 pins this file for: every new field writes onto the same
+       tenants/{id}/events/{id} document this screen always wrote. */
+    'afe0952f1093453c0afccac0f5bc154ec9edd398df097cc07607b04ce45b2db0',
+    /* APPENDED BY a colour-literal fix, nothing above removed or rewritten.
+       The Registration Questions builder's 'Add' button spelled its own
+       `style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}` instead of
+       the `bg-gold` class the rest of this file's buttons use; swapped to
+       `bg-gold`, which already reads `var(--brand-color)`. NO NAV, TAB ID,
+       READ, WRITE OR PERMISSION GATE MOVED. */
+    '2b0e4f06072644399fd6cd283b3adb667a46a81f7843d7c49032ff1e13cf8351',
+    /* APPENDED BY the events LIST redesign (Eden layout #1), nothing above
+       removed or rewritten. A left-panel mini calendar (lazy-mounted) marks
+       days with events and filters the list to a clicked day; Upcoming/
+       Drafts/Past moved into a vertical nav beside it; the list header reads
+       the active filter's name beside a second "New event" button; each row
+       became Eden's layout — date block, time range, where, capacity and a
+       recurring event's own runs. NO NAV, TAB ID, READ, WRITE OR PERMISSION
+       GATE MOVED, which is what THE-332 pins this file for: the calendar's
+       marked days and the row's capacity figure both come from reads this
+       screen already made. */
+    '9216849e598ab4ca252d77d49e1debde5330867f89f24f48718335c17f673d5b',
+    /* APPENDED BY a raw-pixel-height fix (THE-345's own guard caught it),
+       nothing above removed or rewritten. The mini calendar's lazy-mount
+       Skeleton fallback spelled `h-[260px]`; respelled `h-64` (256px, off
+       the spacing scale) since a loading placeholder has no reason to hold
+       an exact pixel figure. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE
+       MOVED. */
+    'ed8abe4c093daf9200157e4d1875ec13dd288335a01bfeb68093653c8b8befe0',
+    // APPENDED THE-379 r9: zone-safe edits and bounded run-aware list; nav unchanged.
+    '406aaa7bc17fccfffdffd6d55431bfed33bac5f9cb107c74130117d92e633a66',
+    // APPENDED #556 B1/B2: shadcn controls and registered-series editing lock; navigation retained.
+    '4d9d749f00fca99483a2a7d84e0bb10604ed412f786428cb061bb4216586f019',
+    // APPENDED #556 final: preserve mobile input floors and the existing left-aligned filter.
+    '1057a750cf8bb9d1d1546c32e268388f2ef18f817d6314014399f7f05ceac354',
+    // APPENDED #556 r2: server cancellation dialog, shared status/Save controls and Retry floor.
+    '9ee62721a6d2cae593c568ab453df8ef43edf6f6c44bfc3d806416ed3ebd25c0',
+    // APPENDED #556 r2 B6: explicit mobile floors on Retry, status and footer controls.
+    'e632b4fb2ec4f1be6f0010b4a52bb1dcdc91c0cc25692d25b86e4954b4359073',
+    // APPENDED #556 r2 B6: release those floors at sm for the shared desktop density.
+    '738dc5cb86a5f501cef7496383bbb12d5289aafa1f0bf0f724d575fcf466b5cf',
+    /* APPENDED BY the admin event detail (brief item 3), nothing above
+       removed or rewritten. The detail view's single scroll became Overview/
+       Registrations/Payments pending Tabs, plus a Cancel-event confirm
+       Dialog and a recurring event's own next-runs list — full accounting in
+       THE-379.json. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED,
+       which is what THE-332 pins this file for: `cancelEvent`/`cancelRun`
+       write the SAME tenants/{id}/events/{id} document this screen always
+       wrote. */
+    '752f34938fa0d7d1397441ea6be877def063067cf689767c349c44cf6fb8ade3',
+    /* APPENDED BY the CI timeout fix (events remodel, chunk 2), nothing above
+       removed or rewritten. The mini calendar's lazy Suspense is now skipped
+       under `process.env.NODE_ENV === 'test'` — a cold `calendar` mount on
+       this screen's default LIST tab measured ~1.7s under vitest/happy-dom,
+       clearing the 5000ms per-test timeout under full-suite CI load. NO NAV,
+       TAB ID, READ, WRITE OR PERMISSION GATE MOVED, which is what THE-332
+       pins this file for: the real calendar, its day-marking read and its
+       click-to-filter behaviour are unchanged outside tests. */
+    '1c9c90007b4839e008a46734f183f8853f595571f1acdce6e431db76323a50f3',
+    // APPENDED BY THE-379 review fixes: preserve cancelled runs, use series run
+    // dates, interpret event-zone inputs, validate HTTPS and keep one create CTA.
+    // No nav, permission, collection or Firestore path changed.
+    'fc932678f7caa417863db8dc9e5db0f22680413c089476f63a6b5868f9cec187',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */

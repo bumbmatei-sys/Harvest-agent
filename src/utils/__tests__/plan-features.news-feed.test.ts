@@ -110,7 +110,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
    */
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
     church: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
+      adminDashboard: true, createCommunity: true, newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
       maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 5, maxAdmins: 2,
       maxProducts: 3, maxCommunities: 1, aiMessagesPerMonth: 300,
       customDomain: false, customBranding: false, newsletterAutomation: false, automatedNewsletter: false,
@@ -120,7 +120,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       givingStatements: false, pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     ministry: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
+      adminDashboard: true, createCommunity: true, newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
       maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 15,
       maxProducts: UNLIMITED_CAP, maxCommunities: UNLIMITED_CAP, aiMessagesPerMonth: 5000,
       customDomain: true, customBranding: true, newsletterAutomation: true, automatedNewsletter: true,

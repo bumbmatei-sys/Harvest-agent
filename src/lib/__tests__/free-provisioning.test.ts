@@ -52,7 +52,7 @@ const { provisionFreeTenant, FreeProvisioningError } = await import('@/lib/free-
 /** The two docs the batch wrote, by shape rather than by call order. */
 const written = () => {
   const calls = mockBatchSet.mock.calls;
-  const tenant = calls.find((c) => c[1] && 'subdomain' in c[1])?.[1];
+  const tenant = calls.find((c) => c[1] && c[1].plan === 'free')?.[1];
   const priv = calls.find((c) => c[1] && 'adminEmails' in c[1])?.[1];
   return { tenant, priv };
 };
@@ -72,13 +72,14 @@ const run = () => provisionFreeTenant({
 describe('provisionFreeTenant — what it writes', () => {
   it('creates the tenant on the free plan', async () => {
     const r = await run();
-    expect(r).toEqual({ outcome: 'created', tenantId: 'grace-church' });
+    expect(r).toEqual({ outcome: 'created', tenantId: expect.stringMatching(/^free-[a-f0-9]{24}$/) });
+    expect(written().tenant).not.toHaveProperty('subdomain');
+    expect(mockSubdomain).not.toHaveBeenCalled();
     expect(written().tenant).toMatchObject({
       plan: 'free',
-      subdomain: 'grace-church',
       status: 'active',
       ownerId: 'u1',
-      setupCompleted: false,
+      setupCompleted: true,
     });
   });
 
@@ -113,7 +114,7 @@ describe('provisionFreeTenant — what it writes', () => {
   it('🔴 clears signupInProgress in this same request — no webhook is coming', async () => {
     await run();
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      tenantId: 'grace-church',
+      tenantId: expect.stringMatching(/^free-[a-f0-9]{24}$/),
       role: 'admin',
       plan: 'free',
       onboardingCompleted: true,
@@ -157,7 +158,7 @@ describe('provisionFreeTenant — refusals', () => {
 
   it('trims the ministry name rather than storing the whitespace a form gave it', async () => {
     await provisionFreeTenant({ userId: 'u1', ministryName: '  Grace Church  ', userEmail: null });
-    expect(mockSubdomain).toHaveBeenCalledWith('Grace Church');
+    expect(mockSubdomain).not.toHaveBeenCalled();
     expect(written().tenant).toMatchObject({ name: 'Grace Church' });
   });
 });

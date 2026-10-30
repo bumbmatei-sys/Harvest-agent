@@ -40,6 +40,7 @@ import AdminFundraising from './AdminFundraising';
 import AdminDonations from './AdminDonations';
 import AdminCRM from './AdminCRM';
 import AdminSignups from './AdminSignups';
+import { SignupPagesScreen } from './signup-pages/SignupPagesScreen';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import { CommunitySettingsScreen } from './community/CommunitySettingsScreen';
@@ -185,7 +186,7 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // not specify an order, so nothing already agreed is reshuffled.
   //
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
-  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
+  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'signup-pages', 'sms', 'livestream'] },
   // Grow: the platform surfaces (Library, Tenants, the platform Inbox) plus
   // Affiliate and Branding. `library` sits beside `tenants`, its co-gated
   // sibling — both are `isSuperAdmin`-only, so the two appear and disappear
@@ -211,7 +212,7 @@ export const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   // order lives HERE so what the group advertises on `data-nav-group-tabs` is
   // the order its flyout actually renders, and the two cannot drift.
   { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'community-setup', 'fundraising', 'donations', 'accounting'] },
-  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
+  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'signup-pages', 'sms', 'livestream'] },
   // 🔴 THE-327 — `library` here too, and in the SAME relative position: next to
   // `tenants`, its co-gated sibling. It goes in GROW rather than a new PLATFORM
   // group because this array has never had one — it already files `tenants` and
@@ -878,6 +879,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.customForms) &&
       (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
+    navAllows(features?.signups) &&
+      (hasFullAccess || perms.manageForms) &&
+      { id: 'signup-pages', label: 'Sign-up pages', icon: ClipboardList },
     // Check-In System (QR attendance). The QR generator is a sub-tab of this
     // screen, which is why free still has the tab: attendance itself is off
     // there, and the QR half is what the tab is for on that plan.
@@ -1465,6 +1469,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.signups)
               ? <div className="p-4 lg:p-0"><AdminSignups /></div>
               : <PlanUpgradeScreen featureName="Signups" featureKey="signups" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'signup-pages' ? (
+            planAllows(features?.signups) && (hasFullAccess || perms.manageForms)
+              ? <div className="p-4 lg:p-0"><SignupPagesScreen tenantId={tenantId} /></div>
+              : <div className="p-4">Page not available.</div>
           ) : activeTab === 'accounting' ? (
             planAllows(features && (features.accountingTools || features.givingStatements))
               ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>

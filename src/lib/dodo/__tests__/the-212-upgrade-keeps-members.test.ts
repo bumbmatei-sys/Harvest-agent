@@ -139,7 +139,7 @@ beforeEach(() => {
   docReads.length = 0;
   mockBatchCommit.mockResolvedValue(undefined);
   // A free tenant holding 500 members — over Individual's 150 cap on purpose.
-  mockTenantGet.mockReturnValue({ exists: true, data: () => ({ plan: 'free', name: 'Grace', memberCount: 500 }) });
+  mockTenantGet.mockReturnValue({ exists: true, data: () => ({ plan: 'free', name: 'Grace', memberCount: 500, ownerId: 'buyer' }) });
   mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ adminEmails: ['pastor@grace.example'] }) });
 });
 
@@ -182,7 +182,10 @@ describe('upgrading never removes or disables a member', () => {
     // member count, no roster, and no cap enforcement of any kind — the tenant
     // keeps the 500 it had.
     const tenantWrite = docWrites.find((w) => w.op === 'batch.update');
-    expect(Object.keys(tenantWrite?.data as object).sort()).toEqual(['addons', 'plan', 'updatedAt']);
+    // #557 activates the existing Free identity without touching its roster.
+    expect(Object.keys(tenantWrite?.data as object).sort()).toEqual(['addons', 'plan', 'setupCompleted', 'updatedAt']);
+    expect(tenantWrite?.data).toMatchObject({ setupCompleted: true });
+    expect(tenantWrite?.data).not.toHaveProperty('subdomain');
     expect(docDeletes).toEqual([]);
   });
 

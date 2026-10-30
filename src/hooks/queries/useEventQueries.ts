@@ -20,6 +20,29 @@ export interface DiscountCode {
   usedCount: number;
 }
 
+/**
+ * Recurring events are a SERIES with RUNS (Eden's model). `expandRuns`
+ * (src/lib/events/recurrence.ts) is the one place that turns this rule into
+ * concrete run dates — nothing else may re-derive the schedule.
+ */
+export interface RecurrenceRule {
+  freq: 'weekly' | 'every_2_weeks' | 'monthly';
+  /** YYYY-MM-DD, inclusive. Mutually exclusive with `count` in the UI, but either or neither may be set (neither = "never"). */
+  until?: string;
+  /** 1–104 occurrences, counted from the first run. */
+  count?: number;
+  /** YYYY-MM-DD dates of runs an admin cancelled individually; `expandRuns` drops them. */
+  cancelledRuns?: string[];
+}
+
+export interface RegistrationQuestion {
+  id: string;
+  label: string;
+  kind: 'short' | 'long' | 'choice';
+  options?: string[];
+  required: boolean;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -32,6 +55,9 @@ export interface Event {
   endDate: Timestamp | null;
   capacity: number | null;
   registrationDeadline: Timestamp | null;
+  /** Recurring runs close this many elapsed hours before their start; absent means 2. */
+  registrationCutoffHours?: number;
+  organizerEmail?: string;
   price: number;
   currency: string;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
@@ -53,6 +79,22 @@ export interface Event {
    * does not define. Empty (or absent) means every link the church publishes.
    */
   paymentProviders?: string[];
+  /**
+   * Optional recurrence rule (Eden "Repeats"). Absent/null = a single, non-repeating
+   * event — every existing event and every reader that ignores this field keeps
+   * working exactly as before.
+   */
+  recurrence?: RecurrenceRule | null;
+  /** IANA zone the host picked at creation (e.g. "America/New_York"). Falls back to the browser's zone when absent. */
+  timeZone?: string;
+  /** Eden one-question-at-a-time registration questions, max 10, asked before the event. */
+  registrationQuestions?: RegistrationQuestion[];
+  /**
+   * Eden "Open to anyone". Absent means true (today's behaviour: every published
+   * event's share link is open to anyone). `false` restricts registration to a
+   * signed-in member of this tenant.
+   */
+  openToAnyone?: boolean;
 }
 
 export interface Registration {
@@ -63,8 +105,11 @@ export interface Registration {
   email: string;
   phone: string | null;
   ticketCode: string;
-  status: 'confirmed' | 'cancelled' | 'attended' | 'waitlisted';
+  status: 'confirmed' | 'cancelled' | 'attended' | 'waitlisted' | 'pending_payment' | 'expired';
   amount: number;
+  cancelledAt?: Timestamp;
+  cancellationReason?: 'event_cancelled' | 'registration_closed';
+  refundStatus?: 'pending_manual';
   registeredAt: Timestamp | null;
   ticketTypeId?: string | null;
   ticketTypeName?: string | null;
@@ -72,6 +117,16 @@ export interface Registration {
   discountCode?: string | null;
   discountAmount?: number;         // cents saved
   additionalAttendees?: { name: string; email?: string }[]; // household/group
+  /**
+   * YYYY-MM-DD of the specific run this registration is for, on a recurring
+   * event. Absent on a non-recurring event's registrations (and on every
+   * registration written before this field existed) — `expandRuns`/capacity
+   * counting treats an absent `runDate` as "the event's one run", so nothing
+   * old needs a migration.
+   */
+  runDate?: string;
+  /** Answers to `Event.registrationQuestions`, keyed by question id. Validated server-side at submit. */
+  answers?: Record<string, string>;
 
   /**
    * ─── THE-351 · manual payment confirmation ────────────────────────────────

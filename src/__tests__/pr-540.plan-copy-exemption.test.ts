@@ -60,10 +60,11 @@ describe.each(SUBJECTS.map((s) => [s.file, s] as const))('%s', (_file, subject) 
     // Round 4 is the first successor on both files. plan-features.ts gained a fifth
     // round (the quarterly term withdrawn, R5_APPROVAL), recorded after it. Round 6, the
     // two-plan repricing (R6_APPROVAL), is the last successor on both files.
-    expect(subject.successors, 'rounds 4 and 6 are recorded as successors').toHaveLength(subject === PLAN_FEATURES ? 3 : 2);
+    expect(subject.successors, 'rounds 4 and 6 are recorded as successors').toHaveLength(subject === PLAN_FEATURES ? 4 : 2);
     expect(subject.successors![0].approval).toBe(R4_APPROVAL);
     if (subject === PLAN_FEATURES) expect(subject.successors![1].approval).toBe(R5_APPROVAL);
-    expect(subject.successors![subject.successors!.length - 1].approval).toBe(R6_APPROVAL);
+    expect(subject.successors![subject === PLAN_FEATURES ? 2 : 1].approval).toBe(R6_APPROVAL);
+    if (subject === PLAN_FEATURES) expect(subject.successors![3].approval).toBe('#557 Free shell entitlements');
     expect(R4_APPROVAL).toContain('Include the scheduler in the Ministry plan');
   });
 

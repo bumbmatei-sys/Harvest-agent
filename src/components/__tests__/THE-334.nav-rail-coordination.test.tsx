@@ -1113,6 +1113,8 @@ describe('THE-334 · what it may not disturb', () => {
       '9b2b32084c6e04706fa80e8eb1e166960a676f55b21f07000cf1d7c6c9091ace',
       // Community setup joins the Ministry group on both admin shells.
       '88a3ef69573272bbbc4ed84722f7c903cb64954bc5e223fafed40631a4667bae',
+      // #557 adds Sign-up pages to the REACH group on both admin shells.
+      'fc607478cb5df0bbe308f1131089a52aa6f3a20979b2e5c6802cd9c60ab51d3a',
     ];
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
     expect(

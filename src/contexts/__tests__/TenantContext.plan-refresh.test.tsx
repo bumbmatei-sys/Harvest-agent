@@ -562,3 +562,21 @@ describe('an admin who was already on the correct plan sees no extra reads', () 
     expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('ministry').maxAdmins);
   });
 });
+
+
+it('#557 rejects a Free tenant on its subdomain during initial validation', async () => {
+  (window as unknown as { happyDOM: { setURL: (url: string) => void } }).happyDOM.setURL('https://free-test.theharvest.app/');
+  tenantDoc({ plan: 'free', name: 'Free account' });
+  await renderProvider('free-test');
+  expect(seen!.error).toContain('not found');
+  expect(seen!.tenantPlan).not.toBe('free');
+  (window as unknown as { happyDOM: { setURL: (url: string) => void } }).happyDOM.setURL('http://localhost/');
+});
+
+it.each([undefined, 'other'])('#557 rejects a paid tenant with subdomain %s on its internal ID', async (subdomain) => {
+  (window as unknown as { happyDOM: { setURL: (url: string) => void } }).happyDOM.setURL('https://free-test.theharvest.app/');
+  tenantDoc({ plan: 'church', subdomain });
+  await renderProvider('free-test');
+  expect(seen!.error).toContain('not found');
+  (window as unknown as { happyDOM: { setURL: (url: string) => void } }).happyDOM.setURL('http://localhost/');
+});

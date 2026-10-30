@@ -524,7 +524,14 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // byte-identical too, pinned by
   // `src/lib/__tests__/the-155-the-152-stale-money-path-comments.test.ts`.
   ['src/lib/stripe-connect.ts', 'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1'],
-  ['src/lib/event-registration-webhook.ts', 'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184'],
+  ['src/lib/event-registration-webhook.ts',
+    'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184',
+    // APPENDED: THE-379 review item 3 deliberately made the webhook capacity re-check per-run.
+    '4edb3f5bb7d76901b2f1c5bce5963f1a55fbe36e691800dcd96af4bd55499c3d',
+    // APPENDED #556 r2: honor signed Checkout creation time and include the paid run date.
+    '5477bfad08d885f51acf59a751ba92b3f69a4907b410dc66ca6c87f86e64641b',
+    // APPENDED #556 r12: tell a payer cancelled at confirmation that the ministry handles the refund; print the run date in words.
+    'f0e300b359dc75fa8349ff264292b81bd6528e9f6d16513eecfe5fc555982e72'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
   // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
   //
@@ -636,7 +643,8 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // next paid path, which is why this money-path file is in scope at all. No
   // price, fee, plan write, subscription branch or webhook path moved — `plan`
   // still has exactly one writer, and the money-path suites pass unedited.
-  ['src/lib/dodo/provisioning.ts', '348c6ffafc5d9c79fb0b7e03060e89f902dbc8af5b87936e4534d8a6b520eec5'],
+  // #557 activates a Free identity, checks its owner, and acknowledges durable upgrade refusals; prior pins retained.
+  ['src/lib/dodo/provisioning.ts', '348c6ffafc5d9c79fb0b7e03060e89f902dbc8af5b87936e4534d8a6b520eec5', '190bd2040b311439ea2ddb77cd4c65c63f0c941391c2c8bfb3e73dbcf1a804eb', '21bab7832439f1e5e251c56ad6d28bd5b0b8b8f563f6c67a639fedc2184bfaa8', '42e9ff93e972caec2813721cd89c323fcb80f0752f5cfc00c4b7bd4115554bb0'],
   ['src/lib/dodo/renewal.ts', 'fe7fb940ac15edfafd53bca346526e3a43266ad57c29a791a049ef8c512fc6a9'],
   ['src/lib/dodo/subscription-convergence.ts', 'b047d54e588b939ffe5f35e138cf02771033fffb2644a202726098061c3376b4'],
   // THE-302 appended: the `unreserved` outcome and a bounded store timeout.

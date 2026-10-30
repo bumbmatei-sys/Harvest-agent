@@ -71,9 +71,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authorized for this tenant.' }, { status: 403 });
     }
 
+    // Free tenants have no host, including older tenants still in first-run.
+    if (tenantData.plan === 'free') {
+      return NextResponse.json({ error: 'A paid plan is required for a subdomain.' }, { status: 403 });
+    }
+
     // Already finished → idempotent no-op.
     if (tenantData.setupCompleted === true) {
       return NextResponse.json({ tenantId: oldId, alreadyCompleted: true });
+    }
+
+    // A hostless tenant has no first-run subdomain to rename. Publishing a site
+    // will choose its address separately.
+    if (!tenantData.subdomain) {
+      await tenantRef.update({ setupCompleted: true, updatedAt: new Date().toISOString() });
+      return NextResponse.json({ tenantId: oldId });
     }
 
     const body = await request.json().catch(() => ({}));

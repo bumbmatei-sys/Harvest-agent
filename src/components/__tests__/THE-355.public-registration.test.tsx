@@ -506,3 +506,78 @@ describe('11 · nothing on the rendered page implies Harvest verified anything',
       .toBe('payment received');
   });
 });
+
+
+describe('THE-379 — zero remaining spots', () => {
+  it.each([true, false])('respects waitlistEnabled=%s on the ticket capacity label', async waitlistEnabled => {
+    const root = await mount({ event: {
+      ...FREE_EVENT, waitlistEnabled,
+      ticketTypes: [{ ...FREE_EVENT.ticketTypes[0], capacity: 1 }],
+      spotsLeftByTicket: { 'tt-free': 0 },
+    } });
+    const label = root.querySelector('[data-public-spots-left="0"]');
+    expect(label).toBeTruthy();
+    expect(label!.textContent).toBe(waitlistEnabled ? 'Waitlist' : 'Sold out');
+  });
+});
+
+// #556: exercise the real primitives and exclusive choice behavior through all question kinds.
+it('renders the question stepper with shadcn controls through submission', async () => {
+  const c = await mount({ event: { ...FREE_EVENT, registrationQuestions: [
+    { id: 'short', label: 'Name tag', kind: 'short', required: false },
+    { id: 'long', label: 'Access needs', kind: 'long', required: false },
+    { id: 'choice', label: 'Meal', kind: 'choice', options: ['Standard', 'Vegetarian'], required: true },
+  ] } });
+  expect(c.querySelector('[data-public-question-step="short"] input')?.getAttribute('data-slot')).toBe('input');
+  expect(c.querySelector('[data-public-question-next]')?.getAttribute('data-slot')).toBe('button');
+  await click(c.querySelector('[data-public-question-next]')!);
+  expect(c.querySelector('[data-public-question-step="long"] textarea')?.getAttribute('data-slot')).toBe('textarea');
+  await click(c.querySelector('[data-public-question-next]')!);
+  const group = c.querySelector('[data-slot="radio-group"]')!;
+  expect(group).toBeTruthy();
+  const radios = [...group.querySelectorAll<HTMLElement>('[data-slot="radio-group-item"]')];
+  expect(radios).toHaveLength(2);
+  await click(radios[0]);
+  await click(radios[1]);
+  expect(radios[0].getAttribute('aria-checked')).toBe('false');
+  expect(radios[1].getAttribute('aria-checked')).toBe('true');
+  await click(c.querySelector('[data-public-question-next]')!);
+  expect(c.querySelector('[data-public-submit]')?.getAttribute('data-slot')).toBe('button');
+  await registerAndSubmit(c);
+  expect(server.calls.find(call => call.url.includes('submit'))?.body.answers).toEqual({ choice: 'Vegetarian' });
+});
+
+// #556: the real public picker disables expired runs, selects a later one, and updates on an open page.
+describe('per-run registration cutoff in the public picker', () => {
+  const recurring = { ...FREE_EVENT, timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3 },
+    startDate: '2031-03-23T09:00:00Z', endDate: '2031-03-23T10:00:00Z',
+    registrationDeadline: '2030-01-01T00:00:00Z',
+  };
+  it('disables the just-closed Berlin DST run and submits the next run', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T06:00:00Z'));
+    try {
+      const c = await mount({ event: recurring });
+      const closed = c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-03-30"]')!;
+      const next = c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-04-06"]')!;
+      expect(closed.disabled).toBe(true);
+      expect(closed.textContent).toContain('Registration closed');
+      expect(next.disabled).toBe(false);
+      await registerAndSubmit(c);
+      expect(server.calls.find(call => call.url.includes('submit'))?.body.runDate).toBe('2031-04-06');
+    } finally { vi.useRealTimers(); }
+  });
+  it('expires a selected run while the page stays open', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-30T05:59:59.999Z'));
+    try {
+      const c = await mount({ event: { ...recurring, recurrence: { freq: 'weekly', count: 2 } } });
+      expect(c.querySelector<HTMLButtonElement>('[data-public-submit]')!.disabled).toBe(false);
+      const { act } = await import('react');
+      await act(async () => {
+        vi.setSystemTime(new Date('2031-03-30T06:00:00Z'));
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      });
+      expect(c.querySelector<HTMLButtonElement>('[data-public-run-option="2031-03-30"]')!.disabled).toBe(true);
+      expect(c.querySelector<HTMLButtonElement>('[data-public-submit]')!.disabled).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+});

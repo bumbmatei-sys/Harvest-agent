@@ -903,6 +903,8 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/signup-pages/SignupPageBuilder.tsx', ticket: '#557', why: 'The builder uses the existing textarea for the page message and switches for the enabled and required settings on each field.' },
+  { file: 'src/components/signup-pages/PublicSignupForm.tsx', ticket: '#557', why: 'The public form uses the existing textarea for prayer requests, preserving the shared accessible field styling and validation behavior.' },
   { file: 'src/components/community/AdminPostComposer.tsx', ticket: 'THE-555', why: 'The admin composer adopts shared Textarea and ToggleGroup primitives for post text and mutually exclusive Post or Poll modes; shared menu items own the attachment picker.' },
   { file: 'src/components/community/MemberPostComposer.tsx', ticket: 'THE-999999', why: 'The member post composer uses the shared textarea primitive for an accessible short text entry field.' },
   { file: 'src/components/community/NewGroupDialog.tsx', ticket: 'THE-999999', why: 'The new group dialog uses the shared checkbox primitive for selecting members of an explicit group roster.' },
@@ -938,6 +940,17 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'REJECTED for the gate itself - the church does not choose this, the platform does, and a '
       + 'toggle would imply otherwise. The `tabs` import THE-308 recorded is untouched and no '
       + 'primitive was edited.',
+  },
+  {
+    file: 'src/components/events/EventListCalendar.tsx',
+    ticket: 'THE-379',
+    why:
+      "THE EVENTS REMODEL's mini month calendar, lazy-mounted beside the Upcoming/Drafts/Past "
+      + 'list the same way EventMonthView already lazy-mounts its own grid, so the primitive '
+      + 'stays out of the list screen\'s own chunk. It takes `calendar` (Calendar, '
+      + 'CalendarDayButton) to mark which days carry an event and filter the list to a clicked '
+      + "day - the SAME primitive THE-308's month view already adopted, used here a second time "
+      + 'for a smaller picker rather than a full grid. No primitive was edited.',
   },
   {
     file: 'src/components/settings/IntegrationsSection.tsx',
