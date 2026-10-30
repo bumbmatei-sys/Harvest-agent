@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireTenantAdmin } from '@/lib/api-auth';
 import { isActiveCommunityMember } from '@/lib/community-membership-server';
 import { adminDb } from '@/lib/firebase-admin';
 
@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!authResult.isSuperAdmin && !(await isActiveCommunityMember(authResult.uid, tenantId))) {
+    // Tenant admins (owner, role admins and roster admins, as the rules'
+    // isTenantAdmin) moderate this chat and may post in it without joining.
+    if (!authResult.isSuperAdmin && !(await isActiveCommunityMember(authResult.uid, tenantId))
+      && (await requireTenantAdmin(request, tenantId)) instanceof NextResponse) {
       return NextResponse.json({ error: 'Community membership required.' }, { status: 403 });
     }
     const currentRef = adminDb.collection('tenants').doc(tenantId).collection('livestream').doc('current');

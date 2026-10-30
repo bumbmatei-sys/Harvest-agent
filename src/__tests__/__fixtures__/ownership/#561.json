@@ -371,6 +371,56 @@
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
       "digest": "2b3d794a4f55b7f65412653f006de436369d263d6483f468d8d0d1807d2000b3",
       "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): both sides' appended pins combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "f0f576f9ac395b808bccdec2aa7e503d758132224d0adb22227e52fe3c99a7ee",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: an existing same-tenant contact is linked by email only when the Auth account's email is verified and equal; any other account gets its own contact, so an unverified address cannot take over a donor's CRM record."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "d9e6054245ca36a23540ace9f73a18ef15a1ef5df5caa739f54c04cb805134ca",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds unverified and verified-for-another-address takeover cases plus the verified link case; the existing email-link case now supplies a verified account. Reverting the gate fails two cases."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "eee3f7fe722190bb2e443442d74d118ed547d74f20983e526bebf4984db0f771",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: join refuses an account with no users/{uid} profile (409, nothing written), so the directory never meets an unreadable member, and rejects the onboarding pending marker as an answer key."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "4a6b2d92227041d56a361d0c7f9b38daeb5f84bf37b8805ce626693e31425f7d",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the profile-less join and pending-marker cases; reverting fails both. Prior assertions retained."
+    },
+    {
+      "file": "src/app/api/livestream/comment/route.ts",
+      "digest": "2978d6db09ed94ec2d8cc3f9f09f9471c78691a948bd8932dc64e3cdb76c1750",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: a tenant admin (owner, role or roster, via requireTenantAdmin) may post without joining, matching the rules that already let admins read the chat."
+    },
+    {
+      "file": "src/app/api/livestream/comment/__tests__/route.test.ts",
+      "digest": "32d330736842bc87459c07a1899742aa3a970dfcd27f269a2367c0955dc5d42e",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the admin and non-admin non-member cases; the requireTenantAdmin mock defaults to refusal so existing cases are unchanged."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.tsx",
+      "digest": "22e916bd6cf605b59f499c9157c73dfe323802755556ba0d1ef322f909879e85",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: re-reads the stored return before redirecting, so a return already consumed by onboarding does not trigger a second full reload."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.test.tsx",
+      "digest": "706e9f9f4c1189c2b445a4aa03898fae0029b365da9c8f36b130b0b96335602f",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the consumed-return and funnel-drop cases; prior assertions retained."
+    },
+    {
+      "file": "src/lib/community/navigation.ts",
+      "digest": "bd3b983d2148913c73c978678c6e3667e807a14ad0ea99d2c44219a5d661920a",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds dropCommunityReturnForFunnel: a non-free signup intent drops a leftover community join return."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "baa06dca79ddb76ae000f85166e876daa6ebf15ab55042c62c6085ed854e9fc6",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: one call: capturing a non-free ?signup intent drops a leftover community join return, so a church or paid funnel is never pulled into a community page."
     }
   ]
 }

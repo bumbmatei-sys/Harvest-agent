@@ -45,6 +45,7 @@ describe('community contact upsert', () => {
   });
   it('links the first same-tenant normalised email match, preserving owner edits and gifts', async () => {
     h.docs.set('contacts/existing', { tenantId: 'target', firstName: 'Owner edited', email: ' Ada@EXAMPLE.org ', notes: 'keep', totalDonated: 50, type: 'donor' });
+    h.getUser.mockResolvedValue({ email: 'ada@example.org', emailVerified: true });
     await upsertCommunityContact(input);
     expect(contactRows()).toHaveLength(1);
     expect(h.docs.get('contacts/existing')).toMatchObject({ firstName: 'Owner edited', notes: 'keep', totalDonated: 50, type: 'donor', communityUserId: 'u', communityStatus: 'active' });
@@ -119,5 +120,28 @@ describe('community contact upsert', () => {
     h.fail = true;
     await expect(upsertCommunityContact(input)).rejects.toThrow('offline');
     expect(h.writes).not.toHaveBeenCalled();
+  });
+});
+
+describe('#561 review r5 — an existing contact is bound only to a verified owner of its address', () => {
+  const donor = { tenantId: 'target', firstName: 'Real donor', email: 'ada@example.org', notes: 'keep', totalDonated: 500, type: 'donor' };
+  it.each([
+    ['unverified', { email: 'ada@example.org', emailVerified: false }],
+    ['verified for a different address', { email: 'someone@else.org', emailVerified: true }],
+  ])('an account whose email is %s gets its own contact; the donor row is untouched', async (_label, account) => {
+    h.docs.set('contacts/donor', { ...donor });
+    h.getUser.mockResolvedValue(account);
+    await upsertCommunityContact(input);
+    expect(h.docs.get('contacts/donor')).toEqual(donor);
+    expect(h.writes.mock.calls.every(([path]) => path !== 'contacts/donor')).toBe(true);
+    const own = contactRows().find(([path]) => path.startsWith('contacts/community_target_'));
+    expect(own?.[1]).toMatchObject({ communityUserId: 'u', email: 'ada@example.org', totalDonated: 0 });
+  });
+  it('a verified owner of the address is linked to the existing contact', async () => {
+    h.docs.set('contacts/donor', { ...donor });
+    h.getUser.mockResolvedValue({ email: 'ADA@example.org', emailVerified: true });
+    await upsertCommunityContact(input);
+    expect(contactRows()).toHaveLength(1);
+    expect(h.docs.get('contacts/donor')).toMatchObject({ ...donor, communityUserId: 'u' });
   });
 });

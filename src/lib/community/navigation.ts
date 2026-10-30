@@ -23,6 +23,14 @@ export function communitySource(search: string): CommunitySource {
 export function communityJoinPath(tenantId: string, source: CommunitySource): string {
   return `${communityPath(tenantId)}?join=1&src=${source}`;
 }
+/**
+ * A community join signs up through `?signup=free`. Starting any other funnel
+ * in the same tab drops a leftover join return, so a church or paid signup is
+ * never pulled into a community page when its onboarding completes.
+ */
+export function dropCommunityReturnForFunnel(signup: string, storage: Pick<Storage, 'removeItem'>): void {
+  if (signup !== 'free') storage.removeItem('harvest_community_return');
+}
 export function communitySignupPath(returnPath: string): string {
   const safe = safeCommunityReturnPath(returnPath);
   if (!safe) throw new Error('Invalid community return path.');

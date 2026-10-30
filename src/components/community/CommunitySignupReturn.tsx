@@ -16,7 +16,10 @@ export function CommunitySignupReturn() {
     let returned = false;
     return onSnapshot(doc(db, 'users', currentUser.uid), snapshot => {
       const person = snapshot.data();
-      if (!returned && person?.onboardingCompleted === true && person.signupInProgress !== true && person.tenantId) {
+      // Re-read the key: onboarding's own completion may already have
+      // consumed it and navigated, and a second, full reload must not follow.
+      if (!returned && person?.onboardingCompleted === true && person.signupInProgress !== true && person.tenantId
+        && sessionStorage.getItem('harvest_community_return') === path) {
         returned = true;
         sessionStorage.removeItem('harvest_community_return');
         window.location.assign(path);

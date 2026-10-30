@@ -4,7 +4,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { isTenantAdminRole } from '@/lib/roles';
-import { COMMUNITY_CONSENT_VERSION, buildCommunityMember, isActiveMember, isCommunityTenantId, normaliseSource, type CommunityMember, type UserMembership } from './community-membership';
+import { COMMUNITY_CONSENT_VERSION, COMMUNITY_QUESTIONS_PENDING, buildCommunityMember, isActiveMember, isCommunityTenantId, normaliseSource, type CommunityMember, type UserMembership } from './community-membership';
 import { readCommunitySettings, requiredQuestionsAnswered } from './community/settings';
 import { readCommunityDeparture, writeCommunityDeparture, readCommunityRejoin, writeCommunityRejoin } from './community-privacy';
 import { upsertCommunityContact } from './community-contact';
@@ -28,7 +28,7 @@ function parseBody(value: unknown, joining: boolean) {
   if (version !== undefined && (!Number.isSafeInteger(version) || (version as number) < 0)) throw badRequest();
   const answers = value.answers;
   if (answers !== undefined && (!isRecord(answers) || Object.keys(answers).length > 100 ||
-      Object.entries(answers).some(([key, answer]) => !key || /^__.*__$/.test(key) || key.length > 128 || typeof answer !== 'string' || answer.length > 4000))) throw badRequest();
+      Object.entries(answers).some(([key, answer]) => !key || /^__.*__$/.test(key) || key === COMMUNITY_QUESTIONS_PENDING || key.length > 128 || typeof answer !== 'string' || answer.length > 4000))) throw badRequest();
   return { tenantId: value.tenantId, source, rulesAcceptedVersion: version as number | undefined, answers: answers as Record<string, string> | undefined };
 }
 
@@ -47,6 +47,9 @@ export async function communityMembershipRequest(request: NextRequest, joining: 
     await adminDb.runTransaction(async tx => {
       const [tenant, person, member] = await Promise.all([tx.get(tenantRef), tx.get(personRef), tx.get(memberRef)]);
       if (!tenant.exists) throw new MembershipError('Community not found.', 404);
+      // The directory reads every active member's profile; a join that raced
+      // ahead of account creation would leave a member it cannot read.
+      if (joining && !person.exists) throw new MembershipError('Finish creating your account before joining this community.', 409);
       const tenantData = tenant.data()!;
       const profile = person.data();
       const previous = member.data() as Partial<CommunityMember<Timestamp>> | undefined;

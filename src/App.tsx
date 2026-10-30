@@ -17,6 +17,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import AuthPage from './components/AuthPage';
 import MainApp from './components/MainApp';
 import { CommunitySignupReturn } from './components/community/CommunitySignupReturn';
+import { dropCommunityReturnForFunnel } from './lib/community/navigation';
 import { CommunityMemberPage } from './components/community/CommunityMemberPage';
 import { communityIdFromPath, communitySignupPath, safeCommunityReturnPath } from './lib/community/navigation';
 import AffiliateDashboard from './components/AffiliateDashboard';
@@ -234,6 +235,7 @@ const AppInner: React.FC = () => {
     const p = params.get('signup');
     if (p) {
       try { sessionStorage.setItem('harvest_signup', p); } catch {}
+      try { dropCommunityReturnForFunnel(p, sessionStorage); } catch {}
       // THE-135: the billing period rides the same lane as the plan, or it dies
       // at the /auth redirect below (which drops the query string) and every
       // annual signup silently buys monthly. Captured only WITH a signup intent

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
-const { mockRequireAuth, mockMembership } = vi.hoisted(() => ({ mockRequireAuth: vi.fn(), mockMembership: vi.fn() }));
+const { mockRequireAuth, mockMembership, mockTenantAdmin } = vi.hoisted(() => ({ mockRequireAuth: vi.fn(), mockMembership: vi.fn(), mockTenantAdmin: vi.fn() }));
 
 const { mockDocGet, mockDocSet, mockAdd } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
@@ -22,7 +22,7 @@ function makeDocRef(): any {
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
 // Identity comes from the verified token via requireAuth — never the body.
 vi.mock('@/lib/community-membership-server', () => ({ isActiveCommunityMember: mockMembership }));
-vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
+vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth, requireTenantAdmin: mockTenantAdmin }));
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
     serverTimestamp: vi.fn(() => 'SERVER_TS'),
@@ -46,6 +46,7 @@ const baseBody = { tenantId: 't1', name: 'Sam', text: 'Amen 🙏' };
 beforeEach(() => {
   vi.clearAllMocks();
   mockMembership.mockResolvedValue(true);
+  mockTenantAdmin.mockResolvedValue(NextResponse.json({ error: 'Tenant admin access required' }, { status: 403 }));
   mockDocSet.mockResolvedValue(undefined);
   mockAdd.mockResolvedValue({ id: 'c1' });
   // Default: authenticated viewer.
@@ -134,5 +135,22 @@ describe('POST /api/livestream/comment', () => {
 
     await POST(makeRequest({ tenantId: 't1', text: 'hi' }));
     expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ name: 'Anonymous', text: 'hi' }));
+  });
+});
+
+describe('#561 review r5 — tenant admins may post without joining', () => {
+  it('a roster or role admin of this tenant who is not a member can comment', async () => {
+    mockMembership.mockResolvedValue(false);
+    mockTenantAdmin.mockResolvedValue({ uid: 'admin_1', email: 'pastor@test.com', tenantId: 'elsewhere' });
+    mockDocGet.mockResolvedValue({ exists: true, data: () => ACTIVE });
+    expect((await POST(makeRequest(baseBody))).status).toBe(200);
+    expect(mockTenantAdmin).toHaveBeenCalledWith(expect.anything(), 't1');
+    expect(mockAdd).toHaveBeenCalledTimes(1);
+  });
+  it('a signed-in non-member who is not a tenant admin is still refused, writing nothing', async () => {
+    mockMembership.mockResolvedValue(false);
+    mockDocGet.mockResolvedValue({ exists: true, data: () => ACTIVE });
+    expect((await POST(makeRequest(baseBody))).status).toBe(403);
+    expect(mockAdd).not.toHaveBeenCalled();
   });
 });

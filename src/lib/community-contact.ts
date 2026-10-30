@@ -41,12 +41,21 @@ export async function upsertCommunityContact({ uid, tenantId }: { uid: string; t
     const profile = profileDoc.data();
     let name = text(profile?.name) || text(profile?.displayName);
     let email = emailKey(profile?.email);
+    let account: Awaited<ReturnType<typeof adminAuth.getUser>> | undefined;
     if (!linked && (!name || !email)) {
-      const account = await adminAuth.getUser(uid);
+      account = await adminAuth.getUser(uid);
       name ||= text(account.displayName);
       email ||= emailKey(account.email);
     }
-    const existing = linked || (email ? sorted.find(doc => emailKey(doc.data().email) === email) : undefined);
+    let emailMatch = !linked && email ? sorted.find(doc => emailKey(doc.data().email) === email) : undefined;
+    if (emailMatch) {
+      // An existing contact can hold gifts, notes and history, and the link is
+      // permanent. Bind it only to an account that has proved it owns the
+      // address; anyone else gets a contact of their own.
+      account ??= await adminAuth.getUser(uid);
+      if (account.emailVerified !== true || emailKey(account.email) !== email) emailMatch = undefined;
+    }
+    const existing = linked || emailMatch;
     if (!existing && (!name || !email)) throw new Error('A name and email are required to share a community contact.');
     if (existing?.data().communityUserId && existing.data().communityUserId !== uid) {
       throw new Error('This email is already linked to another community member.');

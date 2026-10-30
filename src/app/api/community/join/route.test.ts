@@ -518,3 +518,18 @@ describe('departure privacy', () => {
     expect(fx.docs['contacts/linked']).toBeDefined();
   });
 });
+
+describe('#561 review r5 — join input the directory and onboarding depend on', () => {
+  it('refuses a join before the account profile exists, and writes nothing', async () => {
+    delete fx.docs['users/person'];
+    const response = await join(request(joinBody));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(/Finish creating your account/);
+    expect(fx.writes).not.toHaveBeenCalled();
+    expect(fx.contact).not.toHaveBeenCalled();
+  });
+  it('rejects the onboarding pending marker as an answer key', async () => {
+    expect((await join(request({ ...joinBody, answers: { q: 'yes', communityQuestionsPending: 'true' } }))).status).toBe(400);
+    expect(fx.writes).not.toHaveBeenCalled();
+  });
+});

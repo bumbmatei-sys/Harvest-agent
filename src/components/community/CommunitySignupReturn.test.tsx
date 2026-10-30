@@ -6,6 +6,7 @@ vi.mock('@/firebase', () => ({ db: {} }));
 vi.mock('@/store/useAppStore', () => ({ useAppStore: () => ({ currentUser: { uid: 'u' } }) }));
 vi.mock('firebase/firestore', () => ({ doc: (_db: unknown, ...parts: string[]) => parts.join('/'), onSnapshot: (path: string, next: any, fail: any) => { h.subscribe(path); h.next = next; h.fail = fail; return h.stop; } }));
 import { CommunitySignupReturn } from './CommunitySignupReturn';
+import { dropCommunityReturnForFunnel } from '@/lib/community/navigation';
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 const host = document.createElement('div'); document.body.appendChild(host); const root = createRoot(host);
 beforeEach(() => { sessionStorage.clear(); vi.clearAllMocks(); h.next = undefined; });
@@ -33,5 +34,21 @@ describe('community return after free provisioning', () => {
     await act(async () => root.render(<CommunitySignupReturn />));
     await act(async () => h.fail?.());
     expect(host.querySelector('[role=alert]')?.textContent).toContain('Could not return');
+  });
+  // #561 review r5
+  it('does not reload into the join page after onboarding already consumed the return', async () => {
+    sessionStorage.setItem('harvest_community_return', '/community/a?join=1');
+    const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
+    await act(async () => root.render(<CommunitySignupReturn />));
+    sessionStorage.removeItem('harvest_community_return');
+    await act(async () => h.next?.({ data: () => ({ tenantId: 'free-u', onboardingCompleted: true, signupInProgress: false }) }));
+    expect(assign).not.toHaveBeenCalled();
+  });
+  it('a church or paid funnel started in the tab drops a leftover join return; a free one keeps it', () => {
+    for (const [signup, kept] of [['church', false], ['ministry', false], ['free', true]] as const) {
+      sessionStorage.setItem('harvest_community_return', '/community/a?join=1');
+      dropCommunityReturnForFunnel(signup, sessionStorage);
+      expect(sessionStorage.getItem('harvest_community_return') !== null).toBe(kept);
+    }
   });
 });
