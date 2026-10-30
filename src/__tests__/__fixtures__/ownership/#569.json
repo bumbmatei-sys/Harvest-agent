@@ -45,6 +45,16 @@
       "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
       "digest": "62bcfab789694e75698fd6f7427bf340d545bfa9a58c16c181e46b6c64926c48",
       "why": "APPENDED, NOT SUBSTITUTED — #569: moves the-268-line-endings' current digest in CONTENT_ASSERTING_MOVED for #568's JPEGs, keeping the previous digest and reasons in the why. CONTENT_ASSERTING is untouched."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "88abbc32f7068e604febd54600deeabcf2fa9bb4c9288d64aa92421d0428cb36",
+      "why": "APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the tooltip adopter list combined; nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "104d12a7a957064cba3c3af7eb24d5bc82fc6a9fdeee30b4ee2c2ac8f96f1112",
+      "why": "APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the min-h-11 sweep combined; nothing removed."
     }
   ]
 }
