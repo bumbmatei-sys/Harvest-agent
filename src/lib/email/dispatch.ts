@@ -11,6 +11,9 @@ export type EmailActionBody =
   | { action: 'sendTest'; tenantId?: string | null; id: string }
   | { action: 'import'; tenantId?: string | null; rows: ImportRow[]; consentConfirmed: boolean }
   | { action: 'saveSettings'; tenantId?: string | null; settings: Partial<EmailSettings> }
+  | { action: 'saveTheme'; tenantId?: string | null; theme: { id?: string | null; name: string; tokens: unknown } }
+  | { action: 'deleteTheme'; tenantId?: string | null; id: string }
+  | { action: 'setDefaultTheme'; tenantId?: string | null; themeId: string | null }
   | { action: 'saveLimits'; tenantId?: string | null; limits: unknown }
   | { action: 'resumeSending'; tenantId?: string | null }
   | { action: 'domain'; tenantId?: string | null; op: 'register' | 'check'; domain?: string };
@@ -42,6 +45,7 @@ const STATUS: Record<string, number> = {
   provider_unavailable: 502,
   domain_taken: 409,
   domain_reserved: 409,
+  theme_limit: 409,
 };
 
 export async function dispatchEmailAction(
@@ -69,6 +73,13 @@ export async function dispatchEmailAction(
       result = await service.importContacts(actor, t, { rows: Array.isArray(body.rows) ? body.rows : [], consentConfirmed: body.consentConfirmed === true });
       break;
     case 'saveSettings': result = await service.saveSettings(actor, t, body.settings ?? {}); break;
+    case 'saveTheme': {
+      const theme = (body.theme ?? {}) as { id?: string | null; name?: string; tokens?: unknown };
+      result = await service.saveTheme(actor, t, { id: theme.id, name: String(theme.name ?? ''), tokens: theme.tokens });
+      break;
+    }
+    case 'deleteTheme': result = await service.deleteTheme(actor, t, String(body.id ?? '')); break;
+    case 'setDefaultTheme': result = await service.setDefaultTheme(actor, t, body.themeId ?? null); break;
     case 'saveLimits': result = await service.saveLimits(actor, body.limits); break;
     case 'resumeSending': result = await service.resumeSending(actor, t); break;
     case 'domain': result = await service.domain(actor, t, { op: body.op === 'register' ? 'register' : 'check', domain: body.domain }); break;

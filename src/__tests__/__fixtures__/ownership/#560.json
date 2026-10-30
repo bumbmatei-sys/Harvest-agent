@@ -1,0 +1,110 @@
+{
+  "ticket": "#560",
+  "entries": [
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "5aa0d0f4c8b0edf51eef34b88ef2ae89af2aa788b6ae00d83e7498b43cc6662d",
+      "why": "PR #560 (newsletter email themes) appended the ThemeSettingsPanels.tsx adopter to the collapsible adopter map \u2014 the chunk-3 adopter the map had never been told about \u2014 with nothing above or below removed or rewritten."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "b9761113532910df76ac46d929556f1a30b616f32ee8182cd7f71ed72b77ed49",
+      "why": "PR #560 (newsletter email themes) appended ThemeSettingsPanels.tsx to the min-h-11 sweep inventory in the sweep's own sorted order, since its Reset buttons USE the flat min-h-11 floor THE-356 reads and measures."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "9c3a58fd64caa22e3220be6c9d53169baf351baa8b64f291f97c85355dd9d1a2",
+      "why": "PR #560 (newsletter email themes) appended ThemePicker.tsx to the min-h-11 sweep inventory in the sweep's own sorted order, because the theme tile's delete control USES the class as min-h-11 min-w-11 ... sm:min-h-0 sm:min-w-0, and dropped the now-false parenthetical claiming the file needed no entry. Appended beside the digest above and not in place of it; the previous digest stays accepted."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "c732b36f84ebaf685c373ad125858ef3e9fb49fedfd21ef1fd5857c49426bf51",
+      "why": "PR #560's fix pass recorded the three newsletter-theme adopters of the batch C/D/E primitives (ThemeWarning, blocks/Box, blocks/IssueHeader) in the adopter register, each with its ticket and reason; no recorded row was removed."
+    },
+    {
+      "file": "src/__tests__/THE-339.gmail-hidden.test.ts",
+      "digest": "bea447617c7d073bdfdbce833a78b7249b16c0879dd081fc70eebf79d658e133",
+      "why": "PR #560's fix pass added src/lib/email/themes.ts to the enumerated Gmail-mentioning population and corrected the count in the note beside it; the population assertion itself is unchanged."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "cdb52a611c8b7e672c217376de5e076ca2eb8feb26b04d79129aee0cfd620588",
+      "why": "PR #560 review records the Box tint swatches adopting radio-group and radio-group-item in the existing Box adopter row. Popover and textarea remain adopted, every existing adopter stays recorded, and no primitive changes."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "4e2bc58a1e7ef001f9d501f4c07c069d7797e92ef233c48d0c1fc07650b1871c",
+      "why": "PR #560 review corrects the ThemePicker floor-register explanation for outline theme-card Buttons and the ghost icon delete Button with explicit mobile and desktop target floors. The sorted inventory and every assertion are unchanged."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "b0c74f86db33021a19053d9a8d6ee70198a74843cace89e3c5ad3bbedf6b4710",
+      "why": "PR #560 commit 64293d6 records the /dev/email-themes screenshot harness as a development preview: the guard checks its existence, production notFound call and exclusion from public analytics before excluding it from the public route inventory. No existing route checks were removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "ff55c35787da775273b88aa1b23386a699ecfe28ac9779b1209275f7192a66d7",
+      "why": "PR #560 merged with main #557: retain the sign-up builder and public form adopter rows from main alongside the newsletter ThemeWarning, Box and IssueHeader adopters, including b2da82e's radio-group explanation. All prior rows and assertions remain intact."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "d8ab9384519628f9f1cc9ea10d693b45619c3dc2f984667e62379f7036c7e2ad",
+      "why": "PR #560 merged with main #557: retain FreeMemberShell and the sign-up page phone-floor inventory from main alongside ThemePicker and ThemeSettingsPanels, including b2da82e's updated Button-floor explanation. Every existing inventory row and assertion is preserved."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "b121ed71409f6e1887f5e21140738e8381fff94805126fa75d22be5dccda3101",
+      "why": "PR #560 merged with main #557: retain main's /s/[handle] analytics route coverage alongside 64293d6's /dev/email-themes preview checks. The preview must still call notFound in production and remain outside public analytics; all route assertions are preserved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "69bdd5fad9ef478bfd786d4d929057c3d1cff13b3fb2ad526bbf358cdc2d5470",
+      "why": "PR #560 r2 records the Box swatches hiding the radio primitive's extra hit slop so their targets cannot overlap. Only the existing Box adopter explanation changed; every adopter, primitive digest, assertion and prior accepted ownership digest is preserved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "9cca38e4c6e7e8663798b0799a980220221933cc9dff0115e0717f191612b8f5",
+      "why": "PR #560 r2 merged with main #557: retain the sign-up builder and public form adopter rows from main alongside r2's updated Box swatch hit-slop explanation and the ThemeWarning and IssueHeader adopters. All prior rows and assertions remain intact."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "1a5ea71f1e21d0320c01dfac4a9e7da48ad21e1df3f738331acf68737ac9819f",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "4d54d8773c2c802e3e348a0fa0ebb7a2f58c74850dfb62515890c3c671198e05",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "b039ea4a58b78d942327c5aed0e4d6c0ecb9bb83e41055b5e849507755ae7ad3",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "a3cc9ffc75baa98aef3185e4ef56978d191b8f1a6a2c23279758485bc1a896dd",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/email/service.ts",
+      "digest": "e59caa95afc58f761d3910ed3dce5f144da97e1110aba45cfe17f5f3186dbecb",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/email/__tests__/helpers.ts",
+      "digest": "de6bf827b0b45405b60f69d4c675c239bf1f6cdf414a0da13557a8a8c083c88e",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "07d95afbdf1ce7fae0afa27260bec2ac50763bdc9a6532a46ccc01d79f7b77f0",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "3aca2ceb89ef5bdec3b728684c1c0c34f1935cc4a1016e079c1c8469a7d9b189",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): the route-inventory conflict keeps both dev-only previews (/dev/email-themes and /dev/join-crm); every assertion retained."
+    }
+  ]
+}

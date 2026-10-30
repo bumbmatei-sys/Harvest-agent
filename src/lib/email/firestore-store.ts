@@ -8,6 +8,12 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { DEFAULT_EMAIL_DESIGN } from '@/lib/email/render';
 import {
+  readCustomTheme,
+  readSocialLinks,
+  type CustomTheme,
+  type EmailThemeTokens,
+} from '@/lib/email/themes';
+import {
   EMAIL_OPT_IN_AT_FIELD,
   EMAIL_OPT_IN_SOURCE_FIELD,
   EMAIL_STATUS_FIELD,
@@ -67,6 +73,13 @@ export const LIMITS_DOC = 'email_limits';
 
 const tenantDoc = (tenantId: string) => adminDb.collection('tenants').doc(tenantId);
 
+/**
+ * The ministry's saved themes. Server-only like its `settings` sibling (no
+ * client rule exists anywhere under `emailConfig`, so browsers are denied by
+ * default). One document, themes keyed by id.
+ */
+const themesDoc = (tenantId: string) => tenantDoc(tenantId).collection('emailConfig').doc('themes');
+
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
 function broadcastFrom(id: string, tenantId: string, data: Record<string, unknown>): Broadcast {
@@ -78,6 +91,11 @@ function broadcastFrom(id: string, tenantId: string, data: Record<string, unknow
     preheader: str(data.preheader),
     bodyHtml: str(data.bodyHtml),
     design: { ...DEFAULT_EMAIL_DESIGN, ...((data.design as object) ?? {}) },
+    // Read back only when present: a broadcast saved before themes keeps the
+    // exact shape it had, so its contentHash still compares with what a caller
+    // computed from the in-memory draft.
+    ...(typeof data.themeId === 'string' && data.themeId ? { themeId: data.themeId } : {}),
+    ...(data.themeTokens && typeof data.themeTokens === 'object' ? { themeTokens: data.themeTokens as EmailThemeTokens } : {}),
     filters: Array.isArray(data.filters) ? (data.filters as Broadcast['filters']) : [],
     status: (str(data.status) || 'draft') as Broadcast['status'],
     scheduledAt: typeof data.scheduledAt === 'string' ? data.scheduledAt : null,
@@ -144,11 +162,39 @@ export const firestoreEmailStore: EmailStore = {
 
   async getSettings(tenantId) {
     const snap = await tenantDoc(tenantId).collection('emailConfig').doc('settings').get();
-    return snap.exists ? { ...EMPTY_SETTINGS, ...(snap.data() as Partial<EmailSettings>) } : EMPTY_SETTINGS;
+    const data = (snap.exists ? snap.data() ?? {} : {}) as Record<string, unknown>;
+    return {
+      ...EMPTY_SETTINGS,
+      ...(data as Partial<EmailSettings>),
+      // Untrusted storage: only validated shapes reach the renderer.
+      logoUrl: str(data.logoUrl),
+      footerNote: str(data.footerNote),
+      socialLinks: readSocialLinks(data.socialLinks),
+      defaultThemeId: typeof data.defaultThemeId === 'string' && data.defaultThemeId ? data.defaultThemeId : null,
+    };
   },
 
   async saveSettings(tenantId, settings) {
     await tenantDoc(tenantId).collection('emailConfig').doc('settings').set(settings);
+  },
+
+  async listThemes(tenantId) {
+    const snap = await themesDoc(tenantId).get();
+    const raw = (snap.exists ? snap.data()?.themes ?? {} : {}) as Record<string, unknown>;
+    return Object.values(raw)
+      .map((v) => readCustomTheme(v))
+      .filter((t): t is CustomTheme => t !== null)
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  },
+
+  async saveTheme(tenantId, theme) {
+    // Map key = theme id. A whole-theme write is atomic and the service has
+    // already enforced the 10-theme cap loudly before this lands.
+    await themesDoc(tenantId).set({ themes: { [theme.id]: { ...theme } } }, { merge: true });
+  },
+
+  async deleteTheme(tenantId, id) {
+    await themesDoc(tenantId).set({ themes: { [id]: FieldValue.delete() } }, { merge: true });
   },
 
   async getBroadcast(tenantId, id) {
