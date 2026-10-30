@@ -10,7 +10,9 @@ const h = vi.hoisted(() => ({
 
 vi.mock('next/headers', () => ({ headers: async () => ({ get: () => h.host.current }) }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NEXT_NOT_FOUND'); } }));
-vi.mock('@/lib/server-tenant', () => ({ getTenantFromHost: async (host: string) => h.tenants[host] ?? null }));
+vi.mock('@/lib/server-tenant', () => ({
+  getTenantFromHostOrId: async (host: string, idHint?: string) => h.tenants[host] ?? (idHint ? h.tenants[`id:${idHint}`] ?? null : null),
+}));
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: (name: string) => ({
@@ -36,14 +38,25 @@ const course = (over: Record<string, unknown> = {}) => ({
   title: 'Prayer basics', description: 'Learn to pray', tenantId: 'grace', status: 'published', levels, ...over,
 });
 
-const page = async (id = 'c1') => renderToStaticMarkup(await CoursePublicPage({ params: Promise.resolve({ id }) }));
-const meta = (id = 'c1') => generateMetadata({ params: Promise.resolve({ id }) });
+const page = async (id = 'c1', t?: string) => renderToStaticMarkup(await CoursePublicPage({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ t }) }));
+const meta = (id = 'c1', t?: string) => generateMetadata({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ t }) });
 
 beforeEach(() => {
   h.host.current = 'grace.theharvest.app';
   h.tenants = { 'grace.theharvest.app': { id: 'grace', name: 'Grace Church' }, 'hope.theharvest.app': { id: 'hope', name: 'Hope Church' } };
   h.courses = { c1: course() };
   h.reads = [];
+});
+
+describe('public course page: hostless tenant (no subdomain)', () => {
+  it('falls back to the ?t= tenant id when the host resolves nobody', async () => {
+    h.host.current = 'theharvest.app';
+    h.tenants['id:free-1'] = { id: 'free-1', name: 'Free Church' };
+    h.courses.c1 = course({ tenantId: 'free-1' });
+    const html = await page('c1', 'free-1');
+    expect(html).toContain('Prayer basics');
+    expect(html).toContain('Back to Free Church');
+  });
 });
 
 describe('public course page: host tenant', () => {

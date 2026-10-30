@@ -582,6 +582,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // #562 r2 — the new hostless-community landing page's "Join on Harvest"
+      // button USES the class, in the same flat `min-h-11` form as the
+      // sibling public download page below. Sorts first: `c` < `d`.
+      'src/app/c/[tenantId]/page.tsx',
       // Local community previews are ignored and may be absent in CI.
       ...(existsSync(path.join(ROOT, 'src/app/dev/community/page.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/page.tsx')) ? ['src/app/dev/community/page.tsx'] : []),
       // The social scheduler screenshot harness. The stand-in account button

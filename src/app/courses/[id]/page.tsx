@@ -14,11 +14,14 @@ function countLessons(levels: Level[]): number {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const found = await loadPublicCourse(id);
+  const { t } = await searchParams;
+  const found = await loadPublicCourse(id, t);
   if (!found) return { title: 'Course Not Found' };
 
   const { course } = found;
@@ -44,14 +47,18 @@ export async function generateMetadata({
 
 export default async function CoursePublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { id } = await params;
+  const { t } = await searchParams;
 
   // Host tenant, exact 'published' status and ministry match are all decided in
-  // loadPublicCourse; anything it refuses is a plain 404.
-  const found = await loadPublicCourse(id);
+  // loadPublicCourse; anything it refuses is a plain 404. `t` is the hostless
+  // (no-subdomain) tenant's own id, carried as a query param instead of a host.
+  const found = await loadPublicCourse(id, t);
   if (!found) notFound();
   const { course, tenant, restricted } = found;
 

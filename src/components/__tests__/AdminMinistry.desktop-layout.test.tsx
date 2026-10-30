@@ -191,7 +191,12 @@ vi.mock('firebase/firestore', () => ({
   getCountFromServer: async (q: unknown) => ({ data: () => ({ count: lookup(q).length }) }),
   documentId: () => '__name__',
   startAfter: (...a: unknown[]) => a,
-  getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  // AdminForms reads tenants/{tenantId} to decide whether to use a subdomain
+  // or a theharvest.app share link; answer that doc with a real subdomain so
+  // the share/QR controls this file pins render deterministically.
+  getDoc: async (ref: { __path?: string }) => (ref?.__path === 'tenants/t1'
+    ? { exists: () => true, data: () => ({ subdomain: 't1' }) }
+    : { exists: () => true, data: () => ({}) }),
   // Community setup ensures the default group transactionally. This fixture
   // represents an existing group, and records any attempted transaction write.
   runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<void>) => fn({

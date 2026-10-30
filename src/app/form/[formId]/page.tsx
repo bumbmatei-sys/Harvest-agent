@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { getTenantFromHost } from '@/lib/server-tenant';
+import { getTenantFromHostOrId } from '@/lib/server-tenant';
 import PublicForm, { type PublicFormField } from '@/components/PublicForm';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
@@ -16,14 +16,19 @@ interface FormDoc {
 
 export default async function PublicFormPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ formId: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { formId } = await params;
+  const { t } = await searchParams;
 
   const headersList = await headers();
   const host = headersList.get('host') || '';
-  const tenant = await getTenantFromHost(host);
+  // A hostless tenant (no subdomain — no published website) carries its own
+  // id as `?t=` instead; see AdminForms.tsx's formUrl.
+  const tenant = await getTenantFromHostOrId(host, t);
 
   if (!tenant) {
     notFound();

@@ -237,15 +237,23 @@ describe('public form sharing', () => {
       expect(document.body.textContent).not.toContain('https://t1.theharvest.app');
     } finally { m.unmount(); }
   });
-  it.each(['missing', 'read failure', 'invalid slug'])('shows a visible error and withholds sharing on %s', async reason => {
+  // 🔴 #562 r2 — a tenant with no subdomain (every Free tenant, and a
+  // hostless paid one, per the founder's "a tenant gets a subdomain only
+  // once it has a website") must still be able to share its forms. Sharing
+  // used to withhold itself and show an alert whenever the subdomain could
+  // not be resolved; it now falls back to a theharvest.app link immediately
+  // and never blocks on this read.
+  it.each(['missing', 'read failure', 'invalid slug'])('falls back to a theharvest.app link, never withholding sharing, on %s', async reason => {
     if (reason === 'missing') shareTenant.tenant = null;
     if (reason === 'read failure') shareTenant.failure = true;
     if (reason === 'invalid slug') shareTenant.tenant = { subdomain: 'evil/path' };
     STORE['tenants/t1/forms'] = [{ id: 'f1', data: { title: 'Welcome', description: '', fields: [], active: true, submissionCount: 0, createdAt: null, createdBy: 'u' } }];
     const m = await mountScreen(<AdminForms />);
     try {
-      expect(m.container.querySelectorAll('a[target="_blank"]')).toHaveLength(0);
-      expect(m.container.querySelector('[role="alert"]')?.textContent).toContain('Could not load the ministry address');
+      const links = [...m.container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+      expect(links).toHaveLength(2);
+      expect(links.map(link => link.href)).toEqual(Array(2).fill('https://theharvest.app/form/f1?t=t1'));
+      expect(m.container.querySelector('[role="alert"]')).toBeNull();
     } finally { m.unmount(); }
   });
 });

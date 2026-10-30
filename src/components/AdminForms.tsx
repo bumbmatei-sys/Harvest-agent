@@ -154,10 +154,13 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   // subdomain currentTenantId is set and takes precedence.
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
+  // A tenant gets a subdomain only once it has a published website (founder
+  // decision, #562 r2); every other tenant's public pages live on
+  // theharvest.app. Share links and QR codes therefore never wait on this:
+  // `formUrl` below falls back to a theharvest.app path immediately and
+  // simply upgrades to the subdomain once (and if) this resolves one.
   const [shareAddress, setShareAddress] = useState<{ tenantId: string; slug: string | null } | null>(null);
   const shareSubdomain = shareAddress?.tenantId === tenantId ? shareAddress.slug : null;
-  const shareAddressLoaded = shareAddress?.tenantId === tenantId;
-  const shareAddressMessage = shareAddressLoaded ? 'Could not load the ministry address for public form links. Please refresh to retry.' : 'Loading ministry address for public form links…';
   useEffect(() => {
     if (!isAuthReady || !tenantId) return;
     let current = true;
@@ -362,8 +365,9 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     await deleteDoc(doc(db, 'tenants', tenantId, 'forms', form.id));
   };
 
-  const formUrl = (formId: string) =>
-    `https://${shareSubdomain}.theharvest.app/form/${encodeURIComponent(formId)}`;
+  const formUrl = (formId: string) => shareSubdomain
+    ? `https://${shareSubdomain}.theharvest.app/form/${encodeURIComponent(formId)}`
+    : `https://theharvest.app/form/${encodeURIComponent(formId)}${tenantId ? `?t=${encodeURIComponent(tenantId)}` : ''}`;
 
   const copy = async (text: string, key: string) => {
     try {
@@ -697,8 +701,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
             {editingId && (
               <div className="bg-surface-raised rounded-2xl border border-line p-4 space-y-2">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Share</p>
-                {!shareSubdomain && <p role={shareAddressLoaded ? 'alert' : 'status'}>{shareAddressMessage}</p>}
-                {shareSubdomain && <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   <QrCodeDialog url={formUrl(editingId)} name={title} />
                   <button onClick={() => copy(formUrl(editingId), 'link')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-line text-body hover:bg-surface-sunken">
                     <Link2 size={14} /> {copied === 'link' ? 'Copied!' : 'Copy Link'}
@@ -706,7 +709,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <button onClick={() => copy(`<iframe src="${formUrl(editingId)}" width="100%" height="700" frameborder="0"></iframe>`, 'embed')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-line text-body hover:bg-surface-sunken">
                     <Code size={14} /> {copied === 'embed' ? 'Copied!' : 'Embed Code'}
                   </button>
-                </div>}
+                </div>
               </div>
             )}
           </div>
@@ -882,11 +885,9 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                       icon's own name. */}
                   <button onClick={() => openAnswers(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Answers"><ChartColumn size={15} /></button>
                   <button onClick={() => openBuilder(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
-                  {shareSubdomain ? <>
                   <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title={copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}><Link2 size={15} /></button>
                   <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Open"><ExternalLink size={15} /></a>
                   <QrCodeDialog url={formUrl(form.id)} name={form.title} />
-                  </> : <p role={shareAddressLoaded ? 'alert' : 'status'}>{shareAddressMessage}</p>}
                   <button onClick={() => handleDelete(form)} className="p-1.5 rounded-brand text-danger hover:bg-danger-tint transition-colors ml-auto" title="Delete"><Trash2 size={15} /></button>
                 </div>
               </div>
@@ -919,7 +920,6 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                 <button onClick={() => openBuilder(form)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
                   <Edit2 size={13} /> Edit
                 </button>
-                {shareSubdomain ? <>
                 <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
                   <Link2 size={13} /> {copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}
                 </button>
@@ -927,7 +927,6 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <ExternalLink size={13} /> Open
                 </a>
                 <QrCodeDialog url={formUrl(form.id)} name={form.title} />
-                </> : <p role={shareAddressLoaded ? 'alert' : 'status'}>{shareAddressMessage}</p>}
                 <button onClick={() => handleDelete(form)} className="flex items-center gap-1.5 text-xs font-semibold text-danger hover:opacity-80 transition-opacity ml-auto">
                   <Trash2 size={13} /> Delete
                 </button>

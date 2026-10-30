@@ -300,6 +300,111 @@
       "file": "src/components/__tests__/THE-304.form-options-builder.test.tsx",
       "digest": "badd2791daf0b29896a70b161721b98e9610655c9ac1c31de0025121233f0bc9",
       "why": "PR #562 review fixes: preserve existing builder assertions while proving form links and QR codes use the resolved tenant subdomain, and missing, invalid or failed address reads render an error."
+    },
+    {
+      "file": "src/components/AdminForms.tsx",
+      "digest": "e73b4dc470f640a7beb35ec00d3a3e126a96c251aee84a2a1fae55c068e62499",
+      "why": "#562 r2 \u2014 founder override: a tenant gets a subdomain only once it has a published website, so share links, QR codes and follow-up cards must not depend on one. AdminForms.tsx's share section no longer gates on the tenant doc resolving a subdomain; formUrl falls back to a theharvest.app?t= link immediately and upgrades to the subdomain once (and if) one resolves. Test harnesses were fixed to mock the tenant doc properly rather than loosening any assertion."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.ts",
+      "digest": "8752740522c9b1ae3f04db69587a5594fcd2c1c46f66f37ccd80567440dd6089",
+      "why": "#562 r2 \u2014 validateFollowUp now distinguishes a tenant with no subdomain at all (hostless \u2014 every Free tenant, and a hostless paid one) from one with an invalid subdomain value (still rejected exactly as before). A hostless tenant's community is read straight off its own settings doc rather than the subdomain-keyed discovery_listings index, and its href is theharvest.app/c/ or theharvest.app/{courses,products}/...?t=, never gated on a subdomain."
+    },
+    {
+      "file": "src/lib/form-follow-up/server.test.ts",
+      "digest": "b7f3608fd09e09414d9d5d508201003a27fef0ade17ecedc313eca9ae942184d",
+      "why": "#562 r2 \u2014 validateFollowUp now distinguishes a tenant with no subdomain at all (hostless \u2014 every Free tenant, and a hostless paid one) from one with an invalid subdomain value (still rejected exactly as before). A hostless tenant's community is read straight off its own settings doc rather than the subdomain-keyed discovery_listings index, and its href is theharvest.app/c/ or theharvest.app/{courses,products}/...?t=, never gated on a subdomain."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "e06e8ae37c17ec1e97e40bb9089aefe1a159241f90bd8ee6f7c53ca503c297a3",
+      "why": "#562 r2 \u2014 the community settings route only writes the subdomain-keyed discovery_listings entry when the tenant actually has a valid subdomain; a hostless tenant's isPublic still saves, it is just not in that index (the same as a private community), since form-follow-up/server.ts reads a hostless community straight off the settings doc instead."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "f76877fdef9a60c161e5ba8dba08e12e055f0320e758316742119cba4191668d",
+      "why": "#562 r2 \u2014 the community settings route only writes the subdomain-keyed discovery_listings entry when the tenant actually has a valid subdomain; a hostless tenant's isPublic still saves, it is just not in that index (the same as a private community), since form-follow-up/server.ts reads a hostless community straight off the settings doc instead."
+    },
+    {
+      "file": "src/app/form/[formId]/page.tsx",
+      "digest": "12b4413b863c5581c6bfc3f20024a5d1f72d5d6e33e83c8d48aa43eccf929327",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/app/products/[id]/page.tsx",
+      "digest": "06c8123c88ab781be8689b0f6c647c09b9a16e56a175de56e31244e960606cd2",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/app/products/__tests__/public-product.test.tsx",
+      "digest": "4abd577be69c8bd56ea0aab6ff386469362f636bedcd3a16092e6ed19ac6d24b",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/lib/courses/public-course.ts",
+      "digest": "a44bcea93fbd23fcbf641b7e832ad8139e3471e9ae7ec8ab4b8871778aa9cf4d",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/app/courses/[id]/page.tsx",
+      "digest": "8bc0118da39c2e9a6eb7d5aa953bd4eb7c96ef687ede44dbbee39c4f824d34a9",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/app/courses/__tests__/public-page.test.tsx",
+      "digest": "f010425ae298af39ea5522d43dabf46610ff02f5ba2600118845a32c4624f0e5",
+      "why": "#562 r2 \u2014 the public form, digital product and course pages accept a ?t= tenant id fallback (via the new getTenantFromHostOrId) for a hostless tenant that has no host of its own to resolve; a tenant with a real subdomain is resolved exactly as before and never consults the fallback."
+    },
+    {
+      "file": "src/lib/server-tenant.ts",
+      "digest": "8de07b1731ae568950e056585fcce9a1bf4ea470bc6673560402e0b847532c06",
+      "why": "#562 r2 \u2014 adds getTenantFromHostOrId, a fallback for a hostless tenant (no subdomain, so no host of its own) that carries its own tenant id as a ?t= query param instead; getTenantFromHost itself, and every existing caller of it, is unchanged."
+    },
+    {
+      "file": "src/app/c/[tenantId]/page.tsx",
+      "digest": "7c9c41fd336cebb94060939a22c0ffdbfaeb754148af2f27cae14979a855bd03",
+      "why": "#562 r2 \u2014 new public community landing page for a tenant with no subdomain, reached at theharvest.app/c/{tenantId} instead of {slug}.theharvest.app. Validated through the exact same validateFollowUp a subdomain tenant uses; this route exists only for the hostless case."
+    },
+    {
+      "file": "src/app/c/[tenantId]/__tests__/page.test.tsx",
+      "digest": "488b6d85edfe54b2140d74831b08c27b4ed5acc7130a16a84835c377ac21f551",
+      "why": "#562 r2 \u2014 new public community landing page for a tenant with no subdomain, reached at theharvest.app/c/{tenantId} instead of {slug}.theharvest.app. Validated through the exact same validateFollowUp a subdomain tenant uses; this route exists only for the hostless case."
+    },
+    {
+      "file": "src/components/__tests__/THE-304.form-options-builder.test.tsx",
+      "digest": "45440c004ab7adb61ec53a90d015f4c79b7ee464044e135c7b50afc7d87c4988",
+      "why": "#562 r2 \u2014 founder override: a tenant gets a subdomain only once it has a published website, so share links, QR codes and follow-up cards must not depend on one. AdminForms.tsx's share section no longer gates on the tenant doc resolving a subdomain; formUrl falls back to a theharvest.app?t= link immediately and upgrades to the subdomain once (and if) one resolves. Test harnesses were fixed to mock the tenant doc properly rather than loosening any assertion."
+    },
+    {
+      "file": "src/components/__tests__/THE-309.form-submissions-kpi.test.tsx",
+      "digest": "ee762d7e12796c713a709eb162672078d27e6771446bc43f6af648479975a782",
+      "why": "#562 r2 \u2014 founder override: a tenant gets a subdomain only once it has a published website, so share links, QR codes and follow-up cards must not depend on one. AdminForms.tsx's share section no longer gates on the tenant doc resolving a subdomain; formUrl falls back to a theharvest.app?t= link immediately and upgrades to the subdomain once (and if) one resolves. Test harnesses were fixed to mock the tenant doc properly rather than loosening any assertion."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "9d2ff680adc67dd830c2ca4b18bb0f0e2467805fd974a9931598df415548067c",
+      "why": "#562 r2 \u2014 founder override: a tenant gets a subdomain only once it has a published website, so share links, QR codes and follow-up cards must not depend on one. AdminForms.tsx's share section no longer gates on the tenant doc resolving a subdomain; formUrl falls back to a theharvest.app?t= link immediately and upgrades to the subdomain once (and if) one resolves. Test harnesses were fixed to mock the tenant doc properly rather than loosening any assertion."
+    },
+    {
+      "file": "src/lib/analytics/routes.ts",
+      "digest": "493418a2080dbe86985cdfda652d15735e4c2ce42d96c76037907976e26f8df1",
+      "why": "#562 r2 \u2014 registers the new /c/[tenantId] public community page (for a hostless tenant with no subdomain) in the route enumeration and its guard test, appended at the end exactly as every prior route addition here was, so the analytics coverage guard's enumeration-is-complete check still passes for the new page."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "cb678deaceb068699bfbda80ebbdac2b52b5dc1e1be0c83c3fae2efa9b0e0500",
+      "why": "#562 r2 \u2014 registers the new /c/[tenantId] public community page (for a hostless tenant with no subdomain) in the route enumeration and its guard test, appended at the end exactly as every prior route addition here was, so the analytics coverage guard's enumeration-is-complete check still passes for the new page."
+    },
+    {
+      "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
+      "digest": "65c028f0a93a86e4c0736a299293859d277871f912d4ba60878cf50f5c82cb92",
+      "why": "#562 r2 \u2014 appends a new accepted digest to a literal guard list these suites keep for server-tenant.ts (its ?t= fallback for a hostless tenant) and for the min-h-11 sweep (the new /c/[tenantId] page's Join button uses the same shared touch floor as the sibling public download page), without loosening either assertion."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "59e46dd0093a2a4edaa24cad6133f9b156ca0eaec68326a8c3d67f78a3a1cb94",
+      "why": "#562 r2 \u2014 appends a new accepted digest to a literal guard list these suites keep for server-tenant.ts (its ?t= fallback for a hostless tenant) and for the min-h-11 sweep (the new /c/[tenantId] page's Join button uses the same shared touch floor as the sibling public download page), without loosening either assertion."
     }
   ]
 }

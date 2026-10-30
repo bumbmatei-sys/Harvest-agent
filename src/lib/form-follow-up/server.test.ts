@@ -11,7 +11,13 @@ vi.mock('@/lib/api-auth', () => ({
 vi.mock('@/lib/firebase-admin', () => {
   const collection = (path: string): any => ({
     get: async () => ({ docs: Object.entries(state.docs).filter(([key]) => key.startsWith(`${path}/`) && !key.slice(path.length + 1).includes('/')).map(([key, value]) => ({ id: key.slice(path.length + 1), data: () => value })) }),
-    where: (field: string, _operator: string, value: unknown) => ({ get: async () => ({ docs: Object.entries(state.docs).filter(([key, data]) => key.startsWith(`${path}/`) && data[field] === value).map(([key, data]) => ({ id: key.slice(path.length + 1), data: () => data })) }) }),
+    where: (field: string, _operator: string, value: unknown) => {
+      const matches = () => Object.entries(state.docs).filter(([key, data]) => key.startsWith(`${path}/`) && !key.slice(path.length + 1).includes('/') && data[field] === value);
+      return {
+        get: async () => ({ docs: matches().map(([key, data]) => ({ id: key.slice(path.length + 1), data: () => data })) }),
+        count: () => ({ get: async () => ({ data: () => ({ count: matches().length }) }) }),
+      };
+    },
     doc: (id = 'new') => ({
       id, collection: (name: string) => collection(`${path}/${id}/${name}`),
       get: async () => { state.reads.push(`${path}/${id}`); if (state.failure) throw new Error('Read failed'); return { exists: !!state.docs[`${path}/${id}`], data: () => state.docs[`${path}/${id}`] }; },
@@ -29,7 +35,7 @@ import { GET as publicFollowUp } from '@/app/api/form-follow-up/route';
 const listing = { tenantId: 'a', slug: 'grace', name: 'Grace', logoUrl: '', shortDescription: 'Welcome', memberCount: 12, isPublic: true };
 beforeEach(() => {
   state.failure = false; state.denied = false; state.writes = []; state.legacyPermission = false; state.superAdmin = false; state.permissionChecks = []; state.reads = [];
-  state.docs = { 'discovery_listings/a': listing, 'tenants/a/settings/community': { isPublic: true }, 'tenants/a': { ownerId: 'owner', subdomain: 'grace' }, 'users/owner': { tenantId: 'a' }, 'tenants/a/digitalProducts/download': { status: 'published', title: 'Welcome PDF', description: 'Read together', coverUrl: '' }, 'tenants/b/digitalProducts/foreign': { status: 'published', title: 'Foreign PDF', description: 'Foreign' }, 'courses/course': { tenantId: 'a', status: 'published', title: 'Welcome course', description: 'Learn together' }, 'tenants/a/forms/form': { active: true, followUp: { type: 'community', id: 'a' } }, 'signup_pages/page': { tenantId: 'a', ownerUid: 'owner', handle: 'hello', active: true } };
+  state.docs = { 'discovery_listings/a': listing, 'tenants/a/settings/community': { isPublic: true, shortDescription: 'Welcome' }, 'tenants/a': { name: 'Grace', ownerId: 'owner', subdomain: 'grace' }, 'users/owner': { tenantId: 'a' }, 'tenants/a/digitalProducts/download': { status: 'published', title: 'Welcome PDF', description: 'Read together', coverUrl: '' }, 'tenants/b/digitalProducts/foreign': { status: 'published', title: 'Foreign PDF', description: 'Foreign' }, 'courses/course': { tenantId: 'a', status: 'published', title: 'Welcome course', description: 'Learn together' }, 'tenants/a/forms/form': { active: true, followUp: { type: 'community', id: 'a' } }, 'signup_pages/page': { tenantId: 'a', ownerUid: 'owner', handle: 'hello', active: true }, 'users/u1': { tenantId: 'a' } };
 });
 const request = (path: string, body: any, method = 'POST') => new NextRequest(`https://theharvest.app${path}`, { method, body: JSON.stringify(body) });
 const fields = Object.fromEntries(['name', 'email', 'phone', 'prayerRequest'].map(key => [key, { enabled: true, required: false }]));
@@ -94,8 +100,12 @@ describe('server follow-up validation', () => {
     expect((await saveForm(request('/api/forms/save', body))).status).toBe(200);
     expect(state.writes[0].fields).toEqual(body.fields);
   });
-  it('allows Free tenants to choose a same-tenant public community or published product', async () => {
+  it('allows hostless Free tenants to choose a same-tenant public community or published product', async () => {
+    // Realistic fixture (FU2 from the #562 re-review): a real Free tenant is
+    // provisioned with NO subdomain at all (free-provisioning.ts writes none),
+    // not a free-plan tenant that happens to carry one.
     state.docs['tenants/a'].plan = 'free';
+    delete state.docs['tenants/a'].subdomain;
     const choices = [{ type: 'community', id: 'a' }, { type: 'product', id: 'course' }, { type: 'product', productKind: 'digital', id: 'download' }];
     for (const followUp of choices) {
       expect((await saveForm(request('/api/forms/save', { ...formInput(), followUp }))).status).toBe(200);
@@ -108,6 +118,24 @@ describe('server follow-up validation', () => {
     await expect(validateFollowUp('a', choices[1])).rejects.toBeInstanceOf(InvalidFollowUp);
     state.docs['tenants/a/settings/community'].isPublic = false;
     await expect(validateFollowUp('a', choices[0])).rejects.toBeInstanceOf(InvalidFollowUp);
+  });
+  it('picks its own public community and renders a theharvest.app link when the tenant has no subdomain (B1, hostless Free)', async () => {
+    delete state.docs['tenants/a'].subdomain;
+    const item = await validateFollowUp('a', { type: 'community', id: 'a' });
+    expect(item).toMatchObject({ href: 'https://theharvest.app/c/a', listing: { tenantId: 'a', name: 'Grace', isPublic: true } });
+    expect(item!.href.startsWith('https://theharvest.app')).toBe(true);
+    // The public card route it would mount still passes through the same
+    // request-shaped path — a visible proof that FollowUpCard gets a usable
+    // item for a hostless tenant, not just that validateFollowUp resolves.
+    const publicResult = await (await publicFollowUp(new NextRequest('https://theharvest.app/api/form-follow-up?tenantId=a&formId=form'))).json();
+    expect(publicResult.item).toMatchObject({ type: 'community', href: 'https://theharvest.app/c/a' });
+  });
+  it('builds theharvest.app product links too when the tenant has no subdomain', async () => {
+    delete state.docs['tenants/a'].subdomain;
+    const course = await validateFollowUp('a', { type: 'product', id: 'course' });
+    expect(course!.href).toBe('https://theharvest.app/courses/course?t=a');
+    const digital = await validateFollowUp('a', { type: 'product', productKind: 'digital', id: 'download' });
+    expect(digital!.href).toBe('https://theharvest.app/products/download?t=a');
   });
   it.each(['bad.slug', 'evil/path', 'app', '-invalid', 'a'.repeat(64)])('rejects invalid community host slug %s even when tenant and listing agree', async slug => {
     state.docs['discovery_listings/a'] = { ...listing, slug };
