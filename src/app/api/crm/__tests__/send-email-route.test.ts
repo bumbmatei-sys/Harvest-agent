@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createHash } from 'node:crypto';
 import { NextRequest } from 'next/server';
 
 const {
@@ -29,6 +30,7 @@ function makeRef(path: string) {
 function makeCollection(path: string) {
   return {
     doc: (id: string) => makeRef(`${path}/${id}`),
+    where: (field: string, _op: string, value: unknown) => ({ get: async () => ({ docs: [...docStore].filter(([key, data]) => key.startsWith(path + '/') && data?.[field] === value).map(([key, data]) => ({ id: key.split('/').at(-1), data: () => data })) }) }),
     add: mockAdd,
   };
 }
@@ -378,5 +380,23 @@ describe('POST /api/crm/send-email', () => {
       expect((await res.json()).code).toBe('no_sender_address');
       expect(mockExecute).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('community departure email block', () => {
+  it.each(['left-contact', 'suppressed-address', 'duplicate-left'])('refuses %s before sending or logging', async kind => {
+    mockRequireAdmin.mockResolvedValue(mockUser());
+    if (kind === 'left-contact') docStore.get(`contacts/${CONTACT_ID}`)!.communityStatus = 'left';
+    if (kind === 'suppressed-address') {
+      const emailHash = createHash('sha256').update('member@example.com').digest('hex');
+      docStore.set(`tenants/bumb/emailSuppressions/${emailHash}`, { emailHash, status: 'unsubscribed' });
+      docStore.get(`contacts/${CONTACT_ID}`)!.email = ' MEMBER@Example.com ';
+    }
+    if (kind === 'duplicate-left') docStore.set('contacts/duplicate', { tenantId: 'bumb', communityStatus: 'left', email: ' MEMBER@EXAMPLE.COM ' });
+    const result = await POST(makeReq(VALID_BODY));
+    expect(result.status).toBe(409);
+    expect(await result.json()).toMatchObject({ code: 'email_blocked' });
+    expect(mockExecute).not.toHaveBeenCalled();
+    expect(mockAdd).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import { tenantEmailBlocked } from '@/lib/community-privacy';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
@@ -116,6 +117,10 @@ export async function POST(request: NextRequest) {
         { error: 'This contact has no email address.', code: 'no_recipient' },
         { status: 400 }
       );
+    }
+
+    if (contact.communityStatus === 'left' || await tenantEmailBlocked(contact.tenantId, to)) {
+      return NextResponse.json({ error: 'This contact has opted out of email.', code: 'email_blocked' }, { status: 409 });
     }
 
     // ── Sender: the calling admin's OWN Gmail connection ────────────────────

@@ -49,8 +49,9 @@ service cloud.firestore {
     // write: if false) — a rules get() is not subject to security rules, so it
     // can read a doc clients cannot. The public tenants/{id} doc stays world-
     // readable for pre-auth subdomain resolution, without exposing the roster.
-    // Both exists() and get() point at the SAME doc, so this stays one
-    // document read per evaluation. A tenant missing its tenant_private doc
+    // exists() and get() point at the same doc but can cost two access calls;
+    // only repeated calls of the same kind are assumed cached in the budgets.
+    // A tenant missing its tenant_private doc
     // has an empty roster — the backfill (scripts/backfill-tenant-private.mjs)
     // must verify parity for every tenant BEFORE this rule deploys.
     function inTenantAdminEmails(tenantId) {
@@ -72,6 +73,20 @@ service cloud.firestore {
         isSuperAdmin() ||
         userTenantId() == tenantId ||
         inTenantAdminEmails(tenantId)
+      );
+    }
+
+    // Community membership uses documents, never token tenant claims. Explicit status
+    // overrides the legacy user-doc tenant, so leaving cannot resurrect access.
+    function isActiveCommunityMember(tenantId) {
+      let memberPath = /databases/$(database)/documents/tenants/$(tenantId)/communityMembers/$(request.auth.uid);
+      // get() on a missing doc is an evaluation error (a denial), not null, so
+      // guard it with exists(). Both calls address one document, so it is
+      // fetched once against the read budget.
+      return isAuthenticated() && (
+        exists(memberPath) && get(memberPath).data.keys().hasAny(['status'])
+          ? get(memberPath).data.status == 'active'
+          : userDocExists() && userData().get('tenantId', null) == tenantId
       );
     }
 
@@ -244,6 +259,12 @@ service cloud.firestore {
       );
 
       allow delete: if isSuperAdmin();
+
+      // Server-maintained reverse index: no client, including admins, writes it.
+      match /memberships/{tenantId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
     // ─── AI RAG chat usage (server-only) ─────────────────────────────
@@ -294,14 +315,18 @@ service cloud.firestore {
     // Email-only roster/platform admins are recognised as CALLERS through
     // isTenantAdmin and their token email, never as counterparts by profile email.
     // Never trust participantRoles from the creator.
-    // Repeated exists/get calls share cached documents: a member send needs at
-    // most five distinct docs (caller, counterpart, tenant, private roster, DM).
+    // Missing documents must deny this branch; the guard below does not grant
+    // access on a failed get(). Unlike the legacy membership fallback, this
+    // branch needs no alternate grant when the document is missing. exists()+get() can
+    // cost two access calls even on the same path. Membership adds a sixth
+    // distinct document to a send; the full DM access-call budget is below.
     function uidIsTenantAdmin(uid, tenantId) {
       let path = /databases/$(database)/documents/users/$(uid);
-      return isTenantOwner(uid, tenantId) || (exists(path) && (
-        get(path).data.get('role', 'user') == 'super_admin' ||
-        (get(path).data.get('tenantId', null) == tenantId &&
-          get(path).data.get('role', 'user') in ['admin', 'church_admin'])
+      let counterpart = get(path);
+      return isTenantOwner(uid, tenantId) || (counterpart != null && (
+        counterpart.data.get('role', 'user') == 'super_admin' ||
+        (counterpart.data.get('tenantId', null) == tenantId &&
+          counterpart.data.get('role', 'user') in ['admin', 'church_admin'])
       ));
     }
 
@@ -310,6 +335,17 @@ service cloud.firestore {
     function dmHasAdminCounterpart(participants, tenantId) {
       return isTenantAdmin(tenantId) || (participants.size() == 2 && uidIsTenantAdmin(
         participants[0] == request.auth.uid ? participants[1] : participants[0], tenantId));
+    }
+
+    function isDMParticipant(dmId, tenantId) {
+      let thread = get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(dmId));
+      return thread != null && request.auth.uid in thread.data.get('participants', []);
+    }
+
+    function canSendDM(dmId, tenantId) {
+      let thread = get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(dmId));
+      return thread != null && request.auth.uid in thread.data.get('participants', []) &&
+        dmHasAdminCounterpart(thread.data.get('participants', []), tenantId);
     }
 
     function memberPostByline(post) {
@@ -333,18 +369,18 @@ service cloud.firestore {
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
+      allow read: if isAuthenticated() && (isTenantAdmin(resource.data.get('tenantId', '')) || isActiveCommunityMember(resource.data.get('tenantId', '')));
 
       allow create: if isAuthenticated() &&
         request.resource.data.authorId == request.auth.uid &&
-        requestHasCorrectTenant() &&
+        (isTenantAdmin(request.resource.data.get('tenantId', '')) || isActiveCommunityMember(request.resource.data.get('tenantId', ''))) &&
         (hasPermission('createPosts', request.resource.data.tenantId) ||
           (plainCommunityPost(request.resource.data) && memberPostByline(request.resource.data) &&
            request.resource.data.get('isPinned', false) == false));
 
       // Members may only touch likes/polls/RSVPs or their own posts; cross-
       // author moderation (edit/delete/pin) is the Posts screen → createPosts.
-      allow update: if isAuthenticated() && belongsToTenant(resource.data.tenantId) &&
+      allow update: if isAuthenticated() && (isTenantAdmin(resource.data.tenantId) || isActiveCommunityMember(resource.data.tenantId)) &&
         (
           (request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['likes', 'pollOptions', 'eventDetails']) &&
@@ -357,14 +393,14 @@ service cloud.firestore {
         );
 
       allow delete: if isAuthenticated() &&
-        (resource.data.authorId == request.auth.uid ||
+        ((isActiveCommunityMember(resource.data.tenantId) && resource.data.authorId == request.auth.uid) ||
          hasPermission('createPosts', resource.data.tenantId));
 
       match /comments/{commentId} {
         allow read: if isAuthenticated() &&
-          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''));
+          (isTenantAdmin(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) || isActiveCommunityMember(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')));
         allow create: if isAuthenticated() &&
-          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) &&
+          (isTenantAdmin(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) || isActiveCommunityMember(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''))) &&
           request.resource.data.tenantId == get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '') &&
           request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
           request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
@@ -373,6 +409,7 @@ service cloud.firestore {
           request.resource.data.content is string &&
           request.resource.data.content.size() <= 280;
         allow delete: if isAuthenticated() &&
+          (isTenantAdmin(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', '')) || isActiveCommunityMember(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''))) &&
           resource.data.authorId == request.auth.uid;
         allow update: if false;
       }
@@ -388,23 +425,23 @@ service cloud.firestore {
       // context) may read across tenants. Scoping the read server-side — not
       // just via the client query — keeps one tenant's prayers (and author
       // names) from being read by another tenant via an unfiltered query.
-      allow read: if isAuthenticated() && belongsToTenant(resource.data.tenantId);
+      allow read: if isAuthenticated() && (isTenantAdmin(resource.data.tenantId) || isActiveCommunityMember(resource.data.tenantId));
 
       // Create: author must be the signed-in user, correct tenant, request <= 200 chars.
       allow create: if isAuthenticated()
         && request.resource.data.authorId == request.auth.uid
-        && requestHasCorrectTenant()
+        && (isTenantAdmin(request.resource.data.get('tenantId', '')) || isActiveCommunityMember(request.resource.data.get('tenantId', '')))
         && request.resource.data.request is string
         && request.resource.data.request.size() <= 200;
 
       // Update: only the prayedBy array may change (the 🙏 toggle), within the tenant.
       allow update: if isAuthenticated()
-        && belongsToTenant(resource.data.tenantId)
+        && (isTenantAdmin(resource.data.tenantId) || isActiveCommunityMember(resource.data.tenantId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayedBy']);
 
       // Delete: author or tenant admin.
       allow delete: if isAuthenticated()
-        && (resource.data.authorId == request.auth.uid
+        && (isActiveCommunityMember(resource.data.tenantId) && resource.data.authorId == request.auth.uid
             || isTenantAdmin(resource.data.tenantId));
     }
 
@@ -676,23 +713,38 @@ service cloud.firestore {
       // screen edits fields on the tenant DOC itself). Kept gated so it can't
       // become an ungoverned write surface.
       match /settings/{settingId} {
-        allow read: if belongsToTenant(tenantId);
+        allow read: if (settingId == 'community' && isActiveCommunityMember(tenantId)) ||
+          (settingId != 'community' && belongsToTenant(tenantId)) || isTenantAdmin(tenantId);
         allow write: if settingId != 'community' && hasPermission('manageSettings', tenantId);
       }
 
       match /settings/community/reviews/{uid} {
-        allow read: if belongsToTenant(tenantId);
+        allow read: if isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId);
         allow write: if false;
       }
 
       match /communityMembers/{uid} {
-        allow read: if belongsToTenant(tenantId) && (request.auth.uid == uid || isTenantAdmin(tenantId));
-        allow create, update: if belongsToTenant(tenantId) && request.auth.uid == uid &&
+        allow read: if isAuthenticated() && (request.auth.uid == uid ||
+          isTenantAdmin(tenantId) || isTenantOwner(request.auth.uid, tenantId));
+        // Legacy onboarding may create only the original three fields, and only
+        // for an existing user-doc member. It cannot establish a new membership.
+        allow create: if isActiveCommunityMember(tenantId) && request.auth.uid == uid &&
           request.resource.data.keys().hasOnly(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          validEntry();
+        // Merge onboarding edits while freezing every server-owned field,
+        // including deletions via an attempted full-document replacement.
+        allow update: if isActiveCommunityMember(tenantId) && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
+          validEntry();
+        allow delete: if false;
+
+        function validEntry() {
+          return
           request.resource.data.keys().hasAll(['rulesAcceptedVersion', 'answers', 'answeredAt']) &&
           request.resource.data.rulesAcceptedVersion is int && request.resource.data.rulesAcceptedVersion >= 0 &&
           request.resource.data.answers is map && request.resource.data.answers.size() <= 100 &&
           request.resource.data.answeredAt is timestamp;
+        }
       }
 
       // NOTE: a tenants/{t}/members subcollection block used to live here, but
@@ -807,7 +859,7 @@ service cloud.firestore {
         // must not see channels they weren't added to. The member-facing query
         // (UserMessages) already filters `members array-contains uid`, so this
         // only adds the server-side guarantee.
-        allow read: if belongsToTenant(tenantId) &&
+        allow read: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) &&
           channelAccess(resource.data, tenantId);
         // Channel management (create/roster/edit) is the Community screen.
         allow write: if hasPermission('manageCommunity', tenantId);
@@ -819,7 +871,7 @@ service cloud.firestore {
           request.resource.data.get('createdAt', null) == request.time && request.resource.data.get('createdBy', '') == request.auth.uid &&
           request.resource.data.get('type', '') == 'announcement';
         // Members may update only the last-message preview fields when they post.
-        allow update: if belongsToTenant(tenantId) &&
+        allow update: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) &&
           channelAccess(resource.data, tenantId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']);
       }
@@ -827,10 +879,10 @@ service cloud.firestore {
       match /channelMessages/{msgId} {
         // Community admins read/write everything; members read AND post only
         // in channels they belong to (that branch must stay permission-free).
-        allow read: if belongsToTenant(tenantId) && (
+        allow read: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) && (
           channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data, tenantId)
         );
-        allow create: if belongsToTenant(tenantId) &&
+        allow create: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) &&
           request.resource.data.get('senderId', '') == request.auth.uid &&
           request.resource.data.get('senderName', '') == (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '') != '' ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName : request.auth.token.get('name', 'Member')) &&
           (request.resource.data.get('senderRole', '') == 'user' ||
@@ -845,10 +897,18 @@ service cloud.firestore {
       // the super admin, who may read + moderate for safety/abuse (admin-moderation
       // variant). Other tenant members see nothing. The member-facing query
       // (UserMessages) filters `participants array-contains uid`.
+      // Cold access-call ceilings (repeated calls of the same kind are cached):
+      // caller users exists/get = 2, tenant_private exists/get = 2, tenant owner
+      // exists/get = 2, community member get = 1, counterpart get = 1, parent
+      // thread get = 1. Thus directMessages create/update <= 8; read/delete <= 7.
+      // dmMessages create <= 9; read/update/delete <= 8, including a failed
+      // moderator branch. Six distinct docs is NOT necessarily six calls:
+      // exists() before get() can consume two. A missing get() denies this branch.
       match /directMessages/{dmId} {
-        allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) || request.auth.uid in resource.data.get('participants', []));
+        allow read: if canModerateDMs(tenantId) || (isActiveCommunityMember(tenantId) &&
+          request.auth.uid in resource.data.get('participants', []));
         // Creator must include themselves — you can't open a thread you're not in.
-        allow create: if belongsToTenant(tenantId) &&
+        allow create: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) &&
           request.resource.data.get('participants', []) is list &&
           request.resource.data.participants.size() == 2 &&
           request.auth.uid in request.resource.data.participants &&
@@ -863,40 +923,39 @@ service cloud.firestore {
         // the parent get() — or remove the other party. Roster changes go through a
         // moderator / super admin.
         allow update: if canModerateDMs(tenantId) || (
-          belongsToTenant(tenantId) &&
+          isActiveCommunityMember(tenantId) &&
           request.auth.uid in resource.data.get('participants', []) &&
           dmHasAdminCounterpart(resource.data.get('participants', []), tenantId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']));
-        allow delete: if canModerateDMs(tenantId) || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
+        allow delete: if canModerateDMs(tenantId) || (isActiveCommunityMember(tenantId) && request.auth.uid in resource.data.get('participants', []));
       }
 
       // DM messages inherit the parent thread's privacy: read/write is scoped to
       // the participants of the directMessages doc named by this message's `dmId`,
-      // PLUS community moderators / the super admin (canModerateDMs). The get() on
-      // the parent is safe — a dmMessages list is always filtered to one dmId
-      // (UserMessages/AdminCommunity query `where dmId ==`), so it resolves a
-      // single, cached parent doc and stays well under the get/exists limit.
+      // PLUS community moderators / the super admin (canModerateDMs). Participant
+      // helpers bind the parent once and deny a missing thread before reading
+      // fields. Lists filter to one dmId (UserMessages/AdminCommunity), so the
+      // parent is cached across results. See the access-call ceilings above.
       match /dmMessages/{msgId} {
-        allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) ||
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
-        allow create: if belongsToTenant(tenantId) && request.resource.data.senderId == request.auth.uid &&
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []) &&
-          dmHasAdminCounterpart(get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []), tenantId);
+        allow read: if canModerateDMs(tenantId) || (isActiveCommunityMember(tenantId) &&
+          isDMParticipant(resource.data.dmId, tenantId));
+        allow create: if (isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId)) && request.resource.data.senderId == request.auth.uid &&
+          canSendDM(request.resource.data.dmId, tenantId);
         // Moderators (canModerateDMs) may edit/delete for safety. Otherwise a
         // recipient may mark a message they DIDN'T send as read (only the `read`
         // flag) — this is what lets a member's DM read-receipt write succeed.
-        // belongsToTenant is kept on the participant branch (as on read/create and
+        // Active community membership stays on the participant branch (as on read/create and
         // the parent directMessages doc) so a foreign-tenant uid that somehow sits
         // in a DM's participants can't flag messages in a tenant it doesn't belong
         // to — tenant parity across all ops.
         allow update: if canModerateDMs(tenantId) || (
-          belongsToTenant(tenantId) &&
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []) &&
+          isActiveCommunityMember(tenantId) &&
+          isDMParticipant(resource.data.dmId, tenantId) &&
           resource.data.senderId != request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
         allow delete: if canModerateDMs(tenantId) || (
-          belongsToTenant(tenantId) &&
-          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
+          isActiveCommunityMember(tenantId) &&
+          isDMParticipant(resource.data.dmId, tenantId));
       }
 
       match /invoices/{invoiceId} {
@@ -973,17 +1032,15 @@ service cloud.firestore {
         }
 
         // Live comments — the ONLY member-readable livestream surface. Members of
-        // THIS tenant read the live chat via onSnapshot; scoped with
-        // belongsToTenant(tenantId), the same member-read gate used for tenant
-        // `forms`, `settings`, and `events` reads — a signed-in user whose
-        // userTenantId == tenantId (or an adminEmails-roster admin, or a super
-        // admin). A cross-tenant user, or any anonymous request, is denied, so one
-        // broadcast's chat never leaks to another tenant. Writes stay
+        // THIS community read the live chat via onSnapshot. Active membership
+        // or the existing tenant-admin moderation grant permits reads; a leave
+        // revokes member access even with a stale primary tenant or token claim.
+        // Writes stay
         // admin/permission-gated (manageLivestream): members post ONLY via
         // /api/livestream/comment (Admin SDK, which bypasses rules), and admins
         // moderate/delete via this same write gate — no member client write path.
         match /comments/{commentId} {
-          allow read: if belongsToTenant(tenantId);
+          allow read: if isTenantAdmin(tenantId) || isActiveCommunityMember(tenantId);
           allow write: if hasPermission('manageLivestream', tenantId);
         }
       }
@@ -1046,11 +1103,28 @@ service cloud.firestore {
 
     // ─── CRM Contacts & Activities ───────────────────────────────────
 
+    function communityContactKeys() {
+      return ['communityUserId', 'communitySource', 'communityStatus',
+              'communityJoinedAt', 'communityLeftAt', 'consentAt', 'consentScope', 'consentVersion'];
+    }
+    function contactCreateKeepsCommunity() {
+      return !request.resource.data.keys().hasAny(communityContactKeys())
+        && request.resource.data.get('source', '') != 'community';
+    }
+    function contactUpdateKeepsCommunity() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(communityContactKeys())
+        && (request.resource.data.get('source', '') == resource.data.get('source', '')
+          || (request.resource.data.get('source', '') != 'community' && resource.data.get('source', '') != 'community'))
+        && request.resource.data.get('tenantId', '') == resource.data.get('tenantId', '');
+    }
+
     match /contacts/{contactId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent();
-      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent();
-      allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent() && contactCreateKeepsCommunity();
+      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent() && contactUpdateKeepsCommunity();
+      // Community erasure must also remove onboarding answers through the server.
+      allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''))
+        && resource.data.get('communityUserId', '') == '';
     }
 
     match /contactActivities/{activityId} {

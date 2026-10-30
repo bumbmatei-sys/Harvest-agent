@@ -35,7 +35,7 @@ describe('community views', () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: listings }} />));
     expect(host.textContent).toContain('12 members');
     await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Grace'))!.click(); });
-    expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/a?join=1&src=discover');
     await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Back to discover'))!.click(); });
     const input = host.querySelector('input')!;
     await act(async () => { const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!; setter.call(input, 'welcoming'); input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -76,7 +76,7 @@ describe('community views', () => {
     expect(host.textContent).toContain('First line\nSecond line');
     expect(host.querySelector('[aria-roledescription="carousel"]')).toBeTruthy();
     expect(Array.from(host.querySelectorAll('img[alt="Grace cover"]')).map(image => image.getAttribute('src'))).toEqual(['https://example.com/cover.jpg', 'https://example.com/gallery.jpg']);
-    expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace.theharvest.app');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/a?join=1&src=discover');
   });
   it('distinguishes loading, errors and empty listings', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'loading' }} />));

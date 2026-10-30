@@ -1,0 +1,426 @@
+{
+  "ticket": "#561",
+  "note": "#561 (community join CRM) fixes a rules bug in isActiveCommunityMember: get() on a missing communityMembers doc is an evaluation error, not null, so every user without a membership doc was denied wherever the helper is used. firestore.rules auto-deploys on merge: merge needs explicit founder go.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "e64ac09c2fbb5fc1f9d5d43880fa6423e1fcc1754f529501ced7204575af9e08",
+      "why": "#561 owns this change and it is the isActiveCommunityMember helper only: the single get(memberPath) is now guarded by exists(memberPath) in the same short-circuiting condition, so a missing communityMembers doc falls through to the legacy user-doc tenant check instead of erroring and denying. Every other rule is byte-identical. Proven by the existing emulator suites (community, messaging-isolation, permissions, livestream-comments), which were 36 red before and are 583/583 green after."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "e66cd61334d4909742bc959af991c4dcdac80d05bd074b56f6d4effc0d139bd1",
+      "why": "#561 owns this change: the SPA routing table gains the member /community/:tenantId page (with its resolved-path fixture row), and /dev/join-crm joins the named dev-only previews beside /dev/social-scheduler with the same assertions (notFound() in production, no PublicRouteAnalytics, absent from the analytics registry). No assertion was removed or relaxed; the enumeration comparisons still run over every page file."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "fd80cb463f1df4c79595ca25954fdc852a1f9965b2fbc4513073fcca2ce405b5",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "0ddcf3f03325786d10fd97c9b250990ed6b28fa0665a6a2658c15f0430a93430",
+      "why": "#561 review exact rules changes: communityContactKeys additionally forbids client consentAt, consentScope and consentVersion writes; contacts deletion requires no communityUserId so community erasure must clear answers server-side. The existing onboarding-only membership allowlist protects the new consent fields. Missing-document get comments are made consistent. No rules deploy occurred."
+    },
+    {
+      "file": "src/__tests__/THE-342.read-honesty-guards.test.ts",
+      "digest": "a15e25c52b80b17b49d885c96fd42a3d3fc99896133f78a42d03e448dbd2c18f",
+      "why": "#561 review appends the exact AdminCRM digest for the owner data-erasure control, leaving every previous digest and the ordered-read, completeness and no-new-index assertions unchanged."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "ced891f60988230aa466cfd294210555194b19d06fb160b6fc3d893f50d32a99",
+      "why": "#561 review appends the named community/delete-data API route to the existing manifest and strengthens every membership-route entry with an assertion that it cannot write billing entitlements; no existing route or capability guard is removed."
+    },
+    {
+      "file": "src/app/api/community/delete-data/route.ts",
+      "digest": "1eb98885789e90def04e0b247655397af01230ba09526b9e1c2d05106a118644",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "e1e267ae668dae7520643a77fc2470ecca6cb5df6fc5598f5052a6fee1fea91d",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/crm/__tests__/send-email-route.test.ts",
+      "digest": "b5754953ecf11ede93f10dd87cfc438346c871f8dc6ac7b30256eebc6ba117c8",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/crm/send-email/route.ts",
+      "digest": "03f082f5ff9303d2e28702717dc4d1f2bea848fb976027e35eef54e87fa4e65b",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-email/route.test.ts",
+      "digest": "d9c7d7a0e890427fe70146f5e656b7c7988cbf539c739c5258a67e626a488888",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-email/route.ts",
+      "digest": "46aab3b7db8f596d4eed291d0c4a2c13a8a42bf5b3b5fc9256a517a140ec9be4",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-notification/route.ts",
+      "digest": "3a26e0e7180dd388e494721c029ee97d07c6c9978dc9ad7c22fb217f21bbd86b",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "8ceb79e1a7a8461f205f5148781d6a738567efc76926cd0f35789ff290d3ef49",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/PersonalInformationModal.tsx",
+      "digest": "daf30b233b0e899abe0827e97384cb1d11c606e5e963478e2404c6422e256d1a",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/settings-freeze-register.ts",
+      "digest": "5bf22be2a069ccf524e9af343a4ad476e07475cbc8ae247592aeb20fc3a36fa6",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityContactBadge.tsx",
+      "digest": "4fb8c809d82c9788bd2b575d3d504c7c457f99bc3ea26a7542771d152763ea9f",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityDataRequests.test.tsx",
+      "digest": "e024880b2211d96508ea7e96853076b0c9a57b40204d0391afcc92814bf22b9d",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityDataRequests.tsx",
+      "digest": "21619f339f06a60ee4da1606c8218859be84f29e0a845aa4a79039042dd5f39f",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityEntryDialog.tsx",
+      "digest": "6e068750e266df63efad7218c6aaabead7c0033caed4f324116e1ce563cc3243",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.test.tsx",
+      "digest": "6935903f0116aa2b9d5114d60677140cf39828262a1634a20d0b3ffc90b45ca4",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.tsx",
+      "digest": "2238d38a9b49847cd594ae0d4ba617adc3e900f6acc6576970d88d6bda2a9984",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/DeleteCommunityData.tsx",
+      "digest": "9002c2724d43839b71686444e642ce1b418b7f6ac4cb2e4a34958d849ab8325f",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/JoinLeaveCRM.test.tsx",
+      "digest": "5bdbf85caccb7ebab077d57899a6484dc4703140b21858ae1994f8c6c4dd5e35",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/community/LeaveCommunity.tsx",
+      "digest": "0dd1a0a8fd109cc7d6a781d2ba9a4454acb441deddfe5bbd7976edf19f15b871",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/components/settings/ProfileSection.tsx",
+      "digest": "5535b5d586c79a15a11ea6d10b7af3a2932e7cc5b559296d0106806e89d69496",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/__tests__/api-auth.test.ts",
+      "digest": "d59ea8c04a3a28fbffc6afa909c1f611007e550e616525ef842bfa6418a84704",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "867c5af1ef24e6879c7cb6bd85118573b3d8fb9faae5b3ef512981baffbff918",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "19fd18ab4c4ef3ee96c77fd1177d47ba1f3653cc6a2b33fe9581ebbd2df5cf22",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "c3fd2310b5e9f1eb277166a20e7cdd593f04ef8209ae98470d6c24a327e4822a",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership-server.test.ts",
+      "digest": "365d996b5a78101e1016b9746e0b6e8560c601b5af9b3efd81f512fd6c1eaca9",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership.test.ts",
+      "digest": "604a65fe66362bcadec9ce846ac38d6b27b20d709386969a82fb96f6c084f6ed",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "59634b199c22d4de85a7e9780cc1f405ca7cb8ea94dd8645dba7e924efa9e77c",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "e4c520759f7f9e2f1431bd9ee9ba49762479ebfc4ec8d2ca9c7aee332da62741",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/community/membership-request.ts",
+      "digest": "e6b5ca872d07bb01d9a7f8439686df8dc57aaf7e7d066bfb95df784763e85e4f",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "b811ac8bd323a9ac46811926c79dcd85e5a6f23dd7e4828641e0ea7dbfc130c1",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "d1de1aa828a5a8b9e36808ce3410a0dd229ce180762e3255de732b9e3e4fab90",
+      "why": "#561 review: records versioned server-owned contact consent, atomic departure email blocking and channel removal, or owner/self community contact erasure with shadcn controls and behavioral regression coverage; existing guards and prior digests remain intact."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "9b759e2a4d4dd0f403644ddbb6e2dd75092fb656b4b43960a8551c9331899e01",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/__tests__/THE-342.read-honesty-guards.test.ts",
+      "digest": "cbe16161d077d9dcef2cde3bb821074411aa8d2815f3801c6aa47f1fce910905",
+      "why": "#561 review appends the exact AdminCRM digest for the owner erasure control and guidance from the existing delete dialog, leaving previous digests and all ordered-read, completeness and no-new-index assertions unchanged."
+    },
+    {
+      "file": "src/app/api/community/delete-data/route.ts",
+      "digest": "6b65e7050e4d2be2f312693f6bf53126f6f642b0c390732e5ef395c1dc1ecb32",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/app/api/send-notification/route.test.ts",
+      "digest": "51e6b494bd4f5a88b5d781efbd3c72b75b003def9e1ffdaa3e76243ed14935aa",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/app/api/send-notification/route.ts",
+      "digest": "81a5bd9453711009f00c7bcb52318513acffeb1fc1cc7604bdaf1b1f5ec19ca6",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "d5e621d347f7502ac4f04fe5227f9d0e89c8225f450536d664a81c9e9ac1a6c5",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "7b007b20170ab3f443945ba13df06d9ff2dab11a8c539630747ef6c01391d574",
+      "why": "#561 uses the documented mobile-layer append register for the new account privacy button, keeps the original full baseline fixture, records the entire rendered class layer, and names both new touch-floor consumers. The register-empty assertion now checks THE-323 entries only, preserving that ticket\u2019s actual claim while allowing real later entries; all unrecorded-layer rejection tests remain intact."
+    },
+    {
+      "file": "src/components/__tests__/__fixtures__/mobile-layer/#561.json",
+      "digest": "0fedde28a0587fcf0fc336e062f8cbac75eefa6bf2d7c15ce755f25816d26037",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/components/community/CommunityDataRequests.tsx",
+      "digest": "58388b5b05adaf54248ec05c425320c006f70f69fe7ea5cba3be506d5b60aa89",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/components/community/DeleteCommunityData.tsx",
+      "digest": "4280d8f8e79e9f3f5eefae1b7581732dea53aaa0f665416a0472f3ea4eb47bd2",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "01e3607752d52c37060b67bf660e16f4be81e55a5730bd64075b3b8d4b2ce382",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/lib/email/__tests__/helpers.ts",
+      "digest": "214bb3dae7eedc399d8fd3f4da2123708928138ab5f6e139ab7505b1e8088012",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/lib/email/__tests__/service.test.ts",
+      "digest": "57625eee4020da12662b36ed94093830ec86849a10614c264097dbe3bed3585a",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "f3a5a62b58a1369a93e93c57a9e797f7f66d4f5ee5312f99b26a653800030a32",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "src/lib/email/service.ts",
+      "digest": "2c2f19547e3248409ef97f9b34bb0aeeacbec6e9b39ceb33f283b27b5609ebf2",
+      "why": "#561 review: implements or verifies versioned server-owned consent, atomic leave email blocking and channel removal, or owner/self CRM data erasure through shadcn controls. Existing guards and earlier accepted digests remain intact; behavioral tests and planted-defect mutations cover the new boundaries."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "7b2559efd6b7daaee0495b5b2daa7b5e4962dafb8fb98fcd281490b26022ae88",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "b8f26b66693246f3f1003dab70d6e529007a2ced157f1c5b5f85597f829ec18d",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/crm/__tests__/send-email-route.test.ts",
+      "digest": "08fe37be8e0e325babd486fb0ca42fa333a512ca554b51051839785dd97713a2",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-email/route.test.ts",
+      "digest": "d7bbab2f7f69e3416cf742d0a2dc548c2210cb1e22e0094659325429b14cb584",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-notification/route.test.ts",
+      "digest": "2580e8869047ddd9f3e1be3ef35e6f03911e6bd000016d9f2ad5825793baec5f",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/app/api/send-notification/route.ts",
+      "digest": "2e98d7acf66ca19ee0e00f02765a43ed06b5967b3f9a096aa2e457a12ff912b2",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/components/community/CommunityDataRequests.test.tsx",
+      "digest": "b2628a94c74365a91b2d95e788d5ddbe0209ce4e1582e08c2d2bbf157a34ad58",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/components/community/DeleteCommunityData.tsx",
+      "digest": "86537d73e96a011200767ed0604acdafe6f023414b8640389b7d54a73438eb34",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "ff8073c8f601f6c0dc6def0f3ee83d0c68056bbbad46c74c2c0fad4d092969d4",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "f4817f13d77a6bf0dfba7fdedbf71a4fc26ce76392a6896da278616b6751aae4",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/__tests__/helpers.ts",
+      "digest": "bf9271a64017573011d5749ba6af86a50508e0d315d7fbe241130259ca1437f0",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "f30cdc53f6c176fd93b94c0603c05e6bec0e10072c375a8b87052d148169626d",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/service.ts",
+      "digest": "2ff5b9a1289677094c3cd64fd79baed40a571f2fe5e72082101d3c3d4b9064b0",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/email/suppression-key.ts",
+      "digest": "eed0bf88b520dc26d0828d4c10412a1fc846db1204e984173cbd38ec55deef14",
+      "why": "#561 pre-merge follow-ups: atomic v2 rejoin clears departure-only blocks and restores active CRM status; tenant-scoped SHA-256 suppression with legacy plaintext scrubbing protects all owner send paths; owner/self erasure UI and server authorization have behavioral and mutation coverage. Existing assertions and earlier recorded digests remain intact."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "f44fd62308260dcf6de0a3b2624f67f9dad54be6ffb177ff87530d56116dac90",
+      "why": "#561 r3 review B1 fix: rejoin no longer matches blocks or contacts by a contact's admin-editable email/userId. readCommunityRejoin now clears only the single suppression doc keyed to the caller's own address and reads only contacts with communityUserId == uid, so a manageCRM admin repointing a contact's email can no longer make a rejoining member clear a stranger's opt-out block."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "dd19fd023872725b8b879979f0a509b32f841eb9ca373681589dfc3e497dfdcc",
+      "why": "#561 r3 review B1 fix: the join route now passes readCommunityRejoin the verified token email (user.emailVerified ? user.email : undefined) instead of the Firestore profile's email, so an unverified or forged token email clears no block and a stale/mismatched profile email can no longer be used to unblock an address the caller does not control."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "ae96e8e27b28594630080e1277b5e6c11d3d9965eb027906d81d997c8c0cb843",
+      "why": "#561 r3 review B1 required tests: adds regression coverage proving a manageCRM-edited contact email cannot unblock a victim's address on rejoin, a profile email that differs from the verified token email leaves that other address blocked, and an unverified token email clears nothing; adjusts the departure-privacy fixture's auth mock to carry an explicit verified token email matching the member's real address so the existing happy-path unblock assertions still exercise that path, and narrows the unlinked-duplicate-contact assertion to reflect that rejoin now only touches contacts owned by the caller's own uid."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "e3bdbb2e66c3912e3f1442ad800ef252a0fd945fcff2e6fd063e8905d753c632",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556, #565): #561's community membership rules plus #565's two tightenings (client event updates may not touch schedule/status; client registrations may not carry seat, payment, run, refund or cancellation fields). Merged without conflict; the emulator rules suite passes 617/617 on this tree."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "57bc2ccb53e6c09ca17551db87ef67af1fc6b049aa7fd6def761257289e5043a",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): the route-count conflict keeps both exclusion sets, #561's community join/leave/delete-data routes and #556's event edit/cancel routes; the baseline stays at 142 and every assertion is retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "3acd57d0a8dea966050f5fc0725b56640fa70b7bf619e40e784a84cbdbe19fe3",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): #556's event-navigation updates combined with #561's additions by the merge; nothing else changed."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "6e00cd15d5fad69b1fb8a844ad9cbe54c13ab21536db4cc629c0f9bf6a07f6f6",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): both sides' appended sweep entries combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2b3d794a4f55b7f65412653f006de436369d263d6483f468d8d0d1807d2000b3",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): both sides' appended pins combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "f0f576f9ac395b808bccdec2aa7e503d758132224d0adb22227e52fe3c99a7ee",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: an existing same-tenant contact is linked by email only when the Auth account's email is verified and equal; any other account gets its own contact, so an unverified address cannot take over a donor's CRM record."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "d9e6054245ca36a23540ace9f73a18ef15a1ef5df5caa739f54c04cb805134ca",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds unverified and verified-for-another-address takeover cases plus the verified link case; the existing email-link case now supplies a verified account. Reverting the gate fails two cases."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "eee3f7fe722190bb2e443442d74d118ed547d74f20983e526bebf4984db0f771",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: join refuses an account with no users/{uid} profile (409, nothing written), so the directory never meets an unreadable member, and rejects the onboarding pending marker as an answer key."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "4a6b2d92227041d56a361d0c7f9b38daeb5f84bf37b8805ce626693e31425f7d",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the profile-less join and pending-marker cases; reverting fails both. Prior assertions retained."
+    },
+    {
+      "file": "src/app/api/livestream/comment/route.ts",
+      "digest": "2978d6db09ed94ec2d8cc3f9f09f9471c78691a948bd8932dc64e3cdb76c1750",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: a tenant admin (owner, role or roster, via requireTenantAdmin) may post without joining, matching the rules that already let admins read the chat."
+    },
+    {
+      "file": "src/app/api/livestream/comment/__tests__/route.test.ts",
+      "digest": "32d330736842bc87459c07a1899742aa3a970dfcd27f269a2367c0955dc5d42e",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the admin and non-admin non-member cases; the requireTenantAdmin mock defaults to refusal so existing cases are unchanged."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.tsx",
+      "digest": "22e916bd6cf605b59f499c9157c73dfe323802755556ba0d1ef322f909879e85",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: re-reads the stored return before redirecting, so a return already consumed by onboarding does not trigger a second full reload."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.test.tsx",
+      "digest": "706e9f9f4c1189c2b445a4aa03898fae0029b365da9c8f36b130b0b96335602f",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds the consumed-return and funnel-drop cases; prior assertions retained."
+    },
+    {
+      "file": "src/lib/community/navigation.ts",
+      "digest": "bd3b983d2148913c73c978678c6e3667e807a14ad0ea99d2c44219a5d661920a",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: adds dropCommunityReturnForFunnel: a non-free signup intent drops a leftover community join return."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "baa06dca79ddb76ae000f85166e876daa6ebf15ab55042c62c6085ed854e9fc6",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 review r5: one call: capturing a non-free ?signup intent drops a leftover community join return, so a church or paid funnel is never pulled into a community page."
+    }
+  ]
+}

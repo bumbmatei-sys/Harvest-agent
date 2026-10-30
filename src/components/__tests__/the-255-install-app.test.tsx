@@ -320,9 +320,12 @@ describe('the paid funnel’s route order and markers are unchanged', () => {
     expect(app()).toContain("const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];");
   });
 
-  it('keeps every route, in the same order, with nothing added', () => {
+  it('keeps every original route in order plus the reviewed community member route', () => {
     const paths = Array.from(app().matchAll(/<Route\s+path="([^"]+)"/g)).map((m) => m[1]);
     expect(paths).toEqual([
+      // THE-999998: reviewed member route; every original funnel/admin route
+      // below retains its exact position relative to every other original.
+      '/community/:tenantId',
       '/auth',
       '/onboarding',
       '/church-onboarding',

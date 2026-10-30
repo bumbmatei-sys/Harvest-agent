@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { communitySuppressionId } from '@/lib/email/suppression-key';
+
 import { tenantAllows, ARCHIVED_ACTION_MESSAGE } from '@/lib/tenant-lifecycle';
 import { normalizeEmail } from '@/lib/donation-history';
 import { hasFeature, toTenantPlan } from '@/utils/plan-features';
@@ -155,8 +157,11 @@ export interface EmailStore {
   releaseFeedbackEvent(tenantId: string, key: string): Promise<void>;
   /** Deletes dedupe records past their expiry. Returns how many went. */
   purgeExpiredFeedbackEvents(nowIso: string): Promise<number>;
-  /** Addresses that opted out, bounced or complained. Survives the CRM person being deleted. */
+  /** SHA-256 keys of normalized addresses that opted out, bounced or complained.
+   * Scoped by tenant; survives CRM contact deletion. */
   listSuppressed(tenantId: string): Promise<ReadonlySet<string>>;
+  /** Recheck immediately before delivery: leave/opt-out may follow audience resolution. */
+  isSuppressedNow(tenantId: string, email: string): Promise<boolean>;
   listBroadcasts(tenantId: string): Promise<readonly Broadcast[]>;
   /** CRM people (`contacts`) for this ministry, with their email status. One list. */
   listContacts(tenantId: string): Promise<readonly EmailContact[]>;
@@ -395,7 +400,8 @@ export function createEmailService(deps: {
 
   async function audienceFor(broadcast: Broadcast) {
     const [contacts, suppressed] = await Promise.all([store.listContacts(broadcast.tenantId), store.listSuppressed(broadcast.tenantId)]);
-    return resolveAudience(contacts, broadcast.filters, suppressed);
+    return resolveAudience(contacts, broadcast.filters, new Set(contacts
+      .map(contact => normalizeEmail(contact.email)).filter(email => suppressed.has(communitySuppressionId(email)))));
   }
 
   function readiness(broadcast: Broadcast, settings: EmailSettings): EmailFailure | null {
@@ -474,6 +480,8 @@ export function createEmailService(deps: {
         const [index, person] = next;
         const firstName = person.name.split(/\s+/)[0] ?? '';
         try {
+          if (await store.isSuppressedNow(broadcast.tenantId, person.email)) continue;
+          if (clockMs() >= deadline) continue;
           const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: broadcast.tenantId, email: person.email, broadcastId: broadcast.id }));
           const { html, text } = renderEmail({
             design: broadcast.design,
@@ -835,7 +843,7 @@ export function createEmailService(deps: {
         touched.add(email);
         const tags = (row.tags ?? []).map(clean).filter(Boolean);
         const matches = byEmail.get(email) ?? [];
-        if (suppressed.has(email) || matches.some((c) => isSuppressed(c.status))) { blocked += 1; continue; }
+        if (suppressed.has(communitySuppressionId(email)) || matches.some((c) => isSuppressed(c.status))) { blocked += 1; continue; }
         if (matches.length === 0) {
           const [first = '', ...rest] = clean(row.name).split(/\s+/);
           creates.set(email, { email, firstName: first, lastName: rest.join(' '), tags, source: 'import', at });

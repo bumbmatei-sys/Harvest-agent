@@ -504,10 +504,13 @@ describe('no funnel marker, route order or Turnstile mount changed', () => {
       .toBe('9571ded38eeb30eb428345abcaceff0512f8028404354fcf4da18f8adaf21718');
   });
 
-  it('🔴 the route order in App.tsx is unchanged', () => {
+  it('🔴 the original route order is preserved alongside the reviewed member route', () => {
     const app = src('src/App.tsx');
     const order = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
     expect(order).toEqual([
+      // THE-999998: reviewed member route; every original funnel/admin route
+      // below retains its exact position relative to every other original.
+      '/community/:tenantId',
       '/auth', '/onboarding', '/church-onboarding',
       '/admin', '/admin/:section', '/admin/:section/:itemId', '/', '*',
     ]);

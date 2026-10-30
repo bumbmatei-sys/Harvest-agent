@@ -1,4 +1,5 @@
 "use client";
+import { CommunityDataRequests } from '@/components/community/CommunityDataRequests';
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Edit2, ChevronRight, ArrowLeft } from 'lucide-react';
@@ -976,6 +977,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
    </p>
  )}
 
+ <CommunityDataRequests />
  {showDeleteConfirm ? (
  <div className="w-full p-4 bg-red-50 rounded-2xl mt-4 flex flex-col gap-3">
  {deleteState === 'done' ? (
