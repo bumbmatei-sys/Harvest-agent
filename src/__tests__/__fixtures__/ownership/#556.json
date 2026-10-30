@@ -455,6 +455,21 @@
       "file": "src/app/api/events/edit/__tests__/route.test.ts",
       "digest": "c30a1a4416c0741af7e3f9c44ae4d7155d3f45f4e9c1144b6077225f714f0fd4",
       "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: regression coverage for one-off-to-series conversion, shortening by count and by end date, waitlisted and cancelled rows, extension and a failed read. Reverting either fix fails these cases; existing assertions retained."
+    },
+    {
+      "file": "src/lib/event-registration-webhook.ts",
+      "digest": "f0e300b359dc75fa8349ff264292b81bd6528e9f6d16513eecfe5fc555982e72",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a paid ticket cancelled at confirmation (event or date cancelled, registration closed) now sends the payer a notice through sendTransactionalEmail saying the ministry handles the refund manually; a failed send reports to Sentry. The confirmation email prints the run date in words. Confirm, oversell refund and status writes unchanged."
+    },
+    {
+      "file": "src/app/api/stripe/__tests__/connect-webhook-event-registration.test.ts",
+      "digest": "56408ad2eac1cfba873be9f24bc51616d0814c2e25ba7fe7ebe8b4d654346265",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: covers the closed-registration and cancelled-run payer notices, wording, reply-to and idempotency, and no second notice on redelivery. The B4 date assertion now expects the date in words. Disabling the notice fails three cases."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "11cd7322f89c84292c209c270f92c265fd3cb734be8b03727550ef75b211b1c0",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one webhook digest with its reason; prior pins and all assertions retained."
     }
   ]
 }

@@ -393,7 +393,7 @@ it('B4 confirms and emails a pre-cutoff Checkout completed after the recurring r
   expect(registration()).toMatchObject({ status: 'confirmed', amountPaid: TICKET_CENTS });
   expect(registration().refundStatus).toBeUndefined();
   expect(confirmationEmails()).toHaveLength(1);
-  expect(confirmationEmails()[0][0].html).toContain('2031-03-30');
+  expect(confirmationEmails()[0][0].html).toContain('Date: Sunday, March 30, 2031');
 });
 
 it('B4 honors a pre-deadline Checkout completed after a one-off deadline', async () => {
@@ -406,4 +406,55 @@ it('B4 honors a pre-deadline Checkout completed after a one-off deadline', async
   expect((await POST(makeRequest())).status).toBe(200);
   expect(registration().status).toBe('confirmed');
   expect(confirmationEmails()).toHaveLength(1);
+});
+
+/** Every "registration not completed" notice handed to Resend. */
+const closedNotices = () =>
+  mockEmailSend.mock.calls.filter(([msg]: any[]) => /registration not completed/i.test(msg?.subject || ''));
+
+it('tells a payer whose Checkout began after the deadline that the ministry handles the refund', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-01-01T12:30:00Z'));
+  seedPendingTicket();
+  const eventPath = `tenants/${CHURCH_TENANT}/events/e1`;
+  store.set(eventPath, { ...store.get(eventPath), organizerEmail: 'pastor@grace.example',
+    registrationDeadline: { toDate: () => new Date('2031-01-01T12:00:00Z') } });
+  mockConstructEvent.mockReturnValue(connectEvent('evt_late', 'checkout.session.completed',
+    ticketSession({ created: Date.parse('2031-01-01T12:01:00Z') / 1000 })));
+  expect((await POST(makeRequest())).status).toBe(200);
+  expect(registration()).toMatchObject({ status: 'cancelled', cancellationReason: 'registration_closed', refundStatus: 'pending_manual' });
+  expect(confirmationEmails()).toHaveLength(0);
+  expect(closedNotices()).toHaveLength(1);
+  const [msg, options] = closedNotices()[0];
+  expect(msg).toMatchObject({ to: 'sam@example.com', replyTo: 'pastor@grace.example' });
+  expect(msg.text).toContain('because registration had closed');
+  expect(msg.text).toContain('refund of $50.00');
+  expect(msg.text).toContain('Harvest does not issue an automatic refund');
+  expect(msg.text).not.toMatch(/verified|payment received/i);
+  expect(options).toEqual({ idempotencyKey: 'evt_reg_closed_reg1' });
+});
+
+it('tells the payer when the run they paid for was cancelled, naming the date', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2031-03-25T07:30:00Z'));
+  seedPendingTicket();
+  const eventPath = `tenants/${CHURCH_TENANT}/events/e1`;
+  store.set(eventPath, { ...store.get(eventPath), startDate: { toDate: () => new Date('2031-03-23T09:00:00Z') },
+    timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 3, cancelledRuns: ['2031-03-30'] } });
+  store.set(`tenants/${CHURCH_TENANT}/registrations/reg1`, { ...registration(), runDate: '2031-03-30' });
+  mockConstructEvent.mockReturnValue(connectEvent('evt_run_cancelled', 'checkout.session.completed', ticketSession()));
+  expect((await POST(makeRequest())).status).toBe(200);
+  expect(registration()).toMatchObject({ status: 'cancelled', cancellationReason: 'event_cancelled' });
+  expect(closedNotices()).toHaveLength(1);
+  expect(closedNotices()[0][0].text).toContain('on Sunday, March 30, 2031 could not be completed because the event was cancelled');
+  expect(closedNotices()[0][0].replyTo).toBeUndefined();
+});
+
+it('a redelivered completion for an already-cancelled ticket sends no second notice', async () => {
+  seedPendingTicket();
+  const eventPath = `tenants/${CHURCH_TENANT}/events/e1`;
+  store.set(eventPath, { ...store.get(eventPath), status: 'cancelled' });
+  mockConstructEvent.mockReturnValue(connectEvent('evt_a', 'checkout.session.completed', ticketSession()));
+  await POST(makeRequest());
+  mockConstructEvent.mockReturnValue(connectEvent('evt_b', 'checkout.session.completed', ticketSession()));
+  await POST(makeRequest());
+  expect(closedNotices()).toHaveLength(1);
 });
