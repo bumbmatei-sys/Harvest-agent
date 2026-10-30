@@ -65,6 +65,21 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "9cca38e4c6e7e8663798b0799a980220221933cc9dff0115e0717f191612b8f5",
       "why": "PR #560 r2 merged with main #557: retain the sign-up builder and public form adopter rows from main alongside r2's updated Box swatch hit-slop explanation and the ThemeWarning and IssueHeader adopters. All prior rows and assertions remain intact."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "1a5ea71f1e21d0320c01dfac4a9e7da48ad21e1df3f738331acf68737ac9819f",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "4d54d8773c2c802e3e348a0fa0ebb7a2f58c74850dfb62515890c3c671198e05",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "b039ea4a58b78d942327c5aed0e4d6c0ecb9bb83e41055b5e849507755ae7ad3",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
     }
   ]
 }
