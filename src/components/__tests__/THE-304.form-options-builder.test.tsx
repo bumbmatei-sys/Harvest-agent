@@ -63,6 +63,7 @@ import path from 'node:path';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface Doc { id: string; data: Record<string, unknown> }
+const shareTenant = vi.hoisted(() => ({ tenant: { subdomain: 'grace' } as { subdomain: string } | null, failure: false }));
 
 const STORE: Record<string, Doc[]> = {};
 /** Every write this suite let through, so the SAVED SHAPE is assertable. */
@@ -90,7 +91,13 @@ vi.mock('firebase/firestore', () => ({
     if (typeof cb === 'function') (cb as (s: unknown) => void)({ docs, size: docs.length });
     return () => {};
   },
-  getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  getDoc: async (ref: unknown) => {
+    if (pathOf(ref) === 'tenants/t1') {
+      if (shareTenant.failure) throw new Error('Read failed');
+      return { exists: () => shareTenant.tenant !== null, data: () => shareTenant.tenant };
+    }
+    return { exists: () => true, data: () => ({}) };
+  },
   addDoc: async (c: unknown, payload: Record<string, unknown>) => {
     writes.push({ kind: 'addDoc', path: pathOf(c), payload });
     return { id: 'new' };
@@ -107,6 +114,15 @@ vi.mock('firebase/firestore', () => ({
   arrayRemove: (...a: unknown[]) => a,
   writeBatch: () => ({ set: () => {}, update: () => {}, delete: () => {}, commit: async () => {} }),
 }));
+
+// Form metadata now goes through server validation; preserve the original saved-field assertions.
+vi.mock('@/utils/auth-fetch', () => ({ authFetch: async (url: string, init?: RequestInit) => {
+  if (url.startsWith('/api/form-follow-up/options')) return { ok: true, json: async () => ({ options: [] }) };
+  if (url !== '/api/forms/save') throw new Error(`Unexpected request: ${url}`);
+  const { tenantId, formId, ...payload } = JSON.parse(String(init?.body));
+  writes.push({ kind: 'server-save', path: `tenants/${tenantId}/forms/${formId || 'new'}`, payload });
+  return { ok: true, json: async () => ({ id: formId || 'new' }) };
+} }));
 
 vi.mock('../../store/useAppStore', () => ({
   useAppStore: (sel?: (s: unknown) => unknown) => {
@@ -195,6 +211,7 @@ async function save(root: ParentNode) {
 }
 
 beforeEach(() => {
+  shareTenant.tenant = { subdomain: 'grace' }; shareTenant.failure = false;
   for (const k of Object.keys(STORE)) delete STORE[k];
   writes.length = 0;
   STORE['tenants/t1/forms'] = [];
@@ -203,6 +220,42 @@ beforeEach(() => {
   alerts.length = 0;
   (globalThis as unknown as { alert: (m?: unknown) => void }).alert =
     (m?: unknown) => { alerts.push(String(m)); };
+});
+
+describe('public form sharing', () => {
+  it('uses the resolved tenant subdomain for links and QR codes when it differs from the tenant id', async () => {
+    STORE['tenants/t1/forms'] = [{ id: 'f1', data: { title: 'Welcome', description: '', fields: [], active: true, submissionCount: 0, createdAt: null, createdBy: 'u' } }];
+    const m = await mountScreen(<AdminForms />);
+    try {
+      const links = [...m.container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+      expect(links).toHaveLength(2);
+      expect(links.map(link => link.href)).toEqual(Array(2).fill('https://grace.theharvest.app/form/f1'));
+      const qrActions = m.container.querySelectorAll<HTMLButtonElement>('[data-form-qr-action]');
+      expect(qrActions).toHaveLength(2);
+      await click(qrActions[0]);
+      expect(document.body.textContent).toContain('https://grace.theharvest.app/form/f1');
+      expect(document.body.textContent).not.toContain('https://t1.theharvest.app');
+    } finally { m.unmount(); }
+  });
+  // 🔴 #562 r2 — a tenant with no subdomain (every Free tenant, and a
+  // hostless paid one, per the founder's "a tenant gets a subdomain only
+  // once it has a website") must still be able to share its forms. Sharing
+  // used to withhold itself and show an alert whenever the subdomain could
+  // not be resolved; it now falls back to a theharvest.app link immediately
+  // and never blocks on this read.
+  it.each(['missing', 'read failure', 'invalid slug'])('falls back to a theharvest.app link, never withholding sharing, on %s', async reason => {
+    if (reason === 'missing') shareTenant.tenant = null;
+    if (reason === 'read failure') shareTenant.failure = true;
+    if (reason === 'invalid slug') shareTenant.tenant = { subdomain: 'evil/path' };
+    STORE['tenants/t1/forms'] = [{ id: 'f1', data: { title: 'Welcome', description: '', fields: [], active: true, submissionCount: 0, createdAt: null, createdBy: 'u' } }];
+    const m = await mountScreen(<AdminForms />);
+    try {
+      const links = [...m.container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+      expect(links).toHaveLength(2);
+      expect(links.map(link => link.href)).toEqual(Array(2).fill('https://theharvest.app/form/f1?t=t1'));
+      expect(m.container.querySelector('[role="alert"]')).toBeNull();
+    } finally { m.unmount(); }
+  });
 });
 
 const alerts: string[] = [];

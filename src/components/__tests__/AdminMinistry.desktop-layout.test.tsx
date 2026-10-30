@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import { ownershipFailure } from '../../__tests__/__fixtures__/ownership-register';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
@@ -190,7 +191,12 @@ vi.mock('firebase/firestore', () => ({
   getCountFromServer: async (q: unknown) => ({ data: () => ({ count: lookup(q).length }) }),
   documentId: () => '__name__',
   startAfter: (...a: unknown[]) => a,
-  getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  // AdminForms reads tenants/{tenantId} to decide whether to use a subdomain
+  // or a theharvest.app share link; answer that doc with a real subdomain so
+  // the share/QR controls this file pins render deterministically.
+  getDoc: async (ref: { __path?: string }) => (ref?.__path === 'tenants/t1'
+    ? { exists: () => true, data: () => ({ subdomain: 't1' }) }
+    : { exists: () => true, data: () => ({}) }),
   // Community setup ensures the default group transactionally. This fixture
   // represents an existing group, and records any attempted transaction write.
   runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<void>) => fn({
@@ -297,6 +303,19 @@ const REPO = path.resolve(SRC, '../..');
 const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
+
+// THE-999998: append the new feature's exact tokens by view; preserve the old baseline.
+const FOLLOW_UP_TOKEN_FILE = 'src/components/__tests__/__fixtures__/form-follow-up-tokens.json';
+const FOLLOW_UP_TOKENS = JSON.parse(readFileSync(path.join(REPO, FOLLOW_UP_TOKEN_FILE), 'utf8')).views as Record<string, { classes: string[]; colours: string[] }>;
+it('records the form follow-up token inventory by digest', () => { expect(ownershipFailure(FOLLOW_UP_TOKEN_FILE)).toBeNull(); });
+it('keeps a 44px minimum on every newly adopted form follow-up control', async () => {
+  for (const [view, container] of Object.entries(await surfaces('AdminForms'))) {
+    if (view === 'submissions') continue;
+    const controls = [...container.querySelectorAll<HTMLElement>('[data-form-qr-action], [data-form-follow-up-setting] [role="combobox"], [data-form-follow-up-setting] button[data-slot="button"]')];
+    expect(controls.length, view).toBeGreaterThan(0);
+    for (const control of controls) expect(control.classList.contains('min-h-11'), `${view}: ${control.textContent}`).toBe(true);
+  }
+});
 
 /** The five screens, and the revision their pre-PR form is read from. */
 const SCREENS = ['AdminCommunity', 'AdminEvents', 'AdminFundraising', 'AdminForms', 'AdminCheckin'] as const;
@@ -1708,7 +1727,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const before = new Set(toTokens(BASELINE[name]![view].mobileLayer));
         const added = toTokens(mobileLayer(c)).filter((t) => !before.has(t));
-        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)),
+        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS) && !(name === 'AdminForms' && FOLLOW_UP_TOKENS[view]?.classes.includes(t))),
           `${name}/${view} gained a token that reaches a phone`).toEqual([]);
       }
     });
@@ -1768,6 +1787,11 @@ describe('no touch target got smaller', () => {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
         for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
           if (name === 'AdminEvents' && recorded.has(t)) continue;
+          // Shared Button carries h-8; its form follow-up control also carries min-h-11.
+          if (name === 'AdminForms' && ['h-8', 'data-[size=default]:h-8', 'data-[size=sm]:h-7'].includes(t)) {
+            const carriers = [c, ...c.querySelectorAll<HTMLElement>('[class]')].filter(element => element.classList.contains(t));
+            if (carriers.length > 0 && carriers.every(element => (element.matches('[data-form-qr-action]') || element.closest('[data-form-follow-up-setting]')) && element.classList.contains('min-h-11'))) continue;
+          }
           expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
         }
       }
@@ -2572,6 +2596,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         const expected = [
           ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
           ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
+          ...(name === 'AdminForms' ? (FOLLOW_UP_TOKENS[view]?.colours ?? []).filter(token => !excluded.has(token)) : []),
         ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
           .toEqual(expected);
@@ -2594,6 +2619,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         const base = new Set(BASELINE[name]![view].colours);
         for (const t of colourTokens(c)) {
           if (base.has(t)) continue;
+          if (name === 'AdminForms' && FOLLOW_UP_TOKENS[view]?.colours.includes(t)) continue;
           if (name === 'AdminEvents' && recorded.has(t)) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           added.add(`${name}/${view}:${t}`);

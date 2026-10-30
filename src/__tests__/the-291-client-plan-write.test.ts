@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { PLAN_PRICING, getPlanFeatures, PLAN_ORDER } from '../utils/plan-features';
+import { stripComments as stripSourceComments } from './__fixtures__/the-346-strip-comments';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
@@ -629,7 +630,13 @@ describe('5 · the money path is byte-identical', () => {
     // #557 adds five sign-up page endpoints; none writes plan entitlements.
     const signupRoutes = ['route.ts', 'submit/route.ts', 'public/[handle]/route.ts', '[pageId]/export/route.ts', '[pageId]/submissions/route.ts'].map(suffix => `src/app/api/signup-pages/${suffix}`);
     for (const route of signupRoutes) expect(routes).toContain(route);
-    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
+    // THE-999998 (temporary local task): reference validation and metadata saves never grant entitlements.
+    const followUpRoutes = ['src/app/api/form-follow-up/route.ts', 'src/app/api/form-follow-up/options/route.ts', 'src/app/api/forms/save/route.ts'];
+    for (const route of followUpRoutes) {
+      expect(routes).toContain(route);
+      expect(stripSourceComments(read(route))).not.toMatch(/\b(?:plan|addons)\s*:/);
+    }
+    expect(routes.filter((route) => !followUpRoutes.includes(route) && !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',

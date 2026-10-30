@@ -1,4 +1,5 @@
 "use client";
+import { FollowUpCard } from '@/components/form-follow-up/FollowUpCard';
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import RatingScaleInput from './forms/RatingScaleInput';
@@ -111,9 +112,10 @@ const PublicForm: React.FC<PublicFormProps> = ({
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
-        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-8 max-w-md text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-5 w-full max-w-md text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="font-display text-xl font-bold text-strong mb-2">{successMessage}</h1>
+          <div className="mt-5 text-left"><FollowUpCard tenantId={tenantId} formId={formId} /></div>
           <p className="text-sm text-faint mt-4">{tenantName}</p>
         </div>
       </div>

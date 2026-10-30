@@ -1,14 +1,14 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc,
-  serverTimestamp, Timestamp, limit,
+  collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc,
+  Timestamp, limit, getDoc,
 } from 'firebase/firestore';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, Link2, Code, FileText,
   Download, ExternalLink, GripVertical, Edit2, ChartColumn,
 } from 'lucide-react';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import {
@@ -24,6 +24,12 @@ import {
 } from './forms/rating-scale';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
+
+import { FollowUpSetting } from '@/components/form-follow-up/FollowUpSetting';
+import { QrCodeDialog } from '@/components/form-follow-up/QrCodeDialog';
+import type { FollowUp } from '@/lib/form-follow-up/model';
+import { authFetch } from '@/utils/auth-fetch';
+import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -46,6 +52,7 @@ interface FormField {
 }
 
 interface CustomForm {
+  followUp?: FollowUp | null;
   id: string;
   title: string;
   description: string;
@@ -147,12 +154,32 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   // subdomain currentTenantId is set and takes precedence.
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
+  // A tenant gets a subdomain only once it has a published website (founder
+  // decision, #562 r2); every other tenant's public pages live on
+  // theharvest.app. Share links and QR codes therefore never wait on this:
+  // `formUrl` below falls back to a theharvest.app path immediately and
+  // simply upgrades to the subdomain once (and if) this resolves one.
+  const [shareAddress, setShareAddress] = useState<{ tenantId: string; slug: string | null } | null>(null);
+  const shareSubdomain = shareAddress?.tenantId === tenantId ? shareAddress.slug : null;
+  useEffect(() => {
+    if (!isAuthReady || !tenantId) return;
+    let current = true;
+    getDoc(doc(db, 'tenants', tenantId)).then(snapshot => {
+      const slug = snapshot.data()?.subdomain;
+      if (!snapshot.exists() || typeof slug !== 'string' || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug) || isNonTenantSubdomain(slug)) throw new Error('Invalid ministry address');
+      if (current) setShareAddress({ tenantId, slug });
+    }).catch(() => {
+      if (current) setShareAddress({ tenantId, slug: null });
+    });
+    return () => { current = false; };
+  }, [isAuthReady, tenantId]);
 
   const [view, setView] = useState<'list' | 'builder' | 'submissions' | 'answers'>('list');
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Builder state
+  const [followUp, setFollowUp] = useState<FollowUp | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -196,6 +223,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       setDescription('');
       setFields([]);
     }
+    setFollowUp(form?.followUp ?? null);
     setPreview(false);
     setView('builder');
   }, []);
@@ -302,18 +330,11 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
           Object.keys(cleaned).forEach((k) => cleaned[k] === undefined && delete cleaned[k]);
           return cleaned;
         }),
-        updatedAt: serverTimestamp(),
+        followUp,
       };
-      if (editingId) {
-        await updateDoc(doc(db, 'tenants', tenantId, 'forms', editingId), payload);
-      } else {
-        await addDoc(collection(db, 'tenants', tenantId, 'forms'), {
-          ...payload,
-          active: true,
-          submissionCount: 0,
-          createdAt: serverTimestamp(),
-          createdBy: auth.currentUser?.uid || '',
-        });
+      const response = await authFetch('/api/forms/save', { method: 'POST', body: JSON.stringify({ ...payload, tenantId, formId: editingId }) });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Could not save form'); }
+      if (!editingId) {
         // THE-360 - a new form is created `active: true` unconditionally, so
         // creating one IS publishing it. The edit branch above is not a publish
         // and does not fire.
@@ -322,7 +343,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       setView('list');
     } catch (e) {
       console.error('Failed to save form:', e);
-      alert('Failed to save form. Please try again.');
+      alert(e instanceof Error ? e.message : 'Failed to save form. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -344,8 +365,9 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     await deleteDoc(doc(db, 'tenants', tenantId, 'forms', form.id));
   };
 
-  const formUrl = (formId: string) =>
-    `https://${tenantId}.theharvest.app/form/${formId}`;
+  const formUrl = (formId: string) => shareSubdomain
+    ? `https://${shareSubdomain}.theharvest.app/form/${encodeURIComponent(formId)}`
+    : `https://theharvest.app/form/${encodeURIComponent(formId)}${tenantId ? `?t=${encodeURIComponent(tenantId)}` : ''}`;
 
   const copy = async (text: string, key: string) => {
     try {
@@ -663,6 +685,8 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
               </div>
             ))}
 
+            <FollowUpSetting tenantId={tenantId || undefined} value={followUp} onChange={setFollowUp} />
+
             <div className="bg-surface-raised rounded-2xl border border-dashed border-line p-4">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Add Field</p>
               <div className="flex flex-wrap gap-2">
@@ -678,6 +702,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
               <div className="bg-surface-raised rounded-2xl border border-line p-4 space-y-2">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Share</p>
                 <div className="flex items-center gap-2 flex-wrap">
+                  <QrCodeDialog url={formUrl(editingId)} name={title} />
                   <button onClick={() => copy(formUrl(editingId), 'link')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-line text-body hover:bg-surface-sunken">
                     <Link2 size={14} /> {copied === 'link' ? 'Copied!' : 'Copy Link'}
                   </button>
@@ -853,7 +878,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                     <AdminBadge tone={form.active ? 'green' : 'stone'}>{form.active ? 'Active' : 'Inactive'}</AdminBadge>
                   </button>
                 </div>
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-line">
+                <div className="flex flex-wrap items-center gap-1 mt-3 pt-3 border-t border-line">
                   {/* THE-298 — the founder's button: the per-question answers
                       summary, straight from the form. Reuses this row's exact
                       class string so the phone rendering gains no token but the
@@ -862,6 +887,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <button onClick={() => openBuilder(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
                   <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title={copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}><Link2 size={15} /></button>
                   <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Open"><ExternalLink size={15} /></a>
+                  <QrCodeDialog url={formUrl(form.id)} name={form.title} />
                   <button onClick={() => handleDelete(form)} className="p-1.5 rounded-brand text-danger hover:bg-danger-tint transition-colors ml-auto" title="Delete"><Trash2 size={15} /></button>
                 </div>
               </div>
@@ -900,6 +926,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                 <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
                   <ExternalLink size={13} /> Open
                 </a>
+                <QrCodeDialog url={formUrl(form.id)} name={form.title} />
                 <button onClick={() => handleDelete(form)} className="flex items-center gap-1.5 text-xs font-semibold text-danger hover:opacity-80 transition-opacity ml-auto">
                   <Trash2 size={13} /> Delete
                 </button>

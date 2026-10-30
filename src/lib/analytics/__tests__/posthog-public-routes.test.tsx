@@ -162,6 +162,10 @@ const RESOLVED_PATH: Record<string, string> = {
   '/campaign/[campaignId]': '/campaign/Xk4pL9wQ2mNv6sT1',
   '/checkin/[sessionId]': '/checkin/9fZc3Rt8yUq1BwEo',
   '/courses/[id]': '/courses/Mn2Vb7Kd4Sx9Lp0R',
+  '/products/[id]': '/products/published-download',
+  // #562 r2 — a hostless tenant's own id, not a slug (this route exists only
+  // for the tenant that has none).
+  '/c/[tenantId]': '/c/free-9f2c6a1b3e4d',
   '/discover': '/discover',
   '/s/[handle]': '/s/example-page',
   '/event/[eventId]': '/event/Qw8eR3tY6uI9oP2a',
@@ -190,6 +194,8 @@ const PAGE_FILE: Record<string, string> = {
   '/campaign/[campaignId]': 'src/app/campaign/[campaignId]/page.tsx',
   '/checkin/[sessionId]': 'src/app/checkin/[sessionId]/page.tsx',
   '/courses/[id]': 'src/app/courses/[id]/page.tsx',
+  '/products/[id]': 'src/app/products/[id]/page.tsx',
+  '/c/[tenantId]': 'src/app/c/[tenantId]/page.tsx',
   '/discover': 'src/app/discover/page.tsx',
   '/s/[handle]': 'src/app/s/[handle]/page.tsx',
   '/event/[eventId]': 'src/app/event/[eventId]/page.tsx',
@@ -337,6 +343,7 @@ describe('1 — every route in the stated list emits a pageview', () => {
       '/campaign/[campaignId]',
       '/checkin/[sessionId]',
       '/courses/[id]',
+      '/products/[id]',
       '/discover',
       '/s/[handle]',
       '/event/[eventId]',
@@ -364,6 +371,11 @@ describe('1 — every route in the stated list emits a pageview', () => {
       // exactly the ones already named. A scheduled post is absent from this
       // page until its instant, which is a read-time decision, not a new route.
       '/p',
+      // #562 r2 — the public community page for a hostless tenant. APPENDED,
+      // never substituted: every route above stays exactly the one already
+      // named. A THIRTEENTH public Next route, none of THE-36's nine among
+      // them touched.
+      '/c/[tenantId]',
     ]);
   });
 

@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
-import { getTenantFromHost } from '@/lib/server-tenant';
+import { getTenantFromHostOrId } from '@/lib/server-tenant';
 import { isRestrictedCourse } from '@/lib/courses/access';
 import type { Course } from '@/types/course.types';
 import type { Tenant } from '@/types/tenant.types';
@@ -31,10 +31,14 @@ export function isPubliclyShown(course: Pick<PublicCourseDoc, 'status' | 'tenant
  * must not be shown. The tenant is resolved first, so a host with no ministry
  * never causes a course read. The Admin SDK bypasses firestore.rules, so this
  * function IS the access check for the page and its metadata.
+ *
+ * `tenantIdHint` is the `?t=` fallback a hostless tenant (no subdomain) carries
+ * instead of a resolvable host; it is only consulted once the host itself
+ * resolves nothing, so a tenant with its own subdomain is unaffected.
  */
-export async function loadPublicCourse(id: string): Promise<PublicCourse | null> {
+export async function loadPublicCourse(id: string, tenantIdHint?: string): Promise<PublicCourse | null> {
   const host = (await headers()).get('host') || '';
-  const tenant = await getTenantFromHost(host);
+  const tenant = await getTenantFromHostOrId(host, tenantIdHint);
   if (!tenant) return null;
   const snap = await adminDb.collection('courses').doc(id).get();
   if (!snap.exists) return null;

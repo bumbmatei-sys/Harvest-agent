@@ -912,7 +912,12 @@ service cloud.firestore {
       // Submissions remain admin-only (read server-side via the admin SDK).
       match /forms/{formId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if hasFormsPermission(tenantId);
+        // Follow-ups are validated by the server against public, tenant-owned items.
+        allow create: if hasFormsPermission(tenantId)
+          && !request.resource.data.keys().hasAny(['followUp']);
+        allow update: if hasFormsPermission(tenantId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['followUp']);
+        allow delete: if hasFormsPermission(tenantId);
 
         match /submissions/{submissionId} {
           allow read: if isTenantAdmin(tenantId);

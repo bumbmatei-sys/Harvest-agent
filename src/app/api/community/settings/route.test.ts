@@ -64,6 +64,19 @@ describe('community settings API', () => {
     expect(h.set).toHaveBeenCalledWith({ path: 'tenants/ministry/settings/community' }, expect.anything());
     expect(h.count).not.toHaveBeenCalled();
   });
+  it('publishes isPublic for a hostless tenant (no subdomain) without writing the subdomain-keyed discovery index', async () => {
+    // Every Free tenant, and a hostless paid one, has no subdomain — B1/#562.
+    // Saving isPublic must still succeed; it is just not in discovery_listings
+    // (the same as a private community), because that index is keyed by a
+    // slug a hostless tenant does not have. form-follow-up/server.ts reads
+    // its community straight off the settings doc instead.
+    h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: false } : { exists: true, data: () => ({ name: 'Ministry', ownerId: 'secret' }) });
+    const result = await POST(request({ ...defaultCommunitySettings(), isPublic: true, shortDescription: 'Hello' }));
+    expect(result.status).toBe(200);
+    expect(h.set).toHaveBeenCalledWith({ path: 'tenants/ministry/settings/community' }, expect.objectContaining({ isPublic: true, shortDescription: 'Hello' }));
+    expect(h.delete).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }));
+    expect(h.set).not.toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.anything());
+  });
   it('creates the default group only when it is missing', async () => {
     h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') || ref.path.includes('/channels/') ? { exists: false } : { exists: true, data: () => ({}) });
     expect((await POST(request())).status).toBe(200);

@@ -174,6 +174,7 @@ const ROUTE_TABLE = [
   { pattern: '/campaign/[campaignId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/checkin/[sessionId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/courses/[id]', entry: 'next-page', surface: 'public', public: true },
+  { pattern: '/products/[id]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/discover', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/s/[handle]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/event/[eventId]', entry: 'next-page', surface: 'public', public: true },
@@ -208,6 +209,12 @@ const ROUTE_TABLE = [
   // The ministry page. Public posts only; a scheduled post stays off it until
   // its UTC instant, decided at read time. Appended, never substituted.
   { pattern: '/p', entry: 'next-page', surface: 'public', public: true },
+  // #562 r2 — the public community landing page for a tenant with no
+  // subdomain (every Free tenant, and a hostless paid one). Keyed by the
+  // tenant's own id, not a slug, since this route exists only for the tenant
+  // that has none; a tenant with a real subdomain is reached at
+  // `{slug}.theharvest.app` instead. Appended, never substituted.
+  { pattern: '/c/[tenantId]', entry: 'next-page', surface: 'public', public: true },
 ] as const satisfies readonly AnalyticsRoute[];
 
 export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze(ROUTE_TABLE);
