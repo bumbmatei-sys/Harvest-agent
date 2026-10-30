@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 const NOT_CONFIGURED = 'Email sending is not set up on this server yet.';
+const DATABASE_UNAVAILABLE = 'This server is not connected to the database, so newsletters cannot be loaded or saved here.';
 const INTERNAL = 'Something went wrong. Try again.';
 const PROVIDER_DOWN = 'The email service did not respond in time. Nothing was changed. Try again in a moment.';
 
@@ -23,6 +24,11 @@ function isAdminConfigFailure(error: unknown): boolean {
 
 function notConfigured() {
   return NextResponse.json({ ok: false, error: 'not_configured', message: NOT_CONFIGURED }, { status: 503 });
+}
+
+/** No database credentials: nothing can be loaded or saved, drafts included. */
+function databaseUnavailable() {
+  return NextResponse.json({ ok: false, error: 'database_unavailable', message: DATABASE_UNAVAILABLE }, { status: 503 });
 }
 
 /**
@@ -71,7 +77,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
     console.error(`[email/actions] ${error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown error'}`);
-    if (isEmailNotConfigured(error) || isAdminConfigFailure(error)) return notConfigured();
+    if (isAdminConfigFailure(error)) return databaseUnavailable();
+    if (isEmailNotConfigured(error)) return notConfigured();
     if (isEmailProviderError(error)) {
       return NextResponse.json({ ok: false, error: 'provider_unavailable', message: PROVIDER_DOWN }, { status: 502 });
     }

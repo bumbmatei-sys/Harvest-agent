@@ -278,3 +278,12 @@ describe('createEmailApi', () => {
     await expect(down.overview()).rejects.toMatchObject({ code: 'network' });
   });
 });
+
+describe('createEmailApi without a database', () => {
+  it('shows the server\'s database message, not the drafts promise', async () => {
+    const message = 'This server is not connected to the database, so newsletters cannot be loaded or saved here.';
+    const api = createEmailApi('grace', async () => ({ status: 503, json: { ok: false, error: 'database_unavailable', message } }));
+    await expect(api.overview()).rejects.toMatchObject({ message, code: 'database_unavailable', notConfigured: false });
+    await expect(api.overview()).rejects.not.toMatchObject({ message: NOT_CONFIGURED_COPY });
+  });
+});

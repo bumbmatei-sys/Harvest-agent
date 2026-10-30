@@ -1,0 +1,70 @@
+{
+  "ticket": "#566",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "a8d6a92c9ce5cb503ead8c6bcf6414b1a1f9f7cc96f7081d0b6afb946a7a8b8b",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: the sidebar side starts from the current page and follows route changes (useState initialiser + one effect on activeTab). No other change."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "c84d1e6b92e941f0d6d424cd7d67ac9e6d27acf514da30177a8195c5cfd19c98",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: mount() accepts an optional section (default unchanged) and two cases pin the side to the page; every prior assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "02c24885385c8609d0f24a73eff3657871e5a1c883327f06cce9302adeac16f3",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "2f9a850dbce1f460c286ec21fea7cf86113221f9ae77213829463b2e3b02e245",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "e7c6cf2bcb53567618fbef5ce487dde0075094d03bdf09acf1824ed8820fedda",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "b1eadc163df793c04373cffd0c065b7fe5574804aa7408c4b3f5097c67a30e1a",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "907d79b2a66edd0fd65fdc36b46a26171ef904c77fa1dcba2661a826709219fa",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "6085c835012559fe3016f13cac4231257ea9aa00916c0c270ce80400a82718da",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "01b626f6ec1a1bdd9d1fdecc843e22e9f6093cb92a69bda24e1abe71cc0f8c54",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "8a9f95d9e42b832ed82f47f7a3b691ea1f5d05c7fa0cbf1ad6fe6785d5fa8a54",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "319b3ab1e269689d534298b09f4b509318f03591ff90f130e4ac5d9d9713041a",
+      "why": "APPENDED, NOT SUBSTITUTED — #566: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "ac4cc5960584f6991a1c3f9bd4f3c34a4f2b59004f90cc71adefee031bf90239",
+      "why": "APPENDED, NOT SUBSTITUTED — #566 after merging main (#561): both sides' additions combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2b27ed37884f236d841a0e1986454af681a03f88fb003ce7a3896c74ba85eb5e",
+      "why": "APPENDED, NOT SUBSTITUTED — #566 after merging main (#561): both sides' additions combined by the merge; nothing removed."
+    }
+  ]
+}

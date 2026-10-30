@@ -626,6 +626,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '83bc5f40b22a1987e3d85f2a215c231f09a7cadfa78479f6ac4941766d21fe2a',
     // #557 merge retains community navigation and sign-up pages.
     '22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566',
+    // APPENDED #566: the sidebar side starts from the current page and follows route changes; every gate and route unchanged.
+    'a8d6a92c9ce5cb503ead8c6bcf6414b1a1f9f7cc96f7081d0b6afb946a7a8b8b',
     // main at 902763a, where this branch started.
     '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
     // main at 133d557 — THE-291 (#434) removed the client-side write to plan.
