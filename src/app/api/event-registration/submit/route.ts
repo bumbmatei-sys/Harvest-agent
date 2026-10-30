@@ -27,6 +27,9 @@ import type { RecurrenceRule, RegistrationQuestion } from '@/hooks/queries/useEv
 
 export const dynamic = 'force-dynamic';
 
+/** Rows a capacity count may read before it is no longer provably complete. */
+const CAPACITY_READ_LIMIT = 5000;
+
 interface TicketType {
   id: string;
   name: string;
@@ -173,11 +176,22 @@ export async function POST(request: NextRequest) {
     // paid ticket whose Checkout hasn't completed) holds nothing — otherwise an
     // abandoned checkout would burn a seat. Capacity is re-checked at webhook
     // confirmation, where the seat is actually claimed.
+    // A recurring run is read by its own runDate (single-field, then filtered
+    // to this event), so a long series can never push this run's seats out of
+    // the window. Ordered and bounded: past the bound the count is not
+    // provably complete, and a capped ticket fails closed rather than oversell.
     const regSnap = await adminDb
       .collection('tenants').doc(tenantId).collection('registrations')
-      .where('eventId', '==', eventId)
-      .limit(5000)
+      .where(targetRunDate ? 'runDate' : 'eventId', '==', targetRunDate || eventId)
+      .orderBy('__name__')
+      .limit(CAPACITY_READ_LIMIT + 1)
       .get();
+    if (ticketType.capacity != null && regSnap.docs.length > CAPACITY_READ_LIMIT) {
+      captureHandledError(new Error('Event capacity read exceeds the supported limit'), {
+        step: 'event-registration-capacity', tenantId, ids: { eventId, ticketTypeId },
+      });
+      return NextResponse.json({ error: 'Could not check how many seats are left. Please contact the ministry.' }, { status: 503 });
+    }
     // Capacity is counted in SEATS, not registrations: a registration for a couple
     // holds `quantity` seats (BUG 5). Legacy rows with no `quantity` field count as 1.
     // For a recurring event, capacity is counted PER RUN: a registration for
@@ -187,7 +201,7 @@ export async function POST(request: NextRequest) {
     // event) matches the event's single implicit run.
     const soldForType = regSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      if (r.ticketTypeId !== ticketTypeId || r.status !== 'confirmed') return sum;
+      if ((targetRunDate && r.eventId !== eventId) || r.ticketTypeId !== ticketTypeId || r.status !== 'confirmed') return sum;
       if (!registrationMatchesRun(r.runDate, targetRunDate)) return sum;
       return sum + (Number(r.quantity) || 1);
     }, 0);

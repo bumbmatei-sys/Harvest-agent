@@ -170,9 +170,14 @@ export async function GET(request: NextRequest) {
       let ticketEvent = (eventId && eventMap[eventId]) || null;
       if (runDate && eventId && seriesMap[eventId] && ticketEvent) {
         const day = new Date(`${runDate}T00:00:00Z`).getTime();
-        const run = expandRuns(seriesMap[eventId], new Date(day - 86400000), new Date(day + 2 * 86400000))
+        const window = [new Date(day - 86400000), new Date(day + 2 * 86400000)] as const;
+        const run = expandRuns(seriesMap[eventId], ...window).find(candidate => candidate.runDate === runDate);
+        // A cancelled run still happened on a date: keep it, so the ticket is
+        // dated and can age into Past instead of reading "Date TBA".
+        const scheduled = run || expandRuns({ ...seriesMap[eventId],
+          recurrence: { ...seriesMap[eventId].recurrence!, cancelledRuns: [] } }, ...window)
           .find(candidate => candidate.runDate === runDate);
-        ticketEvent = { ...ticketEvent, startMillis: run?.start.getTime() ?? null, endMillis: run?.end.getTime() ?? null,
+        ticketEvent = { ...ticketEvent, startMillis: scheduled?.start.getTime() ?? null, endMillis: scheduled?.end.getTime() ?? null,
           ...(run ? {} : { status: 'cancelled' }) };
       }
       return {

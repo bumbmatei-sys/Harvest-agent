@@ -10,7 +10,7 @@ export function EventStartField({ value, locked, onValueChange, className }: {
     <div className="space-y-2">
       <Input aria-label="Start date" type="date" disabled value={value.slice(0, 10)} className={`h-auto min-h-11 sm:min-h-0 ${className}`} />
       <Input aria-label="Start time" type="time" value={value.slice(11)}
-        onChange={event => onValueChange(`${value.slice(0, 10)}T${event.target.value}`)} className={`h-auto min-h-11 sm:min-h-0 ${className}`} />
+        onChange={event => onValueChange(`${value.slice(0, 10)}T${event.target.value.slice(0, 5)}`)} className={`h-auto min-h-11 sm:min-h-0 ${className}`} />
     </div>
   );
 }

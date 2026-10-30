@@ -470,6 +470,61 @@
       "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
       "digest": "11cd7322f89c84292c209c270f92c265fd3cb734be8b03727550ef75b211b1c0",
       "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one webhook digest with its reason; prior pins and all assertions retained."
+    },
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "744de3e5c52b08a847817da4b0d2bddd93c32bb62a18126b5d45d09381753aab",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: per-run capacity is read by runDate (single-field) and filtered to this event, ordered by name and bounded; past the bound a capped ticket fails closed with 503 instead of overselling. Fees, registration, payment and CRM writes unchanged."
+    },
+    {
+      "file": "src/app/api/event-registration/__tests__/submit-route.test.ts",
+      "digest": "633262521b316c19b167db1636880c300b9910c421d7efc9f7181e21ed1395e2",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds same-date-other-event, capped overflow (503, no write) and uncapped overflow cases; the same-run fixture now carries its eventId as real rows do. Prior assertions retained."
+    },
+    {
+      "file": "src/app/event/[eventId]/page.tsx",
+      "digest": "90feef863bdfc6374b044fe0a7639c3d079de311ac0a59703d99bf50806e7aba",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: an overflowing capacity read shows no spots-left figure and reports to Sentry instead of failing the public page with a 500. A truncated count is still never shown."
+    },
+    {
+      "file": "src/app/event/[eventId]/__tests__/page.test.tsx",
+      "digest": "b1620bce003fbee16ed4cff931a2fae9f984c6a093dd816d112fd2ae89fdeab3",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the overflow case now asserts no figure, the page renders and the overflow is reported (it asserted the 500 the security review flagged). Other assertions retained."
+    },
+    {
+      "file": "src/app/api/my-registrations/route.ts",
+      "digest": "56eb5b2f9b5e75537d2537d974298f09f7d52ee24e591513a4467f9c2769f850",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a ticket whose run no longer expands keeps its scheduled date (and is marked cancelled) so it can age into Past instead of reading Date TBA."
+    },
+    {
+      "file": "src/app/api/my-registrations/__tests__/route.test.ts",
+      "digest": "299f45c6dc1052f3579dd3b591130ca29a99dd2a9dc087482623b17c1bf1b53b",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: adds the cancelled-run dating case; reverting the route fix fails it. Prior assertions retained."
+    },
+    {
+      "file": "src/components/UserEvents.tsx",
+      "digest": "493ff09d91721289ca5f6026b02dc16e473f57560483850c6318e3494b8edabe",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: a series is listed at its next run and not beside the member's own run tickets, and a cancelled event or run leaves Upcoming. Covered by UserEvents.series-rows.test.tsx; reverting fails all three cases."
+    },
+    {
+      "file": "src/components/events/EventStartField.tsx",
+      "digest": "512efa9775f89e9e4fd9661e79c4619f134b53277f754960ec6aeb610c261f2f",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: the locked start time keeps only HH:mm from the time input, matching parseEventDateTime."
+    },
+    {
+      "file": "src/__tests__/THE-345.paid-events-and-count-guards.test.ts",
+      "digest": "0b12605fe9e0638a2561db0092bfca2c01d912d43fb8e56252ac9c5e6a27dfb9",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-308-guards.test.ts",
+      "digest": "ac842b4b54b23f878c24f2b71630ac60ad458f5f2891f42ff3d80b1bdf6a9312",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "5e47f4098bb70e7b21ee1d80bacfe09129f49b1c5bd4bac6f394ba41522382fb",
+      "why": "APPENDED, NOT SUBSTITUTED — #556 review r12: appends one submit-route digest with its reason; prior pins and every assertion retained."
     }
   ]
 }

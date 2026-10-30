@@ -146,6 +146,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df', '#556 F1/F3: read current membership and include the chosen run in confirmation email; money and CRM writes retained'],
     ['6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf', '#556 — per-run registration cutoffs, cancellation records and manual-refund flags; query shapes and CRM records retained'],
     ['4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708', '#556 r2 B4: re-read the deadline before creating Checkout; existing fees, registration and CRM writes retained'],
+    ['744de3e5c52b08a847817da4b0d2bddd93c32bb62a18126b5d45d09381753aab', '#556 r12: per-run capacity read by runDate, ordered and bounded, failing closed for a capped ticket; fees, registration and CRM writes retained'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],

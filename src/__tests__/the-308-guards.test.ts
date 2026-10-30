@@ -582,6 +582,8 @@ describe('9-10 · event write paths are byte-identical', () => {
       '6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf',
       // APPENDED #556 r2 B4: re-read the cutoff immediately before Checkout creation.
       '4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708',
+      // APPENDED #556 r12: per-run capacity read by runDate, ordered and bounded, failing closed for a capped ticket.
+      '744de3e5c52b08a847817da4b0d2bddd93c32bb62a18126b5d45d09381753aab',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

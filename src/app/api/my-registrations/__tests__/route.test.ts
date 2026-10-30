@@ -154,3 +154,21 @@ describe('r9.3 recurring ticket times', () => {
     expect(tickets[2]).toMatchObject({ runDate: null, event: { startMillis: 1111 } });
   });
 });
+
+describe('#556 review r12 — a cancelled run keeps its date', () => {
+  it('dates a cancelled run ticket at its scheduled instant and marks it cancelled', async () => {
+    const ts = (value: string) => ({ toMillis: () => new Date(value).getTime() });
+    mockCollGet.mockResolvedValueOnce({ docs: [
+      doc('kept', { eventId: 'series', runDate: '2031-03-23', status: 'confirmed', amount: 0 }),
+      doc('cancelled-run', { eventId: 'series', runDate: '2031-03-30', status: 'confirmed', amount: 0 }),
+    ] }).mockResolvedValueOnce({ docs: [] });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({
+      title: 'Weekly', status: 'published', startDate: ts('2031-03-23T18:00:00Z'), endDate: ts('2031-03-23T19:00:00Z'),
+      timeZone: 'Europe/Berlin', recurrence: { freq: 'weekly', count: 2, cancelledRuns: ['2031-03-30'] },
+    }) });
+    const { tickets } = await (await GET(makeRequest('t1'))).json();
+    const cancelled = tickets.find((t: { runDate: string }) => t.runDate === '2031-03-30');
+    expect(cancelled.event).toMatchObject({ status: 'cancelled', startMillis: Date.UTC(2031, 2, 30, 17), endMillis: Date.UTC(2031, 2, 30, 18) });
+    expect(tickets.find((t: { runDate: string }) => t.runDate === '2031-03-23').event.status).toBe('published');
+  });
+});

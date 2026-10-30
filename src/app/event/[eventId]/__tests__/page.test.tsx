@@ -6,6 +6,8 @@ vi.mock('@/lib/server-tenant', () => ({ getTenantFromHost: async () => ({ id: 't
 vi.mock('@/components/PublicEventRegistration', () => ({ default: () => null }));
 vi.mock('@/components/PublicRouteAnalytics', () => ({ default: () => null }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: mocks.collection } }));
+const { captureHandledError } = vi.hoisted(() => ({ captureHandledError: vi.fn() }));
+vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError }));
 import PublicEventPage from '../page';
 
 beforeEach(() => {
@@ -41,9 +43,14 @@ describe('r9.9 public capacity read', () => {
     expect(tree.props.children[1].props.event.spotsLeftByTicket).toEqual({ adult: 6 });
     expect(JSON.stringify(tree.props.children[1].props)).not.toContain('email');
   });
-  it('fails visibly instead of presenting a truncated capacity count', async () => {
+  // #556 review r12: a truncated count is still never presented, but the shared
+  // registration page stays up (it used to 500) and the overflow is reported.
+  it('shows no figure instead of a truncated capacity count, keeps the page up and reports it', async () => {
     mocks.get.mockResolvedValueOnce(event([{ id: 'adult', capacity: 10000 }]))
       .mockResolvedValueOnce({ docs: Array.from({ length: 5001 }, () => ({ data: () => ({ status: 'confirmed', ticketTypeId: 'adult' }) })) });
-    await expect(page()).rejects.toThrow('capacity read exceeds');
+    const tree = await page();
+    expect(tree.props.children[1].props.event.spotsLeftByTicket).toBeNull();
+    expect(captureHandledError).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('capacity read exceeds') }),
+      expect.objectContaining({ step: 'public-event-spots-left' }));
   });
 });

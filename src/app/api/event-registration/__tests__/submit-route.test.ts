@@ -672,10 +672,46 @@ describe('POST /api/event-registration/submit — recurring event runs', () => {
     };
     mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
     mockCollGet.mockResolvedValueOnce({
-      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-11' }) }],
+      docs: [{ data: () => ({ eventId: 'e1', ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-11' }) }],
     });
     const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
     expect(res.status).toBe(410);
+  });
+
+  // #556 review r12: the run is read by its own runDate, so another event's
+  // registration on the same date must not count against this run.
+  it('counts capacity PER RUN — a different event on the same date does not fill this run', async () => {
+    const cappedRecurring = {
+      ...recurringEvent,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ eventId: 'other-event', ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-11' }) }],
+    });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(200);
+  });
+
+  const overflow = () => ({
+    docs: Array.from({ length: 5001 }, () => ({ data: () => ({ eventId: 'e1', ticketTypeId: 'tt1', status: 'cancelled', runDate: '2027-01-11' }) })),
+  });
+  it('fails closed when a capped run cannot be counted completely', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({
+      ...recurringEvent, ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 50, order: 0 }],
+    }) });
+    mockCollGet.mockResolvedValueOnce(overflow());
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toMatch(/seats are left/);
+    expect(mockAdd).not.toHaveBeenCalled();
+    expect(mockDocSet).not.toHaveBeenCalled();
+  });
+  it('an uncapped ticket still registers past the read bound', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    mockCollGet.mockResolvedValueOnce(overflow());
+    expect((await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }))).status).toBe(200);
   });
 });
 

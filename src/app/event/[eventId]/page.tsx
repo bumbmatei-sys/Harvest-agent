@@ -5,6 +5,7 @@ import PublicEventRegistration from '@/components/PublicEventRegistration';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 import { readGivingLinks } from '@/components/donations/giving-providers';
 import { resolveEventPaymentLinks } from '@/lib/event-payment-claims';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,17 +55,25 @@ export default async function PublicEventPage({
       .orderBy('__name__')
       .limit(5001)
       .get();
-    if (regSnap.docs.length > 5000) throw new Error('Event capacity read exceeds the supported limit');
-    const soldByTicket: Record<string, number> = {};
-    for (const d of regSnap.docs) {
-      const r = d.data();
-      if (r.status !== 'confirmed') continue;
-      soldByTicket[r.ticketTypeId] = (soldByTicket[r.ticketTypeId] || 0) + (Number(r.quantity) || 1);
-    }
-    spotsLeftByTicket = {};
-    for (const t of data.ticketTypes) {
-      if (t.capacity == null) continue;
-      spotsLeftByTicket[t.id] = Math.max(0, t.capacity - (soldByTicket[t.id] || 0));
+    if (regSnap.docs.length > 5000) {
+      // Past the bound the count is not provably complete, so the page shows no
+      // figure rather than a truncated one, and stays up. The submit route still
+      // enforces the real capacity, failing closed at the same bound.
+      captureHandledError(new Error('Event capacity read exceeds the supported limit'), {
+        step: 'public-event-spots-left', tenantId: tenant.id, ids: { eventId },
+      });
+    } else {
+      const soldByTicket: Record<string, number> = {};
+      for (const d of regSnap.docs) {
+        const r = d.data();
+        if (r.status !== 'confirmed') continue;
+        soldByTicket[r.ticketTypeId] = (soldByTicket[r.ticketTypeId] || 0) + (Number(r.quantity) || 1);
+      }
+      spotsLeftByTicket = {};
+      for (const t of data.ticketTypes) {
+        if (t.capacity == null) continue;
+        spotsLeftByTicket[t.id] = Math.max(0, t.capacity - (soldByTicket[t.id] || 0));
+      }
     }
   }
 

@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarCheck, MapPin, Clock, Globe, Ticket, QrCode, X } fro
 import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import QRCode from 'qrcode';
 import { isSafeOnlineLink } from '../lib/events/online-link';
+import { expandRuns } from '../lib/events/recurrence';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
@@ -164,7 +165,18 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           const e = d.data() as any;
           if (e.status !== 'published') return; // hide drafts / cancelled / completed
           const start = e.startDate;
-          const startMillis = start && typeof start.toMillis === 'function' ? start.toMillis() : null;
+          let startMillis = start && typeof start.toMillis === 'function' ? start.toMillis() : null;
+          if (e.recurrence && startMillis != null) {
+            // A member's own run tickets already list this series, one row per
+            // run; a bare series row beside them would be a duplicate.
+            if (tickets.some((t) => t.eventId === d.id && t.runDate && t.event?.status !== 'cancelled')) return;
+            // A series is listed at its next run, never its (possibly past) first.
+            const end = e.endDate && typeof e.endDate.toMillis === 'function' ? e.endDate.toMillis() : startMillis;
+            const next = expandRuns({ startDate: new Date(startMillis), endDate: new Date(end), timeZone: e.timeZone, recurrence: e.recurrence },
+              new Date(todayMs), new Date(todayMs + 366 * 86400000), { maxCount: 1 })[0];
+            if (!next) return; // the series has no upcoming run
+            startMillis = next.start.getTime();
+          }
           byId.set(d.id, {
             id: d.id,
             title: e.title || 'Event',
@@ -183,6 +195,9 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
           const id = t.eventId!;
           // Each recurring run remains reachable even when the series itself was read.
           if (!t.runDate && byId.has(id)) return;
+          // A cancelled event or run is no longer upcoming (its registrant was
+          // emailed); it must not linger here as an undated row.
+          if (t.event?.status === 'cancelled') return;
           byId.set(eventId, {
             id,
             rowKey: eventId,
