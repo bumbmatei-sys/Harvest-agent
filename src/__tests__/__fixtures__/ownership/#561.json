@@ -346,6 +346,31 @@
       "file": "src/app/api/community/join/route.test.ts",
       "digest": "ae96e8e27b28594630080e1277b5e6c11d3d9965eb027906d81d997c8c0cb843",
       "why": "#561 r3 review B1 required tests: adds regression coverage proving a manageCRM-edited contact email cannot unblock a victim's address on rejoin, a profile email that differs from the verified token email leaves that other address blocked, and an unverified token email clears nothing; adjusts the departure-privacy fixture's auth mock to carry an explicit verified token email matching the member's real address so the existing happy-path unblock assertions still exercise that path, and narrows the unlinked-duplicate-contact assertion to reflect that rejoin now only touches contacts owned by the caller's own uid."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "e3bdbb2e66c3912e3f1442ad800ef252a0fd945fcff2e6fd063e8905d753c632",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556, #565): #561's community membership rules plus #565's two tightenings (client event updates may not touch schedule/status; client registrations may not carry seat, payment, run, refund or cancellation fields). Merged without conflict; the emulator rules suite passes 617/617 on this tree."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "57bc2ccb53e6c09ca17551db87ef67af1fc6b049aa7fd6def761257289e5043a",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): the route-count conflict keeps both exclusion sets, #561's community join/leave/delete-data routes and #556's event edit/cancel routes; the baseline stays at 142 and every assertion is retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "3acd57d0a8dea966050f5fc0725b56640fa70b7bf619e40e784a84cbdbe19fe3",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): #556's event-navigation updates combined with #561's additions by the merge; nothing else changed."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "6e00cd15d5fad69b1fb8a844ad9cbe54c13ab21536db4cc629c0f9bf6a07f6f6",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): both sides' appended sweep entries combined by the merge; nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "2b3d794a4f55b7f65412653f006de436369d263d6483f468d8d0d1807d2000b3",
+      "why": "APPENDED, NOT SUBSTITUTED — #561 after merging main (#556): both sides' appended pins combined by the merge; nothing removed."
     }
   ]
 }
