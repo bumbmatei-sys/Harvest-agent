@@ -80,6 +80,31 @@
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "b039ea4a58b78d942327c5aed0e4d6c0ecb9bb83e41055b5e849507755ae7ad3",
       "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#557, #556): main's version of this shared guard plus #560's own appended entries, combined by the merge with nothing removed or rewritten."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "a3cc9ffc75baa98aef3185e4ef56978d191b8f1a6a2c23279758485bc1a896dd",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/email/service.ts",
+      "digest": "e59caa95afc58f761d3910ed3dce5f144da97e1110aba45cfe17f5f3186dbecb",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/email/__tests__/helpers.ts",
+      "digest": "de6bf827b0b45405b60f69d4c675c239bf1f6cdf414a0da13557a8a8c083c88e",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "07d95afbdf1ce7fae0afa27260bec2ac50763bdc9a6532a46ccc01d79f7b77f0",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): #561's hashed email-block keys and pre-send recheck combined with #560's theme additions by the merge; email and community suites pass (855 tests)."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "3aca2ceb89ef5bdec3b728684c1c0c34f1935cc4a1016e079c1c8469a7d9b189",
+      "why": "APPENDED, NOT SUBSTITUTED — #560 after merging main (#561): the route-inventory conflict keeps both dev-only previews (/dev/email-themes and /dev/join-crm); every assertion retained."
     }
   ]
 }

@@ -1,23 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadScopedUserDocs } from './loadScopedUserDocs';
-const calls = vi.hoisted(() => ({ getDocs: vi.fn() }));
-vi.mock('@/firebase', () => ({ db: {} }));
-vi.mock('firebase/firestore', () => ({
-  collection: (_db: unknown, name: string) => name,
-  documentId: () => '__name__',
-  where: (field: string, op: string, value: unknown) => ({ field, op, value }),
-  orderBy: (field: string) => ({ order: field }),
-  limit: (max: number) => ({ max }),
-  query: (collection: string, ...constraints: unknown[]) => ({ collection, constraints }),
-  getDocs: calls.getDocs,
-}));
-describe('scoped user picker', () => {
-  it('filters each platform scope before its cap and merges the results', async () => {
-    calls.getDocs.mockImplementation(async (q) => ({ docs: [{ id: String(q.constraints[0].value) }] }));
-    const docs = await loadScopedUserDocs('harvest', true, 200);
-    expect(docs.map(doc => doc.id)).toEqual(['harvest', 'null', '']);
-    expect(calls.getDocs.mock.calls.map(([q]) => q.constraints)).toEqual(['harvest', null, ''].map(value => [
-      { field: 'tenantId', op: '==', value }, { order: '__name__' }, { max: 200 },
-    ]));
+const calls = vi.hoisted(() => ({ fetch: vi.fn() }));
+vi.mock('@/utils/auth-fetch', () => ({ authFetch: calls.fetch }));
+beforeEach(() => vi.resetAllMocks());
+describe('scoped community picker', () => {
+  it('uses the authenticated server projection and applies its cap after loading', async () => {
+    calls.fetch.mockResolvedValue({ ok: true, json: async () => ({ people: ['legacy', 'joined', 'third'].map(id => ({ id, displayName: id, email: '', role: 'user' })) }) });
+    const docs = await loadScopedUserDocs('harvest', true, 2);
+    expect(calls.fetch).toHaveBeenCalledWith('/api/community/settings?tenantId=harvest&includeNull=true');
+    expect(docs.map(doc => doc.id)).toEqual(['legacy', 'joined']);
+    expect(docs[1].data()).toEqual({ displayName: 'joined', email: '', role: 'user' });
+  });
+  it('surfaces server refusal and malformed results instead of showing an empty list', async () => {
+    calls.fetch.mockResolvedValueOnce({ ok: false });
+    await expect(loadScopedUserDocs('a', false, 200)).rejects.toThrow('Could not load');
+    calls.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ people: [{ id: 'u' }] }) });
+    await expect(loadScopedUserDocs('a', false, 200)).rejects.toThrow('Invalid');
   });
 });

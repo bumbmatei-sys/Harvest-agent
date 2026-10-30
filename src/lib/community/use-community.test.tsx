@@ -51,14 +51,14 @@ describe('tenant community reads', () => {
     const settings = defaultCommunitySettings(); settings.rules = { enabled: true, items: ['Rule'], version: 2 };
     expect(needsCommunityEntry(settings, member.member)).toBe(true);
     await act(async () => member.save(settings, {}));
-    expect(firestore.set).toHaveBeenCalledWith('tenants/a/communityMembers/u', { rulesAcceptedVersion: 2, answers: { q: 'yes' }, answeredAt: 'timestamp' });
+    expect(firestore.set).toHaveBeenCalledWith('tenants/a/communityMembers/u', { rulesAcceptedVersion: 2, answers: { q: 'yes' }, answeredAt: 'timestamp' }, { mergeFields: ['rulesAcceptedVersion', 'answers', 'answeredAt'] });
     settings.questions.enabled = true;
-    await act(async () => member.save(settings, { q: 'new', __community_questions_pending__: 'true' }));
+    await act(async () => member.save(settings, { q: 'new', __community_questions_pending__: 'true', communityQuestionsPending: 'true' }));
     expect(firestore.set.mock.lastCall![1].answers).toEqual({ q: 'new' });
     await act(async () => root.unmount());
   });
   it('asks newly enabled questions after a rules-only entry', () => {
     const settings = defaultCommunitySettings(); settings.questions.enabled = true;
-    expect(needsCommunityEntry(settings, { rulesAcceptedVersion: 1, answeredAt: 'time', answers: { __community_questions_pending__: 'true' } })).toBe(true);
+    for (const key of ['__community_questions_pending__', 'communityQuestionsPending']) expect(needsCommunityEntry(settings, { rulesAcceptedVersion: 1, answeredAt: 'time', answers: { [key]: 'true' } })).toBe(true);
   });
 });

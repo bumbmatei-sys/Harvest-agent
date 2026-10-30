@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 import { defaultCommunitySettings } from '@/lib/community/settings';
 
-const h = vi.hoisted(() => ({ permission: vi.fn(), admin: vi.fn(), get: vi.fn(), set: vi.fn(), delete: vi.fn(), count: vi.fn() }));
+const h = vi.hoisted(() => ({ permission: vi.fn(), admin: vi.fn(), get: vi.fn(), set: vi.fn(), delete: vi.fn(), count: vi.fn(), people: vi.fn() }));
+vi.mock('@/lib/community-membership-server', () => ({ communityPeople: h.people }));
 vi.mock('@/lib/api-auth', () => ({ requireTenantPermission: h.permission, requireTenantAdmin: h.admin }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
   collection: (name: string) => ({
@@ -11,7 +12,7 @@ vi.mock('@/lib/firebase-admin', () => ({ adminDb: {
   }),
   runTransaction: (fn: (tx: unknown) => unknown) => fn({ get: h.get, set: h.set, delete: h.delete }),
 } }));
-import { POST } from './route';
+import { GET, POST } from './route';
 
 function request(next = defaultCommunitySettings(), previous = defaultCommunitySettings()) {
   return new NextRequest('http://localhost/api/community/settings', { method: 'POST', body: JSON.stringify({ tenantId: 'ministry', next, previous }) });
@@ -20,6 +21,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.admin.mockResolvedValue({ uid: 'admin', tenantId: 'ministry', isSuperAdmin: false });
   h.permission.mockResolvedValue({ uid: 'admin' });
+  h.people.mockResolvedValue(Array.from({ length: 7 }, (_, i) => [String(i), { tenantId: 'ministry', displayName: 'Member', email: '', role: 'user' }]));
   h.count.mockResolvedValue({ data: () => ({ count: 7 }) });
   h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: false } : { exists: true, data: () => ({ name: 'Ministry', subdomain: 'ministry', ownerId: 'secret' }) });
 });
@@ -73,8 +75,28 @@ describe('community settings API', () => {
     h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: true, data: () => ({ ...defaultCommunitySettings(), isPublic: true }) } : { exists: true, data: () => ({}) });
     expect((await POST(request())).status).toBe(400);
     expect(h.set).not.toHaveBeenCalled();
-    h.count.mockRejectedValue(new Error('offline'));
+    h.people.mockRejectedValue(new Error('offline'));
+    h.get.mockImplementation(() => ({ exists: false }));
     expect((await POST(request({ ...defaultCommunitySettings(), isPublic: true }))).status).toBe(500);
     expect(h.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('community directory projection', () => {
+  it('requires the existing tenant admin gate', async () => {
+    h.admin.mockResolvedValue(NextResponse.json({ error: 'Denied' }, { status: 403 }));
+    expect((await GET(new NextRequest('http://localhost/api/community/settings?tenantId=other'))).status).toBe(403);
+    expect(h.people).not.toHaveBeenCalled();
+  });
+  it('returns directory fields only, treating foreign admins as members', async () => {
+    h.people.mockResolvedValue([['joined', { tenantId: 'other', role: 'admin', permissions: { fullAccess: true }, plan: 'ministry', displayName: 'Joined', email: 'joined@example.test', affiliateEarnings: 99 }]]);
+    const response = await GET(new NextRequest('http://localhost/api/community/settings?tenantId=ministry&includeNull=true'));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ people: [{ id: 'joined', displayName: 'Joined', email: 'joined@example.test', role: 'user' }] });
+    expect(h.people).toHaveBeenCalledWith('ministry', false);
+  });
+  it('surfaces failed directory reads', async () => {
+    h.people.mockRejectedValue(new Error('offline'));
+    expect((await GET(new NextRequest('http://localhost/api/community/settings?tenantId=ministry'))).status).toBe(503);
   });
 });

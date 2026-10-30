@@ -155,6 +155,7 @@ const RESOLVED_PATH: Record<string, string> = {
   // the second segment is a document id and naming the section beside it is not
   // worth reopening the question.
   '/admin/[section]/[itemId]': '/admin/docs/kR91mVzQ7dLpAe30',
+  '/community/[tenantId]': '/community/tenant-a',
   // Every named section: the path IS the pattern, which is the point of THE-227.
   ...Object.fromEntries(ADMIN_SECTION_SLUGS.map((slug) => [`/admin/${slug}`, `/admin/${slug}`])),
   '/blog/[id]': '/blog/7bQxs2LmNfA4dR8v',
@@ -420,7 +421,15 @@ describe('1 — every route in the stated list emits a pageview', () => {
     expect(themesPage).not.toMatch(/PublicRouteAnalytics/);
     expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(themesPreview);
 
-    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r) && r !== socialPreview && r !== themesPreview).sort()).toEqual(
+    // Join-CRM screenshots: same dev-only contract as the social scheduler.
+    const joinCrmPreview = '/dev/join-crm';
+    expect(found).toContain(joinCrmPreview);
+    const joinCrmPage = readFileSync(path.join(ROOT, 'src/app/dev/join-crm/page.tsx'), 'utf8');
+    expect(joinCrmPage).toContain("if (process.env.NODE_ENV === 'production') notFound();");
+    expect(joinCrmPage).not.toMatch(/PublicRouteAnalytics/);
+    expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(joinCrmPreview);
+
+    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r) && r !== socialPreview && r !== themesPreview && r !== joinCrmPreview).sort()).toEqual(
       NEXT_ROUTES.map((r) => r.pattern).sort(),
     );
   });

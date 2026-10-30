@@ -1,0 +1,606 @@
+{
+  "ticket": "THE-999998",
+  "note": "Provisional identifier for feat/community-join-crm chunk (a), separate from prior community work and #557; replace filename and ticket when an actual ticket is assigned.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "d6da17272ef0eede381135ec2c05be843f25cc56d0d93dccba8c43454d747f08",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "78dfb7eae59652538ece3eebb793c79064fdb4b5eac274548871eb96a40d8de3",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "c7e7bb295bfdb1b5796cde40f9cbc41e4682377d1c10328dd9629d7c3846a9f2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "4f771c4680f433e05540806d7e3e941b0094a166a9264b5de9563147e930d6a9",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "fbcb5b253c442ca3996db6c90ed1ae8a435eaa2c1771c5fbddbe367911abbc9b",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "1cb556cf248e3f1b3a33b1371dc2090b0d5d3e7fc91c1ed015a188d5f7d5494d",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community-membership.test.ts",
+      "digest": "e7c01f48165fa7094bc48dc361c21e8e3e2810ad1d5c5ee9c99525b249515a5c",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/join/route.ts",
+      "digest": "9501fe429f70bc78d6484b3a881bf25d9029c8a084410cf11e652c6abaa7f1f7",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "585abda0a3b4690cdc27831f9641abd040d1995567dbd1f385630424a6fe99cb",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/app/api/community/leave/route.ts",
+      "digest": "c0f70412a4b6caad0b5d7bf81a41af1a609733dd75fd78808a7bea7213cc56a2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "367bd5ac15a94d99d19a8237ccc558a2369300136c0626393c598e860c1ac4f2",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "cb79411583cbae782dfb10cb96f1d3f30d4cb2e40934110de76094cdc354a355",
+      "why": "Community join CRM chunk (a) adds server-authoritative multi-community membership and preserves legacy onboarding; executable API and rules tests cover authorization and idempotency."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "abd970a1f4bac9c9019c7277a290b6ad903f88afb79c2eb264c87d772a338300",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "d71619d92af287bab8d5d36f0a3b92631fcd30948138e65294213070e11620f1",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "73542541e1a91523238ce19dde8d1291f3f6af2c3b1dc4d14fd57b505dbf25b5",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "a014bce9d206b07f07d33fdb070c1821a712edaeb4ff144184ab47809690f7cb",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "a014becad280147e51475f4ce2a3cd6e8f465b64c4dbaa5b0a29db9af26fb675",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "72c6cad5e3fc4dc310885daee692e938c6a334abf08aafc4a5e2a2eb2b68aa02",
+      "why": "Community join chunk (a) preserves server membership metadata while replacing the full answers map, so completed onboarding clears the pending-questions marker; tests cover the distinction."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "02643d21e9833d29659a49a7a1cab264a5b242c63a99d64f63c78b13bf2d3619",
+      "why": "The join route fixture now models Firestore recursive map merging; mutation proves the rejoin regression test rejects retaining the pending marker after answers are submitted."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "dda5ac9f15d4b445e5755f836d628b8363bad519e8893953854ed3c242c2efd6",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "1614103205f1a0de3286205e898d2a53ed261c6373824aace11aa09f77cc3cb4",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "7a9acd74f255739da106a81c7a2bf437999383e5c3224fbf80359ace82edbbb0",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.test.ts",
+      "digest": "f52deb650cb7df3d8f47bda68d3b089529bb2e8eed818a284a4b5829a28393cb",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/dm-counterpart/route.ts",
+      "digest": "c228ccd402467ca83491d90acdab4dcaf33bf3b0c78430e58d9faa43cb2c768d",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "0b7c7b1f4174fd7b669e86ffe25ab4ec69aaeb23863f52d721dc472203ef23a9",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "6bb593520bf43bdad1aa34a939e4d72b38fe68649f23a76a7e05de1bf664abae",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "853f241fbd4fcbc31f483106314fc42d7c0e0cce92c8a814fcafadd480b44adf",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "5a71df557b579bf54b7636c61a05c1a2686263b47a4e83a6e1c70ca1c0305a01",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/livestream/comment/__tests__/route.test.ts",
+      "digest": "286d75ea0e58594e9603b0edf26f094f78446bafad0ccebbc7d01d4099a90201",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/livestream/comment/route.ts",
+      "digest": "e476a82a81da4a58c8f33cae4735ac849d7d91b07e3e4482cdf9dcd2fb05ca88",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "1938b833b75cc6109cb7e91fd6dc7c241515829b63ba04265229f052197e0c54",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "8f56507a08e98d184a0605f42b6b2f9c423d7ee57f2a9ca2d289ee2d75524cd9",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "aeec6b55897de5e2cb93cde31387d735d78db4069c59280bc737f602b00bd666",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "3a49093eaecf53a98dd84d5d6e179158d0d71fbac26c2789a57b2c70f39beaac",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/FreeMemberShell.tsx",
+      "digest": "67f607a37477b857813eb4bda465abe2a573adca766c1cc48f9a51a6aa91f138",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/OnboardingAnswers.tsx",
+      "digest": "2e2854b79d5a6233c5c061d3692b0858be8ef19a7f182b1f79d905f73850efa7",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "f329a9fb451566055e98185a4f3cd1a4ee080eadd67949b14927cd24a436181d",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/contexts/TenantContext.tsx",
+      "digest": "a6449e3757c9a9f6e771ddd773b6f8c7cc36fb595b10db295d3254eefdb7ab1e",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/api-auth.ts",
+      "digest": "4f7c6f742f4c7d96f906cc029fb284d6e9b3e1a1b1825beaef2a30570e7b4c58",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "2a2c0fd5c8af0cca96e516110756b6204e7e42fda8b462b1709738660483e4db",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership.test.ts",
+      "digest": "5b4518d6b923f6127dc94d3f8c74322570e7c0ded659920dd404ba367a3d6949",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "952128b8bab616a3dcc118dad4e4fd3e8c5d5ad81a5efb03d0246f6d4e97db80",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/settings.ts",
+      "digest": "e90de6f46feda82c059daf545a5774f515fc4866d9c60c7e3dc43a48fda89dcc",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/use-community.test.tsx",
+      "digest": "f4bfc3d8332727cb17cc627047c44e8d088fae1f68e06738459f9d650192d934",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community/use-community.ts",
+      "digest": "71c0c5e841ddc90c57aea0826b4923ec4a47f95657bd4d018bebe4fee42ec21a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "dc772fe6668dde90f155b8ccdc70484f63d82698ed2041ef8f1af0b63d927144",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/community.rules.test.ts",
+      "digest": "0dd8c1be29ee7e18b27720c2e0489a441229d76e6b580433d66d16414d424d53",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "tests/rules/messaging-isolation.rules.test.ts",
+      "digest": "f567574b366bb60050a757a61b75c54869da762f069ab25e20e19fdf33e198d1",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "40b0effb149fae88d65f286d5312d01b63fcf6dcf1f5c3f124ea52a0d28fbee3",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-directory.test.ts",
+      "digest": "23682bb69735032cafc8b5bf788b721b603422975f827830f04a18f5929adc68",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-server.test.ts",
+      "digest": "a7531cf0e0d7cf06efcba30eb704270e297a48272aca707dd3d227f57b3e6c3c",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/lib/community-membership-server.ts",
+      "digest": "ff58f3612e1f082c67ad1dc9a1bddab6deb81719536b247ccb1208af0a9bf076",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "ccad2eb8a64227cc0142b9842c323e8f4f45f0378ef495ce7adb1eb51a6894d5",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.review.test.ts",
+      "digest": "0bc8a23ba8e19f1562cb0ab5e032a0877c10558f3080afb397a269adf56af182",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/loadScopedUserDocs.ts",
+      "digest": "09ba8b8d37ea5b88247d9fc2c0c210f3b8bef836cf2c4e03ebede1140c4853ab",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "72bc548949f3ebf846ba84dbf257eba5ef101893ae1bdcf7e1d3c125e1538921",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "23d58dbd32dbc6ce25b56968784005390e629e97c398a5cc6e5b2d491a3da239",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "01387a68143f6399a23ec061ffde87f72ed6fea4222c4e67e430727145bf7619",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "44aec74ea565c353175ce6baa17a2675bc2a0c14d1ed8277e0fd5be0f6e1ea1a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "bac047a0ce95ede4798cc18c412f3dcdd48c7f2b6d527b3adc0506448fb99ce1",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "bdfa62260839fe520fa19e84f44bc2a3592caaab4b108df1f0150946133b360a",
+      "why": "Community join CRM chunk (b) migrates community content to active membership while preserving tenant staff and money boundaries; records the legal pending marker, membership directory and exact join/leave route exemptions."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "f5c34f65b55cfb722fe693ca097efeb9cef0a283fad1974bb38864328913c657",
+      "why": "Community join CRM chunk (c) fixes the DM access-call budget with null-guarded bound membership, counterpart and parent reads; preserves counterpart authority, participant field restrictions, leave denial and moderation semantics without changing rules tests."
+    },
+    {
+      "file": "src/components/__tests__/THE-348.member-composer.guards.test.ts",
+      "digest": "00b9453a5b6a1edfd67ce5cf49a15c45a70816a399866808f1a1f2839b7a744d",
+      "why": "Community join CRM chunk (d) records the reviewed rule-string updates in the composer guards: the tenant gate expects isTenantAdmin(X) || isActiveCommunityMember(X) where belongsToTenant(X) was, and the counterpart check expects the null-guarded get(path) form. Every property \u2014 tenant check, sender identity, payload keys, protected UID roles \u2014 is still asserted."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.news-feed.test.ts",
+      "digest": "62cf18e95100a0cd86883fae1f987f9c55f0ee31da1661d347ece84be0fd2f04",
+      "why": "Community join CRM chunk (d) appends the reviewed multi-community /community_posts block digest to this suite's accepted list and moves its clause fallback to the new, equivalent-or-stricter clauses; the matrix transcription, no-plan-rule, index, erasure and permalink checks are untouched."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "5f36b440f3f0838ac3d0c1534c4afd02f7b8ae4d7a713798f3fb8e1bd146fdd5",
+      "why": "Community join CRM chunk (d) appends UserMessages.tsx at its reviewed community-join digest to this suite's accepted-values list, recording the tenant-bound DM admin gate; the historical source comparisons and every recorded rendering baseline are untouched."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "54d2963304d2a6f72b08cd06f2e7f7e213b8df20f8661ddc776277d0f896d283",
+      "why": "Community join CRM chunk (d) appends the UserMessages.tsx community-join digest to THE-332's NOT_OURS accepted set \u2014 append, never substitute \u2014 because the tenant-bound DM admin gate moves no nav group, rail entry or flyout this ticket pins."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "5548dd2b8d8e1394c381fe8e49b72adc70e8ddb830b7e54beedec11a359010e6",
+      "why": "Community join CRM chunk (d) moves the news-feed suite's current digest in CONTENT_ASSERTING_MOVED to the state this branch leaves it in, chaining every earlier hash in the reason and keeping the row in CONTENT_ASSERTING and every other pinned entry untouched."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "9acb03a9921aeee965711944b07856d667e720c48f566afc38514ea32b2336e5",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "98ddb46cf6c876163d4b44229333b80ae0bf99e9d3939f51884ed3746642c5b3",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "c9b1db8417e1667f798a4186945aad340fca89ef1db2d5b61c1e66886f62666e",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "0ab3fadb0e36773fada364dd514b3273e712941ff7d43cb07006982932249708",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "7d8216a48dc9272d29187eeeb797df9017e40e168414e24edda705fbb47b5f95",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "3ed343b42f30d15d21c26daf43453a21775c175d2e9866d9f8fb280cf5734a3c",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/CommunityContactBadge.tsx",
+      "digest": "d7cbdbb3bce53ef98c0fa35ad225ba39329ad654bfba5374bb1fb1797fcf8a23",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/CommunityEntryDialog.tsx",
+      "digest": "2488f6add5fc3122ef3923e66854223d1f23294bf2844037f1aca3d433cca1a8",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.test.tsx",
+      "digest": "c08800102a79142567dea97ec72f56d604e8736f5986e2caa1650bde3a11401b",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.tsx",
+      "digest": "a88c50bd6ddbf3f90ce1975be5de9973716524f86a277300b6e8bcf95efd6ecf",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.tsx",
+      "digest": "1bba9cdc373f94f2bd169dc8441710a85e6fc7d3e4a943a2a00c9dec32552fda",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "5f00775fda895ac0eb2490999271b98c20206a5c35756602a4c2271c43a5f2ce",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "db2963ab47b1d7e3898853fb579057c84f2cd534d79de835bbc954c5425eb021",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "b8342065db53146ea8a7fa2c3f51d5989a49c426ecfad69019c7e2245a74cc86",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "4bcd5bc4c6d7c579458af912994e84200a45efdf55f00dbae3d41f13cf944b6f",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/JoinLeaveCRM.test.tsx",
+      "digest": "a0104be52b310f1b93067691252d5c952e0dcf603b34574512a130b856f9d8b4",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/community/LeaveCommunity.tsx",
+      "digest": "f015d21a975fc6cc290d51c6beaefb04be755785d865e3aceee278f1c80def73",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/hooks/queries/useCRMQueries.ts",
+      "digest": "b7228a14ef7c327f67d721feecf98cd5bf85e2483adc5add11f44da7659cd1e1",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "b7626d7468073464f176cf0641e52cb6a809a54ac76f4fbbe79bfdf0c9cc421f",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "e20b22c3fe4000707622e40154cd37a8f58a490584171b5dc4db5a9e6eedb6ce",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community-membership-api.ts",
+      "digest": "613649ecdf93a3580e61747491a96d280e0bb4beab044a2e739e8357538b7afd",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community/membership-request.ts",
+      "digest": "92702fa6e27f8e0111bc8efc39e2ec658b92fca73b222c2d74b504dc7dec9ce5",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community/navigation.test.ts",
+      "digest": "1daf069a081d2e1b5a1bc5c3b9d24b5c604d82f85636a31470c7f8982a33b18f",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/lib/community/navigation.ts",
+      "digest": "95a7cfaedfbf35c3c2b5e4deffbba808f7462a4aa3bb1b1f9bf7e5d61cf70b81",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/utils/tenant-scope.ts",
+      "digest": "60f848346f910cf8a21aec06f652127d84ec1c09be6fae2b6038cbeb29f6e7ee",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "33122fa5002235c96cb7908634cf20495c070a79bbc92304db52e24b4e7718fa",
+      "why": "Community join CRM chunk (d): reviewed tenant-scoped, consented CRM upsert, same-origin join/signup return and leave controls; retains existing membership, privacy, money and pin assertions. New CRM and UI tests cover failure repair and access revocation."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "f45730622b2e6892ab4cc2d421bef4f26fe76150b8e3250a257421b14eb78b23",
+      "why": "Community join CRM chunk (d): reviewed complete consent/CRM integration, signup completion and same-origin member scoping with executable retry/privacy tests; preserves every previous digest, assertion and staff boundary."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.test.tsx",
+      "digest": "5f2a17c844144a3aceab01a11a9113e332c75811e2721da932f157d79b3d6c25",
+      "why": "Community join CRM chunk (d): reviewed complete consent/CRM integration, signup completion and same-origin member scoping with executable retry/privacy tests; preserves every previous digest, assertion and staff boundary."
+    },
+    {
+      "file": "src/lib/community/community-scope.test.ts",
+      "digest": "780a02721646d1a43c8d900bd1647ed4a8837f254f89c3804084423f8d45d7cc",
+      "why": "Community join CRM chunk (d): reviewed complete consent/CRM integration, signup completion and same-origin member scoping with executable retry/privacy tests; preserves every previous digest, assertion and staff boundary."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "0031aa90b083ec51f472fe8318db58e79a52e187e461275c65d93e016ecf47b5",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "acb085a04d7f9b24c3de6c1b44040d6e9aadf88de015cfb71cc05ac5103bff57",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "19cc886e194f318264cf00378c56425a2c4f2f9103bb430720061c0f5de3547d",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/__tests__/manual-payment-link-disclosures.test.tsx",
+      "digest": "2a41379ef3caf7be7a9eca0201e55a48934419dc13fd6270a64645c9530af38f",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/__tests__/the-255-install-app.test.tsx",
+      "digest": "6daf1f553d295d3a6ca136fdff15cf624ab153c88fd267affb1ad8fa7f8f6dcb",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/community/CommunityContactBadge.tsx",
+      "digest": "4b1d8ba9a07fe1d87dec0c40e7a6bda4c808f73899f2f011a5d16a2e289aec5f",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/community/CommunityEntryDialog.tsx",
+      "digest": "c02e692bbb132f9b7fbbf7164c5fbaf5ba730c0919c4420b7106dc818798c288",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.tsx",
+      "digest": "77576a7ce5ca3a2cb80e22c5f4ece6a309c6a6a1906430512c0a9556857cc2ff",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "bf3b4c8bd7c68c00669477f119d0ef19a255286d615cf80cf944eecb88d99b34",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "b960d2c52fb70dd5c73634f301146520601d6c33389af24f3ff2b3084896943a",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "97d5555ff820d8d74423cc1c416d95685ba62e1ea3b287e576dd35f214c742e6",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "b08d09ad0b7ad2d2420d4ec633597fe58b0060645bac052d9ff46cf722b23e54",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/lib/community/navigation.test.ts",
+      "digest": "6de1138115ce945c7a3c45347826a404ce1d14ddf11a1f2698bdc4b1f2aab749",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "src/lib/community/navigation.ts",
+      "digest": "0fd7820cd13ebcf4311c686c63f9e071f0720adff96625b497f66b271f4340d0",
+      "why": "Community join CRM chunk (d): reviewed final consented contact upsert, member scope, signup return and retained leave history; records exact route-order additions, new touch targets and optional metadata types while preserving all earlier assertions and digests."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "a5c10b0ce5c32587f7d717b3651e7be9252e56d94597d587440f83e8e1501870",
+      "why": "Community join CRM chunk (d): final reviewed same-origin acquisition, mock-only screenshot injection and complete consent/leave behavior; preserves all existing source/rules guards and pins, with explicit API errors and CRM repair coverage."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "9aa5eea5fc90795555bd92d3e4d0017a11281e66042bb14d11541dce8fd4652a",
+      "why": "Community join CRM chunk (d): final reviewed same-origin acquisition, mock-only screenshot injection and complete consent/leave behavior; preserves all existing source/rules guards and pins, with explicit API errors and CRM repair coverage."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "7d8216a48dc9272d29187eeeb797df9017e40e168414e24edda705fbb47b5f95",
+      "why": "Community join CRM chunk (d): recomputed digest for the final AdminCRM state this branch leaves on disk \u2014 the community contact badge and join/leave CRM wiring after the chunk's last touch-up \u2014 recorded so THE-342's ownership check and the register sweep accept the reviewed file."
+    },
+    {
+      "file": "docs/community-membership.md",
+      "digest": "46f071d8a25a7d41354b79f02092aa034364f422b202b891957ee49dc3f128ce",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/components/community/CommunityMemberPage.tsx",
+      "digest": "4550dec951d081a6217a9f901a3095d116ffb90a79bf9c0646b3c5054af4d295",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.test.tsx",
+      "digest": "1f45e7682f12e624219981215469536b6e08ddecdc4250e09f4e25f0d1dd7436",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/components/community/CommunitySignupReturn.tsx",
+      "digest": "2cb07fad8c0ef8fc231848bcf0aca1d0eb1e09d85473dbdb4291a1b94758cebf",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "aac174008741edff1d98dc4c7a27d888879e992a09c78fcddc8fa829bb3d6bc7",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "f8d3999f0d150e4c68bcd22250498a1354b64f8c97de23770c20304e0df5bbf2",
+      "why": "Community join CRM chunk (d): final identity/consent validation and leave repair now use the existing UID link without depending on a later profile read, and signup return occurs once; focused tests verify these edge cases alongside all earlier privacy and guard assertions."
+    },
+    {
+      "file": "src/__tests__/THE-342.read-honesty-guards.test.ts",
+      "digest": "cd8bc346c3678e46108b00c2782c1ecd077097349fb2f828977e46d306de261d",
+      "why": "Community join CRM chunk (d): reviewed the concurrent additive AdminCRM source-digest pin update; all historical values and read-honesty content assertions remain intact, and the current CRM badge changes no query, cap or index requirement."
+    }
+  ]
+}

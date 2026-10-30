@@ -1,3 +1,4 @@
+import { communitySuppressionId } from '@/lib/email/suppression-key';
 import { memoryEmailLedger } from '@/lib/email/confirm';
 import { contentHash, decideClaim, sendingMarkerId } from '@/lib/email/claim';
 import { dayKey, monthKey } from '@/lib/email/volume-cap';
@@ -161,7 +162,8 @@ export function memoryStore(seed: {
     async releaseFeedbackEvent(_t, key) { feedbackEvents.delete(key); },
     async purgeExpiredFeedbackEvents() { const n = feedbackEvents.size; feedbackEvents.clear(); return n; },
     async getDomainOwner(domain) { return domainOwners.get(domain) ?? null; },
-    async listSuppressed() { return suppressedEmails; },
+    async listSuppressed() { return new Set([...suppressedEmails].map(communitySuppressionId)); },
+    async isSuppressedNow(_t, email) { return suppressedEmails.has(email); },
     async listBroadcasts() { return [...broadcasts.values()]; },
     async listContacts() { return [...contacts.values()]; },
     async createContacts(_t, rows) {

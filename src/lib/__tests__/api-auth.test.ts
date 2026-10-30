@@ -2,8 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { mockVerifyIdToken, mockGetDoc } from '@/test/mocks/firebase-admin';
 
+const membership = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/community-membership-server', () => ({ isActiveCommunityMember: membership }));
+
 // Dynamic import so mocks are applied first
-const { verifyAuth, requireAuth, requireAdmin, requireSuperAdmin, requireTenantMember } = await import('@/lib/api-auth');
+const { verifyAuth, requireAuth, requireAdmin, requireSuperAdmin, requireTenantMember, requireCommunityMember } = await import('@/lib/api-auth');
 
 function makeRequest(token?: string): NextRequest {
   const headers = new Headers();
@@ -137,5 +140,36 @@ describe('requireTenantMember', () => {
     });
     const result = await requireTenantMember(makeRequest('tok'), 'any');
     expect(result).not.toBeInstanceOf(Response);
+  });
+});
+
+describe('requireCommunityMember', () => {
+  beforeEach(() => {
+    membership.mockReset();
+    mockVerifyIdToken.mockResolvedValue({ uid: 'u1', email: 'member@example.org', tenantId: 'other', admin: true });
+  });
+  it.each(['non-member', 'left'])('denies a %s even with a tenant admin token', async () => {
+    membership.mockResolvedValue(false);
+    const result = await requireCommunityMember(makeRequest('tok'), 'target');
+    expect((result as Response).status).toBe(403);
+    expect(await (result as Response).json()).toEqual({ error: 'Community membership required' });
+    expect(membership).toHaveBeenCalledExactlyOnceWith('u1', 'target');
+  });
+  it('returns 503 when the membership read fails, withholding access', async () => {
+    membership.mockRejectedValue(new Error('Firestore unavailable'));
+    const result = await requireCommunityMember(makeRequest('tok'), 'target');
+    expect((result as Response).status).toBe(503);
+    expect(await (result as Response).json()).toEqual({ error: 'Could not check community membership' });
+  });
+  it('allows an active membership without changing the account tenant', async () => {
+    membership.mockResolvedValue(true);
+    expect(await requireCommunityMember(makeRequest('tok'), 'target')).toMatchObject({ uid: 'u1', tenantId: 'other' });
+    expect(membership).toHaveBeenCalledExactlyOnceWith('u1', 'target');
+  });
+  it('allows a super admin without needing a membership read', async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: 'u1', tenantId: 'other', admin: true, superAdmin: true });
+    membership.mockRejectedValue(new Error('Firestore unavailable'));
+    expect(await requireCommunityMember(makeRequest('tok'), 'target')).toMatchObject({ uid: 'u1', isSuperAdmin: true });
+    expect(membership).not.toHaveBeenCalled();
   });
 });
