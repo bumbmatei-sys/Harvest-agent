@@ -298,14 +298,16 @@ describe("8 · THE-308's month view is untouched", () => {
     // The day-cell measurement itself lives in THE-308's own Chromium suite and
     // runs unedited; what this ticket owes it is that the files it measures did
     // not move. A digest says that in a way no re-measurement can.
-    const MONTH_VIEW: Record<string, string> = {
+    const MONTH_VIEW: Record<string, string | readonly string[]> = {
       'src/components/events/EventMonthView.tsx':
         '2dee2d960e56dd9a4f1afe51c4b321666632981d68c258a8688fae974c3a7961',
       'src/components/events/month-view.ts':
-        '2933854ade2aa6695bd1996f2e9a5a425655f6be5a1b0e66d2a0aa4b12796d76',
+        // APPENDED THE-379 r9: optional scheduling data; grid layout untouched.
+        ['2933854ade2aa6695bd1996f2e9a5a425655f6be5a1b0e66d2a0aa4b12796d76', '0865d59afebb3d3dc280efa519f9eef7f0c9cf4c8f8b26cc420f21c9986007df'],
     };
     for (const [rel, digest] of Object.entries(MONTH_VIEW)) {
-      expect(sha256(read(rel)), `${rel} moved - THE-308's measured month grid is at risk`).toBe(digest);
+      const accepted = typeof digest === 'string' ? [digest] : digest;
+      expect(accepted, `${rel} moved - THE-308's measured month grid is at risk`).toContain(sha256(read(rel)));
     }
   });
 
@@ -448,8 +450,43 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
      * QR, because the new gate is `owesManualPayment` rather than a fresh
      * `amount > 0` that a discounted-to-zero seat could trip.
      */
-    expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe('0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e');
+    /**
+     * ─── RE-PINNED BY THE-379, AND WHAT MOVED IS FOUR ADDITIONS ──────────────
+     *
+     * Previous pins, kept so nothing is lost:
+     *   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
+     *   20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed  (THE-355)
+     *   0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e  (THE-359)
+     *
+     * THE-379 (the events remodel) adds, in order: an `openToAnyone === false`
+     * gate right after the existing published+registrationEnabled check; a read
+     * of `registrationDeadline` (stored since before this ticket but never
+     * enforced); a `runDate` requirement + validation against `expandRuns` for
+     * a recurring event; and `validateAnswers` against `registrationQuestions`,
+     * plus a `registrationMatchesRun` check inside the capacity reduce. Every
+     * one of the four is gated on a field that is absent on every event created
+     * before this ticket, so none of them change behaviour for an existing
+     * event — see `src/__tests__/__fixtures__/ownership/THE-379.json` for the
+     * full accounting, including why the capacity count is unchanged for every
+     * registration that has no `runDate`.
+     *
+     * WHAT THIS ASSERTION IS ACTUALLY FOR IS STILL UNCHANGED: THE-154's direct
+     * charge, the platform fee, the Checkout metadata, the pending-registration
+     * rollback and the CRM write are byte-identical, and the three bypasses
+     * still mean a free registration, a waitlist entry and a ticket discounted
+     * to $0 mint neither a reference nor a token and still receive their QR.
+     */
+    // APPENDED THE-379 r9: shared picker window and chosen-run SMS only.
+    expect(['516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019',
+      'b5a609ccbbb30e87c1857f0f2a09351a3bfe8ba52bb243efaf94204634d0fbde',
+      // APPENDED #556 F1/F3: fresh membership and chosen-run email date; payment logic retained.
+      'ef91acbcfd141670939862d8e3227e760f2be48164b7458174acf2103d3a67df',
+      // APPENDED #556: per-run deadlines and atomic signup; payment fees and CRM payloads retained.
+      '6e2b481678f5acbef427f3679bf80a58c0199566ed376bafcad866c3c9de45bf',
+      // APPENDED #556 r2 B4: deadline admission before Checkout creation.
+      '4c0cbd196d11634717eb544fb806e79d9c2f8b31903aee87d1078d6fc0949708',
+      // APPENDED #556 r12: per-run capacity read by runDate, ordered and bounded, failing closed for a capped ticket.
+      '744de3e5c52b08a847817da4b0d2bddd93c32bb62a18126b5d45d09381753aab']).toContain(sha256(read('src/app/api/event-registration/submit/route.ts')));
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

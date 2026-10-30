@@ -1,9 +1,65 @@
 import type Stripe from 'stripe';
+import { registrationClosed } from './events/registration-cutoff';
+import { registrationMatchesRun } from './events/recurrence';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import { sendTransactionalEmail } from '@/lib/transactional-email';
+
+/** A run's civil date as the free path prints it; the run key is already in the event zone. */
+function runDateLabel(runDate: string): string {
+  const day = new Date(`${runDate}T12:00:00Z`);
+  return Number.isFinite(day.getTime())
+    ? day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    : runDate;
+}
+
+/**
+ * A payer whose ticket was cancelled at confirmation (the event or date was
+ * cancelled, or registration closed) is told so, and that the ministry
+ * handles the refund. Best-effort like every email here, but never silent.
+ */
+async function notifyCancelledPayment(opts: {
+  reg: FirebaseFirestore.DocumentData;
+  eventData: FirebaseFirestore.DocumentData;
+  tenantId: string;
+  registrationId: string;
+  reason: 'event_cancelled' | 'registration_closed';
+  amountPaid: number;
+}): Promise<void> {
+  const { reg, eventData, tenantId, registrationId, reason, amountPaid } = opts;
+  if (!reg.email) return;
+  const title = eventData.title || 'the event';
+  const when = reg.runDate ? ` on ${runDateLabel(reg.runDate)}` : '';
+  const why = reason === 'event_cancelled' ? 'the event was cancelled' : 'registration had closed';
+  const organizer = typeof eventData.organizerEmail === 'string'
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eventData.organizerEmail.trim()) ? eventData.organizerEmail.trim() : undefined;
+  try {
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantName = tenantSnap.data()?.name || tenantSnap.data()?.displayName || '';
+    const result = await sendTransactionalEmail({
+      to: reg.email,
+      subject: `Registration not completed: ${title}`,
+      text: `Hi ${reg.firstName || 'there'}, your registration for ${title}${when} could not be completed because ${why}. ` +
+        `Your registration has been cancelled.\n\n` +
+        `Contact ${organizer ? `the organizer at ${organizer}` : 'the ministry'} about a refund of $${(amountPaid / 100).toFixed(2)}. ` +
+        'Refunds are handled manually by the ministry; Harvest does not issue an automatic refund.',
+      churchName: tenantName,
+      replyTo: organizer,
+      idempotencyKey: `evt_reg_closed_${registrationId}`,
+    });
+    if (!result.ok) throw new Error(result.error);
+  } catch (e) {
+    captureMoneyPathError(e, {
+      step: 'event-registration-closed-notice',
+      level: 'warning',
+      tenantId,
+      ids: { eventId: reg.eventId, registrationId },
+    });
+  }
+}
 
 /**
  * Everything a paid event ticket writes down once its Checkout payment
@@ -101,6 +157,23 @@ export async function finalizeEventRegistration(opts: {
   const eventRef = adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId);
   const eventSnap = await eventRef.get();
   const eventData = eventSnap.data() || {};
+  // Stripe signs session.created: honor a Checkout opened before the cutoff,
+  // even if payment completes later. Never use a member-writable registeredAt.
+  if (!Number.isFinite(session.created)) throw new Error('Checkout session creation time is missing');
+  const checkoutCreatedAt = new Date(session.created * 1000);
+  const eventCancelled = eventData.status === 'cancelled'
+    || (reg.runDate && eventData.recurrence?.cancelledRuns?.includes(reg.runDate));
+  if (!eventSnap.exists || eventCancelled || eventData.status === 'completed' || registrationClosed(eventData, reg.runDate, checkoutCreatedAt)) {
+    await regRef.update({
+      status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
+      cancellationReason: eventCancelled ? 'event_cancelled' : 'registration_closed',
+      refundStatus: 'pending_manual', stripePaymentIntentId: paymentIntentId, amountPaid,
+      updatedAt: new Date().toISOString(),
+    });
+    await notifyCancelledPayment({ reg, eventData, tenantId, registrationId, amountPaid,
+      reason: eventCancelled ? 'event_cancelled' : 'registration_closed' });
+    return;
+  }
   const ticketTypes: Array<{ id: string; name: string; capacity: number | null }> =
     Array.isArray(eventData.ticketTypes) ? eventData.ticketTypes : [];
   const ticketType = ticketTypes.find((t) => t.id === ticketTypeId) || null;
@@ -118,7 +191,7 @@ export async function finalizeEventRegistration(opts: {
     // Count SEATS already confirmed (sum of quantities), not registrations.
     const confirmedForType = regsSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed'
+      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed' && registrationMatchesRun(r.runDate, reg.runDate)
         ? sum + (Number(r.quantity) || 1)
         : sum;
     }, 0);
@@ -180,7 +253,7 @@ export async function finalizeEventRegistration(opts: {
   // verified uid), and .update() leaves it intact — but we also restore it from
   // the Checkout metadata as a belt-and-suspenders. '' metadata = logged-out.
   const linkedUserId = reg.userId || meta.userId || null;
-  await regRef.update({
+  const confirmation = {
     status: 'confirmed',
     waitlisted: false,
     stripePaymentIntentId: paymentIntentId,
@@ -188,7 +261,30 @@ export async function finalizeEventRegistration(opts: {
     ...(linkedUserId ? { userId: linkedUserId } : {}),
     confirmedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  };
+  const outcome = await adminDb.runTransaction(async (tx): Promise<'confirmed' | 'skipped' | 'event_cancelled' | 'registration_closed'> => {
+    const currentReg = await tx.get(regRef);
+    const currentEvent = await tx.get(eventRef);
+    const latest = currentEvent.data();
+    if (currentReg.data()?.status !== 'pending_payment') return 'skipped';
+    const cancelled = latest?.status === 'cancelled'
+      || latest?.recurrence?.cancelledRuns?.includes(reg.runDate);
+    if (!currentEvent.exists || !latest || cancelled || latest.status === 'completed' || registrationClosed(latest, reg.runDate, checkoutCreatedAt)) {
+      tx.update(regRef, {
+        status: 'cancelled', cancelledAt: FieldValue.serverTimestamp(),
+        cancellationReason: cancelled ? 'event_cancelled' : 'registration_closed',
+        refundStatus: 'pending_manual', stripePaymentIntentId: paymentIntentId, amountPaid,
+        updatedAt: new Date().toISOString(),
+      });
+      return cancelled ? 'event_cancelled' : 'registration_closed';
+    }
+    tx.update(regRef, confirmation);
+    return 'confirmed';
   });
+  if (outcome === 'event_cancelled' || outcome === 'registration_closed') {
+    await notifyCancelledPayment({ reg, eventData, tenantId, registrationId, amountPaid, reason: outcome });
+  }
+  if (outcome !== 'confirmed') return;
 
   // Increment discount usage now (read-modify-write the array, same as the free
   // path does at submit time). Best-effort, mirroring the submit route.
@@ -228,6 +324,7 @@ export async function finalizeEventRegistration(opts: {
         to: reg.email,
         subject: `Your registration for ${eventData.title}`,
         html: `<p>Hi ${reg.firstName || 'there'}, you're registered for <strong>${eventData.title}</strong>. Your ticket code is <strong>${reg.ticketCode}</strong>.</p>` +
+          (reg.runDate ? `<p>Date: ${runDateLabel(reg.runDate)}</p>` : '') +
           `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>` +
           `<br><p>— ${tenantName}</p>`,
       });

@@ -133,9 +133,15 @@ function makeCollRef(): any {
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
+let latestEventSnapshot: any;
 function makeDocRef(): any {
   return {
-    get: mockDocGet,
+    id: 'pending1',
+    get: async () => {
+      const snapshot = await mockDocGet();
+      if (snapshot?.data?.()?.registrationEnabled !== undefined) latestEventSnapshot = snapshot;
+      return snapshot;
+    },
     set: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
     delete: mockDocDelete,
@@ -189,7 +195,14 @@ vi.mock('stripe', () => ({
     checkout = { sessions: { create: mockCheckoutCreate } };
   },
 }));
-vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
+vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()),
+    runTransaction: async (work: (tx: any) => Promise<unknown>) => {
+      const creates: any[] = [];
+      const result = await work({ get: async () => latestEventSnapshot, create: (_ref: any, data: any) => creates.push(data) });
+      for (const data of creates) await mockAdd(data);
+      return result;
+    },
+  } }));
 vi.mock('@/lib/tenant-private', () => ({
   getTenantPrivate: mockGetTenantPrivate,
   DODO_ON_HOLD_FIELD: 'dodoOnHoldAt',
@@ -256,7 +269,9 @@ describe('the split moved code, not money — real fee on both Connect paths', (
     async (plan) => {
       mockDocGet
         .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
-        .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan }) });
+        .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan }) })
+        // #556 B4: Checkout re-reads the event after registration admission.
+        .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT });
 
       const res = await ticketPOST(
         new NextRequest('https://grace.theharvest.app/api/event-registration/submit', {
