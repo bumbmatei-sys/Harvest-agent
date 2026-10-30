@@ -60,6 +60,11 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "69bdd5fad9ef478bfd786d4d929057c3d1cff13b3fb2ad526bbf358cdc2d5470",
       "why": "PR #560 r2 records the Box swatches hiding the radio primitive's extra hit slop so their targets cannot overlap. Only the existing Box adopter explanation changed; every adopter, primitive digest, assertion and prior accepted ownership digest is preserved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "9cca38e4c6e7e8663798b0799a980220221933cc9dff0115e0717f191612b8f5",
+      "why": "PR #560 r2 merged with main #557: retain the sign-up builder and public form adopter rows from main alongside r2's updated Box swatch hit-slop explanation and the ThemeWarning and IssueHeader adopters. All prior rows and assertions remain intact."
     }
   ]
 }
