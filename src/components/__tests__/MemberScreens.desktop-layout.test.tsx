@@ -734,7 +734,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   });
 
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
-    if (name === 'MainApp') {
+    if ((name as string) === 'MainApp') {
       expect(mobileLayer(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.mobileLayer);
       return;
     }
@@ -871,7 +871,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
-    if (name === 'MainApp') {
+    if ((name as string) === 'MainApp') {
       expect(heightLayer(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.heights);
       return;
     }
@@ -1742,7 +1742,7 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
-    if (name === 'MainApp') {
+    if ((name as string) === 'MainApp') {
       expect(colourTokens(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.colours);
       return;
     }

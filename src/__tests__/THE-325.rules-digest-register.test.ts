@@ -797,9 +797,13 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the phase-2 social shots. *.png was already binary. The suite still asserts
   // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '0ad5a2e64dcbe856900baa0d370f326d0d6ac1afc7235a3ed6007ba4137569ac',
-    '#548',
-    'the palette content search appends its proof PNGs under docs/redesign/content-search/. '
+    '561b218d6eb41a9d3c1a2c279fb21802b92c6d07fd70cec372b89adc34e2daaa',
+    '#569',
+    '#568 merged the Eden reference JPEGs under docs/design/eden/ without recording them, so main failed '
+      + 'this suite; #569 appends them and checks the JPEG start marker and an end marker (Samsung adds a '
+      + 'trailer after it). *.jpg was already binary. The previous current digest was '
+      + '0ad5a2e64dcbe856900baa0d370f326d0d6ac1afc7235a3ed6007ba4137569ac after #548, whose reason follows. '
+      + 'the palette content search appends its proof PNGs under docs/redesign/content-search/. '
       + '*.png was already binary. The suite still asserts file content rather than a digest pin. '
       + 'This map holds one current digest, so the previous one stays here: '
       + 'ab373b2a72824096d8db3d7c7987fc80e80a2ba02ca7e559ef3ea887b1241cbd after THE-377, whose reason follows. '
