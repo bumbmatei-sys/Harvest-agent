@@ -622,14 +622,18 @@ it('no horizontal overflow at a narrow viewport', () => {
 describe('the full-screen overlays are painted above the app shell', () => {
   /** The z-index the desktop sidebar rail paints on. */
   function sidebarZ(): number {
-    const src = readFileSync(path.join(SRC, 'components/MainApp.tsx'), 'utf8');
-    // The rail is the one element that is `fixed` on mobile and `lg:relative` in
-    // flow on desktop — found by that shape, not by a line number.
-    const rail = [...src.matchAll(/className={?`([^`]*fixed lg:relative[^`]*)`/g)]
-      .map((m) => m[1])
-      .find((c) => /lg:w-\[\d+px\]/.test(c) && /z-\[\d+\]/.test(c));
-    expect(rail, 'the desktop sidebar rail is no longer recognisable in MainApp').toBeDefined();
-    return Number(rail!.match(/z-\[(\d+)\]/)![1]);
+    // WAS the `fixed lg:relative` rail in MainApp at z-[100]. The community-look
+    // PR moved the desktop rail into MemberDesktopSidebar, the admin's inset
+    // Sidebar, and the bottom bar is lg:hidden. So the layer is the primitive's
+    // own fixed container, read from source rather than pinned.
+    const shell = readFileSync(path.join(SRC, 'components/MainApp.tsx'), 'utf8');
+    expect(shell, 'MainApp no longer mounts the member sidebar').toContain('<MemberDesktopSidebar');
+    const rail = readFileSync(path.join(SRC, 'components/community/MemberDesktopSidebar.tsx'), 'utf8');
+    expect(rail, 'the member sidebar is no longer the shadcn Sidebar').toMatch(/<Sidebar\s+variant="inset"/);
+    const primitive = readFileSync(path.join(SRC, 'components/ui/sidebar.tsx'), 'utf8');
+    const z = primitive.match(/fixed inset-y-0 z-(?:\[(\d+)\]|(\d+))/);
+    expect(z, 'the desktop sidebar rail is no longer recognisable in ui/sidebar').not.toBeNull();
+    return Number(z![1] ?? z![2]);
   }
 
   /** The z-index an overlay's own root element paints on. */

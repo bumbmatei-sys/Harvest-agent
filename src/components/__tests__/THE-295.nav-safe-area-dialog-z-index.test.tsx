@@ -788,15 +788,18 @@ describe('7 · every tappable target is ≥44px below sm, and Rule 4\'s 38px sti
 describe('8 · which tabs appear and their gating are unchanged', () => {
   const shell = () => src('src/components/MainApp.tsx');
 
-  it('the five bottom tabs are the same five, in the same order', () => {
+  // WAS 'the five bottom tabs are the same five'. The founder took Ask Harvest
+  // AI out of every community, so `chat` left the list and nothing replaced it.
+  it('the bottom tabs are the same four, in the same order, with no AI chat', () => {
     const block = /const bottomTabs = \[([\s\S]*?)\]\.filter\(Boolean\)/.exec(shell());
     expect(block, 'the bottomTabs list could not be located').not.toBeNull();
     expect([...block![1].matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]))
-      .toEqual(['home', 'bible', 'chat', 'map', 'profile']);
+      .toEqual(['home', 'bible', 'map', 'profile']);
   });
 
-  it('🔴 chat is still gated on features.aiChat and map on features.map', () => {
-    expect(shell()).toContain("(isMainSite || (isPlanReady && features?.aiChat === true)) && { id: 'chat'");
+  it('🔴 no chat tab under any gate, and map is still gated on features.map', () => {
+    expect(shell()).not.toContain("{ id: 'chat'");
+    expect(shell()).not.toContain('features?.aiChat');
     expect(shell()).toContain("(isMainSite || (isPlanReady && features?.map === true)) && { id: 'map'");
   });
 
@@ -817,13 +820,16 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     // Two obsolete visibility wrappers were removed; no second fixed bar remains.
     // Count parser-stripped source so a tag quoted in a comment is not an element.
     // #557 adds the FreeMemberShell element for Free accounts.
-    expect(tags.length, 'the shell gained or lost an element').toBe(87);
+    // The community-look PR moves the desktop rail into MemberDesktopSidebar
+    // inside SidebarProvider / SidebarInset, and drops the AI chat view.
+    expect(tags.length, 'the shell gained or lost an element').toBe(70);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {
     // ⚠️ One of only three inline styles in the file, and the fallback is
     // deliberate. Named so a tidy-up does not take it.
-    expect(shell(), 'the brand-colour fallback was tidied away')
+    // It moved with the desktop logo into the member sidebar.
+    expect(src('src/components/community/MemberDesktopSidebar.tsx'), 'the brand-colour fallback was tidied away')
       .toContain("var(--brand-color, #C9963A)");
   });
 });
@@ -834,16 +840,17 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
 describe('9 · positions and widths at all five viewports', () => {
   it.each(VIEWPORTS)('the nav lands where it should at %ipx, on a notched profile', async (vw) => {
     const nav = await boxOf(notched, '[data-nav="visible-5"]', vw, vw >= 1024 ? 900 : PHONE_HEIGHT);
-    expect(nav.width, `the nav is not full-bleed at ${vw}px`).toBeGreaterThan(0);
     if (vw < 1024) {
+      expect(nav.width, `the nav is not full-bleed at ${vw}px`).toBeGreaterThan(0);
       // Below lg it is the bottom bar: full width, pinned to the bottom.
       expect(nav.width).toBeCloseTo(vw, 0);
       expect(nav.x).toBeCloseTo(0, 0);
       expect(nav.bottom).toBeCloseTo(PHONE_HEIGHT, 0);
     } else {
-      // From lg it is the sidebar: a fixed rail, full height, at the left.
-      expect(nav.x).toBeCloseTo(0, 0);
-      expect(nav.width, `the sidebar rail resized at ${vw}px`).toBeLessThan(vw);
+      // From lg the bottom bar is gone: the desktop rail is MemberDesktopSidebar,
+      // the admin's inset Sidebar, which mounts only from lg (useLgUp).
+      expect(nav.width, `the bottom bar still draws at ${vw}px`).toBe(0);
+      expect(nav.height, `the bottom bar still draws at ${vw}px`).toBe(0);
     }
   }, MEASURE_TIMEOUT);
 

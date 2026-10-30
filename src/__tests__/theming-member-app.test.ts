@@ -242,7 +242,7 @@ const SURFACE_GOLD = 'var(--surface-gold)';
 
 /** 🔴 The reported bug: the shell wrapper every screen renders into. */
 const SHELL: Pair = {
-  target: 'the member app shell', state: 'page background + sidebar wordmark',
+  target: 'the member app shell', state: 'page background + desktop top-bar title',
   ink: TEXT_STRONG, bg: SURFACE, ground: SURFACE,
 };
 
@@ -341,7 +341,9 @@ const ACCOUNT_SETTINGS_SCREENS: ScreenKey[] = ['personalInfo', 'saved'];
 // screen — guards the guard: a pair describing code that has since moved
 // would otherwise pass on a stale assumption.
 const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
-  shell: ['bg-surface font-sans overflow-hidden', 'text-strong truncate'],
+  // The wordmark moved into MemberDesktopSidebar (sidebar tokens); the top-bar
+  // title is the shell's own text-strong on the page ground now.
+  shell: ['bg-surface font-sans overflow-hidden', 'tracking-[-0.01em] text-strong'],
   home: ['border-line bg-surface-raised p-4 shadow-none', '<PostHeader name={post.authorName}'],
   blog: ['bg-surface-raised rounded-xl shadow-xs border border-line'],
   prayer: ["className=\"bg-surface-raised rounded-2xl border border-line p-4\""],
@@ -661,7 +663,7 @@ describe('no hex, rgb() or inline colour is introduced', () => {
 
   const BASELINE: Record<ScreenKey, string[]> = {
     shell: [
-      'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.02)', // bottom-nav / sidebar elevation shadows
+      'rgba(0,0,0,0.05)', // bottom-nav elevation shadow; the old sidebar's 0.02 left with it
       // THE-348 removed '#104' here — see `literals` above. It was the JSX
       // comment "per #104 feedback", an issue number that was never a colour.
     ],

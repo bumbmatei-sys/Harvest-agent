@@ -164,20 +164,21 @@ describe('a tenant WITHOUT the add-on does not get the AI chat', () => {
   });
 });
 
-describe('a tenant that owns the add-on gets the AI chat', () => {
-  it('🔴 draws the Chat button on Individual — the add-on is the only difference', async () => {
+/* WAS 'a tenant that owns the add-on gets the AI chat'. Inverted rather than
+ * deleted: the founder's direction is that Ask Harvest AI is not a feature of
+ * any community, so owning the add-on must no longer draw the tab, and a saved
+ * `chat` tab must not reach the assistant screen either. */
+describe('owning the add-on no longer draws the AI chat in a community', () => {
+  it('🔴 draws no Chat button on Individual even with the add-on', async () => {
     await mount('plus', owning({ aiAssistant: 1 }));
-    expect(hasChatTab()).toBe(true);
+    expect(hasChatTab()).toBe(false);
+    expect(navLabels()).toContain('Bible');
   });
 
-  it('and the AI chat screen is reachable from it', async () => {
-    // A tab that renders and leads nowhere is the other half of this defect.
+  it('and no AI chat screen is rendered anywhere in the shell', async () => {
     await mount('plus', owning({ aiAssistant: 1 }));
-    const chat = Array.from(container.querySelectorAll('button'))
-      .find((b) => (b.textContent || '').trim() === 'Chat');
-    expect(chat).toBeDefined();
-    await act(async () => { chat!.click(); });
-    expect(container.querySelector('[data-testid="chat-screen"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="chat-screen"]')).toBeNull();
+    expect(navLabels().some((label) => /^Ask /.test(label))).toBe(false);
   });
 });
 

@@ -781,6 +781,10 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
       // APPENDED BY THE-376, nothing above removed. The desktop Settings popup
       // is the official sidebar-13 block: a Dialog with a Sidebar nav.
       'src/components/settings/SettingsDialog.tsx',
+      // APPENDED BY the community-look PR, nothing above removed. The member
+      // shell draws its desktop rail with the admin's inset Sidebar (lg only).
+      'src/components/MainApp.tsx',
+      'src/components/community/MemberDesktopSidebar.tsx',
     ].sort());
   });
 
