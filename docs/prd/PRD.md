@@ -1122,3 +1122,106 @@ each came from).
 See [§21](#21-open-questions-for-matei) items tagged **Products**.
 
 ---
+
+## 11. Link in bio
+
+### 11.1 Goal
+Carry over Eden's link-in-bio/storefront design vocabulary — profile header, social row,
+tabbed/categorised content, blocks, themes — as the visual and structural language for
+Harvest's ministry-facing public page, per Matei's explicit direction.
+
+### 11.2 Status: merged into the website builder, not a separate product
+No standalone "link in bio" component, route, or builder exists in the codebase, and per the
+decided direction in `website-brief.md` (Matei, 2026-10-28 04:10–04:46): **"public page layout =
+link-in-bio with tabs"** — Harvest does not ship a separate bio-link product the way Eden ships
+Link-in-bio and Storefront as two things. Instead, the ministry's one public page
+([§13](#13-website-builder--public-website)) **is** structured like Eden's link-in-bio page:
+profile header (photo/logo, name, short info, social row, primary buttons), then shadcn `Tabs`
+(About, Blog, Give, Events, Watch, Community, and any other enabled section), admin-ordered.
+Eden's storefront editor (`eden-ref/12-link-in-bio-editor.png`, `13-link-in-bio-add-block.png`,
+`eden-archive/02-store/84-storefront-editor-top.png`, 116–121) is the named primary reference
+for both the public page structure *and* the admin editor's block/theme/add-section pattern.
+
+### 11.3 What the brief asks this section to cover, mapped to where it actually lives
+- **Tabs** → the public page's tab row, specified in [§13](#13-website-builder--public-website).
+- **Blocks** → "Add section" in the website builder (hero, about, service times, location, give,
+  contact, blog, events, watch-live, and the **Community card** block — see
+  [§11.4](#114-the-community-card-block)).
+- **Designs/themes/templates** → the website builder's 3 templates (Classic/Modern/Simple) and
+  their accent/mode options.
+- **Editor and public view, mobile** → specified in [§13](#13-website-builder--public-website)
+  directly, including the Desktop/Mobile preview toggle.
+
+### 11.4 The Community card block
+A dedicated block kind, decided in the same brief (Matei, 2026-10-28 04:18): the admin picks one
+or more of the ministry's own communities ([§5](#5-communities), read-only here) and the block
+renders **the exact same Discover card component** used on the Discover page itself — cover,
+logo, name, short description, member count, rating, "Free"/"coming soon" pricing, and a Join
+button — never a lookalike rebuilt for this context. Hidden automatically if the referenced
+community is private-and-unlisted or if Communities is off for the tenant. The join flow from
+this card: a visitor without an account signs up for a free Harvest account, lands back on that
+community's About/pre-join page, and joins from there; a logged-in visitor goes straight to the
+join step.
+
+### 11.5 Newsletter subscribe block
+A "Subscribe to newsletter" button/block on the public page, wired to the **existing** Plunk-
+backed newsletter feature ([§12](#12-newsletter)) — reusing its public subscribe endpoint and
+subscriber collection, with the same consent/confirmation/unsubscribe behaviour as the
+newsletter's own public subscribe page, not a second implementation. `SubscribeForm`
+(`src/components/email/SubscribeBlock.tsx`) already exists and posts to
+`/api/email/subscribe` — this is the component the website-page block should reuse, per the
+brief's explicit instruction not to add a new email provider or a second subscribe form. The
+button must hide itself if the newsletter is off for that tenant.
+
+### 11.6 Branding footer
+A small, non-intrusive "Made with Harvest" badge/link at the bottom of the public page — never
+a popup, modelled on Skool's "Powered by Skool" treatment.
+
+### 11.7 Eden parity
+This section's 19 screenshots (Eden's storefront top/bottom, marketing links list, the
+storefront editor's full scroll including themes/accent, and the link-in-bio editor's add-block
+panel) are the direct design source for [§13](#13-website-builder--public-website)'s public page
+and editor — treat them as that section's reference material.
+
+### 11.8 Plan availability
+Per [§13](#13-website-builder--public-website): website + subdomain are available on every plan
+per the most recent direction (superseding an earlier draft that limited the public site to
+paid plans) — see that section's own open question about which draft is final.
+
+### 11.9 Data model notes
+See [§13.6](#136-data-model-notes) — there is one website document per tenant, not a separate
+link-in-bio document.
+
+### 11.10 Edge cases
+See [§13.8](#138-edge-cases).
+
+### 11.11 Mobile
+See [§13.7](#137-mobile).
+
+### 11.12 Acceptance criteria
+- No separate "link in bio" builder or route is built; the website builder in
+  [§13](#13-website-builder--public-website) is the single implementation of this design
+  language.
+- The Community card block renders byte-for-byte the same Discover card component as
+  [§5.4](#54-functional-requirements), not a reimplementation.
+- The newsletter subscribe block on the public page creates a subscriber through the exact same
+  path as the newsletter's own public subscribe page.
+
+### 11.13 Screenshots
+
+<table><tr>
+<td><img src="screenshots/11-link-in-bio/bio-003-desktop-02-storefront-top.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/11-link-in-bio/bio-017-desktop-13-link-in-bio-add-block.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/11-link-in-bio/bio-005-desktop-116-storefront-editor-scroll0.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/11-link-in-bio/bio-019-desktop-products-09-public-storefront.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 19 Eden reference screens are in `docs/prd/screenshots/11-link-in-bio/` (see
+`_manifest.json`) — the public storefront, marketing links list, and the full storefront/
+link-in-bio editor scroll (themes, blocks, accent).
+
+### 11.14 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **LinkInBio**.
+
+---

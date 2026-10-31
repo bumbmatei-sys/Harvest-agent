@@ -1,0 +1,135 @@
+[
+  {
+    "file": "bio-001-desktop-28-store-storefront.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/28-store-storefront.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-002-desktop-51-store-marketing-links.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/51-store-marketing-links.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-003-desktop-02-storefront-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/02-storefront-top.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-004-desktop-06-storefront-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/06-storefront-bottom.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-005-desktop-116-storefront-editor-scroll0.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/116-storefront-editor-scroll0.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-006-desktop-117-storefront-editor-scroll1.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/117-storefront-editor-scroll1.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-007-desktop-118-storefront-editor-themes.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/118-storefront-editor-themes.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-008-desktop-119-storefront-editor-accent.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/119-storefront-editor-accent.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-009-desktop-120-storefront-editor-share-selling.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/120-storefront-editor-share-selling.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-010-desktop-121-storefront-editor-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/121-storefront-editor-bottom.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-011-desktop-49-marketing-links-page.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/49-marketing-links-page.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-012-desktop-52-marketing-links-open-in-app-create-inline.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/52-marketing-links-open-in-app-create-inline.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-013-desktop-53-marketing-links-new-content-link-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/53-marketing-links-new-content-link-dialog.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-014-desktop-84-storefront-editor-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/84-storefront-editor-top.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-015-desktop-11-storefront.webp",
+    "device": "desktop",
+    "rel": "eden-ref/11-storefront.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-016-desktop-12-link-in-bio-editor.webp",
+    "device": "desktop",
+    "rel": "eden-ref/12-link-in-bio-editor.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-017-desktop-13-link-in-bio-add-block.webp",
+    "device": "desktop",
+    "rel": "eden-ref/13-link-in-bio-add-block.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-018-desktop-products-08-storefront-settings.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-08-storefront-settings.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "bio-019-desktop-products-09-public-storefront.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-09-public-storefront.png",
+    "area": "Link in bio / storefront / public website",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]
