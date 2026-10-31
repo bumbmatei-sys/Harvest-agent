@@ -262,8 +262,11 @@ describe('the sub-640px rendering of both CRM tabs is unchanged', () => {
    * primitive guards) plus the wrapper's own row and its 44px floor. Read from
    * source rather than copied, so a token from anywhere else still fails.
    */
+  // #577 (APPENDED): the from/to date fields are the shared Input primitive,
+  // admitted the same way, by reading ui/input.tsx itself.
   const COMMUNITY_FILTER_TOKENS = new Set([
     ...classTokensOf(read('ui/select.tsx')),
+    ...classTokensOf(read('ui/input.tsx')),
     ...read('community/CrmCommunityFilters.tsx').match(/className="([^"]+)"/g)!.flatMap((m) => m.slice(11, -1).split(/\s+/)),
   ].filter(Boolean));
 
@@ -363,7 +366,9 @@ describe('mobile touch targets are at least 44px', () => {
       const RAISES_ONLY = new Set(['p-[11px]', 'min-h-11']);
       // #573: the Select primitive's own trigger padding (`py-2`) on a new
       // control; it adds a control and shrinks none. Same source-read rule.
-      const SELECT_TRIGGER = new Set(classTokensOf(read('ui/select.tsx')));
+      // #577: likewise the Input primitive's `h-8` on the two date fields,
+      // each of which also carries `min-h-11`, which lifts it to 44px on a phone.
+      const SELECT_TRIGGER = new Set([...classTokensOf(read('ui/select.tsx')), ...classTokensOf(read('ui/input.tsx'))]);
       expect(added.filter((t) => !RAISES_ONLY.has(t) && !SELECT_TRIGGER.has(t)), `${name} gained a height on the phone`).toEqual([]);
     }
   });
