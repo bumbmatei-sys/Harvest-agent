@@ -1531,3 +1531,80 @@ All 36 Eden reference screens for Social scheduler and Auto-DM are in
 See [§21](#21-open-questions-for-matei) items tagged **Social**.
 
 ---
+
+## 15. AI assistant
+
+### 15.1 Goal
+An Eden-style assistant: a chat surface that can also take actions in the workspace, available
+as a priced add-on rather than a plan inclusion on any tier.
+
+### 15.2 Status today: RAG chat, no actions yet
+`AIChat.tsx` and its supporting routes (`action: 'embed'`, `action: 'generate'`) implement
+**retrieval-augmented chat** — answering from the ministry's own embedded content — not an
+agentic assistant that performs actions (create an event, add a contact, draft a post) the way
+Eden's chat does. The brief's "actions" requirement is not yet built; what exists is the
+conversational half only.
+
+### 15.3 Why it's off everywhere by default
+Per `AGENTS.md`: **`aiChat` is `false` on every tier including Ministry** — Ask Harvest is a
+paid add-on, not a plan inclusion, and `getEffectiveFeatures` only turns it on when the tenant
+holds that add-on. This document does not restate the add-on's price (per `AGENTS.md`'s own
+rule against copying numbers that will go stale); see `AI_ASSISTANT_ADDON_PRICING` in
+`src/utils/plan-features.ts` for the current figure.
+
+### 15.4 Model
+`MIMO_MODEL = 'mimo-v2.5'` (Xiaomi MiMo) via a per-region `MIMO_BASE_URL`
+(`src/lib/ai-config.ts`); Gemini handles embeddings and video separately. `AGENTS.md` flags a
+**standing launch blocker**: the key in use is a Token Plan subscription key, and the Token
+Plan's terms forbid using it as an application backend — a pay-as-you-go key is required before
+launch, and nothing in the code enforces this today.
+
+### 15.5 Eden parity
+The reference set covers Eden's Custom AI ("My AIs," Explore, "Your store" for a sellable
+Custom AI product) and its own chat surface (history, the "+"/plus menu for attaching context,
+the model more-menu, chat input) — Harvest's chat input/history/plus-menu pattern should match
+this; the **sellable Custom AI product** concept is listed under
+[§10.3](#103-whats-actually-built-today-grounded-in-code)'s "other Eden product types" as
+reference-only, not a committed Harvest feature.
+
+### 15.6 Plan availability
+Add-on only, on every tier, per [§15.3](#153-why-its-off-everywhere-by-default).
+
+### 15.7 Data model notes
+Embeddings/knowledge base storage is separate from the `aiChat` entitlement flag itself — per
+`AGENTS.md`, the knowledge base exists under Ministry even while `aiChat` stays false, so
+turning the add-on on later does not require re-indexing from scratch.
+
+### 15.8 Edge cases
+- A tenant without the add-on must never reach a working chat endpoint, even by direct API call
+  — the gate is `getEffectiveFeatures`, not merely a hidden nav item.
+- A region mismatch between a stored key and `MIMO_BASE_URL` must fail closed with a clear
+  error, not silently call the wrong region.
+
+### 15.9 Mobile
+Chat is a natural mobile surface; input, history, and the plus-menu must all work at mobile
+width.
+
+### 15.10 Acceptance criteria
+- `aiChat` remains false for any tenant without the add-on, verified server-side, not just
+  hidden client-side.
+- No copy anywhere claims "unlimited" AI usage — `aiMessagesPerMonth` prints the real number with
+  "coming soon" where applicable, per `AGENTS.md`.
+
+### 15.11 Screenshots
+
+<table><tr>
+<td><img src="screenshots/15-ai-assistant/ai-001-desktop-06-custom-ai-my-ais.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/15-ai-assistant/ai-022-desktop-chat-05-input.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/15-ai-assistant/ai-020-desktop-chat-03-history.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/15-ai-assistant/ai-006-desktop-36-chat-plus-menu.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 22 Eden reference screens for AI assistant are in `docs/prd/screenshots/15-ai-assistant/`
+(see `_manifest.json`).
+
+### 15.12 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **AI**.
+
+---
