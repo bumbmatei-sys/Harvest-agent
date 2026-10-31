@@ -5,6 +5,7 @@ import { captureHandledError } from '@/lib/money-path-sentry';
 import { DEFAULT_COMMUNITY_ID, isCommunityId, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, publishBlocker, readCommunityEdit, readCommunityRecord } from '@/lib/community/communities';
 import { communitiesRef, communityLimit, isTenantIdParam, requireCommunityManager } from '@/lib/community/communities-server';
 import { readCommunitySettings } from '@/lib/community/settings';
+import { communityListingId, makeCommunitySpaceListing } from '@/lib/community/listing';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,8 +53,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.status !== undefined && body.status !== 'published' && body.status !== 'draft') return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     const ref = communitiesRef(tenantId).doc(id);
     const general = ref.collection('channels').doc('general');
+    const tenantRef = adminDb.collection('tenants').doc(tenantId);
+    const listingRef = adminDb.collection('discovery_listings').doc(communityListingId(tenantId, id));
     await adminDb.runTransaction(async tx => {
-      const [saved, channel] = await Promise.all([tx.get(ref), tx.get(general)]);
+      const [saved, channel, tenant, active] = await Promise.all([
+        tx.get(ref), tx.get(general), tx.get(tenantRef),
+        tx.get(ref.collection('members').where('status', '==', 'active').select()),
+      ]);
       if (!saved.exists) throw new RouteError('Community not found.', 404);
       const current = readCommunityRecord(id, saved.data() ?? {});
       const status = body.status ?? current.status;
@@ -68,6 +74,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       // Every live community opens with one chat everybody is in.
       if (status === 'published' && !channel.exists) {
         tx.create(general, { name: 'General', description: '', audience: 'all', members: [], type: 'chat', createdAt: FieldValue.serverTimestamp(), createdBy: admin.uid });
+      }
+      // A live public community is on Discover; anything else is not.
+      if (status === 'published' && edit.visibility === 'public') {
+        const record = { id, ...edit, status, isDefault: false } as const;
+        tx.set(listingRef, makeCommunitySpaceListing(tenantId, tenant.data() ?? {}, record, active.docs.length, new Date()));
+      } else {
+        tx.delete(listingRef);
       }
     });
     return NextResponse.json({ ok: true });
@@ -106,6 +119,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       const saved = await tx.get(ref);
       if (!saved.exists) throw new RouteError('Community not found.', 404);
       tx.delete(ref);
+      tx.delete(adminDb.collection('discovery_listings').doc(communityListingId(tenantId, id)));
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

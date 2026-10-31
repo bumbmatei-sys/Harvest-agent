@@ -78,6 +78,19 @@ describe('community views', () => {
     expect(Array.from(host.querySelectorAll('img[alt="Grace cover"]')).map(image => image.getAttribute('src'))).toEqual(['https://example.com/cover.jpg', 'https://example.com/gallery.jpg']);
     expect(host.querySelector('a')?.getAttribute('href')).toBe('/community/a?join=1&src=discover');
   });
+  // #576: a community other than a ministry's default one joins from its own
+  // page, and shows no ministry reviews, which belong to the default community.
+  it('sends a listed community to its own page and shows no ministry reviews', async () => {
+    const space = { ...listings[0], communityId: 'youth', name: 'Youth Night', ratingCount: 0, ratingAvg: 0 };
+    await act(async () => root.render(<CommunityAbout listing={space} onBack={() => {}} />));
+    const joins = [...host.querySelectorAll<HTMLAnchorElement>('a')].filter(link => link.textContent === 'Join Youth Night');
+    expect(joins.map(link => link.getAttribute('href'))).toEqual(['/community/a/youth?src=discover', '/community/a/youth?src=discover']);
+    expect(host.textContent).not.toContain('No reviews yet');
+    expect(host.querySelector('[aria-label="Reviews"]')).toBeNull();
+    await act(async () => root.render(<DiscoverView state={{ status: 'ready', data: [listings[0], space] }} />));
+    expect(host.textContent).toContain('Grace');
+    expect(host.textContent).toContain('Youth Night');
+  });
   it('distinguishes loading, errors and empty listings', async () => {
     await act(async () => root.render(<DiscoverView state={{ status: 'loading' }} />));
     expect(host.querySelector('[aria-label="Loading communities"]')).toBeTruthy();

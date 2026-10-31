@@ -7,6 +7,7 @@ import { COMMUNITY_CONSENT_SCOPE, COMMUNITY_CONSENT_VERSION } from '@/lib/commun
 import { DEFAULT_COMMUNITY_ID, isCommunityId, membershipIndexId, readCommunityRecord } from '@/lib/community/communities';
 import { communitiesRef, isTenantIdParam } from '@/lib/community/communities-server';
 import { upsertCommunityContact } from '@/lib/community-contact';
+import { communityListingId } from '@/lib/community/listing';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,16 @@ async function change(request: NextRequest, communityId: string, joining: boolea
   const communityRef = communitiesRef(tenantId).doc(communityId);
   const memberRef = communityRef.collection('members').doc(user.uid);
   const indexRef = adminDb.collection('users').doc(user.uid).collection('communityMemberships').doc(membershipIndexId(tenantId, communityId));
+  const listingRef = adminDb.collection('discovery_listings').doc(communityListingId(tenantId, communityId));
   await adminDb.runTransaction(async tx => {
-    const [community, member, person] = await Promise.all([tx.get(communityRef), tx.get(memberRef), tx.get(adminDb.collection('users').doc(user.uid))]);
+    const [community, member, person, listing, active] = await Promise.all([
+      tx.get(communityRef), tx.get(memberRef), tx.get(adminDb.collection('users').doc(user.uid)),
+      tx.get(listingRef), tx.get(communityRef.collection('members').where('status', '==', 'active').select()),
+    ]);
+    // #576: the Discover count is recounted, not incremented, so a missed
+    // write in the past heals on the next join or leave.
+    const others = active.docs.filter(doc => doc.id !== user.uid).length;
+    const recount = (count: number) => { if (listing.exists) tx.update(listingRef, { memberCount: count }); };
     if (!community.exists) throw new MembershipError('Community not found.', 404);
     const record = readCommunityRecord(communityId, community.data() ?? {});
     const previous = member.data();
@@ -53,10 +62,12 @@ async function change(request: NextRequest, communityId: string, joining: boolea
         consentAt: now, consentScope: COMMUNITY_CONSENT_SCOPE, consentVersion: COMMUNITY_CONSENT_VERSION,
       });
       tx.set(indexRef, { tenantId, communityId, status: 'active', joinedAt: now, leftAt: null });
+      recount(others + 1);
     } else {
       if (previous?.status !== 'active') return;
       tx.set(memberRef, { status: 'left', leftAt: now, updatedAt: now }, { merge: true });
       tx.set(indexRef, { tenantId, communityId, status: 'left', joinedAt: previous.joinedAt ?? null, leftAt: now });
+      recount(others);
     }
   });
   // #573: one CRM across every community. A retry repairs the contact from the

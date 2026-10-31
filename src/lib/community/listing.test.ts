@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { makeDiscoveryListing } from './listing';
+import { communityListingId, makeCommunitySpaceListing, makeDiscoveryListing } from './listing';
+import { newCommunityDraft } from './communities';
 import { readPublicListing } from './public-listing';
 import { defaultCommunitySettings } from './settings';
 
@@ -20,5 +21,25 @@ describe('public listing projection', () => {
     const settings = { ...defaultCommunitySettings(), logoUrl: 'javascript:alert(1)' };
     expect(() => makeDiscoveryListing('id', { name: 'Ministry', subdomain: 'ministry' }, settings, 1, new Date())).toThrow();
     expect(() => makeDiscoveryListing('id', { name: 'Ministry', subdomain: 'www' }, defaultCommunitySettings(), 1, new Date())).toThrow();
+  });
+});
+
+// #576: the listing of a community other than the default one.
+describe('community space listing', () => {
+  const record = { id: 'youth', ...newCommunityDraft('Youth'), tagline: ' Teens ', about: 'Fridays', visibility: 'public' as const, status: 'published' as const, isDefault: false };
+  it('projects only what the public page shows, and Discover can read it back', () => {
+    const date = new Date('2020-01-01');
+    const listing = makeCommunitySpaceListing('grace', { name: 'Grace Chapel', ownerId: 'private', config: { email: 'private' } }, record, 4, date);
+    expect(listing).toEqual({
+      tenantId: 'grace', communityId: 'youth', slug: 'youth', name: 'Youth', logoUrl: '', shortDescription: 'Teens', longDescription: 'Fridays',
+      ownerName: 'Grace Chapel', isPublic: true, coverUrl: '', galleryUrls: [], memberCount: 4, ratingCount: 0, ratingAvg: 0, updatedAt: date,
+    });
+    expect(readPublicListing(listing)).toMatchObject({ communityId: 'youth', memberCount: 4 });
+    expect(communityListingId('grace', 'youth')).toBe('grace__youth');
+  });
+  it('refuses to write a listing Discover would refuse', () => {
+    expect(() => makeCommunitySpaceListing('grace', {}, { ...record, iconUrl: 'http://insecure.test/icon.png' }, 1, new Date())).toThrow();
+    expect(() => makeCommunitySpaceListing('grace', {}, record, -1, new Date())).toThrow();
+    expect(() => makeCommunitySpaceListing('grace', {}, { ...record, id: 'default', isDefault: true }, 1, new Date())).toThrow();
   });
 });

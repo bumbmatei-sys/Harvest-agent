@@ -15,7 +15,11 @@ const h = vi.hoisted(() => {
   const children = (path: string) => [...docs.keys()].filter(k => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes('/')).sort();
   const colRef = (path: string): any => {
     const query = { isQuery: true, path, get: async () => ({ docs: children(path).map(snap) }) };
-    return { path, doc: (id: string) => docRef(`${path}/${id}`), select: () => query, orderBy: () => query };
+    const where = (field: string, _op: string, value: unknown) => {
+      const filtered = { isQuery: true, path, get: async () => ({ docs: children(path).filter(k => docs.get(k)?.[field] === value).map(snap) }) };
+      return { ...filtered, select: () => filtered };
+    };
+    return { path, doc: (id: string) => docRef(`${path}/${id}`), select: () => query, orderBy: () => query, where };
   };
   const tx = {
     get: async (ref: any) => (ref.isQuery ? ref.get() : snap(ref.path)),
@@ -114,6 +118,30 @@ describe('communities API', () => {
     expect((await patch('youth', { community, status: 'live' })).status).toBe(400);
     expect((await patch('youth', { community: { ...community, name: '' } })).status).toBe(400);
     expect((await patch('missing', { community })).status).toBe(404);
+  });
+
+  // #576: a live public community is listed on Discover, and only then.
+  it('lists a live public community on Discover with its member count, and takes it off again', async () => {
+    await create('Youth');
+    const listing = 'discovery_listings/grace__youth';
+    h.docs.set(`${T}/communities/youth/members/a`, { status: 'active' });
+    h.docs.set(`${T}/communities/youth/members/b`, { status: 'left' });
+    const community = { ...newCommunityDraft('Youth'), tagline: 'Ages 13 to 18', about: 'Fridays', visibility: 'public' };
+    await patch('youth', { community });
+    expect(h.docs.has(listing)).toBe(false);
+    await patch('youth', { community, status: 'published' });
+    expect(h.docs.get(listing)).toMatchObject({ tenantId: 'grace', communityId: 'youth', slug: 'youth', name: 'Youth', shortDescription: 'Ages 13 to 18', longDescription: 'Fridays', ownerName: 'Grace Chapel', memberCount: 1, isPublic: true });
+    // The default community's own listing is untouched throughout.
+    expect(h.docs.get('discovery_listings/grace')).toEqual({ tenantId: 'grace' });
+    await patch('youth', { community: { ...community, visibility: 'private' } });
+    expect(h.docs.has(listing)).toBe(false);
+    await patch('youth', { community, status: 'published' });
+    await patch('youth', { community, status: 'draft' });
+    expect(h.docs.has(listing)).toBe(false);
+    await patch('youth', { community, status: 'published' });
+    expect((await remove('youth')).status).toBe(200);
+    expect(h.docs.has(listing)).toBe(false);
+    expect(h.docs.has('discovery_listings/grace')).toBe(true);
   });
 
   it('will not publish, or keep live, a community that reviews applications', async () => {

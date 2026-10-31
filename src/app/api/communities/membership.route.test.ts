@@ -15,7 +15,11 @@ const h = vi.hoisted(() => {
   const children = (path: string) => [...docs.keys()].filter(k => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes('/')).sort();
   const colRef = (path: string): any => {
     const query = { isQuery: true, path, get: async () => ({ docs: children(path).map(snap) }) };
-    return { path, doc: (id: string) => docRef(`${path}/${id}`), select: () => query, orderBy: () => query };
+    const where = (field: string, _op: string, value: unknown) => {
+      const filtered = { isQuery: true, path, get: async () => ({ docs: children(path).filter(k => docs.get(k)?.[field] === value).map(snap) }) };
+      return { ...filtered, select: () => filtered };
+    };
+    return { path, doc: (id: string) => docRef(`${path}/${id}`), select: () => query, orderBy: () => query, where };
   };
   const tx = {
     get: async (ref: any) => (ref.isQuery ? ref.get() : snap(ref.path)),
@@ -101,5 +105,21 @@ describe('joining and leaving a community', () => {
     expect(h.docs.get(`${T}/communities/youth/members/u1`)).toMatchObject({ status: 'left', leftAt: 'now' });
     expect(h.docs.get('users/u1/communityMemberships/grace__youth')).toMatchObject({ status: 'left', joinedAt: 'now' });
     expect((await leave('youth')).status).toBe(200);
+  });
+});
+
+// #576: the Discover count follows joins and leaves, recounted each time.
+describe('the Discover member count', () => {
+  it('is recounted on join and leave when the community is listed, and left alone when it is not', async () => {
+    const listing = 'discovery_listings/grace__youth';
+    h.docs.set(`${T}/communities/youth/members/other`, { status: 'active' });
+    expect((await join('youth')).status).toBe(200);
+    expect(h.docs.has(listing)).toBe(false);
+    expect((await leave('youth')).status).toBe(200);
+    h.docs.set(listing, { tenantId: 'grace', communityId: 'youth', memberCount: 99 });
+    expect((await join('youth')).status).toBe(200);
+    expect(h.docs.get(listing)!.memberCount).toBe(2);
+    expect((await leave('youth')).status).toBe(200);
+    expect(h.docs.get(listing)!.memberCount).toBe(1);
   });
 });
