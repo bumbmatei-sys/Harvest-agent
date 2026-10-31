@@ -65,6 +65,11 @@
       "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
       "digest": "5784bd920d6be842ca537a3b9669d8c1738179872499808be103d042fd5aff92",
       "why": "APPENDED, NOT SUBSTITUTED — #576: adds a sample path for the new /community/[tenantId]/[communityId] pattern so every registered route is exercised. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "1564ac688002995618898d5b8ee635cebf0d11620200ad159b436dc7603486bc",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the-255-install-app's current digest moves to the one with the new space route, and the previous digest is kept in its why. Nothing else changes."
     }
   ]
 }
