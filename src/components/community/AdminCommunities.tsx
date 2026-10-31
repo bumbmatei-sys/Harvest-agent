@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FORM_CONTAINER } from '@/components/layout/form-layout';
 import {
-  COMMUNITY_LIMITS, formatCommunityPrice, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, PUBLISH_LATER_MESSAGE,
+  COMMUNITY_LIMITS, formatCommunityPrice, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, publishBlocker,
   type CommunityEdit, type CommunityPriceInterval, type CommunityRecord,
 } from '@/lib/community/communities';
 import { authFetch } from '@/utils/auth-fetch';
@@ -184,7 +184,8 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
   const set = (patch: Partial<CommunityEdit>) => { setDraft(current => ({ ...current, ...patch })); setMessage(null); };
   const paid = draft.pricing.type === 'paid' ? draft.pricing : null;
 
-  const save = async () => {
+  const [status, setStatus] = useState(community.status);
+  const save = async (nextStatus?: 'published' | 'draft') => {
     setSaving(true); setMessage(null);
     try {
       let pricing = draft.pricing;
@@ -193,8 +194,9 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
         if (!Number.isFinite(amount)) throw new Error('Enter a price, like 15.00.');
         pricing = { ...pricing, amountCents: amount };
       }
-      await call(`/api/communities/${community.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId, community: { ...draft, pricing } }) });
-      setMessage({ kind: 'ok', text: 'Saved.' });
+      await call(`/api/communities/${community.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId, community: { ...draft, pricing }, ...(nextStatus ? { status: nextStatus } : {}) }) });
+      if (nextStatus) setStatus(nextStatus);
+      setMessage({ kind: 'ok', text: nextStatus === 'published' ? 'Published.' : nextStatus === 'draft' ? 'Unpublished.' : 'Saved.' });
     } catch (error) { setMessage({ kind: 'error', text: (error as Error).message }); }
     finally { setSaving(false); }
   };
@@ -204,7 +206,7 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
       <Button variant="ghost" className="min-h-11 sm:min-h-0" onClick={onBack}><ArrowLeft /> Communities</Button>
       <div className="flex items-center gap-3">
         {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${message.kind === 'error' ? 'text-danger' : 'text-muted'}`}>{message.text}</p>}
-        <Button className="min-h-11 sm:min-h-0" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
+        <Button className="min-h-11 sm:min-h-0" disabled={saving} onClick={() => save()}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </div>
     {/* The product editor layout (AGENTS.md): steps, options, live preview. */}
@@ -265,9 +267,18 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
         </>}
         {step === 'publish' && <>
           <h2 className="font-display text-2xl text-strong">Publish</h2>
-          <div className="flex items-center gap-2"><span className="text-sm text-muted">Status</span><Badge variant="secondary">Draft</Badge></div>
-          <p className="text-sm text-body">{PUBLISH_LATER_MESSAGE}</p>
-          <Button className="min-h-11 sm:min-h-0" disabled>Publish</Button>
+          <div className="flex items-center gap-2"><span className="text-sm text-muted">Status</span><Badge variant={status === 'published' ? 'default' : 'secondary'}>{status === 'published' ? 'Published' : 'Draft'}</Badge></div>
+          {status === 'published' ? <>
+            <p className="text-sm text-body">Your community is live. Share this link so people can find it and join:</p>
+            <p data-community-link className="break-all rounded-lg bg-surface-sunken px-3 py-2 text-sm text-strong">{`${typeof window === 'undefined' ? '' : window.location.origin}/community/${tenantId}/${community.id}`}</p>
+            <Button variant="outline" className="min-h-11 sm:min-h-0" disabled={saving} onClick={() => save('draft')}>Unpublish</Button>
+          </> : publishBlocker(draft) ? <>
+            <p className="text-sm text-body">{publishBlocker(draft)}</p>
+            <Button className="min-h-11 sm:min-h-0" disabled>Publish</Button>
+          </> : <>
+            <p className="text-sm text-body">Publishing saves your setup, opens the community with a General chat, and gives you a link to share.</p>
+            <Button className="min-h-11 sm:min-h-0" disabled={saving} onClick={() => save('published')}>{saving ? 'Publishing…' : 'Publish'}</Button>
+          </>}
         </>}
       </CardContent></Card>
       <CommunityPreview draft={draft} />

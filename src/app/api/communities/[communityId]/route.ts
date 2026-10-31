@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
-import { DEFAULT_COMMUNITY_ID, isCommunityId, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, PUBLISH_LATER_MESSAGE, readCommunityEdit, readCommunityRecord } from '@/lib/community/communities';
+import { DEFAULT_COMMUNITY_ID, isCommunityId, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, publishBlocker, readCommunityEdit, readCommunityRecord } from '@/lib/community/communities';
 import { communitiesRef, communityLimit, isTenantIdParam, requireCommunityManager } from '@/lib/community/communities-server';
 import { readCommunitySettings } from '@/lib/community/settings';
 
@@ -49,13 +49,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     try { edit = readCommunityEdit(body.community); }
     catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
     if (edit.pricing.type === 'paid' && !PAID_COMMUNITIES_ENABLED) return NextResponse.json({ error: PAID_COMING_SOON_MESSAGE }, { status: 400 });
-    if (body.status === 'published') return NextResponse.json({ error: PUBLISH_LATER_MESSAGE }, { status: 409 });
+    if (body.status !== undefined && body.status !== 'published' && body.status !== 'draft') return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     const ref = communitiesRef(tenantId).doc(id);
+    const general = ref.collection('channels').doc('general');
     await adminDb.runTransaction(async tx => {
-      const saved = await tx.get(ref);
+      const [saved, channel] = await Promise.all([tx.get(ref), tx.get(general)]);
       if (!saved.exists) throw new RouteError('Community not found.', 404);
-      readCommunityRecord(id, saved.data() ?? {});
-      tx.update(ref, { ...edit, updatedAt: FieldValue.serverTimestamp() });
+      const current = readCommunityRecord(id, saved.data() ?? {});
+      const status = body.status ?? current.status;
+      // #576: a free community that lets anyone in can go live. A live
+      // community cannot be edited into a setup that could not be published.
+      const blocker = status === 'published' ? publishBlocker(edit) : null;
+      if (blocker) throw new RouteError(blocker, 409);
+      tx.update(ref, {
+        ...edit, status, updatedAt: FieldValue.serverTimestamp(),
+        ...(status === 'published' && current.status !== 'published' ? { publishedAt: FieldValue.serverTimestamp() } : {}),
+      });
+      // Every live community opens with one chat everybody is in.
+      if (status === 'published' && !channel.exists) {
+        tx.create(general, { name: 'General', description: '', audience: 'all', members: [], type: 'chat', createdAt: FieldValue.serverTimestamp(), createdBy: admin.uid });
+      }
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

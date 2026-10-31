@@ -95,16 +95,38 @@ describe('communities API', () => {
     expect((await refused.json()).error).toContain('does not include communities');
   });
 
-  it('saves an edit, but will not publish a second community yet', async () => {
+  // WAS 'saves an edit, but will not publish a second community yet'. #576 opens
+  // publishing for free communities that let anyone in.
+  it('saves an edit, publishes a free open community with a General chat, and can unpublish it', async () => {
     await create('Youth');
     const community = { ...newCommunityDraft('Youth'), tagline: 'Ages 13 to 18', visibility: 'public' };
     expect((await patch('youth', { community })).status).toBe(200);
     expect(h.docs.get(`${T}/communities/youth`)).toMatchObject({ tagline: 'Ages 13 to 18', status: 'draft', visibility: 'public' });
-    const publish = await patch('youth', { community, status: 'published' });
-    expect(publish.status).toBe(409);
+    expect(h.docs.has(`${T}/communities/youth/channels/general`)).toBe(false);
+    expect((await patch('youth', { community, status: 'published' })).status).toBe(200);
+    expect(h.docs.get(`${T}/communities/youth`)).toMatchObject({ status: 'published', publishedAt: 'ts' });
+    expect(h.docs.get(`${T}/communities/youth/channels/general`)).toMatchObject({ name: 'General', audience: 'all', members: [], createdBy: 'admin' });
+    // A later save keeps it live and does not recreate the chat.
+    expect((await patch('youth', { community: { ...community, tagline: 'Teens' } })).status).toBe(200);
+    expect(h.docs.get(`${T}/communities/youth`)).toMatchObject({ status: 'published', tagline: 'Teens' });
+    expect((await patch('youth', { community, status: 'draft' })).status).toBe(200);
     expect(h.docs.get(`${T}/communities/youth`)!.status).toBe('draft');
+    expect((await patch('youth', { community, status: 'live' })).status).toBe(400);
     expect((await patch('youth', { community: { ...community, name: '' } })).status).toBe(400);
     expect((await patch('missing', { community })).status).toBe(404);
+  });
+
+  it('will not publish, or keep live, a community that reviews applications', async () => {
+    await create('Youth');
+    const open = { ...newCommunityDraft('Youth'), visibility: 'public' };
+    const apply = { ...open, joining: { mode: 'apply' } };
+    const refused = await patch('youth', { community: apply, status: 'published' });
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error).toContain('once approvals open');
+    expect(h.docs.get(`${T}/communities/youth`)!.status).toBe('draft');
+    await patch('youth', { community: open, status: 'published' });
+    expect((await patch('youth', { community: apply })).status).toBe(409);
+    expect(h.docs.get(`${T}/communities/youth`)!.joining).toEqual({ mode: 'open' });
   });
 
   it('refuses paid pricing while paid communities are coming soon', async () => {

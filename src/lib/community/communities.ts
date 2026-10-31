@@ -40,8 +40,15 @@ export type CommunityEdit = Pick<CommunityRecord, 'name' | 'tagline' | 'iconUrl'
 export const PAID_COMMUNITIES_ENABLED = false;
 export const PAID_COMING_SOON_MESSAGE = 'Paid communities are coming soon. Keep this community free for now.';
 
-/** Shown until each community has its own members, feed and chat. */
-export const PUBLISH_LATER_MESSAGE = 'Publishing a second community opens once each community has its own feed and chat. Your setup is saved as a draft.';
+/** Apply-first communities need an approval screen before they can go live. */
+export const APPLY_LATER_MESSAGE = 'Communities that review applications can be published once approvals open. Set Joining to "Anyone can join" to publish now.';
+
+/** Why this setup cannot be published yet, or null when it can (#576: free, open communities). */
+export function publishBlocker(edit: Pick<CommunityEdit, 'pricing' | 'joining'>): string | null {
+  if (edit.pricing.type === 'paid' && !PAID_COMMUNITIES_ENABLED) return PAID_COMING_SOON_MESSAGE;
+  if (edit.joining.mode !== 'open') return APPLY_LATER_MESSAGE;
+  return null;
+}
 
 export const COMMUNITY_LIMITS = { name: 80, tagline: 160, about: 10000, url: 2048 } as const;
 const CURRENCIES = ['usd', 'eur', 'gbp', 'ron', 'cad', 'aud'] as const;

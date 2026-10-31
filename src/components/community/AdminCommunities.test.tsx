@@ -67,10 +67,24 @@ describe('admin Communities page', () => {
     expect(paid.disabled).toBe(true);
     expect(paid.textContent).toContain('Coming soon');
     await click(button('Publish'));
-    // The step and its action share the label; the action is the disabled one.
-    const publish = [...container.querySelectorAll('[data-community-editor] button')].filter(b => b.textContent === 'Publish');
-    expect(publish.map(b => (b as HTMLButtonElement).disabled)).toEqual([false, true]);
-    expect(container.textContent).toContain('opens once each community has its own feed and chat');
+    // #576: a free community that lets anyone in can be published from here.
+    const publishButtons = () => [...container.querySelectorAll('[data-community-editor] button')].filter(b => b.textContent === 'Publish') as HTMLButtonElement[];
+    expect(publishButtons().map(b => b.disabled)).toEqual([false, false]);
+    await click(publishButtons()[1]);
+    expect(h.fetch).toHaveBeenCalledWith('/api/communities/youth', expect.objectContaining({ method: 'PATCH', body: expect.stringContaining('"status":"published"') }));
+    expect(container.textContent).toContain('Your community is live');
+    expect(container.querySelector('[data-community-link]')!.textContent).toMatch(/\/community\/grace\/youth$/);
+    expect(button('Unpublish')).toBeTruthy();
+  });
+
+  it('explains why an apply-first community cannot be published yet', async () => {
+    list = { ...list, communities: [defaultCommunityRecord('Grace Chapel', defaultCommunitySettings()), { ...youth, joining: { mode: 'apply' } }] };
+    await mount();
+    await click(container.querySelector('[data-community-row="youth"]')!.querySelector('button')!);
+    await click(button('Publish'));
+    const publishButtons = [...container.querySelectorAll('[data-community-editor] button')].filter(b => b.textContent === 'Publish') as HTMLButtonElement[];
+    expect(publishButtons.map(b => b.disabled)).toEqual([false, true]);
+    expect(container.textContent).toContain('once approvals open');
   });
 
   it('disables New community at the plan limit and says why', async () => {
