@@ -161,6 +161,9 @@ const ROUTE_TABLE = [
   // The member community page (App.tsx `/community/:tenantId`). The segment is a tenant id, so
   // only the PATTERN ever leaves as a property, as with every other parameterised row.
   { pattern: '/community/[tenantId]', entry: 'spa', surface: 'member', public: false },
+  // #576: a community other than the ministry's default one. Both segments are ids; only the
+  // pattern leaves, as above.
+  { pattern: '/community/[tenantId]/[communityId]', entry: 'spa', surface: 'member', public: false },
 
   /* ── the named admin sections (THE-227 adds these) ──────────────────────── */
   // Generated from the nav's own vocabulary rather than restated, so a section
