@@ -1,0 +1,35 @@
+{
+  "ticket": "#579",
+  "entries": [
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "e47fe88861313037ede3db82fd4fd04ef0519a9655cd8ef4703d3e8fca8a067b",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: Eden's New event dialog (docs/prd/screenshots/07-events): Title and What it's about with Eden's labels and placeholders, Date · Time · How long · Time zone through EventScheduleFields in place of two date-and-time fields, a full-width Repeats, Eden's Open to anyone line, a More options heading above the cover image and Harvest's own settings, and \"Make event\" for \"Create Event\". The form's two wall-clock strings, the save path, the zone handling, the series lock and every price, registration and money path are unchanged."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "f9a11bb3ffdc82a845605ae17a6cb90a6e359e955eec3f239a148e38ee39d256",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: the className count gains 308 (net +2 from the dialog); the inline style count is unchanged. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "13120350a5d1c2423ba722e8f79229dab4b508416ed07395b1fbdc17197dc969",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: appends AdminEvents' stripped digest after the Eden dialog; every earlier pin kept."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "f3573e518d5cec86512b7677e5a40b51ae536553c3385691de086d251b61048a",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: records EventScheduleFields among the files that use the min-h-11 phone floor, in sorted order. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "52a34363379dce3a2191e51d8b292bdb14fba71ff8cf053dbb6e3ad4afc993a0",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: the editor tests drive Eden's Date, Time and How long instead of two date-and-time fields and read the saved wall-clock strings off the schedule block, so every DST, zone, legacy-seconds and series-lock assertion is kept; 'Create Event' reads 'Make event'; locked-series queries are scoped to the newest dialog."
+    },
+    {
+      "file": "src/components/__tests__/THE-351.manual-payment.ui.test.tsx",
+      "digest": "638b56cd02630c8b6ed3388e6199006c304c7bf0e5f5745adc7b064ef444b368",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: 'Create Event' reads 'Make event'. Nothing else changed."
+    }
+  ]
+}
