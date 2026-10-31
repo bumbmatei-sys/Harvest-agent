@@ -259,7 +259,8 @@ describe('1+3 · the event form: disclaimer, provider picker, ticket price', () 
     await click(paypalBox as HTMLElement);
     await settle();
 
-    await click(buttonContaining(c, 'Create Event'));
+    // WAS 'Create Event'; #579 adopts Eden's "Make event".
+    await click(buttonContaining(c, 'Make event'));
     await settle();
 
     const created = stored.find((s) => 'paymentProviders' in s);

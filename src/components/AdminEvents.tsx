@@ -37,7 +37,7 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EventStartField } from './events/EventStartField';
+import { EventScheduleFields } from './events/EventScheduleFields';
 import { authFetch } from '@/utils/auth-fetch';
 import { DEFAULT_REGISTRATION_CUTOFF_HOURS } from '../lib/events/registration-cutoff';
 import { getSeriesEditLock, saveEventEdit } from './events/event-edit-client';
@@ -873,33 +873,54 @@ const AdminEvents: React.FC = () => {
         </DialogHeader>
         <div className="bg-surface-raised rounded-2xl border border-line shadow-xs p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
+            {/* #579: Eden's New event dialog (docs/prd/screenshots/07-events): Title,
+                What it's about, Date · Time, How long · Time zone, Repeats, Where,
+                Open to anyone; Harvest's own settings follow under More options. */}
             <div>
-              <label className="text-xs font-semibold text-body mb-1.5 block">Event Title *</label>
-              <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Event name" />
+              <label className="text-xs font-semibold text-body mb-1.5 block" htmlFor="event-title">Title</label>
+              <input id="event-title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Weekly Q&A" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-body mb-1.5 block">Description</label>
-              <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+              <label className="text-xs font-semibold text-body mb-1.5 block" htmlFor="event-about">What it&apos;s about <span className="font-normal text-faint">Optional</span></label>
+              <textarea id="event-about" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                 rows={3} className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors resize-none ${FIELD_WIDTH.long}`}
-                placeholder="What is this event about?" />
+                placeholder="Bring your questions. We'll go through them live." />
             </div>
+            <EventScheduleFields
+              start={form.startDate}
+              end={form.endDate}
+              locked={seriesScheduleLocked}
+              today={new Date().toISOString().slice(0, 10)}
+              fieldClass={`border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${CONTROL_DENSITY.control}`}
+              onChange={({ start, end }) => setForm(prev => ({ ...prev, startDate: start, endDate: end }))}
+              timeZoneField={<>
+                <label className="text-xs font-semibold text-body mb-1.5 block">Time zone</label>
+                <Select disabled={seriesScheduleLocked} value={form.timeZone || BROWSER_TIME_ZONE()} onValueChange={(v: unknown) => setForm({ ...form, timeZone: String(v) })}>
+                  <SelectTrigger className={`w-full ${CONTROL_DENSITY.control}`}>
+                    <SelectValue>{() => form.timeZone || BROWSER_TIME_ZONE()}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set([form.timeZone || BROWSER_TIME_ZONE(), BROWSER_TIME_ZONE(), 'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Africa/Lagos', 'Asia/Manila'])).map(tz => (
+                      <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-faint">Times are in {form.timeZone || BROWSER_TIME_ZONE()}. Changing the zone keeps the entered times.</p>
+              </>}
+            />
             <div>
-              <label className="text-xs font-semibold text-body mb-1.5 block">Cover Image</label>
-              <ImageUpload value={form.coverImage || ''} onChange={url => setForm({ ...form, coverImage: url })} label="Add cover image" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-body mb-1.5 block">Start Date & Time *</label>
-                <EventStartField value={form.startDate} locked={seriesScheduleLocked}
-                  onValueChange={startDate => setForm({ ...form, startDate })}
-                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-body mb-1.5 block">End Date & Time</label>
-                <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })}
-                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
-              </div>
+              <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
+              <Select disabled={seriesScheduleLocked} value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>
+                <SelectTrigger className={`w-full ${CONTROL_DENSITY.control}`}>
+                  <SelectValue>{() => REPEATS_LABEL[form.recurrenceFreq]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(REPEATS_LABEL) as (keyof typeof REPEATS_LABEL)[]).map(freq => (
+                    <SelectItem key={freq} value={freq}>{REPEATS_LABEL[freq]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Where</label>
@@ -954,35 +975,6 @@ const AdminEvents: React.FC = () => {
                 </>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-body mb-1.5 block">Time zone</label>
-                <Select disabled={seriesScheduleLocked} value={form.timeZone || BROWSER_TIME_ZONE()} onValueChange={(v: unknown) => setForm({ ...form, timeZone: String(v) })}>
-                  <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
-                    <SelectValue>{() => form.timeZone || BROWSER_TIME_ZONE()}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from(new Set([form.timeZone || BROWSER_TIME_ZONE(), BROWSER_TIME_ZONE(), 'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Africa/Lagos', 'Asia/Manila'])).map(tz => (
-                      <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-faint">Times are in {form.timeZone || BROWSER_TIME_ZONE()}. Changing the zone keeps the entered times.</p>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
-                <Select disabled={seriesScheduleLocked} value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>
-                  <SelectTrigger className={`${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
-                    <SelectValue>{() => REPEATS_LABEL[form.recurrenceFreq]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(REPEATS_LABEL) as (keyof typeof REPEATS_LABEL)[]).map(freq => (
-                      <SelectItem key={freq} value={freq}>{REPEATS_LABEL[freq]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
             {view === 'edit' && selected?.recurrence && seriesLock !== 'unlocked' && (
               <Alert>
                 <AlertDescription>
@@ -1027,10 +1019,18 @@ const AdminEvents: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-strong">Open to anyone</p>
                 <p className="text-xs text-faint mt-0.5">
-                  Anyone with the link can see this event and say they&apos;re going — not just people in your ministry.
+                  People outside your ministry can say they&apos;re going and join from the share link.
                 </p>
               </div>
               <Switch aria-label="Open to anyone" checked={form.openToAnyone} onCheckedChange={(v: boolean) => setForm({ ...form, openToAnyone: v })} />
+            </div>
+            <div data-event-more-options className="border-t border-line pt-5">
+              <p className="text-sm font-bold text-strong">More options</p>
+              <p className="text-xs text-faint mt-0.5">Cover image, capacity, registration and status.</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-body mb-1.5 block">Cover Image</label>
+              <ImageUpload value={form.coverImage || ''} onChange={url => setForm({ ...form, coverImage: url })} label="Add cover image" />
             </div>
             {/*
               THE-345 - the price field is ABSENT while no payment rail exists,
@@ -1429,7 +1429,7 @@ const AdminEvents: React.FC = () => {
             <Button variant="outline" onClick={() => setView('list')} className={`h-auto min-h-11 sm:min-h-0 flex-1 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !form.title.trim() || (view === 'edit' && !!selected?.recurrence && (seriesLock === 'loading' || seriesLock === 'error'))}
               className={`h-auto min-h-11 sm:min-h-0 flex-1 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
-              {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Create Event'}
+              {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Make event'}
             </Button>
         </DialogFooter>
         </div>
