@@ -999,3 +999,126 @@ All 20 Eden reference screens for Forms, Sign-ups and Inbox are in
 See [§21](#21-open-questions-for-matei) items tagged **Forms**.
 
 ---
+
+## 10. Products
+
+### 10.1 Goal
+A single "New product" picker that can grow over time — digital products, courses,
+memberships, coaching, calendar/booking — all sharing one product-page and checkout pattern,
+following Eden's own product range closely but shipping only what a ministry actually needs
+first.
+
+### 10.2 Users / roles
+Owner/admin (creates/publishes products), member/buyer (views the product page, enrolls or
+downloads), visitor (sees the public product page before deciding to join/buy).
+
+### 10.3 What's actually built today, grounded in code
+`src/components/product-wizard/product-types.tsx` is the single source of truth for this, and
+it is refreshingly explicit about its own roadmap:
+
+> "Course and Digital download have builders today. The rest are listed so the roadmap is
+> visible and cannot be picked."
+
+| Product type | `available` | Status |
+|---|---|---|
+| **Course** | `true` | Built — lessons in order, with progress and a certificate. |
+| **Digital download / Ebook** | `true` | Built — `src/app/api/digital-products/*`: upload, claim, download, entitlement-gated. |
+| **Coaching** | `false` | Listed only — "One-to-one or small-group sessions you book with people." No booking/calendar code exists for it. |
+| **Bundle** | `false` | Listed only. |
+| **Community (as a product)** | `false` | Listed only — distinct from the Communities feature in [§5](#5-communities), which already exists; this entry is about offering a community *as a purchasable product* in this picker, not built. |
+| **"More coming soon"** | `false` | A placeholder card, not a real type. |
+
+So: **Coaching, calls & calendar booking, and the "other Eden product types" (cohort, workshop,
+Ask-me, Custom AI) are reference-only in this document** — the 50 screenshots under those two
+areas show what Eden offers, not what Harvest has built or is committed to building next. They
+are included for completeness per this document's instructions, not as a roadmap commitment.
+
+### 10.4 Courses
+- A course's fields (`CourseProductFields`, `src/types/course-product.types.ts`) are additive
+  over the shared `Course` type so a document written before this model still parses.
+- **Access control:** `accessMode` is `'everyone'` (legacy default) or `'restricted'`, with an
+  explicit `accessUserIds` allow-list, **and/or `communityIds`** — "members of any of them get
+  access." This is a real, already-built tie between Products and Communities: a course can be
+  gated by community membership today, which is worth noting precisely because
+  [§8](#8-events--communities-integration) proposes the equivalent for Events and is *not* built
+  yet.
+- **Pricing is parked, not live:** `CoursePrice.mode` is `free`, `one-time`, or `membership`, but
+  the type's own docblock says it plainly — "Nothing here is ever charged: paid checkout is
+  parked, so a price is a stored intention and no payment call reads it." This matches
+  `PAID_PRODUCT_CHECKOUT_ENABLED = false` in `AGENTS.md`: every surface that shows a course price
+  today is showing an intention, and must say "coming soon," never imply a working checkout.
+- Lessons are `text`, `video`, or `video-text` (`LessonType`), with a certificate on completion
+  referenced elsewhere in the course UI.
+
+### 10.5 Digital products / downloads
+Upload → stored on R2 (`createR2Client`) → entitlement-gated download/claim
+(`hasDigitalEntitlement`, `src/lib/digital-products.ts`). Validated server-side: title, cover
+URL, `priceCents` (a non-negative integer — cents, per `AGENTS.md`'s money-unit rule), status
+(`draft`/`published`). The admin route also supports a tenant-scoped admin view gated by the
+`createCourses` permission.
+
+### 10.6 Coupons, promotions & checkout
+No coupon/promo-code feature exists in the codebase today (no route, no field, no UI). This
+tracks directly with product checkout itself being "coming soon" per the money model — a coupon
+on a checkout that doesn't process payment yet has nothing to attach to. Treat this as a
+future-phase item once `PAID_PRODUCT_CHECKOUT_ENABLED` actually flips.
+
+### 10.7 Shared editor layout
+Per `AGENTS.md`'s design-system note, every product editor — courses, digital downloads, and
+any future type — uses the same three-panel layout as the Communities editor
+([§5.4](#54-functional-requirements)): steps on the left, options in the middle, live preview on
+the right. A new product type's editor should reuse this, not invent its own.
+
+### 10.8 Eden parity
+This section carries the largest reference set in the document (128 screens) because it spans
+Eden's Library/Notes/Boards system, its full Products hub and new-product picker, its Course
+product builder and Inbox (course questions), its Coaching product builder end to end
+(configure → offer → publish), and the "other product types" (cohort, workshop, Ask-me, Custom
+AI) included for reference even though none of them are committed Harvest features.
+
+### 10.9 Plan availability
+Courses and digital downloads are available per plan caps (see `PLAN_FEATURES`); Free's
+sign-up brief specifically allows "one adopted course" per `AGENTS.md`'s Free-tier description.
+
+### 10.10 Data model notes
+`courses/{id}`: `CourseProductFields` fields above, `communityIds`, `accessUserIds`.
+`tenants/{t}/digitalProducts/{id}`: `title`, `description`, `coverUrl`, `priceCents`, `status`,
+`objectKey` (R2).
+
+### 10.11 Edge cases
+- A course gated by `communityIds` whose referenced community is later deleted must fail safe
+  (deny access, not crash) rather than treat a missing community as "everyone."
+- A digital product's `priceCents` must never be trusted from the client on the download/claim
+  path — entitlement is checked server-side regardless of what price the UI displayed.
+
+### 10.12 Mobile
+Course lesson playback and the digital-download claim/download flow are primarily mobile
+surfaces for members; the product editor (admin) must also be usable at mobile width.
+
+### 10.13 Acceptance criteria
+- A course with `communityIds` set grants access to a member of *any* listed community, and
+  denies access otherwise, enforced server-side.
+- No UI anywhere claims a working checkout for a course or digital product's paid price while
+  `PAID_PRODUCT_CHECKOUT_ENABLED` is false — the copy must say "coming soon."
+- The "New product" picker never lets a visitor select `available: false` types; they render
+  informationally only.
+
+### 10.14 Screenshots
+
+<table><tr>
+<td><img src="screenshots/10-products/products-013-desktop-56-store-new-product-type-picker.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/10-products/products-064-desktop-74-products-course-draft-lessons-step.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/10-products/products-035-desktop-101-products-coaching-coaching-top.webp" width="340"><br>Eden reference (design we copy) — desktop (reference only — not a built feature)</td>
+<td><img src="screenshots/10-products/products-001-desktop-02-library-all-items.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 128 Eden reference screens for Products, Courses, Digital products, Notes/Boards/Library,
+Coaching/calendar booking, the other Eden product types, and Coupons/checkout are in
+`docs/prd/screenshots/10-products/` (see `_manifest.json` for the complete list and which area
+each came from).
+
+### 10.15 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Products**.
+
+---
