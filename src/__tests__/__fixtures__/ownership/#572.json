@@ -1,0 +1,10 @@
+{
+  "ticket": "#572",
+  "entries": [
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "d876f9e17b932ce7b4f7545a3a8a27c0da75364835931d27268a612ea2394e26",
+      "why": "APPENDED, NOT SUBSTITUTED — #572: records the community join/leave route (api/communities/[communityId]/membership) beside the other communities routes; it writes membership records and the member's index only, and the existing assertion that these routes write no plan, addons or features now covers it too. The pinned count of other routes is unchanged."
+    }
+  ]
+}
