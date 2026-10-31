@@ -1,0 +1,107 @@
+[
+  {
+    "file": "events-001-desktop-53-store-events.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/53-store-events.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-002-desktop-122-events-new-event-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/122-events-new-event-dialog.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-003-desktop-123-events-new-event-dialog-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/123-events-new-event-dialog-scrolled.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-004-desktop-63-events-past-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/63-events-past-tab.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-005-desktop-64-events-new-event-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/64-events-new-event-menu.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-006-desktop-65-events-schedule-for-later-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/65-events-schedule-for-later-dialog.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-007-desktop-66-events-schedule-date-time-picker.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/66-events-schedule-date-time-picker.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-008-desktop-67-events-schedule-length-dropdown.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/67-events-schedule-length-dropdown.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-009-desktop-26-events-upcoming-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/26-events-upcoming-empty.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-010-desktop-27-events-going-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/27-events-going-empty.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-011-desktop-28-events-past-replays-list.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/28-events-past-replays-list.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-012-desktop-29-events-detail-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/29-events-detail-top.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-013-desktop-30-events-detail-mid.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/30-events-detail-mid.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-014-desktop-31-events-detail-questions.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/31-events-detail-questions.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "events-015-desktop-43-untitled-events-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/43-untitled-events-empty.png",
+    "area": "Events",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

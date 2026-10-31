@@ -696,3 +696,196 @@ active/leads tab pattern this section's Active/Left filter should mirror.
 See [§21](#21-open-questions-for-matei) items tagged **CRM**.
 
 ---
+
+## 7. Events
+
+### 7.1 Goal
+An Eden-style events product: one-time or recurring events, public registration (including a
+Luma-style public page), optional paid tickets, and an honest cancellation path — all without
+Harvest ever touching a card itself (see the money model in `AGENTS.md`).
+
+### 7.2 Users / roles
+Owner/admin (creates/edits/cancels events, confirms manual payments), registrant/member
+(registers, receives a ticket), visitor (views and registers from the public event page without
+an account, where allowed).
+
+### 7.3 Functional requirements, grounded in code
+- **Recurrence:** events carry a `recurrence` rule (`freq`, an end mode of never/on-date/after-N,
+  and a `cancelledRuns` list for one-off cancellations within a series) expanded into concrete
+  **runs** by `expandRuns`/`listEventRuns` (`src/lib/events/recurrence.ts`,
+  `src/components/AdminEvents.tsx`). A recurring event's schedule can be locked once runs exist,
+  to stop an edit from silently reshaping dates registrants already hold tickets for.
+- **Public registration page:** a Luma-style public page per event, registering **one person at
+  a time** per the shipped feature (`AGENTS.md` commit history: "Luma public page, one-at-a-time
+  registration"), with a registration cutoff shared between the initial submit and payment
+  completion (`src/lib/events/registration-cutoff.ts`) so a deadline can't be bypassed by
+  completing payment after it passes.
+- **Paid tickets run on trust, not on Harvest processing a card** (`AGENTS.md`'s money model,
+  `PAID_EVENTS_ENABLED = false`, `MANUAL_EVENT_PAYMENTS_ENABLED = true`): register unpaid → pay
+  the ministry directly using a reference code → tell Harvest "I've paid" → the ministry
+  confirms from its own account records. **The QR/ticket code is withheld until that
+  confirmation lands** (`UserEvents.tsx` — `paymentStateOf`, ticket view gated on `payment ===
+  'confirmed'`); a free ticket's QR shows immediately, since there's nothing to confirm.
+- **Cancelling an event, or a single date in a series, automatically emails every affected
+  registrant.** `cancelEventRegistrations` (`src/lib/events/cancellation.ts`) is fully built:
+  it marks the event/run cancelled transactionally, writes one
+  `eventCancellationNotices/{registrationId}` record per affected registrant *before* sending
+  (so a retry after a partial failure never double-sends and never loses track of who's left),
+  and sends via `sendTransactionalEmail` (Resend) with copy that explicitly says **"Contact the
+  event owner/organizer about any refund. Refunds are handled manually by the ministry; Harvest
+  does not issue an automatic refund."** A paid registration is flagged `refundStatus:
+  'pending_manual'` on cancellation — refunds themselves (e.g. via PayPal) are the ministry's
+  own action, with automatic refunds explicitly a later phase, not this one.
+  `CANCELLATION_EMAIL_BATCH_SIZE = 20` bounds each send pass; the function is safely retryable
+  and refuses to resend past Resend's 24-hour idempotency-key retention window without a human
+  reviewing delivery first.
+- **Check-in never blocks on payment** (`AGENTS.md`) — Harvest makes no promise about what
+  happens at the ministry's actual door, because it doesn't know their door policy.
+
+### 7.4 Eden parity
+The reference set covers Eden's event creation dialog, the schedule-for-later flow, the
+past/upcoming tabs, and the member-facing event detail page (including its questions section) —
+Harvest's admin event editor and public event page should match this shape and density.
+
+### 7.5 Plan availability
+Events are available on every plan; manual-payment ticketing is a capability, not a plan gate,
+per the money model (Harvest never touches the money either way).
+
+### 7.6 Data model notes
+`tenants/{t}/events/{id}`: `recurrence`, `startDate`, `endDate`, `timeZone`, `organizerEmail`,
+`status`. `tenants/{t}/registrations/{id}`: `eventId`, `runDate`, `status`
+(`confirmed`/`waitlisted`/`cancelled`), `cancellationReason`, `refundStatus`, `ticketCode`.
+`tenants/{t}/eventCancellationNotices/{registrationId}`: the frozen, idempotent notice payload.
+
+### 7.7 Edge cases
+- A registration created *after* cancellation starts but *before* the transaction commits must
+  still be read and notified — `cancelEventRegistrations` deliberately re-reads registrations
+  after the cancellation gate closes rather than working off a pre-gate snapshot.
+- A cancellation retry after some notices already sent must not re-email anyone whose notice
+  already has a `sentAt`.
+- An event with no resolvable organizer contact (no `organizerEmail`, no creator, no tenant
+  owner email) must refuse to cancel with notices unsent rather than cancel silently with nobody
+  told.
+
+### 7.8 Mobile
+Public registration and the member's ticket/QR view are primarily mobile surfaces (a registrant
+checking in at a door); the admin event editor must also work at mobile width for a volunteer
+managing check-in from a phone.
+
+### 7.9 Acceptance criteria
+- Cancelling a single date in a recurring series notifies only that date's registrants, not the
+  whole series.
+- A paid ticket never shows its QR/ticket code before the ministry confirms payment; a free
+  ticket shows it immediately.
+- A registration submitted one second before a deadline and paid one second after it is rejected
+  at payment completion, not only at initial submit.
+
+### 7.10 Screenshots
+
+<table><tr>
+<td><img src="screenshots/07-events/events-002-desktop-122-events-new-event-dialog.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/07-events/events-006-desktop-65-events-schedule-for-later-dialog.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/07-events/events-012-desktop-29-events-detail-top.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/07-events/events-014-desktop-31-events-detail-questions.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 15 Eden reference screens for Events are in `docs/prd/screenshots/07-events/` (see
+`_manifest.json`): the new-event dialog, schedule/recurrence pickers, past/upcoming tabs, and
+the member-facing event detail page including its questions section.
+
+### 7.11 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Events**.
+
+---
+
+## 8. Events + Communities integration
+
+### 8.1 Goal
+Let an event belong to a specific community, so it's visible in that community's page, follows
+that community's visibility, notifies that community's members (respecting email blocks), and —
+optionally — registering for it also joins the community, with CRM tagged accordingly.
+
+### 8.2 Status: not yet built
+A direct code search finds **no `communityId` field on events, no "Registering also joins
+&lt;community&gt;" toggle, and no `event:<eventId>` CRM tag anywhere in the codebase.** This
+section is written as a concrete, buildable requirement on top of primitives that already
+exist and already do the matching job elsewhere in the product — it is not a description of
+shipped behaviour.
+
+### 8.3 Functional requirements (proposed, to build)
+- **An event can belong to a community.** Add an optional `communityId` to the event record,
+  validated server-side against the **same tenant's** `communities` sub-collection (or the
+  default community) — exactly the "same tenant, server-checked" pattern already used for
+  community membership itself ([§5](#5-communities), [§6](#6-community-join--crm)). A
+  cross-tenant `communityId` must be rejected the same way a cross-tenant join is rejected today.
+- **Listed in the community page's Events section.** The community's member-facing page gains an
+  Events section listing events whose `communityId` matches, ordered the same way
+  `AdminEvents.tsx` already orders runs.
+- **Visibility follows the community.** A private community's events are visible only to its
+  members; a public community's events appear to visitors the way the community's own About
+  page does today.
+- **Members notified, respecting email blocks.** Any event-related email to community members
+  (new event announced, reminder, cancellation per [§7.3](#73-functional-requirements-grounded-in-code))
+  must be checked against `tenantEmailBlocked`/`tenantBlockedEmailHashes`
+  (`src/lib/community-privacy.ts`) — the same single source of truth every other owner-directed
+  send already goes through. This is a reuse requirement, not a new suppression mechanism.
+- **"Registering also joins &lt;community&gt;" toggle.** An owner setting on the event; when on,
+  a successful registration also runs the **normal join path**
+  (`communityMembershipRequest`/`upsertCommunityContact`) rather than a shortcut that writes
+  membership directly — so the consent notice, the membership index, and the CRM contact upsert
+  all happen exactly as they would for a direct join (see [§6.3](#63-join-creates-a-contact-automatically)).
+  For a **paid** event, this must happen from the **webhook** (payment confirmation), not from
+  the initial unpaid registration request, mirroring the money model's "register unpaid, confirm
+  later" sequencing in [§7.3](#73-functional-requirements-grounded-in-code) — joining before
+  payment is confirmed would let an unconfirmed registrant's name/email enter the CRM as if they
+  had actually joined.
+- **CRM tag `event:<eventId>`.** The contact created or updated by the join-on-register path
+  carries a source/tag identifying which event drove the join, extending
+  `normaliseSource()`/the CRM filter work already required in [§6.4](#64-one-crm-many-communities--and-the-filters-it-needs).
+- **Consent notice shown.** Since joining-via-registration is the same join path as a direct
+  join, the same consent notice requirement from [§6.5](#65-consent-notice) applies —
+  registering for an event is not an exemption from consent.
+
+### 8.4 Eden parity
+Eden has no direct analogue (events are not scoped to a specific community sub-product in the
+reference material); this integration is Harvest-specific, built from the Events and
+Communities primitives above rather than copied from an Eden screen.
+
+### 8.5 Data model notes
+- `tenants/{t}/events/{id}.communityId?`: optional, validated against `tenants/{t}/communities`
+  or the default community.
+- `tenants/{t}/events/{id}.joinsCommunity?`: boolean, the "Registering also joins" toggle.
+- Contact `source`/tag: extend to carry `event:<eventId>` alongside the existing community
+  source tag.
+
+### 8.6 Edge cases
+- An event whose community is later deleted: the event should not silently lose its visibility
+  rule — deleting a community with events attached needs an explicit decision (orphan the event
+  to "no community," or block deletion while events reference it).
+- A paid event with the join toggle on, where the registrant's payment is never confirmed: no
+  join, no CRM contact from this path — the webhook never fires, so nothing is created.
+- A community that goes private after an event was already public: already-registered members
+  keep their registration; new registrants follow the community's current visibility.
+
+### 8.7 Mobile
+Same as [§5.9](#59-mobile) and [§7.8](#78-mobile) — the community page's Events section and the
+registration-with-join flow are both primarily mobile surfaces.
+
+### 8.8 Acceptance criteria
+- An event's `communityId` can only reference a community in the same tenant; cross-tenant
+  references are rejected server-side, not just hidden in the UI.
+- A member blocked (left and not rejoined) never receives an event notification tied to that
+  community, even if they are somehow still registered for the event itself.
+- Registering for a paid event with the join toggle on creates the CRM contact and membership
+  only after the payment webhook confirms, never on the initial unpaid submission.
+
+### 8.9 Screenshots
+No dedicated Eden reference exists for this Harvest-specific integration; see
+[§7.10](#710-screenshots) and [§5.11](#511-screenshots) for the Events and Communities screens
+this feature connects.
+
+### 8.10 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Events-Communities**.
+
+---
