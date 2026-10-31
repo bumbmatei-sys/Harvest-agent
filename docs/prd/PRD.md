@@ -367,7 +367,7 @@ The future ministry owner only; nobody else is present during onboarding.
 - **Required:** the sign-up flow collects what's needed to create the account and, for paid
   tiers, to start a Dodo checkout — and nothing about a subdomain or a public web address.
   Ministry name is still collected (it's the workspace's display name and the default
-  community's name, per [§5.3](#53-the-default-community)), but it is not simultaneously
+  community's name, per [§5.3](#53-the-default-community-and-why-several-communities-is-not-a-flat-list)), but it is not simultaneously
   doubling as a slug the visitor has to see validated against availability.
 - **What exists today, and must change:** `ChurchOnboarding.tsx` currently branches on
   `isFree` into two lanes that both ask for a web address before anything else happens — Free's
