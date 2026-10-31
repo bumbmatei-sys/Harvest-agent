@@ -54,6 +54,17 @@ describe('community records', () => {
   });
 });
 
+describe("the member's own community index", () => {
+  it('is readable only by its owner and never client-written', async () => {
+    const key = `users/${MEMBER2_UID}/communityMemberships/${TENANT_A}__youth`;
+    await seedDoc(key, { tenantId: TENANT_A, communityId: 'youth', status: 'active' });
+    await assertSucceeds((await member2()).firestore().doc(key).get());
+    await assertFails((await member()).firestore().doc(key).get());
+    await assertFails((await member2()).firestore().doc(key).update({ status: 'left' }));
+    await assertFails((await member()).firestore().doc(`users/${MEMBER_UID}/communityMemberships/${TENANT_A}__youth`).set({ tenantId: TENANT_A, communityId: 'youth', status: 'active' }));
+  });
+});
+
 describe('posts are isolated per community', () => {
   it('only the community’s members and the tenant’s admins read its posts', async () => {
     await assertSucceeds((await member2()).firestore().doc(`${youth}/posts/p1`).get());

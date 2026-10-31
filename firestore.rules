@@ -265,6 +265,12 @@ service cloud.firestore {
         allow read: if isAuthenticated() && request.auth.uid == userId;
         allow write: if false;
       }
+      // #571: the member's index of communities other than a ministry's default
+      // one, keyed `{tenantId}__{communityId}`. Server-written on join and leave.
+      match /communityMemberships/{key} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
     // ─── AI RAG chat usage (server-only) ─────────────────────────────
