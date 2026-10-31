@@ -30,6 +30,11 @@
       "file": "src/components/__tests__/THE-351.manual-payment.ui.test.tsx",
       "digest": "638b56cd02630c8b6ed3388e6199006c304c7bf0e5f5745adc7b064ef444b368",
       "why": "APPENDED, NOT SUBSTITUTED — #579: 'Create Event' reads 'Make event'. Nothing else changed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "349ba7843649b5b72fb763d57b51d397adce3aa729ce5f5a13fb6531600e50ee",
+      "why": "APPENDED, NOT SUBSTITUTED — #579: AdminEvents' digest after the Eden dialog joins its accepted list. Nothing removed."
     }
   ]
 }
