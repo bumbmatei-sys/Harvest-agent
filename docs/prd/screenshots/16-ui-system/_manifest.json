@@ -1,0 +1,191 @@
+[
+  {
+    "file": "shell-001-desktop-01-home.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/01-home.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-002-desktop-03-discover-posts.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/03-discover-posts.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-003-desktop-04-strategy.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/04-strategy.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-004-desktop-13-discover-creators.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/13-discover-creators.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-005-desktop-14-discover-brands.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/14-discover-brands.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-006-desktop-15-discover-lists.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/15-discover-lists.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-007-desktop-22-sidebar-new-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/22-sidebar-new-menu.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-008-desktop-23-sidebar-chats-more-expanded.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/23-sidebar-chats-more-expanded.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-009-desktop-24-store-home.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/24-store-home.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-010-desktop-79-academy.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/79-academy.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-011-desktop-80-workspace-menu-apps-extras.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/80-workspace-menu-apps-extras.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-012-desktop-01-home-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/01-home-top.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-013-desktop-02-home-lists-feed.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/02-home-lists-feed.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-014-desktop-03-home-feed-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/03-home-feed-scrolled.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-015-desktop-18-strategy-landing.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/18-strategy-landing.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-016-desktop-43-sidebar-new-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/43-sidebar-new-menu.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-017-desktop-44-sidebar-new-capture-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/44-sidebar-new-capture-dialog.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-018-desktop-01-home.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/01-home.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-019-desktop-05-home-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/05-home-bottom.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-020-mobile-01-home.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/01-home.jpg",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "shell-021-mobile-04-choose-location-sheet.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/04-choose-location-sheet.jpg",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "shell-022-mobile-12-customize-toolbar.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/12-customize-toolbar.jpg",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "shell-023-desktop-01-workspace-home.webp",
+    "device": "desktop",
+    "rel": "eden-ref/01-workspace-home.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-024-desktop-06-chat.webp",
+    "device": "desktop",
+    "rel": "eden-ref/06-chat.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-025-desktop-10-store-home.webp",
+    "device": "desktop",
+    "rel": "eden-ref/10-store-home.png",
+    "area": "App shell, navigation & dashboard",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-026-desktop-dark-02-sidebar.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/dark-02-sidebar.png",
+    "area": "Unclassified",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "shell-027-desktop-light-02-sidebar.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/light-02-sidebar.png",
+    "area": "Unclassified",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

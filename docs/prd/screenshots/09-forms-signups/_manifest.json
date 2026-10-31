@@ -1,0 +1,142 @@
+[
+  {
+    "file": "forms-001-desktop-36-store-inbox-paid-questions.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/36-store-inbox-paid-questions.png",
+    "area": "Inbox (questions, testimonials)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-002-desktop-37-store-inbox-testimonials.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/37-store-inbox-testimonials.png",
+    "area": "Inbox (questions, testimonials)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-003-desktop-44-store-email-signup-forms-blank-render.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/44-store-email-signup-forms-blank-render.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-004-desktop-49-store-marketing-forms-quizzes.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/49-store-marketing-forms-quizzes.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-005-desktop-31-publish-create-x-platform-settings.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/31-publish-create-x-platform-settings.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-006-desktop-22-inbox-paid-questions-waiting.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/22-inbox-paid-questions-waiting.png",
+    "area": "Inbox (questions, testimonials)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-007-desktop-24-inbox-testimonials-add-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/24-inbox-testimonials-add-dialog.png",
+    "area": "Inbox (questions, testimonials)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-008-desktop-25-inbox-paid-questions-answered.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/25-inbox-paid-questions-answered.png",
+    "area": "Inbox (questions, testimonials)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-009-desktop-33-email-signup-forms-empty-retake.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/33-email-signup-forms-empty-retake.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-010-desktop-37-email-signup-form-editor-content-AUTOCREATED.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/37-email-signup-form-editor-content-AUTOCREATED.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-011-desktop-38-email-signup-form-editor-look.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/38-email-signup-form-editor-look.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-012-desktop-39-email-signup-form-editor-settings.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/39-email-signup-form-editor-settings.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-013-desktop-40-email-signup-form-get-code-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/40-email-signup-form-get-code-dialog.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-014-desktop-51-marketing-forms-new-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/51-marketing-forms-new-menu.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-015-desktop-54-marketing-forms-template-picker.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/54-marketing-forms-template-picker.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-016-desktop-55-marketing-form-editor-build-existing-draft.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/55-marketing-form-editor-build-existing-draft.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-017-desktop-56-marketing-form-editor-settings-panel.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/56-marketing-form-editor-settings-panel.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-018-desktop-57-marketing-form-editor-responses-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/57-marketing-form-editor-responses-tab.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-019-desktop-60-marketing-forms.webp",
+    "device": "desktop",
+    "rel": "eden-ref/60-marketing-forms.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "forms-020-desktop-email-08-signup-forms.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-08-signup-forms.png",
+    "area": "Forms & Sign-ups (incl. QR, after-submit card)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

@@ -1,0 +1,667 @@
+[
+  {
+    "file": "comm-001-desktop-25-store-your-access.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/25-store-your-access.png",
+    "area": "Discover, About page & reviews",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-002-desktop-26-store-communities.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/26-store-communities.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-003-desktop-27-store-explore.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/27-store-explore.png",
+    "area": "Discover, About page & reviews",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-004-desktop-81-community-eden-general.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/81-community-eden-general.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-005-desktop-10-products-community-click-plan-limit-toast.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/10-products-community-click-plan-limit-toast.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-006-desktop-115-community-draft-events-page.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/115-community-draft-events-page.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-007-desktop-82-products-community-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/82-products-community-draft-offer.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-008-desktop-01-chat-general.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/01-chat-general.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-009-desktop-02-chat-30day-sprint.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/02-chat-30day-sprint.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-010-desktop-03-chat-introductions.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/03-chat-introductions.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-011-desktop-04-chat-post-your-wins.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/04-chat-post-your-wins.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-012-desktop-05-chat-content-help.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/05-chat-content-help.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-013-desktop-06-chat-monetization-help.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/06-chat-monetization-help.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-014-desktop-07-chat-eden-help.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/07-chat-eden-help.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-015-desktop-08-chat-composer-emoji-picker.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/08-chat-composer-emoji-picker.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-016-desktop-09-chat-thread-view.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/09-chat-thread-view.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-017-desktop-10-chat-message-hover.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/10-chat-message-hover.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-018-desktop-11-chat-message-actions-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/11-chat-message-actions-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-019-desktop-12-chat-channel-header-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/12-chat-channel-header-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-020-desktop-13-community-more-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/13-community-more-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-021-desktop-14-community-search-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/14-community-search-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-022-desktop-15-community-notifications-popover.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/15-community-notifications-popover.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-023-desktop-16-community-notification-settings.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/16-community-notification-settings.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-024-desktop-17-community-rules.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/17-community-rules.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-025-desktop-18-community-your-answers.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/18-community-your-answers.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-026-desktop-19-forum-all-posts.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/19-forum-all-posts.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-027-desktop-20-forum-all-posts-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/20-forum-all-posts-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-028-desktop-21-forum-category-monetization.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/21-forum-category-monetization.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-029-desktop-22-forum-new-post-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/22-forum-new-post-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-030-desktop-23-forum-post-detail-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/23-forum-post-detail-top.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-031-desktop-24-forum-post-detail-mid.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/24-forum-post-detail-mid.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-032-desktop-25-forum-post-detail-comments.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/25-forum-post-detail-comments.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-033-desktop-33-members-everyone.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/33-members-everyone.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-034-desktop-34-members-everyone-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/34-members-everyone-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-035-desktop-35-members-welcome-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/35-members-welcome-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-036-desktop-36-members-rules-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/36-members-rules-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-037-desktop-37-members-profile-popup-hosts-filter.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/37-members-profile-popup-hosts-filter.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-038-desktop-38-messages-dm-list.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/38-messages-dm-list.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-039-desktop-39-messages-new-dm-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/39-messages-new-dm-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-040-desktop-40-messages-new-group-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/40-messages-new-group-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-041-desktop-41-messages-settings-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/41-messages-settings-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-042-desktop-42-messages-support-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/42-messages-support-tab.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-043-desktop-44-untitled-chat-general.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/44-untitled-chat-general.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-044-desktop-45-untitled-admin-overview.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/45-untitled-admin-overview.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-045-desktop-46-untitled-admin-reports.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/46-untitled-admin-reports.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-046-desktop-47-untitled-admin-held.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/47-untitled-admin-held.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-047-desktop-48-untitled-members-page-admin-channels-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/48-untitled-members-page-admin-channels-tab.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-048-desktop-49-untitled-admin-channels-slowmode.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/49-untitled-admin-channels-slowmode.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-049-desktop-50-untitled-admin-members-invite-quicklinks.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/50-untitled-admin-members-invite-quicklinks.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-050-desktop-51-untitled-admin-member-options-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/51-untitled-admin-member-options-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-051-desktop-52-untitled-admin-invite-role-dropdown.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/52-untitled-admin-invite-role-dropdown.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-052-desktop-53-untitled-admin-members-team-filter.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/53-untitled-admin-members-team-filter.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-053-desktop-54-untitled-setup-messages-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/54-untitled-setup-messages-top.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-054-desktop-55-untitled-setup-messages-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/55-untitled-setup-messages-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-055-desktop-56-untitled-setup-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/56-untitled-setup-offer.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-056-desktop-57-untitled-setup-offer-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/57-untitled-setup-offer-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-057-desktop-58-untitled-setup-basics.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/58-untitled-setup-basics.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-058-desktop-59-untitled-setup-basics-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/59-untitled-setup-basics-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-059-desktop-60-untitled-setup-joining.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/60-untitled-setup-joining.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-060-desktop-61-untitled-setup-joining-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/61-untitled-setup-joining-scrolled.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-061-desktop-62-untitled-setup-joining-welcome-popup.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/62-untitled-setup-joining-welcome-popup.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-062-desktop-63-untitled-setup-joining-end.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/63-untitled-setup-joining-end.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-063-desktop-64-untitled-setup-channels.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/64-untitled-setup-channels.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-064-desktop-65-untitled-setup-channels-forum-categories.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/65-untitled-setup-channels-forum-categories.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-065-desktop-66-untitled-setup-channels-general-expanded.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/66-untitled-setup-channels-general-expanded.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-066-desktop-67-untitled-setup-people-roles.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/67-untitled-setup-people-roles.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-067-desktop-69-untitled-setup-page-appearance.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/69-untitled-setup-page-appearance.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-068-desktop-70-untitled-setup-page-header-hero.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/70-untitled-setup-page-header-hero.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-069-desktop-71-untitled-setup-page-sections.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/71-untitled-setup-page-sections.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-070-desktop-72-untitled-setup-publish-checklist.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/72-untitled-setup-publish-checklist.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-071-desktop-80-untitled-chat-switcher-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/80-untitled-chat-switcher-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-072-desktop-81-untitled-profile-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/81-untitled-profile-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-073-desktop-82-untitled-channel-info-panel.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/82-untitled-channel-info-panel.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-074-desktop-83-untitled-members.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/83-untitled-members.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-075-desktop-84-untitled-forum-categories.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/84-untitled-forum-categories.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-076-desktop-85-untitled-edit-channel-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/85-untitled-edit-channel-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-077-desktop-86-untitled-add-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/86-untitled-add-menu.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-078-desktop-87-untitled-new-channel-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/87-untitled-new-channel-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-079-desktop-88-untitled-new-section-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/88-untitled-new-section-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-080-desktop-91-untitled-messages.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/91-untitled-messages.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-081-desktop-92-untitled-dm-settings-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/92-untitled-dm-settings-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-082-desktop-93-untitled-new-dm-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/93-untitled-new-dm-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-083-desktop-94-untitled-new-event-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/94-untitled-new-event-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-084-desktop-95-untitled-new-post-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/95-untitled-new-post-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-085-desktop-03-discover.webp",
+    "device": "desktop",
+    "rel": "eden-ref/03-discover.png",
+    "area": "Discover, About page & reviews",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-086-desktop-22-community-setup-offer.webp",
+    "device": "desktop",
+    "rel": "eden-ref/22-community-setup-offer.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-087-desktop-30-communities.webp",
+    "device": "desktop",
+    "rel": "eden-ref/30-communities.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-088-desktop-community-01-chat-channels.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-01-chat-channels.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-089-desktop-community-02-new-channel-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-02-new-channel-dialog.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-090-desktop-community-03-forum-categories-sorting.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-03-forum-categories-sorting.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-091-desktop-community-04-new-post-composer.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-04-new-post-composer.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-092-desktop-community-05-admin-moderation-overview.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-05-admin-moderation-overview.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-093-desktop-community-06-setup-joining-access.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-06-setup-joining-access.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-094-desktop-community-07-setup-people-roles.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-07-setup-people-roles.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "comm-095-desktop-community-08-setup-offer-pricing.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/community-08-setup-offer-pricing.png",
+    "area": "Communities (builder, member view, chat, feed)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

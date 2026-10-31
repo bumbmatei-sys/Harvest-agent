@@ -1,0 +1,898 @@
+[
+  {
+    "file": "products-001-desktop-02-library-all-items.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/02-library-all-items.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-002-desktop-16-library-graph.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/16-library-graph.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-003-desktop-17-library-index.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/17-library-index.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-004-desktop-18-library-all-items-grid-full.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/18-library-all-items-grid-full.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-005-desktop-19-library-list-view.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/19-library-list-view.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-006-desktop-20-library-sources-view.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/20-library-sources-view.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-007-desktop-21-library-new-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/21-library-new-menu.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-008-desktop-29-store-products-list.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/29-store-products-list.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-009-desktop-30-store-coupons.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/30-store-coupons.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-010-desktop-31-store-promotions.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/31-store-promotions.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-011-desktop-35-store-inbox-course-questions.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/35-store-inbox-course-questions.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-012-desktop-52-store-calendar-calls.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/52-store-calendar-calls.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-013-desktop-56-store-new-product-type-picker.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/56-store-new-product-type-picker.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-014-desktop-63-settings-call-hours.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/63-settings-call-hours.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-015-desktop-04-library-grid-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/04-library-grid-scrolled.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-016-desktop-05-library-filter-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/05-library-filter-menu.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-017-desktop-06-library-recents-view-active.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/06-library-recents-view-active.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-018-desktop-07-library-new-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/07-library-new-menu.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-019-desktop-08-library-insert-link-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/08-library-insert-link-dialog.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-020-desktop-09-library-graph.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/09-library-graph.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-021-desktop-10-library-index.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/10-library-index.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-022-desktop-11-library-posts-shelf.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/11-library-posts-shelf.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-023-desktop-12-library-item-detail-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/12-library-item-detail-top.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-024-desktop-13-library-item-detail-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/13-library-item-detail-scrolled.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-025-desktop-14-library-item-detail-scrolled2.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/14-library-item-detail-scrolled2.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-026-desktop-15-library-board-personal-notes.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/15-library-board-personal-notes.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-027-desktop-16-library-folder-writing-expanded-sidebar.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/16-library-folder-writing-expanded-sidebar.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-028-desktop-17-library-folder-board-this-week-writing.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/17-library-folder-board-this-week-writing.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-029-desktop-03-products-list-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/03-products-list-top.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-030-desktop-04-coupons-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/04-coupons-empty.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-031-desktop-07-products-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/07-products-bottom.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-032-desktop-08-products-new-picker-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/08-products-new-picker-top.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-033-desktop-09-products-new-picker-more-types.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/09-products-new-picker-more-types.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-034-desktop-100-products-coaching-configure.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/100-products-coaching-configure.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-035-desktop-101-products-coaching-coaching-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/101-products-coaching-coaching-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-036-desktop-102-products-coaching-page-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/102-products-coaching-page-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-037-desktop-103-products-coaching-coaching-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/103-products-coaching-coaching-bottom.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-038-desktop-104-products-coaching-page-sections-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/104-products-coaching-page-sections-bottom.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-039-desktop-105-products-coaching-publish-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/105-products-coaching-publish-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-040-desktop-106-products-coaching-publish-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/106-products-coaching-publish-bottom.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-041-desktop-107-products-workshop-lessons.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/107-products-workshop-lessons.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-042-desktop-108-products-workshop-date.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/108-products-workshop-date.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-043-desktop-109-products-workshop-publish-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/109-products-workshop-publish-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-044-desktop-11-coupons-new-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/11-coupons-new-dialog.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-045-desktop-110-products-workshop-page-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/110-products-workshop-page-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-046-desktop-111-products-download-contents.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/111-products-download-contents.png",
+    "area": "Digital products / downloads",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-047-desktop-112-products-download-page-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/112-products-download-page-top.png",
+    "area": "Digital products / downloads",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-048-desktop-113-products-download-publish-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/113-products-download-publish-top.png",
+    "area": "Digital products / downloads",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-049-desktop-114-products-download-publish-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/114-products-download-publish-bottom.png",
+    "area": "Digital products / downloads",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-050-desktop-12-promotions-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/12-promotions-empty.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-051-desktop-124-calendar-page-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/124-calendar-page-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-052-desktop-125-calendar-page-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/125-calendar-page-bottom.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-053-desktop-126-calendar-new-call-type-drawer-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/126-calendar-new-call-type-drawer-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-054-desktop-127-calendar-new-call-type-drawer-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/127-calendar-new-call-type-drawer-bottom.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-055-desktop-13-promotions-new-sale-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/13-promotions-new-sale-dialog.png",
+    "area": "Coupons, promotions & checkout (paid, coming soon)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-056-desktop-17-inbox-course-questions-waiting.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/17-inbox-course-questions-waiting.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-057-desktop-26-inbox-course-questions-answered-and-per-product-toggles.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/26-inbox-course-questions-answered-and-per-product-toggles.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-058-desktop-58-calendar-bottom-hours-booking-rules.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/58-calendar-bottom-hours-booking-rules.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-059-desktop-59-calendar-new-call-type-drawer-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/59-calendar-new-call-type-drawer-top.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-060-desktop-60-calendar-middle-week-google-calendar.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/60-calendar-middle-week-google-calendar.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-061-desktop-61-calendar-new-call-type-strategy-paid-prefill.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/61-calendar-new-call-type-strategy-paid-prefill.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-062-desktop-72-products-course-draft-offer-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/72-products-course-draft-offer-top.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-063-desktop-73-products-course-draft-offer-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/73-products-course-draft-offer-bottom.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-064-desktop-74-products-course-draft-lessons-step.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/74-products-course-draft-lessons-step.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-065-desktop-75-products-course-draft-page-step.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/75-products-course-draft-page-step.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-066-desktop-76-products-course-draft-publish-step.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/76-products-course-draft-publish-step.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-067-desktop-77-products-cohort-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/77-products-cohort-draft-offer.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-068-desktop-78-products-askme-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/78-products-askme-draft-offer.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-069-desktop-79-products-coaching-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/79-products-coaching-draft-offer.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-070-desktop-80-products-download-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/80-products-download-draft-offer.png",
+    "area": "Digital products / downloads",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-071-desktop-81-products-workshop-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/81-products-workshop-draft-offer.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-072-desktop-83-products-customai-draft-offer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/83-products-customai-draft-offer.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-073-desktop-85-products-cohort-knowledge-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/85-products-cohort-knowledge-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-074-desktop-86-products-cohort-knowledge-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/86-products-cohort-knowledge-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-075-desktop-87-products-cohort-configure.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/87-products-cohort-configure.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-076-desktop-88-products-cohort-schedule.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/88-products-cohort-schedule.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-077-desktop-89-products-cohort-page-middle.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/89-products-cohort-page-middle.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-078-desktop-90-products-cohort-page-sections-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/90-products-cohort-page-sections-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-079-desktop-91-products-cohort-page-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/91-products-cohort-page-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-080-desktop-92-products-cohort-publish-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/92-products-cohort-publish-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-081-desktop-93-products-cohort-publish-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/93-products-cohort-publish-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-082-desktop-94-products-askme-page-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/94-products-askme-page-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-083-desktop-95-products-askme-page-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/95-products-askme-page-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-084-desktop-96-products-askme-publish-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/96-products-askme-publish-top.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-085-desktop-97-products-askme-publish-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/97-products-askme-publish-bottom.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-086-desktop-98-products-askme-askme-step.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/98-products-askme-askme-step.png",
+    "area": "Other Eden product types (cohort, workshop, Ask-me, custom AI)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-087-desktop-99-products-coaching-knowledge.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/99-products-coaching-knowledge.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-088-desktop-32-products-list.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/32-products-list.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-089-desktop-68-untitled-setup-products.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/68-untitled-setup-products.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-090-desktop-90-untitled-products-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/90-untitled-products-empty.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-091-desktop-96-your-access.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/96-your-access.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-092-desktop-97-sprint-lesson-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/97-sprint-lesson-top.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-093-desktop-98-sprint-lesson-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/98-sprint-lesson-scrolled.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-094-desktop-99-sprint-chats.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/99-sprint-chats.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-095-desktop-99b-sprint-notes.webp",
+    "device": "desktop",
+    "rel": "eden-archive/03-community/99b-sprint-notes.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-096-mobile-02-board-detail.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/02-board-detail.jpg",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "products-097-desktop-02-library.webp",
+    "device": "desktop",
+    "rel": "eden-ref/02-library.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-098-desktop-07-board.webp",
+    "device": "desktop",
+    "rel": "eden-ref/07-board.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-099-desktop-20-products-list.webp",
+    "device": "desktop",
+    "rel": "eden-ref/20-products-list.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-100-desktop-21-new-product-type-picker.webp",
+    "device": "desktop",
+    "rel": "eden-ref/21-new-product-type-picker.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-101-desktop-23-ai-course-setup-offer.webp",
+    "device": "desktop",
+    "rel": "eden-ref/23-ai-course-setup-offer.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-102-desktop-25-course-setup-lessons.webp",
+    "device": "desktop",
+    "rel": "eden-ref/25-course-setup-lessons.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-103-desktop-27-products-list-with-drafts.webp",
+    "device": "desktop",
+    "rel": "eden-ref/27-products-list-with-drafts.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-104-desktop-70-calendar-calls.webp",
+    "device": "desktop",
+    "rel": "eden-ref/70-calendar-calls.png",
+    "area": "Coaching, calls & calendar booking",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-105-desktop-products-01-all-products-list.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-01-all-products-list.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-106-desktop-products-02-new-product-type-picker.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-02-new-product-type-picker.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-107-desktop-products-03-product-editor-offer-pricing.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-03-product-editor-offer-pricing.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-108-desktop-products-04-page-step-design.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-04-page-step-design.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-109-desktop-products-05-publish-step-checklist-share.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-05-publish-step-checklist-share.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-110-desktop-products-06-type-specific-step-askme.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-06-type-specific-step-askme.png",
+    "area": "Products hub & new-product picker",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-111-desktop-products-07-course-lessons-step.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/products-07-course-lessons-step.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-112-desktop-dark-02-landing.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/dark-02-landing.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-113-desktop-dark-03-player.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/dark-03-player.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-114-desktop-dark-06-sprint-player.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/dark-06-sprint-player.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-115-desktop-light-01-builder-lessons.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-01-builder-lessons.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-116-desktop-light-02-landing.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-02-landing.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-117-desktop-light-03-player.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-03-player.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-118-desktop-light-04-your-access.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-04-your-access.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-119-desktop-light-05-access-sprint-customai.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-05-access-sprint-customai.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-120-desktop-light-06-sprint-player.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-courses-2026-10-20/light-06-sprint-player.png",
+    "area": "Courses",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-121-desktop-dark-01-list.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/dark-01-list.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-122-desktop-dark-02-editor.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/dark-02-editor.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-123-desktop-dark-03-more-menu.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/dark-03-more-menu.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-124-desktop-light-01-list.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/light-01-list.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-125-desktop-light-02-editor.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/light-02-editor.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-126-desktop-light-03-more-menu.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/light-03-more-menu.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-127-desktop-light-04-side-panel-chat.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/light-04-side-panel-chat.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "products-128-desktop-light-05-outline-popover.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-notes-2026-10-20/light-05-outline-popover.png",
+    "area": "Notes / Boards / Library",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

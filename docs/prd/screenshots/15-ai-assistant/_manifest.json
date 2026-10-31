@@ -1,0 +1,156 @@
+[
+  {
+    "file": "ai-001-desktop-06-custom-ai-my-ais.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/06-custom-ai-my-ais.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-002-desktop-07-chat-new.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/07-chat-new.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-003-desktop-11-custom-ai-explore.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/11-custom-ai-explore.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-004-desktop-12-custom-ai-your-store.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/12-custom-ai-your-store.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-005-desktop-35-chat-new.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/35-chat-new.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-006-desktop-36-chat-plus-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/36-chat-plus-menu.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-007-desktop-37-chat-plus-connectors-submenu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/37-chat-plus-connectors-submenu.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-008-desktop-38-chat-plus-deep-research-submenu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/38-chat-plus-deep-research-submenu.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-009-desktop-39-chat-model-picker.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/39-chat-model-picker.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-010-desktop-40-chat-history-expanded-sidebar.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/40-chat-history-expanded-sidebar.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-011-desktop-41-chat-more-actions-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/41-chat-more-actions-menu.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-012-desktop-42-chat-creator-sprint-detail.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/42-chat-creator-sprint-detail.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-013-mobile-05-chat-empty.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/05-chat-empty.jpg",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "ai-014-mobile-10-chat-history-sheet.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/10-chat-history-sheet.jpg",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "ai-015-mobile-11-chat-plus-menu.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/11-chat-plus-menu.jpg",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "ai-016-desktop-04-custom-ai.webp",
+    "device": "desktop",
+    "rel": "eden-ref/04-custom-ai.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-017-desktop-chat-00-matei-reference.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-00-matei-reference.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-018-desktop-chat-01-pane-open.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-01-pane-open.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-019-desktop-chat-02-topbar.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-02-topbar.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-020-desktop-chat-03-history.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-03-history.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-021-desktop-chat-04-more-menu.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-04-more-menu.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "ai-022-desktop-chat-05-input.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/chat-05-input.png",
+    "area": "AI assistant",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

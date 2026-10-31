@@ -1,0 +1,674 @@
+[
+  {
+    "file": "news-001-desktop-33-store-subscribers.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/33-store-subscribers.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-002-desktop-38-store-email-overview.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/38-store-email-overview.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-003-desktop-39-store-email-broadcasts-blank-render.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/39-store-email-broadcasts-blank-render.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-004-desktop-40-store-email-newsletter.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/40-store-email-newsletter.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-005-desktop-41-store-email-sequences.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/41-store-email-sequences.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-006-desktop-42-store-email-deadline-offers.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/42-store-email-deadline-offers.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-007-desktop-43-store-email-automations.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/43-store-email-automations.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-008-desktop-45-store-email-settings-blank-render.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/45-store-email-settings-blank-render.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-009-desktop-15-subscribers-list.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/15-subscribers-list.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-010-desktop-20-subscribers-import-contacts-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/20-subscribers-import-contacts-dialog.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-011-desktop-28-email-broadcasts-list-retake.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/28-email-broadcasts-list-retake.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-012-desktop-29-email-newsletter-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/29-email-newsletter-empty.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-013-desktop-30-email-sequences-pro-gate.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/30-email-sequences-pro-gate.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-014-desktop-31-email-deadline-offers-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/31-email-deadline-offers-empty.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-015-desktop-32-email-automations-pro-gate.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/32-email-automations-pro-gate.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-016-desktop-34-email-settings-top-retake.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/34-email-settings-top-retake.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-017-desktop-35-email-settings-mid-retake.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/35-email-settings-mid-retake.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-018-desktop-36-email-overview-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/36-email-overview-bottom.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-019-desktop-41-email-broadcast-editor-write.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/41-email-broadcast-editor-write.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-020-desktop-42-email-broadcast-templates-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/42-email-broadcast-templates-dialog.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-021-desktop-43-email-broadcast-send-step.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/43-email-broadcast-send-step.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-022-desktop-26-newsletter-start-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-ref/26-newsletter-start-dialog.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-023-desktop-31-audience-subscribers.webp",
+    "device": "desktop",
+    "rel": "eden-ref/31-audience-subscribers.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-024-desktop-40-email-broadcasts.webp",
+    "device": "desktop",
+    "rel": "eden-ref/40-email-broadcasts.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-025-desktop-41-email-newsletter.webp",
+    "device": "desktop",
+    "rel": "eden-ref/41-email-newsletter.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-026-desktop-email-03-broadcast-editor.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-03-broadcast-editor.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-027-desktop-email-04-templates-panel.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-04-templates-panel.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-028-desktop-email-05-slash-block-menu.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-05-slash-block-menu.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-029-desktop-email-06-preview.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-06-preview.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-030-desktop-email-07-send-audience-schedule.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/email-07-send-audience-schedule.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-031-desktop-forms-01-list.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-01-list.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-032-desktop-forms-02-new-form-menu.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-02-new-form-menu.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-033-desktop-forms-03-template-gallery.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-03-template-gallery.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-034-desktop-forms-04-editor-build.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-04-editor-build.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-035-desktop-forms-05-field-types.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-05-field-types.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-036-desktop-forms-06-settings-design.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-06-settings-design.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-037-desktop-forms-07-result-screen-settings.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-07-result-screen-settings.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-038-desktop-forms-08-email-ask-and-link.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-08-email-ask-and-link.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-039-desktop-forms-09-try-it-preview.webp",
+    "device": "desktop",
+    "rel": "eden-ref/newsletter-forms/forms-09-try-it-preview.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-040-desktop-dark-01-email-list-broadcasts-with-drafts.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-01-email-list-broadcasts-with-drafts.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-041-desktop-dark-02-editor-write.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-02-editor-write.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-042-desktop-dark-03-design-panel.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-03-design-panel.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-043-desktop-dark-04-preview-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-04-preview-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-044-desktop-dark-05-templates-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-05-templates-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-045-desktop-dark-06-ask-ai-side-panel.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-06-ask-ai-side-panel.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-046-desktop-dark-07-send-step-when-pick-a-time.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-07-send-step-when-pick-a-time.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-047-desktop-dark-08-schedule-datetime-picker.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-08-schedule-datetime-picker.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-048-desktop-dark-09-filter-type-dropdown.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-09-filter-type-dropdown.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-049-desktop-dark-10-subscribers-list.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-10-subscribers-list.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-050-desktop-dark-11-import-contacts-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-11-import-contacts-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-051-desktop-dark-12-newsletter-page.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-12-newsletter-page.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-052-desktop-dark-13-start-newsletter-dialog.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-13-start-newsletter-dialog.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-053-desktop-dark-14-email-settings.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/dark-14-email-settings.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-054-desktop-light-00-email-overview.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-00-email-overview.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-055-desktop-light-01-email-list-broadcasts.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-01-email-list-broadcasts.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-056-desktop-light-01b-email-list-broadcasts-with-drafts.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-01b-email-list-broadcasts-with-drafts.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-057-desktop-light-02-editor-write.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-02-editor-write.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-058-desktop-light-03-design-panel.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-03-design-panel.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-059-desktop-light-04-ask-ai-side-panel.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-04-ask-ai-side-panel.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-060-desktop-light-05-preview-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-05-preview-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-061-desktop-light-06-templates-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-06-templates-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-062-desktop-light-07-inbox-check-expanded.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-07-inbox-check-expanded.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-063-desktop-light-08-ab-subject-variant.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-08-ab-subject-variant.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-064-desktop-light-09-send-step-audience-when.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-09-send-step-audience-when.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-065-desktop-light-10-add-filter-dropdown.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-10-add-filter-dropdown.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-066-desktop-light-11-audience-filter-and-schedule-time.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-11-audience-filter-and-schedule-time.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-067-desktop-light-12-schedule-datetime-picker.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-12-schedule-datetime-picker.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-068-desktop-light-13-filter-type-dropdown.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-13-filter-type-dropdown.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-069-desktop-light-14-newsletter-page.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-14-newsletter-page.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-070-desktop-light-15-start-newsletter-dialog.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-15-start-newsletter-dialog.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-071-desktop-light-16-email-settings.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-16-email-settings.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-072-desktop-light-17-subscribers-list.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-17-subscribers-list.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-073-desktop-light-18-import-contacts-modal.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-email-2026-10-20/light-18-import-contacts-modal.png",
+    "area": "Newsletter",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-074-desktop-01-theme-picker-all-presets.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/01-theme-picker-all-presets.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-075-desktop-02-preset-letter.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/02-preset-letter.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-076-desktop-03-preset-essay.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/03-preset-essay.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-077-desktop-04-preset-card.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/04-preset-card.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-078-desktop-05-preset-midnight.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/05-preset-midnight.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-079-desktop-07-settings-colours-fonts-textsize.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/07-settings-colours-fonts-textsize.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-080-desktop-08-settings-header-logo-and-name.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/08-settings-header-logo-and-name.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-081-desktop-09-settings-header-masthead-with-save-as-my-theme.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/09-settings-header-masthead-with-save-as-my-theme.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-082-desktop-10-settings-layout.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/10-settings-layout.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-083-desktop-11-settings-buttons.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/11-settings-buttons.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-084-desktop-12-settings-dividers-quotes.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/12-settings-dividers-quotes.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-085-desktop-13-settings-signature-footer-social.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/13-settings-signature-footer-social.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-086-desktop-14-contrast-warning-low-contrast-words.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/14-contrast-warning-low-contrast-words.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-087-desktop-15-make-it-my-default-control-after-undo.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/15-make-it-my-default-control-after-undo.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-088-desktop-16-preview-computer-plan-gated-error.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/16-preview-computer-plan-gated-error.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-089-desktop-17-preview-dark-plan-gated-error.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/17-preview-dark-plan-gated-error.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-090-desktop-18-slash-menu-top-issue-header.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/18-slash-menu-top-issue-header.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-091-desktop-19-slash-menu-issue-header-and-box.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/19-slash-menu-issue-header-and-box.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-092-desktop-20-block-issue-header-inserted.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/20-block-issue-header-inserted.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-093-desktop-21-block-box-inserted.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/21-block-box-inserted.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-094-desktop-22-email-settings-top-sender-design-default.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/22-email-settings-top-sender-design-default.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-095-desktop-23-email-settings-logo-and-footer.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/23-email-settings-logo-and-footer.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "news-096-desktop-24-email-settings-footer-note-social-links.webp",
+    "device": "desktop",
+    "rel": "website-ref/eden-email-themes/24-email-settings-footer-note-social-links.png",
+    "area": "Newsletter email themes",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

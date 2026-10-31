@@ -1,0 +1,254 @@
+[
+  {
+    "file": "social-001-desktop-05-publish-create.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/05-publish-create.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-002-desktop-08-publish-queue.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/08-publish-queue.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-003-desktop-09-publish-calendar.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/09-publish-calendar.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-004-desktop-10-publish-analytics.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/10-publish-analytics.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-005-desktop-46-store-auto-dm-overview.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/46-store-auto-dm-overview.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-006-desktop-47-store-auto-dm-automations.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/47-store-auto-dm-automations.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-007-desktop-48-store-auto-dm-conversations.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/48-store-auto-dm-conversations.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-008-desktop-75-settings-social-accounts.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/75-settings-social-accounts.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-009-desktop-19-publish-analytics-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/19-publish-analytics-top.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-010-desktop-20-publish-analytics-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/20-publish-analytics-bottom.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-011-desktop-21-publish-queue-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/21-publish-queue-top.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-012-desktop-22-publish-queue-scheduled-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/22-publish-queue-scheduled-scrolled.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-013-desktop-23-publish-calendar-week-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/23-publish-calendar-week-top.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-014-desktop-24-publish-calendar-week-scrolled.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/24-publish-calendar-week-scrolled.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-015-desktop-25-publish-calendar-drafts-panel.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/25-publish-calendar-drafts-panel.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-016-desktop-26-publish-schedule-switcher-menu.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/26-publish-schedule-switcher-menu.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-017-desktop-27-publish-create-composer.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/27-publish-create-composer.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-018-desktop-28-publish-create-plus-upgrade-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/28-publish-create-plus-upgrade-dialog.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-019-desktop-29-publish-create-article-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/29-publish-create-article-tab.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-020-desktop-30-publish-create-story-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/30-publish-create-story-tab.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-021-desktop-32-publish-create-first-comment-expanded.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/32-publish-create-first-comment-expanded.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-022-desktop-33-publish-create-auto-repost-expanded.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/33-publish-create-auto-repost-expanded.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-023-desktop-34-settings-social-accounts-from-publish.webp",
+    "device": "desktop",
+    "rel": "eden-archive/01-create/34-settings-social-accounts-from-publish.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-024-desktop-44-autodm-overview-pro-gate.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/44-autodm-overview-pro-gate.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-025-desktop-45-autodm-automations-pro-gate.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/45-autodm-automations-pro-gate.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-026-mobile-03-capture-composer.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/03-capture-composer.jpg",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "social-027-mobile-06-scheduler-scheduled.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/06-scheduler-scheduled.jpg",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "social-028-mobile-07-scheduler-edit-post.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/07-scheduler-edit-post.jpg",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "social-029-mobile-08-scheduler-drafts.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/08-scheduler-drafts.jpg",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "social-030-mobile-09-scheduler-new-post.webp",
+    "device": "mobile",
+    "rel": "eden-archive/mobile/09-scheduler-new-post.jpg",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- mobile"
+  },
+  {
+    "file": "social-031-desktop-05-publish-scheduler.webp",
+    "device": "desktop",
+    "rel": "eden-ref/05-publish-scheduler.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-032-desktop-50-auto-dm.webp",
+    "device": "desktop",
+    "rel": "eden-ref/50-auto-dm.png",
+    "area": "Email automations / Auto-DM (Eden, not planned)",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-033-desktop-dark-01-publish.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/dark-01-publish.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-034-desktop-dark-03-compose.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/dark-03-compose.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-035-desktop-light-01-publish.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/light-01-publish.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "social-036-desktop-light-03-compose.webp",
+    "device": "desktop",
+    "rel": "reference-shots/eden-2026-10-17/light-03-compose.png",
+    "area": "Social scheduler",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]

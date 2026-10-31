@@ -1,0 +1,65 @@
+[
+  {
+    "file": "crm-001-desktop-32-store-customers.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/32-store-customers.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-002-desktop-34-store-clients.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/34-store-clients.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-003-desktop-66-settings-tags.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/66-settings-tags.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-004-desktop-68-settings-import.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/68-settings-import.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-005-desktop-14-customers-empty.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/14-customers-empty.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-006-desktop-16-clients-leads-new.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/16-clients-leads-new.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-007-desktop-18-customers-add-one-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/18-customers-add-one-dialog.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-008-desktop-19-customers-import-list-dialog.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/19-customers-import-list-dialog.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "crm-009-desktop-21-clients-active-tab.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/21-clients-active-tab.png",
+    "area": "CRM / people / audience",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]
