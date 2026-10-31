@@ -3,7 +3,7 @@
   "entries": [
     {
       "file": "src/components/AdminEvents.tsx",
-      "digest": "0043d0c46ae8555327dbfe1ccf42291900433ecb3e6909e24bbbbd72c3d0f222",
+      "digest": "0c810ec91a838aa192af421581c4b4b1a8dfb63fda4a578b0fce4d652a4cf123",
       "why": "APPENDED, NOT SUBSTITUTED — #580: Eden's events list (docs/prd/screenshots/07-events, 001/005): the page line \"Every event you run, from your ministry and its communities. Share a link to any of them.\", \"New event\" for \"Create event\", a per-row \"Copy link\" to the existing registration URL, Edit / Pin / Delete behind a ⋯ dropdown menu calling the same handlers, and no status badge on a live event. The mobile card, every read, write, price and money path are unchanged."
     },
     {
@@ -18,7 +18,7 @@
     },
     {
       "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
-      "digest": "4ac1ff85dcba864cf55f451144327690cec556c2e3d12dc6d94956e781f9e2f2",
+      "digest": "d620c43f79f9b8c607c6edc33e4becd7c20b78b4b389f61368faed67d76c2f94",
       "why": "APPENDED, NOT SUBSTITUTED — #580: 'Create event' reads 'New event', and three tests cover the Eden list: the page line and badges, Copy link, and the row menu. Nothing removed."
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
-      "digest": "6d600c54917378d78786a248639c466b9e02b43c3738b702548357c174abd133",
+      "digest": "159af2fe5c7f930f4d86834e1d10b1879101317e66d3c024a0d2751e11d7e608",
       "why": "APPENDED, NOT SUBSTITUTED — #580: AdminEvents' digest after the Eden list joins its accepted list. Nothing removed."
     }
   ]

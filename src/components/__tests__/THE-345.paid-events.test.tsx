@@ -972,10 +972,14 @@ describe('#580 the events list follows Eden', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const c = await screen();
     const copy = c.querySelector<HTMLButtonElement>('[data-copy-event-link]')!;
+    const dialogsBefore = c.querySelectorAll('[data-event-form-dialog], [role="dialog"]').length;
     await click(copy);
     expect(writeText).toHaveBeenCalledWith('https://t1.theharvest.app/event/ev-free');
     expect(copy.textContent).toContain('Copied');
-    expect(c.querySelector('[data-event-form-dialog]')).toBeNull();
+    // Copying does not open the event (earlier tests may leave their own dialogs in the body).
+    expect(c.querySelectorAll('[data-event-form-dialog], [role="dialog"]').length).toBe(dialogsBefore);
+    // And the list is still showing: opening the event would replace it with the detail view.
+    expect(c.querySelector('[data-copy-event-link]')).toBeTruthy();
   });
   it('keeps Edit, Pin and Delete behind the row menu', async () => {
     eventsData.current = [FREE_EVENT];

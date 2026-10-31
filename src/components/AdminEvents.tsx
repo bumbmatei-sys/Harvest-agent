@@ -2202,7 +2202,7 @@ const AdminEvents: React.FC = () => {
                 <div className="flex flex-shrink-0 items-center gap-1" onClick={e => e.stopPropagation()}>
                   {ev.pinned && <Pin size={14} aria-label="Pinned to feed" className="mr-1 text-wheat-500 fill-wheat-500" />}
                   <Button variant="ghost" data-copy-event-link onClick={() => copyEventLink(ev)}
-                    className={`h-auto gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-muted ${CONTROL_DENSITY.action}`}>
+                    className={`h-auto min-h-11 sm:min-h-0 gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-muted ${CONTROL_DENSITY.action}`}>
                     {copiedEventId === ev.id ? <Check size={13} /> : <Link2 size={13} />} {copiedEventId === ev.id ? 'Copied' : 'Copy link'}
                   </Button>
                   <DropdownMenu>
