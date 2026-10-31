@@ -52,6 +52,10 @@ describe('admin Communities page', () => {
     await click(button('Communities'));
     await click(container.querySelector('[data-community-row="youth"]')!.querySelector('button')!);
     expect(container.querySelector('[data-community-editor="youth"]')).not.toBeNull();
+    // Paid waits for the business entity that can take payments.
+    const paid = [...container.querySelectorAll('[data-community-editor] button')].find(b => b.textContent?.startsWith('Paid')) as HTMLButtonElement;
+    expect(paid.disabled).toBe(true);
+    expect(paid.textContent).toContain('Coming soon');
     await click(button('Publish'));
     // The step and its action share the label; the action is the disabled one.
     const publish = [...container.querySelectorAll('[data-community-editor] button')].filter(b => b.textContent === 'Publish');

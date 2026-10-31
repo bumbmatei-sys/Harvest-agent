@@ -97,14 +97,23 @@ describe('communities API', () => {
 
   it('saves an edit, but will not publish a second community yet', async () => {
     await create('Youth');
-    const community = { ...newCommunityDraft('Youth'), tagline: 'Ages 13 to 18', pricing: { type: 'paid', amountCents: 500, currency: 'usd', interval: 'month' } };
+    const community = { ...newCommunityDraft('Youth'), tagline: 'Ages 13 to 18', visibility: 'public' };
     expect((await patch('youth', { community })).status).toBe(200);
-    expect(h.docs.get(`${T}/communities/youth`)).toMatchObject({ tagline: 'Ages 13 to 18', status: 'draft', pricing: { amountCents: 500 } });
+    expect(h.docs.get(`${T}/communities/youth`)).toMatchObject({ tagline: 'Ages 13 to 18', status: 'draft', visibility: 'public' });
     const publish = await patch('youth', { community, status: 'published' });
     expect(publish.status).toBe(409);
     expect(h.docs.get(`${T}/communities/youth`)!.status).toBe('draft');
     expect((await patch('youth', { community: { ...community, name: '' } })).status).toBe(400);
     expect((await patch('missing', { community })).status).toBe(404);
+  });
+
+  it('refuses paid pricing while paid communities are coming soon', async () => {
+    await create('Youth');
+    const paid = { ...newCommunityDraft('Youth'), pricing: { type: 'paid', amountCents: 500, currency: 'usd', interval: 'month' } };
+    const refused = await patch('youth', { community: paid });
+    expect(refused.status).toBe(400);
+    expect((await refused.json()).error).toContain('coming soon');
+    expect(h.docs.get(`${T}/communities/youth`)!.pricing).toEqual({ type: 'free' });
   });
 
   it('closes the default community on delete: off Discover, out of the list, data kept', async () => {

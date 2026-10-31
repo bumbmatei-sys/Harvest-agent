@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FORM_CONTAINER } from '@/components/layout/form-layout';
 import {
-  COMMUNITY_LIMITS, formatCommunityPrice, PUBLISH_LATER_MESSAGE,
+  COMMUNITY_LIMITS, formatCommunityPrice, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, PUBLISH_LATER_MESSAGE,
   type CommunityEdit, type CommunityPriceInterval, type CommunityRecord,
 } from '@/lib/community/communities';
 import { authFetch } from '@/utils/auth-fetch';
@@ -225,7 +225,7 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
               if (next === 'paid') set({ pricing: { type: 'paid', amountCents: paid?.amountCents ?? 1000, currency: paid?.currency ?? 'usd', interval: paid?.interval ?? 'month' } });
             }} variant="outline" aria-label="Free or paid">
               <ToggleGroupItem value="free" className="min-h-11 sm:min-h-0">Free</ToggleGroupItem>
-              <ToggleGroupItem value="paid" className="min-h-11 sm:min-h-0">Paid</ToggleGroupItem>
+              <ToggleGroupItem value="paid" disabled={!PAID_COMMUNITIES_ENABLED} className="min-h-11 sm:min-h-0">Paid{!PAID_COMMUNITIES_ENABLED && <Badge variant="secondary" className="ml-1.5">Coming soon</Badge>}</ToggleGroupItem>
             </ToggleGroup>
           </Field>
           {paid && <div className="flex flex-wrap gap-3">
@@ -239,7 +239,7 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
               <SelectContent><SelectItem value="month">Monthly</SelectItem><SelectItem value="year">Yearly</SelectItem><SelectItem value="once">One time</SelectItem></SelectContent>
             </Select></Field>
           </div>}
-          {paid && <p className="text-sm text-muted">Checkout for paid communities opens with publishing.</p>}
+          {!PAID_COMMUNITIES_ENABLED && <p className="text-sm text-muted">{PAID_COMING_SOON_MESSAGE}</p>}
         </>}
         {step === 'basics' && <>
           <h2 className="font-display text-2xl text-strong">Basics</h2>

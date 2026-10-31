@@ -33,6 +33,13 @@ export type CommunityRecord = {
 /** The fields an admin edits. Status and identity are the server's. */
 export type CommunityEdit = Pick<CommunityRecord, 'name' | 'tagline' | 'iconUrl' | 'about' | 'visibility' | 'pricing' | 'joining'>;
 
+/**
+ * Paid communities wait for the business entity that can take payments (Matei's
+ * LLC). Until then the editor shows Paid as coming soon and the server refuses it.
+ */
+export const PAID_COMMUNITIES_ENABLED = false;
+export const PAID_COMING_SOON_MESSAGE = 'Paid communities are coming soon. Keep this community free for now.';
+
 /** Shown until each community has its own members, feed and chat. */
 export const PUBLISH_LATER_MESSAGE = 'Publishing a second community opens once each community has its own feed and chat. Your setup is saved as a draft.';
 
