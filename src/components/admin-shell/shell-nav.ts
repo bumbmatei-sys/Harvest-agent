@@ -116,7 +116,6 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'signups', label: 'Signups', icon: UserPlus },
       { id: 'churches', label: 'Campuses', icon: Church },
       { id: 'services', label: 'Services', icon: ListChecks },
-      { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
     ],
   },
   {
@@ -165,6 +164,13 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
       { id: 'events', label: 'Events', icon: CalendarCheck },
       { id: 'checkin', label: 'Check-in', icon: QrCode },
     ],
+  },
+  {
+    // Every community of the ministry, listed like Products.
+    id: 'communities',
+    label: '',
+    icon: NAV_ICONS.communities,
+    items: [{ id: 'community-setup', label: 'Communities', icon: NAV_ICONS.communities }],
   },
   {
     id: 'products',

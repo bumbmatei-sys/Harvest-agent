@@ -95,6 +95,17 @@ describe('community directory projection', () => {
     expect(await response.json()).toEqual({ people: [{ id: 'joined', displayName: 'Joined', email: 'joined@example.test', role: 'user' }] });
     expect(h.people).toHaveBeenCalledWith('ministry', false);
   });
+  it('keeps a deleted default community closed and off Discover, whatever the client sends', async () => {
+    h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/')
+      ? { exists: true, data: () => ({ ...defaultCommunitySettings(), closed: true }) }
+      : { exists: true, data: () => ({ name: 'Ministry', subdomain: 'ministry' }) });
+    const reopen = { ...defaultCommunitySettings(), isPublic: true, closed: false };
+    expect((await POST(request(reopen, { ...defaultCommunitySettings(), closed: true }))).status).toBe(200);
+    expect(h.set).not.toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.anything());
+    expect(h.delete).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }));
+    const settings = h.set.mock.calls.find(([ref]) => ref.path.includes('/settings/'))![1];
+    expect(settings.closed).toBe(true);
+  });
   it('surfaces failed directory reads', async () => {
     h.people.mockRejectedValue(new Error('offline'));
     expect((await GET(new NextRequest('http://localhost/api/community/settings?tenantId=ministry'))).status).toBe(503);

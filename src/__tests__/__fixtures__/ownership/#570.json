@@ -1,0 +1,115 @@
+{
+  "ticket": "#570",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "3cdf0683e87e40c9401d658b947ff8aa05971d7ffb87262a6183fc145cd2864b",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: the community setup tab is labelled Communities and renders the Communities page (AdminCommunities), which holds the default community's existing setup screen. The tab id, its plan gate and its manageCommunity permission gate are unchanged."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "bb98eee0301e4646a2cccee142470b266bc70754dc48317248a6cabc4519e38e",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: the community setup entry moves from the People side to the Public side as a flat Communities entry beside Products. Same tab id, so routing and gates are unchanged."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "2c00246b88e3a2fe4045e4dd76672ae161cb50ce21805e18d4bed519d2ef694d",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: members of a ministry whose default community was deleted see a closed state (ClosedCommunity) instead of the feed, ahead of the entry gate; an admin is pointed to the Communities page. No element or class of the shell moved."
+    },
+    {
+      "file": "src/lib/community/settings.ts",
+      "digest": "e43c0f573e4ada50468054f20a3fbafb9b91f0cabf394001f6b05e35d8f16b6e",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: adds the optional server-owned `closed` boolean to community settings, validated as a boolean when present. A missing field reads as open, so every existing document is unchanged."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "06fbd8f57e7ac6597e984122cc2ab94bc0c9056481360cd8b9e3eed5fad4160d",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: the server keeps `closed` as stored and ignores the client's copy, and a closed community is never relisted on Discover. Every other branch is unchanged."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "13ac3595d7b06fa24ccde8bf8c199bf5380fcd286722cf81c52280ea5c48b9c3",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one case: a closed community stays closed and off Discover whatever the client sends. Every prior case retained."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.community-settings.test.tsx",
+      "digest": "f8310dc01b6abe9c214c02a85649214b4da23d2c94df036b500bf172087c01fe",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one case for the closed state (members and admins, ahead of the entry gate). Every prior case retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "366b12242d1952823061a4160166dd645ca3f0bbda09f7591fa4fcc2c7a40850",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: the manageCommunity case follows the rename to Communities and the AdminCommunities screen it now renders; the same two permissions decide visibility."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "9f2b5e199abcae1a3ad8238f619b10a807ecdd59ccba927d4c79e335c53701ae",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends AdminCommunities and ClosedCommunity to the min-h-11 sweep. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "b2f2ab1ef378650d02b2d6d228f2e1ab0027bed0523a5f8ef385b0859f33bd09",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends AdminCommunities as a recorded adopter of textarea and toggle-group. Nothing removed. Also appends ClosedCommunity as an adopter of the empty state."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "21cc239c609386c96cd5130175530fb1a6849b4ed79fbb0171aa447c2fa63f30",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: records the two communities routes beside the other non-entitlement routes and asserts they write no plan, addons or features. The pinned count of other routes is unchanged."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "565ca6ebeafa14f0f90ec89e3a6079bf3efa805ff2c019dc830cc9086f201c55",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "8848f9d3fa351329d626a1fc61eeecbbad38dda5e84326599ad941f6d10b31a1",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "58166dfae430bf2afe9fd7a7540bd58df705ee877003b41f805602932cd12eda",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "56d43416a29cb39f3179e7f76e670714db25b5fb735ca0f599e3920700c3a556",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "1f4d9e03969f0a16e447e1e44075bbb042295836228d1c3d9445d84d8e1e676b",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "f18dacd65d85ac7145beae09c83909cf9c3b03eac6fe8bc8b11fd9db43d0b9d4",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "d0eb6465fa3cdbee487c8266bc467c26eb5a13b1b59c1d9b87a8921cfb7b6234",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "a5e911ac2728f4f0855d372ddc3c0c947a4df5e17d57fa80b6312f90204384db",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "1b6964b5b0429871cf0d00b5b912cfeb05d9c953d86e3dd828c07b361f97e85f",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one AdminDashboard digest with its reason; prior pins and every assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "990ed60d8acb20f4adc492b9eefa8bda56287d144db70b46ba50558b7a6789eb",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: appends one MainApp digest for the closed community state; every baseline and assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
+      "digest": "fcb693dfdc4329a4dac969e3b500081240c6ddc34823b954f6944a6dca86378a",
+      "why": "APPENDED, NOT SUBSTITUTED — #570: the shell element count follows the one ClosedCommunity element; every other assertion retained."
+    }
+  ]
+}

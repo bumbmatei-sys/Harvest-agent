@@ -823,7 +823,8 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     // The community-look PR moves the desktop rail into MemberDesktopSidebar
     // inside SidebarProvider / SidebarInset, and drops the AI chat view and the
     // top-bar avatar (it moved to the sidebar rail).
-    expect(tags.length, 'the shell gained or lost an element').toBe(67);
+    // #570 adds the ClosedCommunity element for a deleted default community.
+    expect(tags.length, 'the shell gained or lost an element').toBe(68);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

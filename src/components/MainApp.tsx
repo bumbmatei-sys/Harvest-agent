@@ -48,6 +48,7 @@ import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
 import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
 import UserEvents from './UserEvents';
 import { FreeMemberShell } from './community/FreeMemberShell';
+import { ClosedCommunity } from './community/ClosedCommunity';
 import { MemberDesktopSidebar, MEMBER_SIDEBAR_ICON_WIDTH, MEMBER_SIDEBAR_WIDTH } from './community/MemberDesktopSidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -660,6 +661,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
 
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
   if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
+  // #570: the admin deleted the default community. Its posts and members are
+  // kept for a restore, so this is a closed door rather than an empty feed.
+  if (community.settings.closed === true) {
+    return <ClosedCommunity name={tenantName || 'This ministry'} isAdmin={isAdminPreview} onManage={() => onNavigate('admin')} onDiscover={() => window.location.assign('/discover')} />;
+  }
   if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
     return <CommunityEntryDialog communityName={tenantName || 'the community'} logoUrl={community.settings.logoUrl || branding?.logo} settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
   }

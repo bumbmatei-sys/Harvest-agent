@@ -822,7 +822,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/boards/BoardGrid.tsx',
       // THE-555: shadcn admin composer controls state their mobile touch floor.
       // PR 554 reviewer-requested shadcn composer buttons retain their 44px phone floors.
+      // APPENDED BY #570. The Communities page and editor controls take the phone floor.
+      'src/components/community/AdminCommunities.tsx',
       'src/components/community/AdminPostComposer.tsx',
+      // APPENDED BY #570. The closed community notice action takes the phone floor.
+      'src/components/community/ClosedCommunity.tsx',
       'src/components/community/CommunityDataRequests.tsx', // #561: account privacy actions use the phone floor.
       'src/components/community/CommunityEntryDialog.tsx',
       // THE-999998: join/member and leave actions use the same phone floor.

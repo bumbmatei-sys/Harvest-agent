@@ -24,6 +24,8 @@ export type CommunitySettings = {
   ownerName: string;
   rules: { enabled: boolean; items: string[]; version: number };
   questions: { enabled: boolean; items: CommunityQuestion[] };
+  /** Set only by the server when an admin deletes the default community. */
+  closed?: boolean;
 };
 
 export function defaultCommunitySettings(): CommunitySettings {
@@ -55,7 +57,8 @@ export function readCommunitySettings(value: unknown): CommunitySettings {
       data.questions.items.some(q => !q || typeof q.id !== 'string' || !q.id ||
         (q.type !== 'short' && q.type !== 'choice') || typeof q.label !== 'string' ||
         typeof q.required !== 'boolean' || !Array.isArray(q.options) || q.options.some(o => typeof o !== 'string')) ||
-      new Set(data.questions.items.map(q => q.id)).size !== data.questions.items.length) {
+      new Set(data.questions.items.map(q => q.id)).size !== data.questions.items.length ||
+      (data.closed !== undefined && typeof data.closed !== 'boolean')) {
     throw new Error('Invalid community settings');
   }
   return data;

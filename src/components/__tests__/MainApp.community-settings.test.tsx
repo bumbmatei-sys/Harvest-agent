@@ -77,6 +77,23 @@ describe('community settings in member navigation', () => {
     expect(Array.from(host.querySelectorAll('button')).some(b => b.textContent?.trim() === 'Bible')).toBe(false);
     await act(async () => root.unmount()); host.remove();
   });
+  it('#570: shows a closed community instead of the feed once the default community is deleted', async () => {
+    // Rules are on too, so this also proves closed wins over the entry gate.
+    fx.settings = { ...defaultCommunitySettings(), closed: true, rules: { enabled: true, items: ['Be kind'], version: 2 } }; fx.member = { rulesAcceptedVersion: 1 }; fx.user = { uid: 'u' };
+    const navigate = vi.fn();
+    const host = document.createElement('div'); const root = createRoot(host);
+    await act(async () => root.render(<MainApp onNavigate={navigate} />));
+    expect(host.querySelector('[data-community-closed]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="news"]')).toBeNull();
+    expect(host.querySelector('[data-testid="entry"]')).toBeNull();
+    expect(host.textContent).toContain('Discover communities');
+    // An admin is pointed back to the page that restores it.
+    await act(async () => root.render(<MainApp onNavigate={navigate} isAdminPreview />));
+    const manage = [...host.querySelectorAll('button')].find(b => b.textContent === 'Open Communities')!;
+    await act(async () => manage.click());
+    expect(navigate).toHaveBeenCalledWith('admin');
+    await act(async () => root.unmount());
+  });
   it('requires entry for members and bypasses it for an admin preview', async () => {
     fx.settings = defaultCommunitySettings(); fx.settings.rules = { enabled: true, items: ['Be kind'], version: 2 }; fx.member = { rulesAcceptedVersion: 1 }; fx.user = { uid: 'u' };
     const host = document.createElement('div'); const root = createRoot(host);

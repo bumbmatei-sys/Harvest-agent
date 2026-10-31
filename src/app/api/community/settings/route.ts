@@ -48,9 +48,12 @@ export async function POST(request: NextRequest) {
       if (!tenant.exists) throw new Error('Ministry not found.');
       if (!group.exists) tx.set(groupRef, { name: 'All members', description: '', audience: 'all', members: [], createdAt: new Date(), createdBy: admin.uid, type: 'announcement' });
       const aggregate = readReviewAggregate(saved.exists ? saved.data() : undefined);
-      if (next.isPublic) tx.set(listingRef, { ...makeDiscoveryListing(tenantId, tenant.data()!, next, count, new Date()), ...aggregate });
+      // `closed` is the server's (the default community was deleted): the
+      // client's copy is ignored, and a closed community stays off Discover.
+      const { closed: _clientClosed, ...fields } = next;
+      if (next.isPublic && !current.closed) tx.set(listingRef, { ...makeDiscoveryListing(tenantId, tenant.data()!, fields, count, new Date()), ...aggregate });
       else tx.delete(listingRef);
-      tx.set(settingsRef, { ...next, ...aggregate });
+      tx.set(settingsRef, { ...fields, ...aggregate, ...(current.closed ? { closed: true } : {}) });
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
