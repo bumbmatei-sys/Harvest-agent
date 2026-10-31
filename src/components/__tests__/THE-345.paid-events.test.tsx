@@ -303,7 +303,8 @@ describe('THE-345 · a paid event cannot be created while no payment rail exists
     if (priceInput) fill(priceInput as HTMLInputElement, '50');
     await settle();
 
-    await click(buttonContaining(c, 'Create Event'));
+    // WAS 'Create Event'; #579 adopts Eden's "Make event".
+    await click(buttonContaining(c, 'Make event'));
     await settle();
 
     const created = stored.find((s) => 'price' in s);
@@ -545,11 +546,37 @@ describe('THE-379 review regressions — admin events', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   };
+  // #579: Eden's Date · Time · How long replaced the two date-and-time fields.
+  // The form's wall-clock strings are unchanged, and the schedule block exposes
+  // them, so these tests still assert the exact strings that are saved.
+  const scheduleOf = (c: HTMLElement) => {
+    const block = c.querySelector<HTMLElement>('[data-event-schedule]')!;
+    return { start: block.dataset.start ?? '', end: block.dataset.end ?? '' };
+  };
+  const pick = async (c: HTMLElement, trigger: string, option: string) => {
+    await click(c.querySelector<HTMLElement>(`[aria-label="${trigger}"]`)!);
+    const choice = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(e => e.textContent === option);
+    expect(choice, `no "${option}" in ${trigger}`).toBeTruthy();
+    const { act } = await import('react');
+    await act(async () => {
+      choice!.focus();
+      choice!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    await settle();
+  };
+  const label12 = (wall: string) => {
+    const [h, m] = wall.slice(11, 16).split(':').map(Number);
+    return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  };
+  const setStart = async (c: HTMLElement, wall: string) => {
+    await fill(c.querySelector<HTMLInputElement>('input[aria-label="Date"]')!, wall.slice(0, 10));
+    await pick(c, 'Time', label12(wall));
+  };
 
   it('preserves individually cancelled dates when a series is edited and saved', async () => {
     eventsData.current = [series()];
     const c = await editOnlyEvent();
-    await fill(c.querySelector('input[placeholder="Event name"]')!, 'Renamed gathering');
+    await fill(c.querySelector('input[placeholder="Weekly Q&A"]')!, 'Renamed gathering');
     await click(buttonContaining(c, 'Save Changes'));
     expect(stored).toHaveLength(1);
     expect(stored[0].title).toBe('Renamed gathering');
@@ -643,11 +670,11 @@ describe('THE-379 review regressions — admin events', () => {
     // Two zones ensure the browser-local parser fails on every runner zone.
     eventsData.current = [series({ timeZone })];
     const c = await editOnlyEvent();
-    const dates = c.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]');
-    expect(dates[0].value).toBe(at(3, 16, startHour, 0).slice(0, 16));
-    expect(dates[1].value).toBe(at(3, 16, endHour, 0).slice(0, 16));
-    await fill(dates[0], at(3, 30, 19, 0).slice(0, 16));
-    await fill(dates[1], at(3, 30, 20, 0).slice(0, 16));
+    expect(scheduleOf(c)).toEqual({ start: at(3, 16, startHour, 0).slice(0, 16), end: at(3, 16, endHour, 0).slice(0, 16) });
+    expect(c.querySelector('[aria-label="How long"]')!.textContent).toContain('1 hour');
+    // Moving the start keeps the hour-long length, so the end follows it.
+    await setStart(c, at(3, 30, 19, 0));
+    expect(scheduleOf(c)).toEqual({ start: at(3, 30, 19, 0).slice(0, 16), end: at(3, 30, 20, 0).slice(0, 16) });
     await click(buttonContaining(c, 'Save Changes'));
     expect(stored).toHaveLength(1);
     expect((stored[0].startDate as { toDate(): Date }).toDate().toISOString()).toBe(at(3, 30, savedStartHour, 0));
@@ -657,7 +684,7 @@ describe('THE-379 review regressions — admin events', () => {
   it('shows an error and writes nothing for a nonexistent DST wall-clock time', async () => {
     eventsData.current = [series()];
     const c = await editOnlyEvent();
-    await fill(c.querySelector('input[type="datetime-local"]')!, at(3, 30, 2, 30).slice(0, 16));
+    await setStart(c, at(3, 30, 2, 30));
     await click(buttonContaining(c, 'Save Changes'));
     expect(stored).toHaveLength(0);
     expect(notifications.error).toHaveBeenCalledWith('Failed to save event', expect.any(Error));
@@ -699,10 +726,8 @@ describe('THE-379 review regressions — admin events', () => {
     try {
       eventsData.current = [series({ timeZone: undefined, recurrence: null })];
       const c = await editOnlyEvent();
-      const dates = c.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]');
       const { formatEventDateTime } = await import('../../lib/events/recurrence');
-      expect(dates[0].value).toBe(formatEventDateTime(new Date(at(3, 16, 18)), zone));
-      expect(dates[1].value).toBe(formatEventDateTime(new Date(at(3, 16, 19)), zone));
+      expect(scheduleOf(c)).toEqual({ start: formatEventDateTime(new Date(at(3, 16, 18)), zone), end: formatEventDateTime(new Date(at(3, 16, 19)), zone) });
       expect(c.textContent).toContain(`Times are in ${zone}`);
       expect(c.textContent).toContain('Changing the zone keeps the entered times');
       await click(buttonContaining(c, 'Save Changes'));
@@ -733,8 +758,7 @@ describe('THE-379 review regressions — admin events', () => {
   it('r9.1 zone picker keeps the typed wall clock and explains the new zone', async () => {
     eventsData.current = [series()];
     const c = await editOnlyEvent();
-    const input = c.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
-    await fill(input, at(3, 30, 19).slice(0, 16));
+    await setStart(c, at(3, 30, 19));
     await click(buttonContaining(c, 'Europe/Berlin'));
     const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(e => e.textContent === 'America/New_York');
     expect(option).toBeTruthy();
@@ -744,7 +768,7 @@ describe('THE-379 review regressions — admin events', () => {
       option!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
     await settle();
-    expect(input.value).toBe(at(3, 30, 19).slice(0, 16));
+    expect(scheduleOf(c).start).toBe(at(3, 30, 19).slice(0, 16));
     expect(c.textContent).toContain('Times are in America/New_York');
   });
 
@@ -792,18 +816,25 @@ describe('#556 registered series editor and shadcn controls', () => {
     editState.locked = true; eventsData.current = [series];
     const c = await screen();
     await click(c.querySelector('button svg[class*="pen"]')!.closest('button')!);
-    const date = c.querySelector<HTMLInputElement>('input[aria-label="Start date"]')!;
+    // #579: Eden's Date (locked) and Time (editable) replace "Start date"/"Start time".
+    // Read from the newest dialog: "Date" is in every event dialog, not only a locked one.
+    const dialogs = c.querySelectorAll<HTMLElement>('[data-event-form-dialog]');
+    const form = dialogs[dialogs.length - 1];
+    const date = form.querySelector<HTMLInputElement>('input[aria-label="Date"]')!;
     expect(date.disabled).toBe(true);
     expect(date.dataset.slot).toBe('input');
-    const time = c.querySelector<HTMLInputElement>('input[aria-label="Start time"]')!;
+    const time = form.querySelector<HTMLButtonElement>('[aria-label="Time"]')!;
     expect(time.disabled).toBe(false);
-    const pickers = [...c.querySelectorAll<HTMLButtonElement>('[data-slot="select-trigger"]')];
+    const pickers = [...form.querySelectorAll<HTMLButtonElement>('[data-slot="select-trigger"]')];
+    // Zone and Repeats; Time and How long stay editable.
     expect(pickers.filter(p => p.disabled)).toHaveLength(2);
     expect(c.textContent).toContain('This series has registrations');
     const { act } = await import('react');
+    await act(async () => { time.click(); });
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(e => e.textContent === '3:30 PM')!;
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(time, '15:30');
-      time.dispatchEvent(new Event('input', { bubbles: true }));
+      option.focus();
+      option.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
     await click(buttonContaining(c, 'Save Changes'));
     expect(stored).toHaveLength(1);
@@ -817,7 +848,8 @@ describe('#556 registered series editor and shadcn controls', () => {
     await click(c.querySelector('button svg[class*="pen"]')!.closest('button')!);
     expect(c.textContent).toContain('Could not check series registrations');
     expect(buttonContaining(c, 'Save Changes').disabled).toBe(true);
-    expect(c.querySelector<HTMLInputElement>('input[aria-label="Start date"]')!.disabled).toBe(true);
+    const dialogs = c.querySelectorAll<HTMLElement>('[data-event-form-dialog]');
+    expect(dialogs[dialogs.length - 1].querySelector<HTMLInputElement>('input[aria-label="Date"]')!.disabled).toBe(true);
   });
   it('renders the questions editor with real shadcn input, checkbox and buttons', async () => {
     const c = await createForm();
