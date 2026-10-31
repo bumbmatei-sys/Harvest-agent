@@ -1681,3 +1681,119 @@ document.
 See [§21](#21-open-questions-for-matei) items tagged **UI**.
 
 ---
+
+## 17. Campaigns, giving, dashboard & settings
+
+### 17.1 Goal
+Let a ministry run giving campaigns and track gifts honestly (every figure is a sum of records
+a human entered — `AGENTS.md`'s money model), see a real dashboard of its own activity, and
+manage its team with scoped permissions.
+
+### 17.2 Campaigns / giving ("Give Now")
+- Built: `AdminFundraising.tsx`, `CampaignWidget.tsx`, `PublicCampaign.tsx`,
+  `NewsletterCampaigns.tsx`, `CampaignGivingOptions.tsx`, `CampaignProgress.tsx`, plus the
+  public routes `src/app/campaign/[campaignId]` and `src/app/pledge/[campaignId]`.
+- **Harvest does not process card payments for giving** (`AGENTS.md`). A ministry collects its
+  own giving through its own payment links — PayPal, Revolut, Wise, Venmo, Cash App, Zelle —
+  stored on the world-readable `tenants/{id}.config.givingLinks` and re-validated on every read
+  against a per-provider host allow-list (`src/components/donations/giving-providers.ts`).
+  Harvest takes 0% because it never holds the money.
+- **Harvest verifies nothing; the tenant confirms, and Harvest records what the tenant says it
+  confirmed.** No giving surface may say "verified" or "payment received" or imply Harvest
+  confirmed anything — `THE-355.confirmed-wording.test.tsx` polices this wording.
+- **Money is always in cents**, converted to dollars only through `formatCents`
+  (`src/lib/donation-history.ts`, and a second copy in `src/lib/event-payment-claims.ts` for the
+  event-payment surface) — never inline arithmetic on a dollar figure.
+- **The invoice is the money record**, not the CRM activity — a CRM activity tied to a gift
+  points at it by `invoiceId` and carries `amount: null`, specifically so nothing can sum a gift
+  twice by also summing contact activities.
+- **"Accounting" is labelled "Giving records"** in the UI (nav, page title, permission row) —
+  the route `/admin/accounting` and the underlying `accounting`/`manageAccounting` identifiers
+  keep their old names internally so every existing link/permission keeps working, but no copy
+  may describe it as accounting software or a QuickBooks replacement (QuickBooks integration
+  itself is a hidden feature, `QUICKBOOKS_FEATURE_ENABLED = false`).
+- **Identity match for a member's own receipts is by normalised email**, trimmed and lowercased
+  on both sides (`normalizeEmail`) — except the giving-statement generator, which groups donors
+  on `.toLowerCase()` alone with no trim; any future touch to that grouping should route through
+  the shared helper rather than adding a third spelling of "normalise an email."
+- A gift against a contact with no email counts in the books but can never reach a giving
+  statement — deliberate, since there's no address to send it to, but it means the books and the
+  statements can legitimately disagree, and no surface may present them as the same number.
+
+### 17.3 Dashboard
+`AdminHome.tsx` and `use-home-kpis.ts` ([§16.2](#162-whats-built)) drive the admin dashboard's
+KPI cards. Per `AGENTS.md`'s read-honesty rule: **a figure ships only if its read is exact or
+provably complete** — a capped list must say so on screen rather than present a partial count as
+a total.
+
+### 17.4 Team/admin roles
+- Roles: `user` (member), `admin`, `church_admin`, `super_admin`
+  (`TENANT_ADMIN_ROLES = [admin, church_admin, super_admin]`, `src/lib/roles.ts`) plus a
+  standalone AI-only role unrelated to tenant admin.
+- **Fine-grained permissions are a separate layer from role.** `requireTenantPermission`
+  (`src/lib/api-auth.ts:388`) — mirroring `firestore.rules`' own `hasPermission()` — always
+  passes the super admin, the tenant's `ownerId`, and anyone on the server-only
+  `tenant_private.adminEmails` roster; any *other* tenant admin must hold the specific named
+  permission (e.g. `manageCommunity`, `manageAccounting`) or `fullAccess` on their own
+  `users/{uid}.permissions` map. This is the exact mechanism behind every "owner-only" or
+  "admin with X permission" requirement elsewhere in this document
+  ([§6.6](#66-erasure--consent), [§5.4](#54-functional-requirements)) — it is one system, not a
+  different check per feature.
+- **Admin Seats is one of the four add-ons** ([§3.3](#33-the-three-tiers-grounded-in-code)) —
+  how many admins a tenant can add is capacity, gated by plan/add-on, independent of what each
+  admin is permitted to do once added.
+
+### 17.5 Affiliates / referrals — hidden
+`AFFILIATE_PROGRAM_ENABLED = false` (`AGENTS.md`'s hidden-features table). The 6 Eden reference
+screens (marketing affiliates, refer-and-earn, settings referrals, a "Pro gate" screen) are
+included for completeness only; this is not an active Harvest feature and the switch exists
+specifically so the backend can come back without being rebuilt, once it's turned on.
+
+### 17.6 Eden parity
+Giving/campaigns and the dashboard are Harvest-specific (Eden has no giving analogue); the
+affiliate screenshots are the one Eden-parity surface in this section, and they describe a
+feature that is currently off.
+
+### 17.7 Plan availability
+Giving campaigns are available broadly; Admin Seats and Unlimited Contacts are paid add-ons;
+Affiliates is fully hidden regardless of plan.
+
+### 17.8 Data model notes
+`tenants/{id}.config.givingLinks`, `invoices/{id}` (`amount` in cents), `contactActivities/{id}`
+(`invoiceId`, `amount: null`), `users/{uid}.permissions`, `tenants/{id}` `ownerId`,
+`tenant_private/{id}.adminEmails`.
+
+### 17.9 Edge cases
+- A giving link whose host no longer matches the provider allow-list (changed/expired) must be
+  rejected on read, not just at the time it was saved.
+- An admin granted `manageCommunity` but not `manageAccounting` must be refused on every giving
+  records route, even if the UI somehow renders a link to it.
+
+### 17.10 Mobile
+Dashboard KPIs and giving-link management must work at mobile width; an owner frequently checks
+both from a phone.
+
+### 17.11 Acceptance criteria
+- No giving-related copy anywhere says "verified" or "payment received" in a way that implies
+  Harvest confirmed a transaction.
+- A capped KPI list states its cap on screen rather than presenting a partial read as a total.
+- A non-owner, non-rostered admin without the specific permission flag is refused by the API
+  directly, not merely hidden in the UI.
+
+### 17.12 Screenshots
+
+<table><tr>
+<td><img src="screenshots/17-campaigns-giving-dashboard-settings/camp-002-desktop-55-store-refer-and-earn.webp" width="340"><br>Eden reference (design we copy) — desktop (reference only — affiliates are hidden)</td>
+<td><img src="screenshots/17-campaigns-giving-dashboard-settings/camp-003-desktop-62-settings-referrals.webp" width="340"><br>Eden reference (design we copy) — desktop (reference only — affiliates are hidden)</td>
+</tr></table>
+
+All 6 Eden reference screens (affiliates/referrals) are in
+`docs/prd/screenshots/17-campaigns-giving-dashboard-settings/` (see `_manifest.json`). No Eden
+reference exists for giving/campaigns, the dashboard, or team/admin roles — these are
+Harvest-specific surfaces with no Eden analogue in the restricted image set; see the appendix in
+`docs/prd/README.md`.
+
+### 17.13 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Giving**.
+
+---

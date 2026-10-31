@@ -1,0 +1,44 @@
+[
+  {
+    "file": "camp-001-desktop-50-store-marketing-affiliates.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/50-store-marketing-affiliates.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "camp-002-desktop-55-store-refer-and-earn.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/55-store-refer-and-earn.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "camp-003-desktop-62-settings-referrals.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/62-settings-referrals.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "camp-004-desktop-48-marketing-affiliates-pro-gate.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/48-marketing-affiliates-pro-gate.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "camp-005-desktop-70-refer-earn-top.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/70-refer-earn-top.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "camp-006-desktop-71-refer-earn-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/71-refer-earn-bottom.png",
+    "area": "Affiliates / referrals",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]
