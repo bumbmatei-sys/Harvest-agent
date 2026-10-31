@@ -984,7 +984,10 @@ describe('the existing events list, its write paths and paid-event creation are 
     // APPENDED BY THE-379 review: two redundant create buttons (each with
     // one className on its icon span) were removed; the header CTA remains.
     // APPENDED #556: cutoff/contact fields, notice retry control and cancellation error Alert.
-    expect([306, 304, 305, 310], 'className count moved').toContain((src.match(/className/g) || []).length);
+    // APPENDED #579: Eden's New event dialog. The two date-and-time fields and the
+    // zone/repeats grid become EventScheduleFields (Date, Time, How long, Time zone)
+    // plus a full-width Repeats and a "More options" heading; net +2. No inline style.
+    expect([306, 304, 305, 310, 308], 'className count moved').toContain((src.match(/className/g) || []).length);
     // APPENDED #556 r2 B5: shared Save Button replaces its one inline gold style.
     expect([7, 6], 'inline style count moved').toContain((src.match(/style=\{\{/g) || []).length);
   });

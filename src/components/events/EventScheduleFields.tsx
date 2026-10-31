@@ -27,7 +27,7 @@ export function EventScheduleFields({ start, end, locked, today, fieldClass, tim
     else onChange({ start: nextStart, end: endFor(nextStart, Number(choice)) });
   };
   const time = start.slice(11, 16);
-  return <div data-event-schedule data-start={start} data-end={end} className="grid grid-cols-2 gap-x-4 gap-y-4">
+  return <div data-event-schedule data-start={start} data-end={end} className="grid grid-cols-2 gap-4">
     <div>
       <label className={label} htmlFor="event-date">Date</label>
       <Input id="event-date" aria-label="Date" type="date" disabled={locked} value={start.slice(0, 10)}

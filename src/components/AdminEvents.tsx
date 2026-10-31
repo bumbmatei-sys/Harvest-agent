@@ -906,9 +906,9 @@ const AdminEvents: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-faint">Times are in {form.timeZone || BROWSER_TIME_ZONE()}. Changing the zone keeps the entered times.</p>
               </>}
             />
-            <p className="-mt-3 text-xs text-faint">Times are in {form.timeZone || BROWSER_TIME_ZONE()}. Changing the zone keeps the entered times.</p>
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Repeats</label>
               <Select disabled={seriesScheduleLocked} value={form.recurrenceFreq} onValueChange={(v: unknown) => setForm({ ...form, recurrenceFreq: v as typeof form.recurrenceFreq })}>

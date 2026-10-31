@@ -3013,6 +3013,12 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       { strippedSha: '059ae2bb73992ad6d97101db778394590f1cb25d5b8d25138e325d57167fa50c', strippedLines: 1926 },
       // APPENDED #556 r2: cancellation route/dialog, shared status and Save controls.
       { strippedSha: 'df6987f4f8138302e509911c2c48d87e7effb5200a3baa409d06c2f1c6b40c64', strippedLines: 1979 },
+      // APPENDED #579: Eden's New event dialog. Date, Time and How long replace the two
+      // date-and-time fields (EventScheduleFields; the saved wall-clock strings are
+      // unchanged), labels and placeholders follow Eden, "Create Event" becomes
+      // "Make event", and the cover image moves under More options. No write,
+      // price, registration or money path changed.
+      { strippedSha: '2d96b7a269d890497af05ad6bf233e4d645397a9ae020fd6e32c388f16345221', strippedLines: 1979 },
     ];
     expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
       strippedSha: sha(now), strippedLines: now.split('\n').length,
