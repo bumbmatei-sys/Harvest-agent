@@ -1225,3 +1225,104 @@ link-in-bio editor scroll (themes, blocks, accent).
 See [§21](#21-open-questions-for-matei) items tagged **LinkInBio**.
 
 ---
+
+## 12. Newsletter
+
+### 12.1 Goal
+An Eden-style email builder — themes, blocks, a slash menu — on top of Harvest-managed sending
+through Plunk, with Resend reserved for transactional mail only, matching `AGENTS.md`'s clean
+split between the two providers.
+
+### 12.2 Users / roles
+Owner/admin (writes and sends broadcasts, manages theme/branding/senders), subscriber (opts in
+via the public subscribe form, reads broadcasts, unsubscribes).
+
+### 12.3 Feature flag and provider split
+- `NEWSLETTER_FEATURE_ENABLED = true` (`src/lib/newsletter-feature.ts`) is deliberately a
+  **separate** switch from the retired `LEGACY_MAILCHIMP_NEWSLETTER_ENABLED` (false) — turning
+  the Plunk workspace on does not resurrect the old Mailchimp sender.
+  `sendTenantSms`/`transactional-email.ts`'s discipline applies the same way here: Plunk is the
+  newsletter's own channel; Resend is reserved for transactional email elsewhere in the product
+  ([§7](#7-events) cancellations, auth emails, etc.) — the two must not merge into one path.
+- **Current sending model:** emails go out from **Harvest's own shared sending address** today
+  — `senderReady()`'s own docblock (`src/components/email/kit.tsx:64`) states this plainly:
+  "there is no domain to verify first." This means **the brief's "domain verification" and "own
+  domain" sending are not yet built** — today a ministry's broadcast is sent from a Harvest-
+  controlled address with the ministry's reply-to, not from the ministry's own verified domain.
+  Building domain verification is a real scope item, not a toggle.
+- **Bring-your-own-key:** no bring-your-own-Plunk-key (or any other provider key) capability
+  exists in the codebase. This is listed in the brief as "advanced" and should be treated as a
+  later-phase add-on, not part of the base newsletter experience.
+
+### 12.4 Editor
+- **Blocks:** a rich-text body editor (`BodyEditor.tsx`) with a working **slash menu**
+  (`Suggestion` from TipTap, trigger char `/`) offering block types including an **Issue
+  header** (`blocks/IssueHeader.tsx`) and a **Box** block (`blocks/Box.tsx`) — exactly the two
+  block kinds named in the brief.
+- **Themes:** a theme picker with preset swatches (`ThemePicker.tsx`, `ThemeSettingsPanels.tsx`,
+  `TemplateThumb.tsx`), a design dialog (`DesignDialog.tsx`), and a contrast warning
+  (`ThemeWarning.tsx`) that catches a theme/color combination that would be hard to read — this
+  last piece matters because `AGENTS.md`'s design-system contrast rules are measured, not
+  eyeballed, and the newsletter editor already enforces that discipline on tenant-chosen themes,
+  not just on Harvest's own fixed palette.
+- **Templates:** a templates dialog/panel for starting a new broadcast from a preset layout.
+
+### 12.5 Sending & lists
+Broadcasts (`BroadcastEditor.tsx`), sender identity settings (from name, reply-to, mailing
+address — `senderReady()` requires all three before a send is allowed, which is itself a
+CAN-SPAM-shaped guard worth keeping), and a preview dialog. Subscribers come from the public
+subscribe form ([§11.5](#115-newsletter-subscribe-block)) and from existing CRM
+contacts who have opted in.
+
+### 12.6 Eden parity
+This is the second-largest reference set (96 screens): Eden's broadcast list, the templates
+dialog, the full theme-picker preset gallery, the slash-menu block insertion flow for both Issue
+header and Box blocks, and the email settings screens (sender/design, logo & footer, footer
+note & social links) that Harvest's own newsletter settings should match closely.
+
+### 12.7 Plan availability
+Newsletter is gated by `NEWSLETTER_FEATURE_ENABLED` (on) and the `newsletterAutomation` row of
+`/api/plans`, which this document does not restate numerically per `AGENTS.md`'s own rule about
+not duplicating a number a test already owns.
+
+### 12.8 Data model notes
+Subscriber records, broadcast documents, and theme/sender settings all live tenant-scoped;
+`tenants/{t}/emailSuppressions` ([§6.7](#67-email-block--rejoin)) is the same suppression source
+a newsletter send must also honour — a community-leave block and a newsletter unsubscribe are
+not two independent lists a ministry could accidentally bypass by using the other channel.
+
+### 12.9 Edge cases
+- A send attempted with an incomplete sender identity (`senderReady()` false) must be blocked
+  before it reaches Plunk, not fail opaquely at the provider.
+- A theme/color combination the contrast checker flags should warn, not silently ship unreadable
+  text in an inbox the ministry can't easily preview everywhere it renders.
+
+### 12.10 Mobile
+The subscriber-facing broadcast itself is read primarily on a phone's mail client, which the
+Harvest editor cannot control directly — but the admin broadcast editor and theme picker need to
+work at mobile width for an admin composing from a phone.
+
+### 12.11 Acceptance criteria
+- A broadcast cannot be sent until `senderReady()` passes.
+- A subscriber who unsubscribes (or whose community membership triggers a block per
+  [§6.7](#67-email-block--rejoin)) never receives a subsequent broadcast from that tenant.
+- The slash menu inserts an Issue header and a Box block correctly from the `/` trigger, matching
+  the Eden reference screens for this section.
+
+### 12.12 Screenshots
+
+<table><tr>
+<td><img src="screenshots/12-newsletter/news-074-desktop-01-theme-picker-all-presets.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/12-newsletter/news-090-desktop-18-slash-menu-top-issue-header.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/12-newsletter/news-093-desktop-21-block-box-inserted.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/12-newsletter/news-020-desktop-42-email-broadcast-templates-dialog.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 96 Eden reference screens for Newsletter and Newsletter email themes are in
+`docs/prd/screenshots/12-newsletter/` (see `_manifest.json`).
+
+### 12.13 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Newsletter**.
+
+---
