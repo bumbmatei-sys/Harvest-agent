@@ -889,3 +889,113 @@ this feature connects.
 See [§21](#21-open-questions-for-matei) items tagged **Events-Communities**.
 
 ---
+
+## 9. Forms & Sign-ups
+
+### 9.1 Goal
+Copy Eden's forms/sign-up-page product closely enough to inherit its builder, submissions
+view and KPIs, while adding the two things Harvest's evangelism loop depends on everywhere
+else in this document: a QR code on every form and sign-up page, and an after-submit invitation
+into a community or product.
+
+### 9.2 Users / roles
+Owner/admin (builds forms and sign-up pages, reads submissions/inbox), visitor (fills the
+public form, no account needed), member (the same visitor, once they act on the after-submit
+card).
+
+### 9.3 What exists today
+Harvest actually ships **two** related but separate surfaces, and the brief's requirements land
+differently on each:
+- **Forms** (`AdminForms.tsx`): builder with field types, a submissions count per form
+  (`submissionCount`), and a "Share" panel with **Copy Link** and **Embed Code** — reusable as an
+  iframe. It has no QR code today.
+- **Sign-up pages** (`src/components/signup-pages/`: `SignupPageBuilder.tsx`,
+  `PublicSignupForm.tsx`, `SubmissionsTable.tsx`, `ShareCard.tsx`): a separate builder with its
+  own public page at a handle, a submissions table, and — unlike Forms — a working QR code
+  already: `ShareCard.tsx` generates one via `QRCode.toDataURL` and offers **Download PNG**.
+
+### 9.4 After-submit card
+**Required, not yet built on either surface.** A direct search for `afterSubmit` (and
+equivalent names) across the codebase returns nothing — there is no config today for "after
+submit, show a community or product as a Discover-style card with Join/View." This is the
+mechanism the whole evangelism loop in [§1.2](#12-the-evangelism-loop-this-product-is-built-around)
+depends on, so it needs building, not polishing: an owner picks a community or a product when
+building the form/sign-up page; on successful submit, the public page renders the same
+Discover-card component used on the Discover page itself ([§5.4](#54-functional-requirements))
+with Join/View, so a visitor who just handed over their name and email sees the invitation to go
+further in the same motion.
+
+### 9.5 QR codes — required on every plan, PNG + SVG
+- **What exists:** Sign-up pages already generate and download a PNG QR via the `qrcode`
+  package. Events also generate a registration QR (`AdminEvents.tsx`) the same way. Forms have
+  none.
+- **What's required and missing everywhere:** (a) Forms need the same QR capability Sign-up
+  pages already have; (b) every QR download — Forms and Sign-up pages alike — needs an **SVG**
+  option alongside PNG. The `qrcode` package already supports an SVG string output
+  (`QRCode.toString(url, { type: 'svg' })`); nothing in the codebase calls it today — every
+  existing QR consumer (`AdminQR.tsx`, `ShareCard.tsx`, `AdminEvents.tsx`) only calls
+  `toDataURL` for a PNG data URL. Centralizing this (one shared QR-download helper offering both
+  formats) avoids a fourth inlined copy of the same PNG-only pattern.
+- QR codes are on **every plan including Free** — this is already true in spirit since nothing
+  in the existing QR code paths checks a plan feature flag; it should stay that way explicitly
+  as the feature is extended.
+- Every link encoded is a `theharvest.app` path (`formUrl(editingId)`, the sign-up page's
+  handle-based URL) — no subdomain involved, consistent with [§2](#2-accounts--tenancy).
+
+### 9.6 Inbox / KPIs
+Sign-up pages already have a `SubmissionsTable`; Forms track `submissionCount` per form. An
+"inbox" view across both (per the brief's mention of an inbox) does not yet exist as a unified
+surface — see Open Questions for whether this should be one inbox across Forms + Sign-up pages
+or stay split by surface.
+
+### 9.7 Eden parity
+The reference set covers Eden's own Inbox (paid questions, testimonials), its marketing
+forms/quizzes list, the form editor's build/settings/responses tabs, the template picker, and
+its embeddable email sign-up form editor (content/look/settings tabs, "get code" dialog) —
+Harvest's Forms and Sign-up pages builders should converge toward this single shape rather than
+stay two visually distinct products.
+
+### 9.8 Plan availability
+Forms, Sign-ups, and their QR codes are available on **Free**, per [§3.5](#35-free-plan-shell).
+
+### 9.9 Data model notes
+`forms/{id}`: fields, `submissionCount`, `afterSubmit?` (proposed: `{ kind: 'community' |
+'product', targetId }`). `signupPages/{handle}`: similar shape plus the existing public handle
+routing. Submissions: one doc per submission, linked to the form/page id.
+
+### 9.10 Edge cases
+- A form/sign-up page whose configured after-submit community or product is later deleted must
+  fail safe (no card shown, not a broken link) rather than 404 the whole success state.
+- A QR code must keep working even if the underlying form is later renamed — it should encode
+  the stable id/handle, not anything that changes with a rename.
+
+### 9.11 Mobile
+The public form and the after-submit card are overwhelmingly mobile surfaces — the entire point
+of the QR-code loop is "scanned on a phone, filled in on a phone."
+
+### 9.12 Acceptance criteria
+- Every form and every sign-up page has a QR code downloadable as both PNG and SVG, on every
+  plan.
+- Configuring "after submit, show a community" on a form results in the submitter seeing a
+  Discover-style Join/View card immediately after submitting, with no extra step.
+- Submitting a form/sign-up page that is configured to show a community after submit also
+  behaves consistently with the join path in [§6.3](#63-join-creates-a-contact-automatically) if
+  the visitor acts on it — it is an invitation, not an automatic join.
+
+### 9.13 Screenshots
+
+<table><tr>
+<td><img src="screenshots/09-forms-signups/forms-001-desktop-36-store-inbox-paid-questions.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/09-forms-signups/forms-013-desktop-40-email-signup-form-get-code-dialog.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/09-forms-signups/forms-015-desktop-54-marketing-forms-template-picker.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/09-forms-signups/forms-018-desktop-57-marketing-form-editor-responses-tab.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 20 Eden reference screens for Forms, Sign-ups and Inbox are in
+`docs/prd/screenshots/09-forms-signups/` (see `_manifest.json`).
+
+### 9.14 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Forms**.
+
+---
