@@ -33,12 +33,22 @@ export type CommunityRecord = {
 /** The fields an admin edits. Status and identity are the server's. */
 export type CommunityEdit = Pick<CommunityRecord, 'name' | 'tagline' | 'iconUrl' | 'about' | 'visibility' | 'pricing' | 'joining'>;
 
+/**
+ * Paid communities wait for the business entity that can take payments (Matei's
+ * LLC). Until then the editor shows Paid as coming soon and the server refuses it.
+ */
+export const PAID_COMMUNITIES_ENABLED = false;
+export const PAID_COMING_SOON_MESSAGE = 'Paid communities are coming soon. Keep this community free for now.';
+
 /** Shown until each community has its own members, feed and chat. */
 export const PUBLISH_LATER_MESSAGE = 'Publishing a second community opens once each community has its own feed and chat. Your setup is saved as a draft.';
 
 export const COMMUNITY_LIMITS = { name: 80, tagline: 160, about: 10000, url: 2048 } as const;
 const CURRENCIES = ['usd', 'eur', 'gbp', 'ron', 'cad', 'aud'] as const;
 const ID = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/** The member's index entry (users/{uid}/communityMemberships) for a non-default community. */
+export const membershipIndexId = (tenantId: string, communityId: string) => `${tenantId}__${communityId}`;
 
 export function isCommunityId(value: unknown): value is string {
   return typeof value === 'string' && ID.test(value);

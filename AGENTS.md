@@ -218,11 +218,14 @@ deleted.
 | `STRIPE_CONNECT_ENABLED` | `src/lib/stripe-connect-feature.ts` |
 | `PAID_EVENTS_ENABLED` | `src/lib/paid-events-feature.ts` |
 | `AFFILIATE_PROGRAM_ENABLED` | `src/utils/plan-features.ts` |
+| `PAID_COMMUNITIES_ENABLED` | `src/lib/community/communities.ts` |
 
 So: **SMS automation and text-to-give, the legacy Mailchimp newsletter sender and its
 Instagram and Mailchimp integration rows, custom domains, the Gmail connection,
-QuickBooks, in-app card giving, paid-event charging and the affiliate programme are all
-unavailable today.** A plan cell may still read `true` for
+QuickBooks, in-app card giving, paid-event charging, paid communities and the affiliate
+programme are all unavailable today.** Paid communities wait for the business entity that
+can take payments; the community editor shows Paid as "Coming soon" and the edit route
+refuses paid pricing. A plan cell may still read `true` for
 one of them — the plan matrix says what a tier *entitles*, the switch says what the
 deployment *serves*, and the switch wins. Do not read a `true` cell as a shipped feature.
 
@@ -466,6 +469,13 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
   at 38px. `min-h-11` is not inert — it is doing work. `Button`'s intrinsic sizes all sit
   below both floors, so a bare `<Button>` does not meet the floor by itself.
 - **Terminology**: "Ministries", not "churches", in user-facing copy.
+- **Product editors share one layout (Matei's direction, after Eden).** Every product an
+  admin creates — communities, events, digital books, membership communities, coaching,
+  one-on-ones — is set up in the same three-panel editor: the **steps** in a column on the
+  left, the **options** for the current step in the middle, and a **live preview** of what
+  the buyer or member will see on the right. A new product editor follows this layout; it
+  does not invent its own. The community editor (`community/AdminCommunities.tsx`) is the
+  reference.
 - Installed shadcn primitives live under `src/components/ui/`, digest-pinned by
   `src/components/ui/__tests__/ds-primitives.test.tsx`; THE-555 adds Carousel.
   **`accordion` and `rating` are both absent** — check before importing, and grep both the

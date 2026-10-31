@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
-import { DEFAULT_COMMUNITY_ID, isCommunityId, PUBLISH_LATER_MESSAGE, readCommunityEdit, readCommunityRecord } from '@/lib/community/communities';
+import { DEFAULT_COMMUNITY_ID, isCommunityId, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, PUBLISH_LATER_MESSAGE, readCommunityEdit, readCommunityRecord } from '@/lib/community/communities';
 import { communitiesRef, communityLimit, isTenantIdParam, requireCommunityManager } from '@/lib/community/communities-server';
 import { readCommunitySettings } from '@/lib/community/settings';
 
@@ -48,6 +48,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     let edit;
     try { edit = readCommunityEdit(body.community); }
     catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    if (edit.pricing.type === 'paid' && !PAID_COMMUNITIES_ENABLED) return NextResponse.json({ error: PAID_COMING_SOON_MESSAGE }, { status: 400 });
     if (body.status === 'published') return NextResponse.json({ error: PUBLISH_LATER_MESSAGE }, { status: 409 });
     const ref = communitiesRef(tenantId).doc(id);
     await adminDb.runTransaction(async tx => {

@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FORM_CONTAINER } from '@/components/layout/form-layout';
 import {
-  COMMUNITY_LIMITS, formatCommunityPrice, PUBLISH_LATER_MESSAGE,
+  COMMUNITY_LIMITS, formatCommunityPrice, PAID_COMING_SOON_MESSAGE, PAID_COMMUNITIES_ENABLED, PUBLISH_LATER_MESSAGE,
   type CommunityEdit, type CommunityPriceInterval, type CommunityRecord,
 } from '@/lib/community/communities';
 import { authFetch } from '@/utils/auth-fetch';
@@ -207,7 +207,8 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
         <Button className="min-h-11 sm:min-h-0" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </div>
-    <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+    {/* The product editor layout (AGENTS.md): steps, options, live preview. */}
+    <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_320px]">
       <nav aria-label="Community setup steps" className="flex gap-1 overflow-x-auto lg:flex-col">
         {STEPS.map(item => <Button key={item.id} variant="ghost" data-active={step === item.id} aria-current={step === item.id ? 'step' : undefined}
           className="min-h-11 justify-start data-[active=true]:bg-surface-sunken data-[active=true]:text-strong sm:min-h-0" onClick={() => setStep(item.id)}>{item.label}</Button>)}
@@ -225,7 +226,7 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
               if (next === 'paid') set({ pricing: { type: 'paid', amountCents: paid?.amountCents ?? 1000, currency: paid?.currency ?? 'usd', interval: paid?.interval ?? 'month' } });
             }} variant="outline" aria-label="Free or paid">
               <ToggleGroupItem value="free" className="min-h-11 sm:min-h-0">Free</ToggleGroupItem>
-              <ToggleGroupItem value="paid" className="min-h-11 sm:min-h-0">Paid</ToggleGroupItem>
+              <ToggleGroupItem value="paid" disabled={!PAID_COMMUNITIES_ENABLED} className="min-h-11 sm:min-h-0">Paid{!PAID_COMMUNITIES_ENABLED && <Badge variant="secondary" className="ml-1.5">Coming soon</Badge>}</ToggleGroupItem>
             </ToggleGroup>
           </Field>
           {paid && <div className="flex flex-wrap gap-3">
@@ -239,7 +240,7 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
               <SelectContent><SelectItem value="month">Monthly</SelectItem><SelectItem value="year">Yearly</SelectItem><SelectItem value="once">One time</SelectItem></SelectContent>
             </Select></Field>
           </div>}
-          {paid && <p className="text-sm text-muted">Checkout for paid communities opens with publishing.</p>}
+          {!PAID_COMMUNITIES_ENABLED && <p className="text-sm text-muted">{PAID_COMING_SOON_MESSAGE}</p>}
         </>}
         {step === 'basics' && <>
           <h2 className="font-display text-2xl text-strong">Basics</h2>
@@ -269,8 +270,28 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
           <Button className="min-h-11 sm:min-h-0" disabled>Publish</Button>
         </>}
       </CardContent></Card>
+      <CommunityPreview draft={draft} />
     </div>
   </div>;
+}
+
+/** What a visitor sees on the community's page, redrawn on every keystroke. */
+function CommunityPreview({ draft }: { draft: CommunityEdit }) {
+  return <aside aria-label="Preview" data-community-preview className="space-y-2 lg:col-span-2 xl:col-span-1">
+    <p className="text-xs font-medium uppercase tracking-wide text-muted">Preview</p>
+    <Card className="bg-surface-raised"><CardContent className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Avatar className="size-12 rounded-xl"><AvatarImage src={draft.iconUrl || undefined} alt="" /><AvatarFallback className="rounded-xl">{draft.name.trim().slice(0, 1).toUpperCase() || '?'}</AvatarFallback></Avatar>
+        <div className="min-w-0">
+          <p className="truncate font-display text-lg font-semibold text-strong">{draft.name.trim() || 'Community name'}</p>
+          <p className="text-xs text-muted">{draft.visibility === 'public' ? 'Public' : 'Private'} · {formatCommunityPrice(draft.pricing)}</p>
+        </div>
+      </div>
+      {draft.tagline.trim() && <p className="text-sm text-body">{draft.tagline}</p>}
+      {draft.about.trim() && <p className="line-clamp-6 whitespace-pre-line text-sm text-muted">{draft.about}</p>}
+      <Button className="min-h-11 w-full sm:min-h-0" disabled tabIndex={-1}>{draft.joining.mode === 'apply' ? 'Apply to join' : 'Join community'}</Button>
+    </CardContent></Card>
+  </aside>;
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {

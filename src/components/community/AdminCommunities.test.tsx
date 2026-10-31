@@ -52,6 +52,20 @@ describe('admin Communities page', () => {
     await click(button('Communities'));
     await click(container.querySelector('[data-community-row="youth"]')!.querySelector('button')!);
     expect(container.querySelector('[data-community-editor="youth"]')).not.toBeNull();
+    // The live preview redraws as the admin types (AGENTS.md: steps, options, preview).
+    const preview = () => container.querySelector('[data-community-preview]')!;
+    expect(preview().textContent).toContain('Youth');
+    const nameInput = container.querySelector('[data-community-editor] input') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(nameInput, 'Youth Night');
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(preview().textContent).toContain('Youth Night');
+    expect(preview().textContent).toContain('Join community');
+    // Paid waits for the business entity that can take payments.
+    const paid = [...container.querySelectorAll('[data-community-editor] button')].find(b => b.textContent?.startsWith('Paid')) as HTMLButtonElement;
+    expect(paid.disabled).toBe(true);
+    expect(paid.textContent).toContain('Coming soon');
     await click(button('Publish'));
     // The step and its action share the label; the action is the disabled one.
     const publish = [...container.querySelectorAll('[data-community-editor] button')].filter(b => b.textContent === 'Publish');
