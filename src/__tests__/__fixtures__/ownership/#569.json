@@ -3,8 +3,8 @@
   "entries": [
     {
       "file": "src/components/MainApp.tsx",
-      "digest": "18a9ef69f41bd80562b487c5450156fbeab4de78be36406a297c3f70c11fdebc",
-      "why": "APPENDED, NOT SUBSTITUTED — #569: the desktop rail moved into MemberDesktopSidebar (admin inset Sidebar) inside SidebarProvider/SidebarInset; the Ask AI chat tab, its desktop entry and view are removed and a saved chat tab lands on Home. The mobile bottom bar is unchanged. Then: the desktop sidebar became two columns (Eden's icon rail beside the section card) and the top-right profile avatar moved to the bottom of the rail."
+      "digest": "3f3417de4a02c4bbdb8cc48e5677aed76ffaa83d0d1712b583da86cc4648f26a",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: the desktop rail moved into MemberDesktopSidebar (admin inset Sidebar) inside SidebarProvider/SidebarInset; the Ask AI chat tab, its desktop entry and view are removed and a saved chat tab lands on Home. The mobile bottom bar is unchanged. Then: the desktop sidebar became two columns (Eden's icon rail beside the section card) and the top-right profile avatar moved to the bottom of the rail. Then: Events moved from the rail into the community's COMMUNITY group (it belongs to the community), and the rail keeps Discover and Communities."
     },
     {
       "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
@@ -38,7 +38,7 @@
     },
     {
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
-      "digest": "66a3c4ebdbd3a7eb44afd72b5e1f4e3aeee850e7717c70b1502bc9d56c14aecc",
+      "digest": "28ae15c426392268dac591e1cd808a0afdef31e4325618a9157dcca3eae0d5f0",
       "why": "APPENDED, NOT SUBSTITUTED — #569: appends the new MainApp digest, gives MainApp its own community-look mobile record (no earlier fixture rewritten) and adds a guard that the phone bottom-tab rows equal THE-555's record. Every other assertion retained."
     },
     {
@@ -55,6 +55,11 @@
       "file": "src/components/__tests__/THE-363.ticket-guards.test.ts",
       "digest": "8d08994efd27fd76ff776b6d64835842f416e757f6fbcb3679b3cf0685f8af71",
       "why": "APPENDED, NOT SUBSTITUTED — #569: the avatar's size and token checks read the sidebar rail, where #569 moved it; the 44px floor now applies and is asserted. Every other assertion retained."
+    },
+    {
+      "file": "src/components/__tests__/MainApp.sidebar-groups.test.tsx",
+      "digest": "4d220e84a3f267d28eaf2024fbf4209c0168472baf8de43c4fcacf1e9e41a17c",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: COMMUNITY gains Events on every tier where events are on (desktop now shows it in the section column, as mobile did); the free-tier 'no COMMUNITY' case is inverted to 'COMMUNITY holds Events alone', and the duplicated-Home check still holds. Every other assertion retained."
     }
   ]
 }

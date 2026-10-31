@@ -91,7 +91,7 @@ const DESKTOP_SIDEBAR_GROUPS: readonly {
   bottomTabIds: readonly string[];
 }[] = [
   { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses', 'products'], bottomTabIds: ['bible'] },
-  { label: 'COMMUNITY', topTabIds: ['messages', 'prayer'], bottomTabIds: ['map'] },
+  { label: 'COMMUNITY', topTabIds: ['messages', 'prayer'], bottomTabIds: ['events', 'map'] },
   { label: 'SUPPORT US', topTabIds: ['partner'], bottomTabIds: [] },
 ];
 
@@ -463,6 +463,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
   };
 
   const desktopBottomTabItem = (id: string): DesktopNavItem | null => {
+    // Events belongs to the community, so on desktop it sits in the section column.
+    if (id === 'events') return modules.events ? { id: 'desktop-events', label: 'Events', icon: CalendarDays, isActive: effectiveBottomTab === 'events', onClick: () => setActiveBottomTab('events') } : null;
     const tab = restBottomTabs.find(t => t.id === id);
     if (!tab) return null;
     return {
@@ -727,7 +729,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
           logo={logoSrc}
           showHarvestDot={!isWhiteLabel}
           rail={[
-            ...(modules.events ? [{ id: 'desktop-events', label: 'Events', icon: CalendarDays, isActive: effectiveBottomTab === 'events', onClick: () => setActiveBottomTab('events') }] : []),
             { id: 'desktop-discover', label: 'Discover', icon: NAV_ICONS.discover, isActive: effectiveBottomTab === 'discover', onClick: () => setActiveBottomTab('discover') },
             { id: 'desktop-communities', label: 'Communities', icon: NAV_ICONS.communities, isActive: effectiveBottomTab === 'communities', onClick: () => setActiveBottomTab('communities') },
           ]}

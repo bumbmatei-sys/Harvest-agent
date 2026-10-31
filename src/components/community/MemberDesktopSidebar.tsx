@@ -20,25 +20,25 @@ import {
 export interface MemberSidebarItem {
   id: string;
   label: string;
-  icon: ComponentType;
+  icon: ComponentType<{ className?: string }>;
   isActive: boolean;
   onClick: () => void;
 }
 
-/** The icon rail plus the section card; the 8px either side is the inset margin. */
-export const MEMBER_SIDEBAR_WIDTH = '372px';
+/** The 76px rail, an 8px gap and the 280px section card, plus the 8px margin either side. */
+export const MEMBER_SIDEBAR_WIDTH = '380px';
 
 /** Collapsed, only the rail stays. */
-export const MEMBER_SIDEBAR_ICON_WIDTH = '88px';
+export const MEMBER_SIDEBAR_ICON_WIDTH = '92px';
 
 /**
- * The admin rail's entry (AdminDesktopSidebar's MENU_BUTTON): 30px tall, 14px
- * label, 17px icons at stroke 1.7. Pixels, not rem, for the same trimmed root.
+ * The admin rail's entry, one step roomier for the wider section card: 36px
+ * tall, 15px label, 18px icons at stroke 1.7. Pixels, not rem, for the trimmed root.
  */
-const MENU_BUTTON = 'h-[30px] min-h-0 gap-2 rounded-lg py-0 pr-3 pl-2 text-[14px] font-normal text-sidebar-foreground data-active:font-normal [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
+const MENU_BUTTON = 'h-9 min-h-0 gap-2.5 rounded-lg py-0 pr-3 pl-2.5 text-[15px] font-normal text-sidebar-foreground data-active:font-normal [&_svg]:size-[18px] [&_svg]:stroke-[1.7]';
 
 /** Eden's rail tile: icon over an 11px label, 64px wide, accent when active. */
-const RAIL_TILE = 'h-auto min-h-11 w-16 flex-col gap-1 rounded-xl px-0 py-2 text-[11px] font-normal text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground sm:min-h-0 [&_svg]:size-5 [&_svg]:stroke-[1.7]';
+const RAIL_TILE = 'h-auto min-h-11 w-[72px] flex-col gap-1 rounded-xl px-0 py-2.5 text-[11px] font-normal leading-none text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground sm:min-h-0';
 
 const ICON_BUTTON = 'size-8 min-h-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground sm:min-h-0 [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
 
@@ -87,7 +87,7 @@ export function MemberDesktopSidebar({
   logo: string;
   /** The gold period belongs to the "Harvest." lockup only. */
   showHarvestDot: boolean;
-  /** Rail tiles: Events, Discover and Communities. */
+  /** Rail tiles: Discover and Communities, which span every community. */
   rail: MemberSidebarItem[];
   groups: { label: string; items: MemberSidebarItem[] }[];
   memberName: string;
@@ -96,9 +96,11 @@ export function MemberDesktopSidebar({
   onProfile: () => void;
 }) {
   return (
-    <Sidebar variant="inset" collapsible="icon" data-member-sidebar className="p-[8px] text-sidebar-foreground">
+    // No box around the whole sidebar: the rail sits on the page and only the
+    // section column is a card, as in Eden. The primitive's inset ring is dropped.
+    <Sidebar variant="inset" collapsible="icon" data-member-sidebar className="p-[8px] text-sidebar-foreground [&>[data-slot=sidebar-inner]]:bg-transparent! [&>[data-slot=sidebar-inner]]:shadow-none! [&>[data-slot=sidebar-inner]]:ring-0!">
       <div className="flex min-h-0 flex-1 gap-2">
-        <nav aria-label="Member rail" data-member-rail className="flex w-16 shrink-0 flex-col items-center gap-1 py-1">
+        <nav aria-label="Member rail" data-member-rail className="flex w-[76px] shrink-0 flex-col items-center gap-1 py-1">
           {rail.map((item) => {
             const Icon = item.icon;
             return (
@@ -112,14 +114,14 @@ export function MemberDesktopSidebar({
                 className={RAIL_TILE}
                 onClick={item.onClick}
               >
-                <Icon />
+                <Icon className="size-[22px] stroke-[1.7]" />
                 <span>{item.label}</span>
               </Button>
             );
           })}
           <div className="my-2 h-px w-8 bg-sidebar-border" />
           {/* The community the member is in, marked like Eden's switcher. */}
-          <div className="relative flex w-16 justify-center" title={name}>
+          <div className="relative flex w-[76px] justify-center" title={name}>
             <span className="absolute top-1/2 left-0 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-accent-foreground" />
             <img src={logo} alt="" className="logo-plate size-10 rounded-xl object-contain" />
           </div>
@@ -141,8 +143,8 @@ export function MemberDesktopSidebar({
 
         <div data-member-sections className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-sidebar-border bg-card group-data-[collapsible=icon]:hidden">
           <SidebarHeader className="p-0">
-            <div className="flex h-[56px] items-center gap-2 px-4">
-              <img src={logo} alt={name} className="logo-plate size-7 shrink-0 rounded-lg object-contain" />
+            <div className="flex h-[60px] items-center gap-2.5 px-4">
+              <img src={logo} alt={name} className="logo-plate size-8 shrink-0 rounded-lg object-contain" />
               <span className="min-w-0 flex-1 truncate font-display text-[17px] font-semibold text-sidebar-accent-foreground">
                 {name}
                 {showHarvestDot && <span style={{ color: 'var(--brand-color, #C9963A)' }}>.</span>}
