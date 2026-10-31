@@ -207,7 +207,8 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
         <Button className="min-h-11 sm:min-h-0" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </div>
-    <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+    {/* The product editor layout (AGENTS.md): steps, options, live preview. */}
+    <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_320px]">
       <nav aria-label="Community setup steps" className="flex gap-1 overflow-x-auto lg:flex-col">
         {STEPS.map(item => <Button key={item.id} variant="ghost" data-active={step === item.id} aria-current={step === item.id ? 'step' : undefined}
           className="min-h-11 justify-start data-[active=true]:bg-surface-sunken data-[active=true]:text-strong sm:min-h-0" onClick={() => setStep(item.id)}>{item.label}</Button>)}
@@ -269,8 +270,28 @@ export function CommunityEditor({ tenantId, community, onBack }: { tenantId: str
           <Button className="min-h-11 sm:min-h-0" disabled>Publish</Button>
         </>}
       </CardContent></Card>
+      <CommunityPreview draft={draft} />
     </div>
   </div>;
+}
+
+/** What a visitor sees on the community's page, redrawn on every keystroke. */
+function CommunityPreview({ draft }: { draft: CommunityEdit }) {
+  return <aside aria-label="Preview" data-community-preview className="space-y-2 lg:col-span-2 xl:col-span-1">
+    <p className="text-xs font-medium uppercase tracking-wide text-muted">Preview</p>
+    <Card className="bg-surface-raised"><CardContent className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Avatar className="size-12 rounded-xl"><AvatarImage src={draft.iconUrl || undefined} alt="" /><AvatarFallback className="rounded-xl">{draft.name.trim().slice(0, 1).toUpperCase() || '?'}</AvatarFallback></Avatar>
+        <div className="min-w-0">
+          <p className="truncate font-display text-lg font-semibold text-strong">{draft.name.trim() || 'Community name'}</p>
+          <p className="text-xs text-muted">{draft.visibility === 'public' ? 'Public' : 'Private'} · {formatCommunityPrice(draft.pricing)}</p>
+        </div>
+      </div>
+      {draft.tagline.trim() && <p className="text-sm text-body">{draft.tagline}</p>}
+      {draft.about.trim() && <p className="line-clamp-6 whitespace-pre-line text-sm text-muted">{draft.about}</p>}
+      <Button className="min-h-11 w-full sm:min-h-0" disabled tabIndex={-1}>{draft.joining.mode === 'apply' ? 'Apply to join' : 'Join community'}</Button>
+    </CardContent></Card>
+  </aside>;
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
