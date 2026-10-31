@@ -1608,3 +1608,76 @@ All 22 Eden reference screens for AI assistant are in `docs/prd/screenshots/15-a
 See [§21](#21-open-questions-for-matei) items tagged **AI**.
 
 ---
+
+## 16. UI system
+
+### 16.1 Goal
+One consistent shell — sidebar, top bar, command palette — built on shadcn, matching Eden's
+fidelity, fully responsive, so every feature in this document feels like one product rather
+than a collection of screens built at different times.
+
+### 16.2 What's built
+- **shadcn primitives:** 45 components under `src/components/ui/`, digest-pinned by
+  `src/components/ui/__tests__/ds-primitives.test.tsx`. Per `AGENTS.md`, **`accordion` and
+  `rating` are both absent** — check before importing either, and check both the `@/` and
+  relative `./ui/` import spellings when looking for an existing usage.
+  A **Carousel** primitive was added in THE-555.
+- **Admin shell:** `AdminDesktopSidebar.tsx`, `PageHeader.tsx`, `SegmentedTabs.tsx`,
+  `AdminContentBar.tsx`, `AdminHome.tsx` (with its own KPI hooks), `BoardsSection.tsx`, and a
+  `NavEntitlementCatalog.tsx` that ties sidebar nav items to plan/add-on entitlement — i.e. the
+  sidebar itself already knows which items a given tenant is allowed to see, rather than every
+  page re-deriving that independently.
+- **Command palette (Cmd-K):** `AdminSearchPalette.tsx` + `admin-search.ts` already exist — this
+  is built, not aspirational. (No Eden reference screenshot is indexed specifically for Cmd-K in
+  the restricted image set used for this document; see [§16.6](#166-screenshots).)
+- **reui:** referenced in the brief as a component source to reuse rather than hand-roll;
+  specific reui components to adopt are not enumerated here since that's an implementation
+  choice, not a requirement to pin down in a PRD.
+
+### 16.3 Design tokens (from `AGENTS.md`, restated only where load-bearing for UI work)
+- Fraunces for display/headings (`font-display`), Inter for UI/body (`font-sans`).
+- Cream page background, white cards/sidebar/top-bar; gold accent via `--brand-color`
+  (tenant-overridable — every gold accent must use the token, never a hard hex).
+- **One palette family** — `divide-stone-*` and raw Tailwind color scales are forbidden; tokens
+  only.
+- **Contrast is measured, not eyeballed** (`theming-neutral-palette.test.ts`,
+  `THE-338.palette-measured.test.ts` read real computed styles). Several low-contrast pairs are
+  *deliberate* (chart accents, the progress track) — do not "fix" one you notice by eye without
+  checking whether it's pinned as deliberate first.
+- **Touch targets:** ≥44px below the `sm` breakpoint, 38px above it. `min-h-11` is load-bearing,
+  not decorative, and a bare `<Button>` does not clear either floor by itself — every control
+  needs the explicit height class.
+
+### 16.4 Product editor layout (cross-reference)
+Every product/community editor in this document ([§5.4](#54-functional-requirements),
+[§10.7](#107-shared-editor-layout)) shares one layout — steps left, options middle, live preview
+right — and the community editor is the reference implementation. This belongs here
+structurally as much as in those sections: it is a UI-system rule, not a one-off community
+decision.
+
+### 16.5 Eden parity
+The reference set covers Eden's own home/feed, sidebar (light and dark, the "new" menu, chats-
+more-expanded), the strategy landing page, discover tabs (posts/creators/brands/lists), the
+workspace menu, and three mobile captures (home, a location-choice sheet, toolbar
+customization) — the only mobile Eden references in this entire document's image set, worth
+studying closely since mobile Eden reference material is otherwise scarce.
+
+### 16.6 Screenshots
+
+<table><tr>
+<td><img src="screenshots/16-ui-system/shell-026-desktop-dark-02-sidebar.webp" width="340"><br>Eden reference (design we copy) — desktop (dark)</td>
+<td><img src="screenshots/16-ui-system/shell-027-desktop-light-02-sidebar.webp" width="340"><br>Eden reference (design we copy) — desktop (light)</td>
+</tr><tr>
+<td><img src="screenshots/16-ui-system/shell-020-mobile-01-home.webp" width="200"><br>Eden reference (design we copy) — mobile</td>
+<td><img src="screenshots/16-ui-system/shell-022-mobile-12-customize-toolbar.webp" width="200"><br>Eden reference (design we copy) — mobile</td>
+</tr></table>
+
+All 27 Eden reference screens for the app shell (including the only 3 mobile Eden references in
+this document) are in `docs/prd/screenshots/16-ui-system/` (see `_manifest.json`). No Eden
+reference specific to Cmd-K search is indexed in the restricted image set used for this
+document.
+
+### 16.7 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **UI**.
+
+---
