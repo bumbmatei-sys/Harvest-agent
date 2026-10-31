@@ -957,12 +957,12 @@ const SURFACES: Record<Screen, Record<string, Nav>> = {
   AdminEvents: {
     default: NOOP,
     form: async (c) => {
-      await click(buttonContaining(c, 'Create event'));
+      await click(buttonContaining(c, 'New event'));
       return latestEventFormDialog();
     },
     // Ticket types and discount codes live behind the registrations toggle.
     formExpanded: async (c) => {
-      await click(buttonContaining(c, 'Create event'));
+      await click(buttonContaining(c, 'New event'));
       const dialog = latestEventFormDialog();
       // Narrowed to the parent-text match, not `button[aria-pressed]` — the
       // "Where" ToggleGroup (In person / Online) also carries aria-pressed

@@ -7,8 +7,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
   Check, Download, Search, ChevronRight, ChevronDown, Globe, X, Pin, QrCode, Copy,
-  Ticket, Tag, ArrowUp, ArrowDown, Link2, Repeat, Ban, CalendarX,
+  Ticket, Tag, ArrowUp, ArrowDown, Link2, Repeat, Ban, CalendarX, MoreHorizontal,
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp,
@@ -330,6 +331,8 @@ const AdminEvents: React.FC = () => {
     return () => { active = false; };
   }, [view, selected?.id, selected?.recurrence, tenantId, lockRetry]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  // #580: which row's "Copy link" just copied.
+  const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
 
   // Detail view state
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -1854,6 +1857,14 @@ const AdminEvents: React.FC = () => {
   // and the tier/tab matrix is generated from the real nav array.
   // ── List View ──
   const calendarUrl = `https://${tenantId}.theharvest.app/calendar`;
+  // #580: Eden's per-row "Copy link" — the event's own registration page.
+  const copyEventLink = async (ev: Event) => {
+    try {
+      await navigator.clipboard.writeText(registrationUrl(ev.id));
+      setCopiedEventId(ev.id);
+      setTimeout(() => setCopiedEventId(current => (current === ev.id ? null : current)), 2000);
+    } catch { /* clipboard refused: nothing to show */ }
+  };
   const copyCalendarUrl = async () => {
     try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
@@ -1890,7 +1901,7 @@ const AdminEvents: React.FC = () => {
     <div key="event-list" className={`w-full ${FORM_CONTAINER} space-y-6`}>
       <AdminPageHeader
         title="Events"
-        subtitle={`${events.length} event${events.length === 1 ? '' : 's'}`}
+        subtitle="Every event you run, from your ministry and its communities. Share a link to any of them."
         tabs={(
           <PageTabs
             label="Events view"
@@ -1899,7 +1910,7 @@ const AdminEvents: React.FC = () => {
             items={[{ value: 'list', label: 'List' }, { value: 'month', label: 'Month' }]}
           />
         )}
-        action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
+        action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>New event</AdminPrimaryButton>}
       />
       {events.length > 0 && tenantId && (
         <div className="flex items-center gap-2 bg-surface-sunken border border-line rounded-brand-lg px-3 py-2.5 text-xs">
@@ -2152,7 +2163,8 @@ const AdminEvents: React.FC = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-display text-base font-medium text-strong truncate">{ev.title}</h3>
-                    <AdminBadge tone={statusTone(ev.status)}>{ev.status}</AdminBadge>
+                    {/* #580: as on Eden, a live event needs no badge; a draft or a cancelled one does. */}
+                    {ev.status !== 'published' && <AdminBadge tone={statusTone(ev.status)}>{ev.status}</AdminBadge>}
                     {ev.registrationEnabled && <AdminBadge tone="sky">Registration</AdminBadge>}
                   </div>
                   <div className="mt-0.5 text-xs text-muted">
@@ -2186,22 +2198,24 @@ const AdminEvents: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-1">
-                  <button
-                    onClick={e => { e.stopPropagation(); togglePin(ev); }}
-                    className="p-2 rounded-xl hover:bg-wheat-50 transition-colors"
-                    title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
-                  >
-                    <Pin size={14} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-faint'} />
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
-                    className="p-2 rounded-xl hover:bg-surface-sunken transition-colors">
-                    <Edit2 size={14} className="text-faint" />
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); setDeleteId(ev.id); }}
-                    className="p-2 rounded-xl hover:bg-red-50 transition-colors">
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
+                {/* #580: Eden's row actions: Copy link, then everything else behind ⋯. */}
+                <div className="flex flex-shrink-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+                  {ev.pinned && <Pin size={14} aria-label="Pinned to feed" className="mr-1 text-wheat-500 fill-wheat-500" />}
+                  <Button variant="ghost" data-copy-event-link onClick={() => copyEventLink(ev)}
+                    className={`h-auto gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-muted ${CONTROL_DENSITY.action}`}>
+                    {copiedEventId === ev.id ? <Check size={13} /> : <Link2 size={13} />} {copiedEventId === ev.id ? 'Copied' : 'Copy link'}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger aria-label={`More for ${ev.title}`} className="rounded-lg p-2 text-faint hover:bg-surface-sunken">
+                      <MoreHorizontal size={16} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEdit(ev)}><Edit2 size={14} /> Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => togglePin(ev)}><Pin size={14} /> {ev.pinned ? 'Unpin from feed' : 'Pin to feed'}</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={() => setDeleteId(ev.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </React.Fragment>
