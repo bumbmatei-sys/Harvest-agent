@@ -113,3 +113,26 @@ describe('chat is isolated per community', () => {
     await assertFails((await member2()).firestore().doc(`${youth}/channels/general`).update({ name: 'Renamed' }));
   });
 });
+
+// #576: the community space page's own reads, exactly as src/lib/community/space.ts
+// and the Your communities list make them.
+describe('the community space queries', () => {
+  it('a member can run every query the space makes; a member of another community cannot', async () => {
+    type Db = ReturnType<Awaited<ReturnType<typeof member2>>['firestore']>;
+    const feedAndChat = [
+      (db: Db) => db.collection(`${youth}/posts`).orderBy('createdAt', 'desc').limit(50).get(),
+      (db: Db) => db.collection(`${youth}/channels`).where('audience', '==', 'all').get(),
+      (db: Db) => db.collection(`${youth}/channelMessages`).where('channelId', '==', 'general').limit(300).get(),
+    ];
+    const inside = (await member2()).firestore();
+    for (const run of feedAndChat) await assertSucceeds(run(inside));
+    await assertSucceeds(inside.doc(`${youth}/members/${MEMBER2_UID}`).get());
+    const outsider = (await member()).firestore();
+    for (const run of feedAndChat) await assertFails(run(outsider));
+  });
+  it('a member reads their own joined-community index by status', async () => {
+    await seedDoc(`users/${MEMBER2_UID}/communityMemberships/${TENANT_A}__youth`, { tenantId: TENANT_A, communityId: 'youth', status: 'active' });
+    await assertSucceeds((await member2()).firestore().collection(`users/${MEMBER2_UID}/communityMemberships`).where('status', '==', 'active').get());
+    await assertFails((await member()).firestore().collection(`users/${MEMBER2_UID}/communityMemberships`).where('status', '==', 'active').get());
+  });
+});
