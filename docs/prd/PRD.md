@@ -1797,3 +1797,109 @@ Harvest-specific surfaces with no Eden analogue in the restricted image set; see
 See [§21](#21-open-questions-for-matei) items tagged **Giving**.
 
 ---
+
+## 18. Architecture & future (Firebase → Neon)
+
+### 18.1 Current architecture (as it is today, per `AGENTS.md`)
+Next.js 14 (App Router) + React 18 + TypeScript, Tailwind + Framer Motion, Firebase
+(Firestore/Auth/Storage), Vercel for app hosting, Dodo Payments for subscription billing
+(merchant of record), Resend for transactional email, Plunk for the newsletter, Xiaomi MiMo for
+RAG chat + Gemini for embeddings/video, Vitest/Testing Library for tests, Sentry for
+monitoring. Tenant isolation today rests on Firestore security rules plus server-side
+`tenantId` checks on every API route (`requireTenantMember`/`requireTenantPermission`,
+[§17.4](#174-teamadmin-roles)).
+
+### 18.2 This section is a proposal, not a decision in progress
+No migration code, branch, or planning document for a Neon move exists anywhere in this repo or
+in the decision briefs reviewed for this PRD. Everything below is a reasoned proposal built
+from the current Firebase data model documented throughout this PRD, offered so Matei has a
+concrete starting point to react to — not a plan already underway. Where a choice is genuinely
+open, it's named as such and carried to [§21](#21-open-questions-for-matei) rather than decided
+here.
+
+### 18.3 Why this would ever be worth doing (to confirm, not assume)
+Firestore's per-document rule evaluation is already a recurring source of defects in this
+codebase (`AGENTS.md`'s "rules are not filters" corollary, behind at least two tracked bugs);
+a relational store with row-level security and real joins would remove an entire class of
+"query didn't carry the right `where`" failures, at the cost of losing Firestore's offline/
+realtime client SDK conveniences the mobile-first member app currently benefits from. **This
+trade-off itself should be confirmed with Matei before any migration work starts** — see Open
+Questions.
+
+### 18.4 Proposed scope and phasing
+1. **Phase 0 — parallel schema, no cutover.** Stand up the Postgres (Neon) schema alongside
+   Firestore; write a one-way sync job (Firestore → Postgres) for read-only reporting/analytics
+   use cases first, where a wrong read is low-stakes and recoverable. No user-facing behaviour
+   changes.
+2. **Phase 1 — dual-write on the lowest-risk collections.** Pick collections with few, simple
+   relationships and no money semantics (e.g. `discovery_listings`, `tenants/{t}/communities`)
+   and dual-write Firestore + Postgres, reading from Firestore still. Prove the sync holds under
+   load before touching anything with a dollar sign in it, per `AGENTS.md`'s own instinct about
+   where defects concentrate.
+3. **Phase 2 — cut reads over, collection by collection**, starting with the ones proven in
+   Phase 1, ending with the money-model collections (`contacts`, `contactActivities`,
+   `invoices`, `tenants/{t}/registrations`) last and only after a dedicated audit against every
+   invariant in `AGENTS.md`'s money model section ([§17.2](#172-campaigns--giving-give-now)).
+4. **Phase 3 — retire Firestore writes**, once every collection has been cut over and a rollback
+   window has passed with no incident.
+5. **Auth** moves last, or not at all in a first pass: Firebase Auth's custom claims
+   (`tenantId`, `admin`, `superAdmin` — [§2.3](#23-how-tenancy-resolves-today-grounded-in-code))
+   are load-bearing in `firestore.rules` itself; migrating auth before data would mean running
+   two authorization systems at once mid-migration. **Which auth provider replaces Firebase Auth
+   is explicitly not decided here** — see Open Questions.
+
+### 18.5 Proposed data mapping (illustrative, not final)
+| Firestore today | Proposed Postgres shape |
+|---|---|
+| `tenants/{id}` | `tenants` table, `id` primary key |
+| `tenants/{t}/communities/{id}` | `communities` table, `tenant_id` foreign key |
+| `tenants/{t}/communityMembers/{uid}` | `community_members` table, composite key `(tenant_id, user_id)` |
+| `users/{uid}/memberships/{tenantId}` | derivable as a query against `community_members` joined to `tenants` — a relational store removes the need for a separate denormalised index document |
+| `contacts/{id}` | `contacts` table, `tenant_id` foreign key, indexed on `tenant_id` |
+| `tenants/{t}/emailSuppressions/{hash}` | `email_suppressions` table, `(tenant_id, email_hash)` unique |
+| `tenants/{t}/events/{id}` + `registrations` | `events` and `registrations` tables, both `tenant_id`-scoped |
+| `invoices/{id}` | `invoices` table — **cents stay cents**; this is a money-unit invariant, not a
+Firestore-specific one, and must survive the migration unchanged |
+
+### 18.6 Rules → row-level security
+Every `firestore.rules` tenant check in this product reduces to "does this row's `tenant_id`
+match the caller's tenant claim" (with named exceptions for super admin, owner, and the
+`adminEmails` roster — [§17.4](#174-teamadmin-roles)). The proposed RLS shape is one policy
+family per table: `tenant_id = current_setting('app.tenant_id')::text OR
+current_setting('app.is_super_admin')::boolean`, with the owner/roster exceptions handled the
+same way `requireTenantPermission` already handles them today — in application code backed by
+a narrower RLS policy, not by trying to express the entire permission matrix in SQL policies
+alone. This preserves the exact isolation guarantee in [§2.5](#25-tenant-isolation) and
+[§19](#19-security-privacy--compliance) without claiming RLS alone replaces every server-side
+check this product already relies on.
+
+### 18.7 Risks
+- **Firestore's offline-first client SDK has no direct Postgres equivalent** — the member app's
+  realtime/offline behaviour would need an explicit replacement strategy (e.g. a sync layer or
+  accepting reduced offline support), not a silent regression discovered after cutover.
+- **A dual-write window is itself a new class of bug** (the two stores disagreeing) — every
+  dual-write phase needs its own reconciliation check, mirroring the discipline
+  `AGENTS.md` already applies to Dodo webhook idempotency.
+- **Composite indexes**: Firestore's lack of real joins already drove this codebase toward
+  "single-field `where` + client-side sort/filter" as house convention (`AGENTS.md`'s Traps
+  section) — a move to Postgres removes the reason for that convention, but migrating the
+  *code*, not just the data, is its own project.
+- **`functions/` does not deploy on merge today** and is a separate Node 22 build — any Cloud
+  Function logic touching migrated collections needs its own, explicit migration step; it will
+  not move "for free" alongside the Next.js app.
+
+### 18.8 Eden parity
+Not applicable — this is purely a Harvest infrastructure decision.
+
+### 18.9 Screenshots
+No Eden reference applies to this section's subject matter. The 2 Eden "Integrations" reference
+screens (`eden-archive`'s store-integrations views) are included below for completeness per this
+document's screenshot policy, though they describe Eden's third-party connector marketplace, not
+a database migration:
+
+<img src="screenshots/18-architecture-future/arch-001-desktop-54-store-integrations.webp" width="340"><br>Eden reference (design we copy) — desktop (unrelated to the Neon migration; included for completeness)
+
+### 18.10 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Architecture**.
+
+---

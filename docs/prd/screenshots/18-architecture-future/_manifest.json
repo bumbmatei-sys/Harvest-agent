@@ -1,0 +1,16 @@
+[
+  {
+    "file": "arch-001-desktop-54-store-integrations.webp",
+    "device": "desktop",
+    "rel": "eden-archive/00-map/54-store-integrations.png",
+    "area": "Integrations",
+    "caption": "Eden reference (design we copy) -- desktop"
+  },
+  {
+    "file": "arch-002-desktop-69-integrations-bottom.webp",
+    "device": "desktop",
+    "rel": "eden-archive/02-store/69-integrations-bottom.png",
+    "area": "Integrations",
+    "caption": "Eden reference (design we copy) -- desktop"
+  }
+]
