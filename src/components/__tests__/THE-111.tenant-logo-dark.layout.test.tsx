@@ -364,7 +364,8 @@ describe('3 · every themeable tenant-logo surface carries the plate', () => {
     expect(images.length, 'the tenant-logo discovery found nothing — the parse is broken')
       .toBeGreaterThanOrEqual(8);
     const files = new Set(images.map((i) => i.file));
-    for (const surface of ['components/PublicGiving.tsx', 'components/MainApp.tsx']) {
+    // The member rail's logo moved out of MainApp into MemberDesktopSidebar.
+    for (const surface of ['components/PublicGiving.tsx', 'components/community/MemberDesktopSidebar.tsx']) {
       expect([...files], `${surface} is not in the swept set`).toContain(surface);
     }
   });

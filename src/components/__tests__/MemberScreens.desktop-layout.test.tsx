@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -318,6 +318,15 @@ let COMMUNITY_BASELINE!: Baseline;
 let COMMUNITY_FIDELITY_BASELINE!: Baseline;
 let POST_CARD_BASELINE!: Baseline;
 let SHADCN_MESSAGES_BASELINE!: Baseline;
+/**
+ * Community look (APPENDED, no fixture above rewritten). The desktop rail moved
+ * from the bottom bar's lg: classes into MemberDesktopSidebar, the admin's inset
+ * Sidebar, inside SidebarProvider / SidebarInset, and the Ask AI tab left. That
+ * rewrites MainApp's rendered tree wholesale, so MainApp gets its own record;
+ * the guard below proves the phone's bottom tabs inside it did not move.
+ */
+const COMMUNITY_LOOK_FIXTURE = path.join(FIXTURES, 'member-screens-community-look-mobile.json');
+let COMMUNITY_LOOK_BASELINE!: Baseline;
 const isPostCardSurface = (name: string) => ['NewsTab', 'MainApp', 'AllNews'].includes(name);
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
@@ -394,6 +403,11 @@ beforeAll(async () => {
   // PR 554: reviewer-requested shadcn Input/Button swaps add intrinsic state,
   // file-input and height classes. Keep the old fixture; append only Messages.
   SHADCN_MESSAGES_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-shadcn-messages-mobile.json'), 'utf8')).surfaces as Baseline;
+  if (!existsSync(COMMUNITY_LOOK_FIXTURE)) {
+    const m = SURFACES.MainApp;
+    writeFileSync(COMMUNITY_LOOK_FIXTURE, JSON.stringify({ MainApp: { mobileLayer: mobileLayer(m), colours: colourTokens(m), heights: heightLayer(m) } }, null, 2) + '\n');
+  }
+  COMMUNITY_LOOK_BASELINE = JSON.parse(readFileSync(COMMUNITY_LOOK_FIXTURE, 'utf8')) as Baseline;
 });
 
 /**
@@ -503,8 +517,12 @@ describe('community step 1 pins', () => {
     // role carried from another community no longer starts DMs here. The other
     // MainApp additionally restores the Communities tab after leave via a single
     // FreeMemberShell prop; its element tree and class literals are unchanged.
+    // Community look (APPENDED, nothing above removed): the desktop rail moved into
+    // MemberDesktopSidebar inside SidebarProvider / SidebarInset, and the Ask AI
+    // chat tab and its view left the member shell.
+    const communityLookDigests: Record<string, string> = { 'MainApp.tsx': '3f3417de4a02c4bbdb8cc48e5677aed76ffaa83d0d1712b583da86cc4648f26a' };
     const joinCrmDigests: Record<string, string> = { 'MainApp.tsx': '3ed343b42f30d15d21c26daf43453a21775c175d2e9866d9f8fb280cf5734a3c', 'UserMessages.tsx': '8f56507a08e98d184a0605f42b6b2f9c423d7ee57f2a9ca2d289ee2d75524cd9' };
-    expect([file === 'MainApp.tsx' ? '119e3d25d4af2100bde623a5796467b01d29f760c3ef898208b6560c5a18a19a' : undefined, composerTriggerDigests[file], joinCrmDigests[file], reconciledDigests[file], commentTenant[file], shadcnLayoutFixes[file], staticControls[file], finalReview[file], roundFiveDigests[file], sharedNavShellDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    expect([file === 'MainApp.tsx' ? '119e3d25d4af2100bde623a5796467b01d29f760c3ef898208b6560c5a18a19a' : undefined, composerTriggerDigests[file], joinCrmDigests[file], reconciledDigests[file], commentTenant[file], shadcnLayoutFixes[file], staticControls[file], finalReview[file], roundFiveDigests[file], sharedNavShellDigests[file], navigationIconDigests[file], composerControlsDigests[file], finalPolishDigests[file], polishCompletionDigests[file], polishDigests[file], file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], bylineBinding[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined, communityLookDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('the shadcn record changes only the group search and group button rows', () => {
@@ -702,7 +720,24 @@ function beforeDiscoveryShell(root: HTMLDivElement): HTMLDivElement {
 }
 
 describe('the sub-640px rendering of each file is unchanged', () => {
+  it('community look: the phone bottom tabs in MainApp\'s new record match THE-555\'s, row for row', () => {
+    // The new record replaces the rail, not the phone nav. From the `nav` row
+    // through the profile avatar, every row (tag and classes) is unchanged.
+    const strip = (rows: string[]) => rows.map((row) => row.split('\t').slice(1).join('\t'));
+    const navRows = (rows: string[]) => {
+      const start = rows.findIndex((row) => row.split('\t').slice(1, 3).join('\t') === 'nav\tflex w-full');
+      expect(start, 'the phone nav is missing from a record').toBeGreaterThanOrEqual(0);
+      return strip(rows.slice(start, start + 25));
+    };
+    expect(navRows(COMMUNITY_LOOK_BASELINE.MainApp.mobileLayer)).toEqual(navRows(POLISH_BASELINE.MainApp.mobileLayer));
+    expect(navRows(mobileLayer(SURFACES.MainApp))).toEqual(navRows(POLISH_BASELINE.MainApp.mobileLayer));
+  });
+
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if ((name as string) === 'MainApp') {
+      expect(mobileLayer(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.mobileLayer);
+      return;
+    }
     if (isPolishSurface(name)) {
       expect(mobileLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].mobileLayer);
       return;
@@ -836,6 +871,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if ((name as string) === 'MainApp') {
+      expect(heightLayer(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.heights);
+      return;
+    }
     if (isPolishSurface(name)) {
       expect(heightLayer(SURFACES[name])).toEqual(POLISH_BASELINE[name].heights);
       return;
@@ -1703,6 +1742,10 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if ((name as string) === 'MainApp') {
+      expect(colourTokens(SURFACES[name])).toEqual(COMMUNITY_LOOK_BASELINE.MainApp.colours);
+      return;
+    }
     if (isPolishSurface(name)) {
       expect(colourTokens(SURFACES[name])).toEqual(POLISH_BASELINE[name].colours);
       return;

@@ -174,8 +174,9 @@ async function mount() {
   await act(async () => { await Promise.resolve(); });
 }
 
-/** The header avatar control. */
-const avatar = () => container.querySelector('[data-testid="member-header-avatar"]');
+/** The member's avatar control. WAS the top-bar avatar; #569 moved it to the
+ *  bottom of the sidebar rail, with the same photo source and fallback. */
+const avatar = () => container.querySelector('[data-testid="member-sidebar-profile"]');
 /** The rendered <img>, if the header is showing a photo. */
 const avatarImage = () => (avatar()?.querySelector('img') ?? null) as HTMLImageElement | null;
 /** The letter fallback, if the header is showing one. */

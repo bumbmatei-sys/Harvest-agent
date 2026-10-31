@@ -339,8 +339,9 @@ describe('Home appears in exactly one group, on every tier', () => {
     await mount('free', { hasCourse: false });
 
     expect(groupNamed('FEED')?.items).toEqual(['Home', 'Bible']);
-    expect(groupLabels(), 'COMMUNITY rendered holding only the duplicated Home')
-      .not.toContain('COMMUNITY');
+    // #569: COMMUNITY now also holds Events, so it survives, but without the
+    // duplicated Home: Events is all it holds.
+    expect(groupNamed('COMMUNITY')?.items, 'COMMUNITY drew the duplicated Home').toEqual(['Events']);
     expect(allSidebarItems(), 'the Prayer entry was drawn beside its own Home alias')
       .not.toContain('Prayer');
   });
@@ -362,9 +363,12 @@ describe("a free member's sidebar", () => {
     }
   });
 
-  it('has no COMMUNITY group when Prayer is its Home', async () => {
+  // WAS 'has no COMMUNITY group when Prayer is its Home'. #569 put Events in
+  // the community's column (it was mobile-only), so COMMUNITY keeps Events.
+  it('keeps COMMUNITY for Events alone when Prayer is its Home', async () => {
     await mount('free', { hasCourse: false });
-    expect(groupLabels()).toEqual(['FEED']);
+    expect(groupLabels()).toEqual(['FEED', 'COMMUNITY']);
+    expect(groupNamed('COMMUNITY')?.items).toEqual(['Events']);
   });
 
   it('⚠️ DRIFT — keeps COMMUNITY, holding Prayer alone, once a course exists', async () => {
@@ -377,7 +381,7 @@ describe("a free member's sidebar", () => {
     // not empty. Messages (`communityGroups`) and Map (`map`) stay gated off.
     await mount('free', { hasCourse: true });
 
-    expect(groupNamed('COMMUNITY')?.items).toEqual(['Prayer']);
+    expect(groupNamed('COMMUNITY')?.items).toEqual(['Prayer', 'Events']);
     expect(allSidebarItems()).not.toContain('Messages');
     expect(allSidebarItems()).not.toContain('Map');
   });
@@ -387,13 +391,15 @@ describe("a free member's sidebar", () => {
 
     expect(sidebarGroups()).toEqual([
       { label: 'FEED', items: ['Home', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Prayer'] },
+      { label: 'COMMUNITY', items: ['Prayer', 'Events'] },
     ]);
   });
 });
 
 // ─── 4. 🔴 the three priced tiers are unchanged ──────────────────────────────
 describe("the two priced tiers' member sidebars", () => {
+  // #569 APPENDS Events to every COMMUNITY group: it belongs to the community,
+  // so desktop shows it in the section column, as mobile already did.
   // The shape each paying tier has, pinned per tier. Chat is branded
   // "Ask {first word of the ministry name}" on desktop, so the test tenant
   // "Grace Chapel" would read "Ask Grace".
@@ -409,13 +415,13 @@ describe("the two priced tiers' member sidebars", () => {
     // prayer; give. No AI chat, no map.
     church: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Messages', 'Prayer'] },
+      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Events'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ],
     // Ministry — adds the map.
     ministry: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Map'] },
+      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Events', 'Map'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ],
   };
@@ -439,7 +445,7 @@ describe("the two priced tiers' member sidebars", () => {
 
     expect(sidebarGroups()).toEqual([
       { label: 'FEED', items: ['Home', 'Blog', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Map'] },
+      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Events', 'Map'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ]);
   });

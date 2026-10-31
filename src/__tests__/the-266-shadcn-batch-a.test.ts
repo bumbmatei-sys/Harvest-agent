@@ -669,6 +669,9 @@ describe('the out-of-scope files are untouched', () => {
       // APPENDED BY #531. The schedule proof wraps the same sidebar, which
       // needs TooltipProvider. The preview is dev-only.
       'src/components/blog/BlogSchedulePreview.tsx',
+      // APPENDED BY the community-look PR. The member shell mounts the same
+      // inset Sidebar, whose collapsed icons carry tooltips.
+      'src/components/MainApp.tsx',
     ],
     collapsible: [
       // Pre-existing, and invisible to the alias-only matcher until now.

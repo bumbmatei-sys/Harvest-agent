@@ -835,6 +835,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/community/FreeMemberShell.tsx',
       'src/components/community/GroupList.tsx',
       'src/components/community/LeaveCommunity.tsx',
+      // APPENDED BY the community-look PR. The member sidebar's profile button takes the phone floor.
+      'src/components/community/MemberDesktopSidebar.tsx',
       'src/components/community/MemberPostComposer.tsx',
       'src/components/community/MobileCommunityNav.tsx', // THE-555 moves the MainApp mobile header touch targets here, alongside navigation and sheets.
       'src/components/community/NewGroupDialog.tsx',

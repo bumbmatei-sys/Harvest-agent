@@ -227,6 +227,36 @@ describe('binaries are not treated as text', () => {
   it('the binary set is the original 13 PNGs plus the #529 proof shots', () => {
     const binaries = FILES.filter((rel) => isDeclaredBinary(rel));
     expect(binaries).toEqual([
+      // APPENDED BY #568, nothing below removed. Eden community reference
+      // screenshots, JPEG rather than PNG (see the signature check below).
+      'docs/design/eden/01-community-members.jpg',
+      'docs/design/eden/02-community-messages.jpg',
+      'docs/design/eden/03-community-products.jpg',
+      'docs/design/eden/04-community-events.jpg',
+      'docs/design/eden/05-community-forum.jpg',
+      'docs/design/eden/06-community-chat.jpg',
+      'docs/design/eden/07-store-home.jpg',
+      'docs/design/eden/08-workspace-home.jpg',
+      'docs/design/eden/09-your-access.jpg',
+      'docs/design/eden/10-store-communities.jpg',
+      'docs/design/eden/11-store-explore.jpg',
+      'docs/design/eden/12-editor-offer-name-price.jpg',
+      'docs/design/eden/13-editor-offer-checkout-upsells.jpg',
+      'docs/design/eden/14-editor-basics-look.jpg',
+      'docs/design/eden/15-editor-basics-sections.jpg',
+      'docs/design/eden/16-editor-joining.jpg',
+      'docs/design/eden/17-editor-joining-questions-welcome.jpg',
+      'docs/design/eden/18-editor-channels.jpg',
+      'docs/design/eden/19-editor-channels-forum-categories.jpg',
+      'docs/design/eden/20-editor-messages.jpg',
+      'docs/design/eden/21-editor-people-roles.jpg',
+      'docs/design/eden/22-editor-products.jpg',
+      'docs/design/eden/23-editor-page-look.jpg',
+      'docs/design/eden/24-editor-page-header-hero.jpg',
+      'docs/design/eden/25-editor-page-sections.jpg',
+      'docs/design/eden/26-editor-publish-checklist.jpg',
+      'docs/design/eden/27-editor-publish-marketplace.jpg',
+      'docs/design/eden/28-editor-publish-share-links.jpg',
       // APPENDED BY #536, nothing below removed. Blog post settings status
       // picker: Draft, Publish now, and Schedule, light and dark, each as a
       // full 1440 page and a card crop.
@@ -390,8 +420,17 @@ describe('binaries are not treated as text', () => {
 
   it('every declared binary is still a structurally valid PNG', () => {
     const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const JPEG_SOI = Buffer.from([0xff, 0xd8, 0xff]);
+    const JPEG_EOI = Buffer.from([0xff, 0xd9]);
     for (const rel of FILES.filter(isDeclaredBinary)) {
       const buf = bytesOf(rel);
+      // #568's JPEGs: the start-of-image marker, and an end-of-image marker
+      // somewhere, not last: Samsung phones append a metadata trailer after it.
+      if (rel.endsWith('.jpg')) {
+        expect(buf.subarray(0, 3), `${rel} has a damaged JPEG signature`).toEqual(JPEG_SOI);
+        expect(buf.includes(JPEG_EOI), `${rel} has no JPEG end marker`).toBe(true);
+        continue;
+      }
       // The magic itself embeds a CRLF at bytes 4-5 precisely so that a
       // line-ending-mangling transfer corrupts it detectably. That is the
       // canary: if `eol=lf` ever leaked past `binary`, it dies here first.

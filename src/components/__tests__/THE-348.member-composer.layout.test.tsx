@@ -956,14 +956,18 @@ describe('the bottom nav is hidden inside a conversation', () => {
     expect(r.navHiddenInThread!.top).toBeGreaterThanOrEqual(r.viewportH - 1);
   });
 
-  it('but the DESKTOP RAIL survives the same flag from lg up', () => {
-    // The same element is the side rail above `lg`. An unscoped hide would
-    // strip it, which is why the shipped condition is `max-lg:` gated.
+  // WAS 'but the DESKTOP RAIL survives the same flag from lg up': the bottom bar
+  // used to double as the side rail above lg. The community-look PR moved the
+  // rail into MemberDesktopSidebar, which never reads the thread flag, and the
+  // bar is lg:hidden. So from lg up the bar draws nothing, thread or not.
+  it('and from lg up the bottom bar is not drawn at all; the rail is the separate Sidebar', () => {
     for (const v of VIEWPORTS.filter((w) => w >= LG)) {
       const r = at(v);
-      expect(r.navHiddenInThread!.h, `the desktop rail lost its height at ${v}px`).toBeGreaterThan(0);
-      expect(r.navHiddenInThread!.top, `the desktop rail was pushed off screen at ${v}px`).toBeLessThan(r.viewportH);
+      expect(r.navHiddenInThread!.h, `the bottom bar still draws at ${v}px`).toBe(0);
     }
+    const shell = read('src/components/MainApp.tsx');
+    expect(shell).toContain('<MemberDesktopSidebar');
+    expect(read('src/components/community/MemberDesktopSidebar.tsx')).not.toMatch(/isChatOpen|ConversationOpen/);
   });
 });
 
