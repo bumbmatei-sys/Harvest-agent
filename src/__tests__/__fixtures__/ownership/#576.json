@@ -70,6 +70,11 @@
       "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
       "digest": "1564ac688002995618898d5b8ee635cebf0d11620200ad159b436dc7603486bc",
       "why": "APPENDED, NOT SUBSTITUTED — #576: the-255-install-app's current digest moves to the one with the new space route, and the previous digest is kept in its why. Nothing else changes."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "2af750ffb0f2a400864dbc6f6e91070cb0be14991223e9b09c9221c788448ae4",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the same the-255-install-app move, on top of #575's the-268 move after rebasing on main. Both moves are kept; nothing else changes."
     }
   ]
 }
