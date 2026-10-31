@@ -1326,3 +1326,121 @@ All 96 Eden reference screens for Newsletter and Newsletter email themes are in
 See [§21](#21-open-questions-for-matei) items tagged **Newsletter**.
 
 ---
+
+## 13. Website builder & public website
+
+### 13.1 Goal
+Give every ministry one public page, template-based (no drag-and-drop), that looks like a
+premium link-in-bio page ([§11](#11-link-in-bio)) rather than a generic church website — live on
+a subdomain claimed only when the ministry publishes it ([§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan)).
+Separately, `theharvest.site` is Harvest's own presentation/marketing site and blog, English
+only.
+
+### 13.2 Status: specified in detail, not yet built in this repo
+No website-builder component, route, or data model exists in this codebase today. The fullest
+specification comes from `website-brief.md` and its 2026-10-28 updates — decided direction from
+Matei, reproduced here as requirements rather than left as an open question, since the brief is
+explicit:
+
+- **One website document per tenant** (`tenants/{t}/website/site` or an equivalent field on the
+  tenant config — whichever shape the live `firestore.rules` already lets a tenant admin write
+  and the server can read via `firebase-admin`, without a rules change). Shape:
+  `{ templateId, published, publishedAt?, theme: { accent, mode }, sections: [{ id, kind,
+  enabled, order, content }], seo: { title?, description? } }`.
+- **Public page layout — link-in-bio with tabs** (the 2026-10-28 04:10 update, which overrides
+  the brief's earlier long-single-page draft wherever they conflict — see
+  [§11.2](#112-status-merged-into-the-website-builder-not-a-separate-product)): profile header
+  (photo/logo, name, short info, social row, primary buttons like "Plan a visit" / "Subscribe to
+  newsletter"), then shadcn `Tabs` — About, Blog, Give, Events, Watch, Community, and any other
+  enabled section, admin-ordered.
+- **Section kinds (fixed, no drag-and-drop):** hero, about, service times, location (address +
+  a keyless map embed — no API key, no env var), upcoming events (read-only from
+  [§7](#7-events)), give (links to the ministry's existing giving page), contact, "watch live" if
+  livestream data exists, blog (latest ≥3 articles linking to existing article pages), and the
+  **Community card** block ([§11.4](#114-the-community-card-block)). Admin enables/disables and
+  reorders with Up/Down controls, mirroring Eden's "Add block" grid (icon, name, one-line
+  description) for an "Add section" dialog.
+- **3 templates** (Classic, Modern, Simple) varying layout/typography of the same sections and
+  tabs; switching templates keeps content. "Classic" follows Nations Church's (wearenations.church)
+  structure specifically; Nations Church is secondary reference for typography/imagery feel
+  only — **Eden's own link-in-bio/storefront layout is the primary structural reference**
+  ([§11](#11-link-in-bio)).
+- **Admin builder:** under the admin sidebar's existing Public group; left panel (sections list +
+  section editor using shadcn Field/Input/Textarea/Switch/Select/Tabs), right live preview with a
+  Desktop/Mobile toggle; header on one line — title, status badge (Draft/Live), "View site,"
+  primary Publish/Update. Empty state: shadcn `Empty` ("Create your church website") opening the
+  template picker. Prefilled from existing tenant data (name, logo, address, service times,
+  giving link).
+- **The live address, shown with a copy button, is exactly where the subdomain gets claimed** —
+  this is the "claiming moves to website publishing" mechanic named in
+  [§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan). The brief's own draft
+  plan-gating note ("website + subdomain on every plan, no gate") is consistent with that
+  direction; custom domain stays Ministry-plan-only, reusing the existing `CUSTOM_DOMAIN_ENABLED`
+  gate and `DomainSection` — which, per `AGENTS.md`, has never actually provisioned a custom
+  domain end to end, so "Ministry-only" is a plan entitlement today, not a working feature yet.
+- **Branding footer:** "Made with Harvest," non-intrusive, never a popup — see
+  [§11.6](#116-branding-footer).
+- **Routing:** `<tenant>.theharvest.app/` serves the public site **only when published**;
+  unpublished, `/` behaves exactly as it does today (the SPA); every other route on the
+  subdomain (`/login`, `/admin/*`, member app routes, `/event/*`, giving, courses) keeps working
+  unchanged. A "Sign in / Member app" button on the public page links to the existing app entry.
+- **Out of scope for this feature itself:** drag-and-drop, free-form blocks, custom CSS/HTML,
+  multiple pages per site, blog *authoring* inside the builder (it only reads existing
+  articles), and any change to Community/Discovery/Events code paths beyond reading events.
+
+### 13.3 theharvest.site (the presentation/marketing site)
+A separate repository (`harvest-presentation-site`, Vite + React with `vite-react-ssg`,
+statically prerendered, with a markdown blog under `/blog`) that this repo does not contain and
+cannot verify directly — see `AGENTS.md`'s "Related Repos." It carries its own copy of the four
+plan prices with a build-time contract against `PLAN_PRICING` here
+([§3.3](#33-the-three-tiers-grounded-in-code)). Per this document's instructions: **English
+only, no language tags** — no `hreflang`, no locale switcher, no multi-language content model.
+
+### 13.4 Eden parity
+See [§11.7](#117-eden-parity) — the public page and editor should be built directly from the
+Eden link-in-bio/storefront screenshots catalogued under [§11](#11-link-in-bio), not from a
+fresh interpretation of "church website."
+
+### 13.5 Plan availability
+Per the 2026-10-28 brief draft: website + subdomain on every plan, no gate (consistent with
+[§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan)'s "no plan asks for a
+subdomain at sign-up" — the subdomain is claimed at publish time regardless of plan). Custom
+domain remains Ministry-plan-only. This document flags the plan-availability wording as worth
+Matei's final confirmation since an earlier line in the same brief said Free has "no website, no
+subdomain" — see Open Questions.
+
+### 13.6 Data model notes
+`tenants/{t}/website/site` (or tenant-config field, per whichever the live rules already permit)
+— see §13.2's shape above. No multi-page model; sections are ordered within one document.
+
+### 13.7 Mobile
+The builder's live preview has an explicit Desktop/Mobile toggle; the public page itself must
+be fully responsive with a 44px tap-target floor (`AGENTS.md`'s design-system touch-target
+rule), light and dark.
+
+### 13.8 Edge cases
+- A tenant that unpublishes after being live: `/` must revert to the SPA immediately, not show a
+  stale cached public page.
+- A reserved/non-tenant subdomain, the apex, or `/admin*` must never be captured by the public-
+  site routing rule — the four host resolvers in `AGENTS.md` all need to agree this path doesn't
+  apply to them.
+- A Community card block referencing a community that goes private-and-unlisted after the page
+  was published must disappear from the live page, not 404 it.
+
+### 13.9 Acceptance criteria
+- Visiting `<tenant>.theharvest.app/` on an unpublished tenant behaves exactly as today; on a
+  published tenant it serves the public site.
+- Every existing subdomain route (`/login`, `/admin/*`, `/event/*`, etc.) keeps working
+  unchanged once this ships.
+- Switching templates preserves all section content.
+- `theharvest.site` ships with no language-switcher UI and no `hreflang`/locale metadata.
+
+### 13.10 Screenshots
+No dedicated Eden reference area exists for "website builder" as such — its full visual
+reference is [§11's screenshot set](#1113-screenshots) (Eden's storefront/link-in-bio editor
+and public page), which this section is built from directly.
+
+### 13.11 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Website**.
+
+---
