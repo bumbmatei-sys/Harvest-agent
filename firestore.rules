@@ -265,6 +265,12 @@ service cloud.firestore {
         allow read: if isAuthenticated() && request.auth.uid == userId;
         allow write: if false;
       }
+      // #571: the member's index of communities other than a ministry's default
+      // one, keyed `{tenantId}__{communityId}`. Server-written on join and leave.
+      match /communityMemberships/{key} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
     // ─── AI RAG chat usage (server-only) ─────────────────────────────
@@ -890,6 +896,101 @@ service cloud.firestore {
           (hasPermission('manageCommunity', tenantId) ||
             channelMemberAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data));
         allow update, delete: if hasPermission('manageCommunity', tenantId);
+      }
+
+      // ─── Communities other than the default one (#571) ───────────────
+      // A ministry's default community keeps its collections above
+      // (communityMembers, community_posts, channels, channelMessages). Every
+      // other community keeps its own members, posts and chat under its record,
+      // so a default-community query can never be asked to return another
+      // community's documents, and membership of one grants nothing in another.
+      // The record and the member documents are written only by the server.
+      function isMemberOfCommunity(communityId) {
+        let memberPath = /databases/$(database)/documents/tenants/$(tenantId)/communities/$(communityId)/members/$(request.auth.uid);
+        return isAuthenticated() && exists(memberPath) && get(memberPath).data.get('status', '') == 'active';
+      }
+
+      function inCommunity(communityId) {
+        return isTenantAdmin(tenantId) || isMemberOfCommunity(communityId);
+      }
+
+      match /communities/{communityId} {
+        // Drafts are the admin's; a published community is visible to anyone
+        // when public, and to its members when private.
+        allow read: if isTenantAdmin(tenantId) ||
+          (resource.data.get('status', '') == 'published' &&
+            (resource.data.get('visibility', '') == 'public' || isMemberOfCommunity(communityId)));
+        allow write: if false;
+
+        match /members/{uid} {
+          allow read: if (isAuthenticated() && request.auth.uid == uid) || inCommunity(communityId);
+          allow write: if false;
+        }
+
+        match /posts/{postId} {
+          allow read: if inCommunity(communityId);
+
+          allow create: if isAuthenticated() &&
+            request.resource.data.authorId == request.auth.uid &&
+            request.resource.data.get('tenantId', '') == tenantId &&
+            request.resource.data.get('communityId', '') == communityId &&
+            (hasPermission('createPosts', tenantId) ||
+              (isMemberOfCommunity(communityId) && plainCommunityPost(request.resource.data) &&
+               memberPostByline(request.resource.data) && request.resource.data.get('isPinned', false) == false));
+
+          // As community_posts: members touch only likes/polls/RSVPs or their own
+          // plain posts; moderation is createPosts. Scope never moves.
+          allow update: if inCommunity(communityId) &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'communityId', 'authorId']) &&
+            (
+              (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['likes', 'pollOptions', 'eventDetails']) &&
+               (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['pollOptions']) || 'pollOptions' in resource.data) &&
+               (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventDetails']) || 'eventDetails' in resource.data)) ||
+              (resource.data.authorId == request.auth.uid &&
+               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'type', 'imageUrl', 'imageUrls', 'embed', 'pollOptions']) &&
+               plainCommunityPost(request.resource.data)) ||
+              hasPermission('createPosts', tenantId)
+            );
+
+          allow delete: if (isMemberOfCommunity(communityId) && resource.data.authorId == request.auth.uid) ||
+            hasPermission('createPosts', tenantId);
+
+          match /comments/{commentId} {
+            allow read: if inCommunity(communityId);
+            allow create: if inCommunity(communityId) &&
+              request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
+              request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorPhoto', 'content', 'createdAt', 'tenantId']) &&
+              request.resource.data.tenantId == tenantId &&
+              request.resource.data.authorId == request.auth.uid &&
+              memberPostByline(request.resource.data) &&
+              request.resource.data.content is string &&
+              request.resource.data.content.size() <= 280;
+            allow delete: if inCommunity(communityId) && resource.data.authorId == request.auth.uid;
+            allow update: if false;
+          }
+        }
+
+        // Group chats of this community, the same shape as the default ones.
+        match /channels/{channelId} {
+          allow read: if inCommunity(communityId) && channelAccess(resource.data, tenantId);
+          allow write: if hasPermission('manageCommunity', tenantId);
+          allow update: if inCommunity(communityId) && channelAccess(resource.data, tenantId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']);
+        }
+
+        match /channelMessages/{msgId} {
+          allow read: if inCommunity(communityId) &&
+            channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/communities/$(communityId)/channels/$(resource.data.channelId)).data, tenantId);
+          allow create: if inCommunity(communityId) &&
+            request.resource.data.get('senderId', '') == request.auth.uid &&
+            request.resource.data.get('senderName', '') == (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '') != '' ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName : request.auth.token.get('name', 'Member')) &&
+            (request.resource.data.get('senderRole', '') == 'user' ||
+              (request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId))) &&
+            (hasPermission('manageCommunity', tenantId) ||
+              channelMemberAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/communities/$(communityId)/channels/$(request.resource.data.channelId)).data));
+          allow update, delete: if hasPermission('manageCommunity', tenantId);
+        }
       }
 
       // Direct messages are private between their participants — readable/writable

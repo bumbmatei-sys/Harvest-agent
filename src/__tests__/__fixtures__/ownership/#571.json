@@ -1,0 +1,10 @@
+{
+  "ticket": "#571",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "816486c613aa2ac418114f9172975b68772866f8cf2637bc4cb3564607562b24",
+      "why": "APPENDED, NOT SUBSTITUTED — #571: adds one block under tenants/{tenantId} for communities other than the default one: tenants/{t}/communities/{c} (read: admins, or published and public, or its members), members (server-written; read by self or the community), posts and comments (members of that community or tenant admins; scope fields immutable), channels and channelMessages (the default chat's shape, scoped to the community). Every existing rule is byte-identical; the full rules suite (629 tests) passes, and tests/rules/communities.rules.test.ts proves membership of one community grants nothing in another. Also adds users/{uid}/communityMemberships/{key}: readable by its owner only, server-written, the member's index of the communities they joined."
+    }
+  ]
+}
