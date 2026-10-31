@@ -543,3 +543,156 @@ mobile Eden reference exists in the source archive for this surface.
 See [§21](#21-open-questions-for-matei) items tagged **Communities**.
 
 ---
+
+## 6. Community join & CRM
+
+### 6.1 Goal
+Every join and every leave, across every community an owner runs, lands in **one CRM** —
+never a separate list per community — with honest, server-enforced consent and an erasure path
+that actually deletes data rather than just hiding it.
+
+### 6.2 Users / roles
+Owner (sees and can email the full CRM; alone can erase a contact's data), admin with CRM
+permission (can see contacts; cannot erase another admin's contact — see
+[§6.6](#66-erasure--consent)), member (joins/leaves; can request their own erasure).
+
+### 6.3 Join creates a contact automatically
+`POST /api/community/join` and the server-side `upsertCommunityContact`
+(`src/lib/community-contact.ts`) run in the same transaction as the membership write. On a
+genuine join (consent given, membership record valid), the server:
+1. Looks for an existing contact linked to this `uid`, or an existing contact whose **verified**
+   email matches (never an unverified claim) — so a returning member is recognised rather than
+   duplicated, and a contact with gifts/notes/history already on it is never overwritten.
+2. If none exists, creates `contacts/community_{tenantId}_{sha256(uid)}` with the member's name,
+   email, the tenant, and the join **source** tag.
+3. Never fabricates consent on retries: if the membership record itself has no `consentAt`, the
+   contact upsert is skipped rather than invented.
+
+### 6.4 One CRM, many communities — and the filters it needs
+**Already true:** a ministry's CRM is one `contacts` collection scoped by `tenantId`
+(`adminDb.collection('contacts').where('tenantId', '==', tenantId)`), and every community a
+tenant runs — default or additional — writes into that same collection. There is no
+per-community CRM to begin with; the "one CRM" requirement is already the shape of the data.
+
+**Not yet true — the filter UI:** today's CRM filter (`CrmFilters` /
+`matchesCrmFilters`, `src/lib/crm-filter.ts`) supports exactly three dimensions: free-text
+search, contact `type` (`member`/`donor`/`both`), and newsletter opt-in status. It does **not**
+expose filtering by:
+- **Community** — which of the tenant's communities (default or additional) the contact's
+  membership belongs to.
+- **Source tag** — `normaliseSource()` already tags how a contact arrived (join path, which
+  form, etc.), but the filter has no dimension for it.
+- **Status Active/Left** — `communityStatus` already exists on the contact record (set to
+  `'left'` on departure by `writeCommunityDeparture`) but isn't filterable in the CRM UI.
+- **Event tags** — the `event:<eventId>` tag described in [§8](#8-events--communities-integration)
+  needs a corresponding filter once that tagging ships.
+- **Dates** — joined/left date range.
+
+This is a **required enhancement**, not a rebuild: `CrmFilterable`/`CrmFilters` already has room
+to grow, and the underlying fields (`source`, `communityStatus`, membership dates) already exist
+on the contact record — the work is adding filter controls and extending
+`matchesCrmFilters`/the CSV export together so the UI and the export can never disagree, which
+is exactly the discipline the current file's own docblock describes.
+
+### 6.5 Consent notice
+**Required, and already partly real:** every join requires `consent: true` and the current
+`COMMUNITY_CONSENT_VERSION` (`= 2`) to be accepted, or the server rejects it
+(`communityMembershipRequest`, `src/lib/community-membership-api.ts`) — this part is a genuine
+server-side gate, not decoration.
+
+**Not yet built:** the brief requires the consent notice to **say plainly that the owner can
+contact members and see their name, email and answers.** The member-facing join call today
+(`CommunityMemberPage.tsx:67`) passes `consent: true` unconditionally — there is no plain-
+language notice shown to the member before that call fires today showing what the owner can
+see. The version-gating machinery to force re-consent when the wording changes already exists
+(`acceptedConsentVersion`); what's missing is the actual notice text and its UI, which this PRD
+does not invent copy for — see Open Questions for the exact wording to confirm with Matei.
+
+### 6.6 Erasure & consent
+- **Leave ≠ erase.** Leaving (`POST /api/community/leave`) keeps the contact, marks it
+  `communityStatus: 'left'` with a `communityLeftAt` date, unsubscribes it from owner email
+  (`emailStatus: 'unsubscribed'`), and removes the member from any chat channel they were in. The
+  owner is blocked from emailing them from this point — see [§6.7](#67-email-block--rejoin).
+- **Erasure is owner-only, or the member themself.** `POST /api/community/delete-data`
+  (`src/app/api/community/delete-data/route.ts`) checks `tenant.ownerId === actor.uid` for
+  anyone erasing someone else's data; a non-owner admin gets `403`. The brief's "delete button
+  hidden from other admins" is the UI expression of this same server-side check — the UI must
+  not merely hide the button cosmetically, since the API already refuses the request regardless.
+  Erasure deletes the linked contact(s) and their `contactActivities`, replaces the membership
+  record with a `dataDeletedAt` tombstone (so a future rejoin cannot be mistaken for a return to
+  a still-live record), and deletes the member's own `memberships/{tenantId}` index entry. It
+  never deletes Auth, the member's profile, another ministry's records, or financial records.
+
+### 6.7 Email block & rejoin
+- Leaving writes a **hashed-email suppression record** (`emailSuppressions/{sha256(email)}`,
+  `communitySuppressionId` — SHA-256 today, with the brief noting HMAC as a future upgrade) that
+  blocks owner email to that address, independent of any one contact record.
+- **Rejoin clears the block, but only the rejoining user's own verified address, and only
+  their own linked contacts.** `readCommunityRejoin`/`writeCommunityRejoin`
+  (`src/lib/community-privacy.ts`) deliberately filter to `contact.data().communityUserId ===
+  uid` — a contact's email field is admin-editable CRM data, so matching on email alone would
+  let a rejoining member clear a *stranger's* opt-out simply because an admin had pointed a
+  contact at that stranger's address. The block is cleared only when the stored block's `from`
+  is `'community-leave'` (i.e., not a block from some other, unrelated opt-out) and the
+  rejoining email is the token's own **verified** email — an unverified or forged email on the
+  token clears nothing.
+- `tenantEmailBlocked` / `tenantBlockedEmailHashes` are the single source of truth every
+  owner-directed send (individual or bulk) must consult; a legacy plaintext `email` field on an
+  old suppression record is scrubbed to a hash on first read (`scrubSuppressionEmail`), never
+  left sitting in plaintext.
+
+### 6.8 Eden parity
+Eden's Customers/Clients surfaces (tags, import, add-one, active tab) are the closest analogue;
+Harvest's CRM already looks and behaves like a CRM in its own right (donor pipeline stages,
+type segmentation) beyond what Eden's version does, since giving is core to a ministry in a way
+it isn't to a creator.
+
+### 6.9 Data model notes
+- `contacts/{id}`: `tenantId`, `type`, `email`, `communityUserId`, `communityStatus`,
+  `communityLeftAt`, `source`, `emailStatus`.
+- `tenants/{t}/emailSuppressions/{sha256(email)}`: `{ emailHash, status, at, from }`.
+- `users/{uid}/memberships/{tenantId}`: deleted entirely on erasure (not just marked).
+- `contactActivities/{id}`: `contactId`, `tenantId`, deleted alongside an erased contact.
+
+### 6.10 Edge cases
+- Two contacts could plausibly match the same verified email across retries — the join flow
+  resolves this deterministically (linked-by-uid first, then lexically-first email match) so a
+  retried request never creates a duplicate.
+- A rejoin after erasure (`dataDeletedAt` set) must not resurrect the deleted contact; it should
+  behave as a fresh join.
+- An admin without `manageCommunity`/owner rights calling the erasure API directly (bypassing
+  the hidden button) must still get `403` — the UI hiding the control is not the security
+  boundary.
+
+### 6.11 Mobile
+CRM is predominantly an admin/desktop surface but must remain usable at mobile widths for an
+owner checking a new lead between other tasks.
+
+### 6.12 Acceptance criteria
+- Joining any community a tenant runs produces exactly one CRM contact, tagged with the correct
+  source and community.
+- Leaving blocks owner email to that address immediately, and the block survives until a
+  verified rejoin from that same address clears it.
+- An admin who is not the owner cannot erase another contact's data via the API, regardless of
+  what the UI shows them.
+- The CRM filter set is extended to cover community, source tag, status, event tags and dates
+  without changing what `matchesCrmFilters` and the CSV export each report for a given contact.
+
+### 6.13 Screenshots
+
+<table><tr>
+<td><img src="screenshots/06-crm/crm-001-desktop-32-store-customers.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/06-crm/crm-003-desktop-66-settings-tags.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/06-crm/crm-007-desktop-18-customers-add-one-dialog.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/06-crm/crm-009-desktop-21-clients-active-tab.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 9 Eden reference screens for CRM/people/audience are in `docs/prd/screenshots/06-crm/`
+(see `_manifest.json`) — customers list, tags, import, add-contact dialog, and the
+active/leads tab pattern this section's Active/Left filter should mirror.
+
+### 6.14 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **CRM**.
+
+---
