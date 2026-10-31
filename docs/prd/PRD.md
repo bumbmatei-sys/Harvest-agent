@@ -1903,3 +1903,107 @@ a database migration:
 See [§21](#21-open-questions-for-matei) items tagged **Architecture**.
 
 ---
+
+## 19. Security, privacy & compliance
+
+### 19.1 Goal
+Every piece of member/donor data this product holds — names, emails, giving history, prayer
+requests, private messages — is handled with the assumption that a mistake here is not a UI bug
+but a disclosure. This section consolidates the security/privacy requirements specified in
+depth elsewhere in this document and adds what's specific to this topic alone.
+
+### 19.2 Tenant isolation (cross-reference)
+See [§2.5](#25-tenant-isolation) in full. Summary: every tenant-scoped read/write resolves a
+real `tenantId` first (super admin's own claim is `null`); Firestore rules cannot filter a
+`list` per-document, so every tenant-scoped list query must carry its own `where` constraint;
+`firestore.rules` auto-deploys to production on merge and needs a separate founder sign-off
+regardless of what app code around it does.
+
+### 19.3 Consent and erasure (cross-reference)
+See [§6.5](#65-consent-notice)–[§6.7](#67-email-block--rejoin) in full. Summary: joining a
+community requires versioned consent (`COMMUNITY_CONSENT_VERSION`), enforced server-side; the
+plain-language notice of what an owner can see is **required but not yet built**
+([§6.5](#65-consent-notice)); erasure is owner-or-self only, checked server-side, and actually
+deletes the contact, its activities, and the membership index entry, replacing the membership
+with a tombstone rather than leaving it to be mistaken for a live record; an email block from
+leaving is a hashed record (SHA-256 today, HMAC proposed later) cleared only by the same
+verified address rejoining.
+
+### 19.4 Error monitoring is scrubbed, not just "has Sentry"
+`src/lib/sentry-scrub.ts` exists specifically because donor PII (names, emails, phone numbers,
+donation/pledge amounts) reaches error strings through `console.error` calls in the webhook
+routes, often flattened into one line of text rather than arriving as a clean object. Two
+scrubbing passes run: structured key scrubbing (`donorEmail`, `donorName`, etc. as object
+keys) and pattern scrubbing of `key: value`/`key=value` shapes inside already-flattened text.
+**Over-redaction is the intended failure mode** — a less informative error beats a leaked
+donor identity. Any new webhook or integration that logs request/response bodies must route
+through this scrubber, not add a thirteenth inlined `console.error`.
+
+### 19.5 Product analytics is scoped specifically because of what this app holds
+PostHog (`docs/analytics-posthog.md`) was installed with every DOM-reading feature switched
+off before the question of whether to use it at all was separated from how: session replay is
+off and **cannot be re-enabled from the PostHog UI alone** (`disable_session_recording` plus
+`disable_external_dependency_loading`, both client-side locks); autocapture, heatmaps, dead-
+click and rage-click capture, and `$copy_autocapture` are all off, because each reads the DOM
+the same way a CRM screen full of donor names would be read; the event vocabulary is closed to
+exactly `$pageview` plus two properties (`app_surface`, `is_platform_admin`) today, enforced by
+a file (`src/lib/analytics/events.ts`) rather than convention. Identification is by Firebase
+`uid`, never email, specifically so a third-party product never holds a donor's email as a
+permanent identifier. **Status: installed but inert** — `NEXT_PUBLIC_POSTHOG_KEY` is unset, so
+nothing is currently sent in production.
+- **Known gap, already surfaced by the install's own author:** there is no consent banner, and
+  whether EU members' data requires one for this analytics processor is an open **legal**
+  question, not a technical one — this document does not answer it either; see Open Questions.
+- **Known gap:** the privacy policy on `theharvest.site` (a separate repo,
+  `bumbmatei-sys/harvest-presentation-site`, `src/content/legal.ts`) was updated once already
+  for this feature and is now out of date again — its claim that "public blog, form and event
+  pages... send nothing at all" became false once public-route pageviews shipped (`THE-206`).
+  This is a policy-text fix in a different repo, reported here because this PRD is the place
+  tracking the gap between what's built and what's disclosed.
+
+### 19.6 Super admin
+Super admin status is **not** an env var — it's two frozen literals in
+`src/utils/super-admins.ts` plus a `superAdmin` custom claim minted by email, and the same list
+is deliberately mirrored (not shared via import, since these are separate deployable packages)
+in `firestore.rules`' `isSuperAdmin()` and in `functions/src/index.ts`. **Changing super admin
+access means changing all four places**, or the four can disagree about who the platform owner
+is.
+
+### 19.7 Rate limiting
+`src/lib/rate-limit.ts` and `src/lib/ip-rate-limit.ts` already guard public, unauthenticated
+write endpoints (contact form, enterprise lead, Turnstile verification, rota responses,
+livestream comments, waitlist, public sign-up-page submission) — any new public write endpoint
+this PRD specifies (the after-submit card's join action, the QR-sourced form submit, etc.)
+should be added to this existing list rather than left unguarded, since an evangelism-loop QR
+code is, by design, a link anyone can hit at volume.
+
+### 19.8 Plan availability
+Not plan-gated — every security/privacy requirement in this section applies uniformly across
+Free, Church and Ministry.
+
+### 19.9 Data model notes
+See the cross-referenced sections; no new collections are introduced by this section alone.
+
+### 19.10 Edge cases
+See [§2.7](#27-edge-cases) and [§6.10](#610-edge-cases).
+
+### 19.11 Mobile
+No mobile-specific security requirement beyond what's already specified per-feature; Capacitor
+loads the production site over HTTPS at `https://theharvest.app` as an ordinary secure origin
+(`capacitor.config.ts`), so cookie/storage behaviour matches the web app rather than needing a
+native-specific security model.
+
+### 19.12 Acceptance criteria
+- No webhook or integration log reaches Sentry without passing through
+  `sentry-scrub.ts`.
+- A super-admin change is verified present in all four locations named in
+  [§19.6](#196-super-admin), not just the one most obviously related to the change being made.
+- Every new public write endpoint this document specifies has a rate limit before it ships.
+
+### 19.13 Screenshots
+No Eden reference applies to this section's subject matter.
+
+### 19.14 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Security**.
+
+---
