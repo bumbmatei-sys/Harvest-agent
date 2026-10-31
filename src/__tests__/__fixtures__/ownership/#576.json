@@ -1,0 +1,70 @@
+{
+  "ticket": "#576",
+  "entries": [
+    {
+      "file": "src/App.tsx",
+      "digest": "e633df1f3a2b6ebc14e80abde4294d73cb2dd142c68a4564a477e8c2016fdae8",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: adds one route, /community/:tenantId/:communityId (CommunitySpacePage), directly after the reviewed /community/:tenantId route, and lets a signed-out visit to that path keep its return through the existing free signup. No original route moved and no funnel marker changed: THE-292 and the-255 assert the order by name."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.tsx",
+      "digest": "68bb6f62e2bbcd92b746460bc10b24d823a1716e3b21db0582e5a3fcb7529fc4",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: Your communities also lists the communities other than a ministry's default one that the member belongs to, read from their own users/{uid}/communityMemberships index; one they can no longer read is left out rather than failing the list."
+    },
+    {
+      "file": "src/components/community/DiscoveryData.test.tsx",
+      "digest": "8c7b0f1b8bde17808b3ff8701edc6b43ede9a55939e6f109f872f0f80229dc8d",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the firestore mock gains query/where, and one test covers the joined-community list, including the unreadable and deleted cases. Nothing removed."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "59ce1cec524b9abf0d7b0001e1abe3b1bee5c5785cbc3e69b23db4cdffdc86b1",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the Your communities card is keyed by its link, so two communities with the same name no longer share a React key. No markup or style change."
+    },
+    {
+      "file": "src/components/community/MobileCommunityNav.tsx",
+      "digest": "456621560c9b29fe3a5a082103ddcfb853e28e201a988f6c9c7b0690b6d1458d",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the switcher's link rows are keyed by their link for the same reason. No markup or style change."
+    },
+    {
+      "file": "src/lib/community-membership.ts",
+      "digest": "8e03a04cff6e355fe8ec0a54f38cdc86ade887f4fa2fd66f6aaa179eac64253b",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: adds communityConsentNotice, the join notice Matei approved for communities other than the default one. The default community's notice, scope and consent version are unchanged."
+    },
+    {
+      "file": "src/lib/community/navigation.ts",
+      "digest": "6c58e5c1ae7e0d87a471b24c543ba7dfd34aebebb45d2bf1b335d18e760f9160",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: a safe community return path may now name a community: /community/{tenantId}/{communityId}. Adds communitySpaceFromPath and communitySpacePath. communityIdFromPath, which scopes the default community, is unchanged and still refuses the two-segment path."
+    },
+    {
+      "file": "src/lib/community/navigation.test.ts",
+      "digest": "6bd2bbbcdd5bdbec7d5611496ed1ca5c0807a173ff608bdfad8dd3a434ee50e4",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: '/community/a/extra' moved from the refused list to an accepted case, because it is now a community page; three new refusals (an extra segment, an uppercase id, a leading hyphen) take its place, and a new test covers parsing."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "f5f5cc6b0ba3231b26d07f0ac15f8f6c7b0ec8c37db387b384d001e4e7b5159e",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: records CommunitySpacePage as an adopter of the shared textarea (feed composer and chat box). Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "167c5ed61777a3cf764f3f0e6b1f2e8e9260b2bd7711ceb927b9192da609ab79",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the expected route order gains /community/:tenantId/:communityId directly after the reviewed /community/:tenantId route; every original route keeps its position."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "d3460811d152892e9d292f7763407a8096bf1cea9a62fd9abc930debefaab501",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: records CommunitySpacePage, in sorted order, among the files that use the min-h-11 phone floor. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/the-255-install-app.test.tsx",
+      "digest": "07f6b7f16d7b0c79f8aa14ebb9528de3064f76d511e7c344acba4645347df1c0",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: the expected route order gains /community/:tenantId/:communityId directly after the reviewed /community/:tenantId route; every original route keeps its position."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "5784bd920d6be842ca537a3b9669d8c1738179872499808be103d042fd5aff92",
+      "why": "APPENDED, NOT SUBSTITUTED — #576: adds a sample path for the new /community/[tenantId]/[communityId] pattern so every registered route is exercised. Nothing removed."
+    }
+  ]
+}
