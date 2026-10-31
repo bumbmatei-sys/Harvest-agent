@@ -7,6 +7,7 @@ import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { mergeContactsWithUsers } from '@/lib/crm-merge';
 import { isCrmTypeFilter, matchesCrmFilters } from '@/lib/crm-filter';
 import { isNewsletterFilter } from '@/lib/newsletter-consent';
+import { matchesCommunityFilters, readCommunityFilters } from '@/lib/crm-communities';
 import {
   contactToCrmExportRecord,
   crmCsvStream,
@@ -102,6 +103,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // #577: the list's community, source and date filters, read by the same helper.
+  const communityFilters = readCommunityFilters(request.nextUrl.searchParams);
+  if (!communityFilters) {
+    return NextResponse.json({ error: 'The community, source or date filter is not valid.' }, { status: 400 });
+  }
+
   try {
     const [userDocs, contactDocs] = await Promise.all([
       pageCollection('users'),
@@ -119,7 +126,7 @@ export async function GET(request: NextRequest) {
     );
 
     const filtered = sortByString(
-      merged.filter(contact => matchesCrmFilters(contact, { search: q, type, newsletter })),
+      merged.filter(contact => matchesCrmFilters(contact, { search: q, type, newsletter }) && matchesCommunityFilters(contact, communityFilters)),
       'lastName',
       'asc',
     );
@@ -128,7 +135,7 @@ export async function GET(request: NextRequest) {
     if (filtered.length > cap) {
       return NextResponse.json(
         {
-          error: `This export matches ${filtered.length} people, which is over the limit of ${cap}. Narrow the newsletter, type or search filters and try again. No file was created.`,
+          error: `This export matches ${filtered.length} people, which is over the limit of ${cap}. Narrow the filters and try again. No file was created.`,
         },
         { status: 413 },
       );

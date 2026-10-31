@@ -248,6 +248,34 @@ describe('GET /api/admin/crm-export — the file', () => {
     expect(donorText).not.toContain('ada@example.com');
   });
 
+  // #577: the export applies the list's community, source and date filters.
+  it('applies the community, source and date filters the list applies, and refuses malformed ones before reading', async () => {
+    db.contacts = [
+      { id: 'joe', data: { firstName: 'Joe', lastName: 'Joined', email: 'joe@example.com', type: 'member', tenantId: 'harvest', source: 'community', communitySource: 'discover',
+        communities: { default: { name: 'Harvest', status: 'active', joinedAt: new Date('2026-02-10T12:00:00Z'), leftAt: null } } } },
+      { id: 'lia', data: { firstName: 'Lia', lastName: 'Left', email: 'lia@example.com', type: 'member', tenantId: 'harvest', source: 'community', communitySource: 'link',
+        communities: { default: { name: 'Harvest', status: 'left', joinedAt: new Date('2025-05-01T12:00:00Z'), leftAt: new Date('2026-02-20T12:00:00Z') } } } },
+      { id: 'ivy', data: { firstName: 'Ivy', lastName: 'Imported', email: 'ivy@example.com', type: 'member', tenantId: 'harvest', source: 'import' } },
+    ];
+    const text = async (query: string) => (await GET(req(`newsletter=all&type=all&${query}`))).text();
+    const discovered = await text('source=discover');
+    expect(discovered).toContain('joe@example.com');
+    expect(discovered).not.toContain('lia@example.com');
+    expect(discovered).not.toContain('ivy@example.com');
+    const leftInFebruary = await text('communityStatus=left&dateField=left&from=2026-02-01&to=2026-02-28');
+    expect(leftInFebruary).toContain('lia@example.com');
+    expect(leftInFebruary).not.toContain('joe@example.com');
+    const noCommunity = await text('community=none');
+    expect(noCommunity).toContain('ivy@example.com');
+    expect(noCommunity).not.toContain('joe@example.com');
+    db.collections = [];
+    mockCollection.mockClear();
+    const bad = await GET(req('newsletter=all&type=all&from=2026-02-31'));
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'The community, source or date filter is not valid.' });
+    expect(mockCollection).not.toHaveBeenCalled();
+  });
+
   it('uses Harvest when the platform tenant doc has no name', async () => {
     db.users = [{
       id: 'p',

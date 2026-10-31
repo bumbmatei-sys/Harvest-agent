@@ -13,14 +13,22 @@ async function render(node: React.ReactNode) {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); });
 
 describe('CRM community filters', () => {
-  it('draws the three dropdowns with their current choices', async () => {
-    await render(<CrmCommunityFilters value={{ community: 'youth', communityStatus: 'left', email: 'subscribed' }} onChange={vi.fn()} communities={[{ id: 'default', name: 'Grace' }, { id: 'youth', name: 'Youth' }]} />);
+  // WAS 'draws the three dropdowns with their current choices'; #577 adds source and dates.
+  it('draws every filter with its current choice', async () => {
+    await render(<CrmCommunityFilters value={{ ...NO_COMMUNITY_FILTERS, community: 'youth', communityStatus: 'left', email: 'subscribed', source: 'discover', dateField: 'left', from: '2026-01-01', to: '2026-03-31' }} onChange={vi.fn()} communities={[{ id: 'default', name: 'Grace' }, { id: 'youth', name: 'Youth' }]} />);
     const labels = [...host.querySelectorAll('[aria-label]')].map(el => [el.getAttribute('aria-label'), el.textContent?.replace('▼', '').trim()]);
     expect(labels).toEqual([
       ['Filter by community', 'Youth'],
       ['Filter by community status', 'Left'],
       ['Filter by newsletter', 'Subscribed'],
+      // #577
+      ['Filter by source', 'Discover'],
+      ['Date to filter by', 'Left'],
+      ['From date', ''],
+      ['To date', ''],
     ]);
+    expect((host.querySelector('[aria-label="From date"]') as HTMLInputElement).value).toBe('2026-01-01');
+    expect((host.querySelector('[aria-label="To date"]') as HTMLInputElement).value).toBe('2026-03-31');
   });
   it('turns the status filter off when "No community" is chosen', async () => {
     await render(<CrmCommunityFilters value={{ ...NO_COMMUNITY_FILTERS, community: 'none' }} onChange={vi.fn()} communities={[]} />);

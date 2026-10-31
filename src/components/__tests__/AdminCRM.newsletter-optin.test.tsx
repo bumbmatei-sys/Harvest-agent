@@ -185,6 +185,21 @@ describe('platform CRM', () => {
     expect(text()).not.toContain('Bob');
   });
 
+  // #577: the export carries the community, source and date filters too.
+  it('sends the date filter set in the list to the export', async () => {
+    await show();
+    const root = mounted!.container;
+    const from = root.querySelector('[aria-label="From date"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setter.call(from, '2026-01-01');
+      from.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    authFetch.mockReturnValue(new Promise(() => {}));
+    await click(root.querySelector('[data-testid="crm-export-csv"]') as HTMLElement);
+    expect(authFetch).toHaveBeenCalledWith('/api/admin/crm-export?newsletter=all&type=all&q=&from=2026-01-01');
+  });
+
   it('calls the export route with the current filters and shows a non-OK error', async () => {
     await show();
     const root = mounted!.container;
