@@ -849,5 +849,7 @@ const THE_342_BASELINE = {
     // APPENDED BY #573, nothing above substituted: one CRM across every community —
     // community, status and newsletter dropdowns and a badge per community. No read changed.
     ['44eb4a3c6ad3c19a38d1353c4eb1131dce443c962c0d227feee4d6a20520fbd1', '#573 — one CRM across every community: three dropdown filters and per-community badges; no read or write changed'],
+    // APPENDED BY #578, nothing above substituted: source and date filters; the export sends every list filter.
+    ['789c13b447407a8708676b367f79493a29906e9d279d03a37da2dd7bafdef71a', '#578 — the CSV export applies the same community, source and date filters as the list; no read or write changed'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;
