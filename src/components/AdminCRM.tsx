@@ -1,6 +1,8 @@
 "use client";
 import { DeleteCommunityData } from './community/DeleteCommunityData';
 import { CommunityContactBadge } from './community/CommunityContactBadge';
+import { CommunityMemberships, CrmCommunityFilters } from './community/CrmCommunityFilters';
+import { communityOptions, matchesCommunityFilters, NO_COMMUNITY_FILTERS, type CommunityFilters } from '../lib/crm-communities';
 import { OnboardingAnswers } from './community/OnboardingAnswers';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -416,7 +418,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   //
   // No new query: `counts.memberAccounts` is #279's existing server-side
   // aggregate, so the cap adds zero reads and cannot miss an index.
-  const { tenantPlan, planFeatures, branding } = useTenant();
+  const { tenantPlan, planFeatures, branding, tenantName } = useTenant();
   const maxContacts = resolveContactLimit(tenantPlan);
 
   /**
@@ -527,6 +529,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
   const [newsletterFilter, setNewsletterFilter] = useState<NewsletterFilter>('all');
+  // #573: one CRM across every community — community, status and newsletter dropdowns.
+  const [communityFilters, setCommunityFilters] = useState<CommunityFilters>(NO_COMMUNITY_FILTERS);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const platformContext = platformCrmContext();
@@ -901,8 +905,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     search,
     type: filter,
     newsletter: newsletterSelection,
-  }));
-  const filtersActive = Boolean(search) || filter !== 'all' || newsletterSelection !== 'all';
+  }) && matchesCommunityFilters(c, communityFilters));
+  const filtersActive = Boolean(search) || filter !== 'all' || newsletterSelection !== 'all' ||
+    communityFilters.community !== 'all' || communityFilters.communityStatus !== 'any' || communityFilters.email !== 'any';
 
   const exportCsv = async () => {
     if (exporting) return;
@@ -1901,6 +1906,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div className="min-w-0">
               <h2 className="text-2xl font-black text-strong leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
               <CommunityContactBadge contact={selected} />
+              <CommunityMemberships contact={selected} defaultName={tenantName || undefined} />
               {selected.communityUserId && tenantId && <DeleteCommunityData tenantId={tenantId} uid={selected.communityUserId} onDeleted={async () => { await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] }); await queryClient.invalidateQueries({ queryKey: ['crmCounts', tenantId] }); setSelected(null); setView('list'); }} />}
               {selected.communityUserId && tenantId && <OnboardingAnswers tenantId={tenantId} uid={selected.communityUserId} />}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -2764,6 +2770,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           ))}
         </div>
+        <CrmCommunityFilters value={communityFilters} onChange={setCommunityFilters} communities={communityOptions(contacts, tenantName || undefined)} />
         {platformContext && (
           <div className="flex items-center gap-2 shrink-0" data-testid="crm-newsletter-filter">
             <span className="text-xs font-semibold text-faint">Newsletter</span>
@@ -2898,6 +2905,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     <span className="block text-sm font-semibold text-strong truncate">{c.firstName} {c.lastName}</span>
                     {c.email && <span className="block text-xs text-faint truncate">{c.email}</span>}
                     <CommunityContactBadge contact={c} />
+                    <CommunityMemberships contact={c} defaultName={tenantName || undefined} />
                   </span>
                   {/* The Type badge stays on every tier — see `showGiving`.
                       The stage and the total beside it are the giving figures

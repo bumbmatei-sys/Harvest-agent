@@ -217,7 +217,9 @@ describe('multi-community content boundary', () => {
 
 describe('community CRM server fields', () => {
   const path = 'contacts/community-rule-contact';
-  const fields = { communityUserId: MEMBER_UID, communitySource: 'discover', communityStatus: 'active', communityJoinedAt: new Date(1000), communityLeftAt: null, consentAt: new Date(1000), consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2 };
+  const fields = { communityUserId: MEMBER_UID, communitySource: 'discover', communityStatus: 'active', communityJoinedAt: new Date(1000), communityLeftAt: null, consentAt: new Date(1000), consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2,
+    // #573: the per-community history is server-owned too.
+    communities: { default: { name: 'Tenant A', status: 'active', joinedAt: new Date(1000), leftAt: null } } };
   beforeAll(async () => {
     await seedDoc(path, { tenantId: TENANT_A, firstName: 'Member', email: 'member@example.org', source: 'community', ...fields });
     await seedDoc('contacts/ordinary-rule-contact', { tenantId: TENANT_A, firstName: 'Manual', source: 'manual' });

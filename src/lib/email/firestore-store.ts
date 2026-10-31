@@ -344,7 +344,9 @@ export const firestoreEmailStore: EmailStore = {
         id: d.id,
         email,
         name: contactName(data),
-        status: data.communityStatus === 'left' ? 'unsubscribed' : readEmailStatus(data[EMAIL_STATUS_FIELD]),
+        // #573: leaving a community no longer overrides a newsletter opt-in. A
+        // leaver who never subscribed is unsubscribed and hash-blocked at departure.
+        status: readEmailStatus(data[EMAIL_STATUS_FIELD]),
         tags: Array.isArray(data.tags) ? (data.tags as unknown[]).filter((t): t is string => typeof t === 'string') : [],
         groups: [...kind, ...extra],
         source: typeof data[EMAIL_OPT_IN_SOURCE_FIELD] === 'string' ? (data[EMAIL_OPT_IN_SOURCE_FIELD] as string) : '',

@@ -1205,8 +1205,11 @@ service cloud.firestore {
     // ─── CRM Contacts & Activities ───────────────────────────────────
 
     function communityContactKeys() {
+      // #573: `communities` is the per-community history of one CRM across every
+      // community, written only by the server like the flat default fields.
       return ['communityUserId', 'communitySource', 'communityStatus',
-              'communityJoinedAt', 'communityLeftAt', 'consentAt', 'consentScope', 'consentVersion'];
+              'communityJoinedAt', 'communityLeftAt', 'consentAt', 'consentScope', 'consentVersion',
+              'communities'];
     }
     function contactCreateKeepsCommunity() {
       return !request.resource.data.keys().hasAny(communityContactKeys())
