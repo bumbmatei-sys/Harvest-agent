@@ -48,11 +48,10 @@ import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
 import { MobileCommunityTabs, MobileCommunityHeader, MobileCommunitySections, MobileProfileSheet, enabledMobileTabs, type MobileTab } from './community/MobileCommunityNav';
 import UserEvents from './UserEvents';
 import { FreeMemberShell } from './community/FreeMemberShell';
-import { MemberDesktopSidebar } from './community/MemberDesktopSidebar';
+import { MemberDesktopSidebar, MEMBER_SIDEBAR_ICON_WIDTH, MEMBER_SIDEBAR_WIDTH } from './community/MemberDesktopSidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useLgUp } from './admin-shell/use-lg';
-import { SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './admin-shell/AdminDesktopSidebar';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -522,7 +521,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
   const desktopTitle = effectiveBottomTab === 'home'
     ? (effectiveTopTab === homeTabId ? 'Home' : (topTabs.find(t => t.id === effectiveTopTab)?.label ?? 'Home'))
-    : (effectiveBottomTab === 'communities' ? 'Communities' : effectiveBottomTab === 'discover' ? 'Discover' : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
+    : (effectiveBottomTab === 'communities' ? 'Communities' : effectiveBottomTab === 'discover' ? 'Discover' : effectiveBottomTab === 'events' ? 'Events' : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
   const showDesktopDate = effectiveBottomTab === 'home' && effectiveTopTab === homeTabId;
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
@@ -720,16 +719,17 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
 
   return (
     <TooltipProvider>
-    <SidebarProvider style={{ ...communityBrandStyle(community.settings.brandColor), '--sidebar-width': SIDEBAR_WIDTH, '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as React.CSSProperties} className="community-brand-scope flex flex-col lg:flex-row h-dvh min-h-0 max-lg:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <SidebarProvider style={{ ...communityBrandStyle(community.settings.brandColor), '--sidebar-width': MEMBER_SIDEBAR_WIDTH, '--sidebar-width-icon': MEMBER_SIDEBAR_ICON_WIDTH } as React.CSSProperties} className="community-brand-scope flex flex-col lg:flex-row h-dvh min-h-0 max-lg:[--community-bottom-nav-height:calc(61px+env(safe-area-inset-bottom))] bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       {lgUp && (
         <MemberDesktopSidebar
           name={displayName}
           logo={logoSrc}
           showHarvestDot={!isWhiteLabel}
-          top={[
-            { id: 'desktop-communities', label: 'Communities', icon: NAV_ICONS.communities, isActive: effectiveBottomTab === 'communities', onClick: () => setActiveBottomTab('communities') },
+          rail={[
+            ...(modules.events ? [{ id: 'desktop-events', label: 'Events', icon: CalendarDays, isActive: effectiveBottomTab === 'events', onClick: () => setActiveBottomTab('events') }] : []),
             { id: 'desktop-discover', label: 'Discover', icon: NAV_ICONS.discover, isActive: effectiveBottomTab === 'discover', onClick: () => setActiveBottomTab('discover') },
+            { id: 'desktop-communities', label: 'Communities', icon: NAV_ICONS.communities, isActive: effectiveBottomTab === 'communities', onClick: () => setActiveBottomTab('communities') },
           ]}
           groups={desktopNavGroups}
           memberName={currentUser?.displayName || 'Member'}
@@ -753,46 +753,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false, a
         <div className="sticky top-0 z-20 hidden shrink-0 max-lg:block"><MobileCommunityHeader name={displayName} logo={community.settings.logoUrl || displayLogo} onSwitch={() => setSwitcherOpen(true)} onSearch={() => setActiveBottomTab('discover')} />{(effectiveBottomTab === 'home' || effectiveBottomTab === 'events') && <MobileCommunitySections tabs={mobileTabs} active={effectiveBottomTab === 'events' ? 'events' : effectiveTopTab} />}</div>
         <MobileProfileSheet open={mobileProfileOpen} onOpenChange={setMobileProfileOpen} isAdmin={isAdminPreview} name={currentUser?.displayName || 'Member'} photo={memberPhotoURL} onProfile={() => setActiveBottomTab('profile')} onAdmin={() => onNavigate('admin')} />
         {switcherOpen && <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} switcher={{ open: switcherOpen, onOpenChange: setSwitcherOpen }} onEnter={() => { setActiveBottomTab('home'); setActiveTopTab(homeTabId); }} onDiscover={() => setActiveBottomTab('discover')} />}
-        {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
-            Full-bleed padded row (not the centered content container) so the title hugs the content area's
-            left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
+        {/* Desktop top bar: page title + date, lg:-only. The profile avatar moved to the
+            bottom of the sidebar rail, as in Eden; nothing sits top-right. */}
         <div className="hidden lg:block bg-surface-raised border-b border-line flex-shrink-0">
           <div className="flex items-center justify-between py-3 px-6 xl:px-8">
             <div>
               <h1 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">{desktopTitle}</h1>
               {showDesktopDate && <p className="text-xs text-faint mt-0.5">{desktopDate}</p>}
             </div>
-            {/* THE-141 - the photo comes from `useMemberPhoto`, which reads the
-                FIRESTORE user document and falls back to the Auth profile. This
-                read `currentUser?.photoURL` — the Auth profile ALONE — which
-                Google sign-in populates but an upload never reaches, so an
-                email/password member who had set a photo saw their initial here
-                while all six other surfaces showed the photo. The letter avatar
-                is still the fallback for a member who genuinely has none.
-
-                THE ELEMENT TREE IS DELIBERATELY UNCHANGED, and that is a SPLIT
-                rather than an oversight. Adopting `ui/avatar` here is a
-                presentation change the DEFECT does not need, and it moves this
-                header's tags, class literals, colour tokens and rendered row
-                inventory — six assertions across three frozen baselines
-                (MemberScreens.desktop-layout, THE-295, THE-348), each of which
-                would need its own reversible fold and meta-guard. `main` went
-                red for everyone once because a PR replaced a pinned baseline.
-                So the data source is fixed here and the primitive adoption is
-                reported as its own ticket: same markup, same classes, different
-                FIELD. See hooks/useMemberPhoto.ts. */}
-            <Button variant="ghost"
-              onClick={() => setActiveBottomTab('profile')}
-              className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
-              title="My Profile"
-              data-testid="member-header-avatar"
-            >
-              {memberPhotoURL ? (
-                <img src={memberPhotoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <span>{memberInitial(currentUser?.displayName)}</span>
-              )}
-            </Button>
           </div>
         </div>
 

@@ -821,8 +821,9 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     // Count parser-stripped source so a tag quoted in a comment is not an element.
     // #557 adds the FreeMemberShell element for Free accounts.
     // The community-look PR moves the desktop rail into MemberDesktopSidebar
-    // inside SidebarProvider / SidebarInset, and drops the AI chat view.
-    expect(tags.length, 'the shell gained or lost an element').toBe(70);
+    // inside SidebarProvider / SidebarInset, and drops the AI chat view and the
+    // top-bar avatar (it moved to the sidebar rail).
+    expect(tags.length, 'the shell gained or lost an element').toBe(67);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

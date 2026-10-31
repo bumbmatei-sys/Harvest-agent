@@ -3,12 +3,12 @@
   "entries": [
     {
       "file": "src/components/MainApp.tsx",
-      "digest": "ae6ec4aab160e3796a2f12a32a4a7db0419b392d6747a028a6315524d3ae6ae6",
-      "why": "APPENDED, NOT SUBSTITUTED — #569: the desktop rail moved into MemberDesktopSidebar (admin inset Sidebar) inside SidebarProvider/SidebarInset; the Ask AI chat tab, its desktop entry and view are removed and a saved chat tab lands on Home. The mobile bottom bar is unchanged."
+      "digest": "18a9ef69f41bd80562b487c5450156fbeab4de78be36406a297c3f70c11fdebc",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: the desktop rail moved into MemberDesktopSidebar (admin inset Sidebar) inside SidebarProvider/SidebarInset; the Ask AI chat tab, its desktop entry and view are removed and a saved chat tab lands on Home. The mobile bottom bar is unchanged. Then: the desktop sidebar became two columns (Eden's icon rail beside the section card) and the top-right profile avatar moved to the bottom of the rail."
     },
     {
       "file": "src/components/__tests__/THE-295.nav-safe-area-dialog-z-index.test.tsx",
-      "digest": "6d1cde7c2dbfbce39c2defd4609642b928cddeb6633199797359ea470816cec4",
+      "digest": "0a6d65b7655d180b57f9750800caf40e85ab88e6414bbdd0a87b7d4accded0a3",
       "why": "APPENDED, NOT SUBSTITUTED — #569: the bottom-tab list drops chat (inverted, not deleted), the element count follows the new shell, the brand fallback is read from the sidebar file, and from lg the bottom bar asserts it draws nothing. Every other assertion retained."
     },
     {
@@ -18,13 +18,13 @@
     },
     {
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
-      "digest": "ea4d5d0865a6515d45f7a761241727f8c0b9f93742d3f0adf4bd53192b76bfad",
-      "why": "APPENDED, NOT SUBSTITUTED — #569: appends MemberDesktopSidebar to the min-h-11 sweep. Nothing removed."
+      "digest": "104d12a7a957064cba3c3af7eb24d5bc82fc6a9fdeee30b4ee2c2ac8f96f1112",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: appends MemberDesktopSidebar to the min-h-11 sweep. Nothing removed. APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the min-h-11 sweep combined; nothing removed."
     },
     {
       "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
-      "digest": "1846dbdc126c1731cef219b51dc128f219902166d283d2d65e301d4fc9b30dc0",
-      "why": "APPENDED, NOT SUBSTITUTED — #569: appends MainApp as a recorded tooltip adopter. Nothing removed."
+      "digest": "88abbc32f7068e604febd54600deeabcf2fa9bb4c9288d64aa92421d0428cb36",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: appends MainApp as a recorded tooltip adopter. Nothing removed. APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the tooltip adopter list combined; nothing removed."
     },
     {
       "file": "src/__tests__/the-270-sidebar-install.test.ts",
@@ -38,7 +38,7 @@
     },
     {
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
-      "digest": "c9541f4de10d495df3d9eb3e0d3e0a3830a0030f87f6b65d51a0499c8ea14953",
+      "digest": "66a3c4ebdbd3a7eb44afd72b5e1f4e3aeee850e7717c70b1502bc9d56c14aecc",
       "why": "APPENDED, NOT SUBSTITUTED — #569: appends the new MainApp digest, gives MainApp its own community-look mobile record (no earlier fixture rewritten) and adds a guard that the phone bottom-tab rows equal THE-555's record. Every other assertion retained."
     },
     {
@@ -47,14 +47,14 @@
       "why": "APPENDED, NOT SUBSTITUTED — #569: moves the-268-line-endings' current digest in CONTENT_ASSERTING_MOVED for #568's JPEGs, keeping the previous digest and reasons in the why. CONTENT_ASSERTING is untouched."
     },
     {
-      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
-      "digest": "88abbc32f7068e604febd54600deeabcf2fa9bb4c9288d64aa92421d0428cb36",
-      "why": "APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the tooltip adopter list combined; nothing removed."
+      "file": "src/components/__tests__/THE-363.member-header-avatar.test.tsx",
+      "digest": "95835fc3e5c98c618ddabf4faa076d9f61b6b613fe73ea734664fae51de40c5f",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: the avatar selector follows the control to the sidebar rail (#569 moved it out of the top bar); every assertion about the photo source and fallback retained."
     },
     {
-      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
-      "digest": "104d12a7a957064cba3c3af7eb24d5bc82fc6a9fdeee30b4ee2c2ac8f96f1112",
-      "why": "APPENDED, NOT SUBSTITUTED — #569 after merging main (#560): #560's and #569's appends to the min-h-11 sweep combined; nothing removed."
+      "file": "src/components/__tests__/THE-363.ticket-guards.test.ts",
+      "digest": "8d08994efd27fd76ff776b6d64835842f416e757f6fbcb3679b3cf0685f8af71",
+      "why": "APPENDED, NOT SUBSTITUTED — #569: the avatar's size and token checks read the sidebar rail, where #569 moved it; the 44px floor now applies and is asserted. Every other assertion retained."
     }
   ]
 }

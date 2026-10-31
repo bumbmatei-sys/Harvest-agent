@@ -129,15 +129,17 @@ describe('every control >= 44px below sm', () => {
     expect(occurrences, 'both the control and its skeleton need the floor').toBeGreaterThanOrEqual(2);
   });
 
-  it('the header avatar control is untouched, and the 44px rule does not reach it', () => {
-    const src = stripComments(read('components/MainApp.tsx'));
-    // 36px, and unchanged by this ticket. It lives inside the desktop top bar,
-    // which is `lg:`-only and therefore never renders below `sm` at all, so the
-    // sub-`sm` touch floor does not apply. Pinned so the reasoning is not
-    // re-derived by the next reader, and so that a control MOVED out of the
-    // lg-only bar would have to answer the rule.
-    expect(src).toContain(['w-9 ', 'h-9'].join(''));
-    expect(src).toContain(['hidden lg:', 'block'].join(''));
+  // WAS 'the header avatar control is untouched'. #569 moved the avatar out of
+  // the lg-only top bar to the bottom of the member sidebar rail, as in Eden.
+  // The rail mounts from lg only, but the control now answers the rule anyway:
+  // 36px with the 44px floor below sm, exactly as the comment it replaces foresaw.
+  it('the avatar moved to the sidebar rail, 36px with the 44px floor below sm', () => {
+    const shell = stripComments(read('components/MainApp.tsx'));
+    expect(shell).not.toContain('member-header-avatar');
+    const rail = stripComments(read('components/community/MemberDesktopSidebar.tsx'));
+    expect(rail).toContain('member-sidebar-profile');
+    expect(rail).toContain('size-9 min-h-11 min-w-11');
+    expect(rail).toContain('sm:min-h-0 sm:min-w-0');
   });
 });
 
@@ -171,7 +173,8 @@ describe('no colour hardcoded, no emoji', () => {
   });
 
   it('the new modules use design tokens rather than literal colours', () => {
-    const header = stripComments(read('components/MainApp.tsx'));
+    // The avatar's tokens moved with it to the member sidebar rail (#569).
+    const header = stripComments(read('components/community/MemberDesktopSidebar.tsx'));
     expect(header).toContain(['bg-surface-', 'sunken'].join(''));
     expect(header).toContain(['text-', 'muted'].join(''));
   });
