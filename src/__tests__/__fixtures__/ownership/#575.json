@@ -1,0 +1,10 @@
+{
+  "ticket": "#575",
+  "entries": [
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "ce44cbff52987567f0bc45d2edcea9ae24265b75aabdf33d1854006c0c2e3b73",
+      "why": "APPENDED, NOT SUBSTITUTED — #575: moves the-268-line-endings' current digest in CONTENT_ASSERTING_MOVED for the PRD WebP folder check, keeping the previous digest and every earlier reason in the why. CONTENT_ASSERTING is untouched."
+    }
+  ]
+}

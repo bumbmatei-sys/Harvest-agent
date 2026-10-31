@@ -33,6 +33,8 @@ vi.mock('@/lib/firebase-admin', () => ({ adminDb: h.db }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: h.auth, requireTenantAdmin: vi.fn(), requireTenantPermission: vi.fn() }));
 vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError: vi.fn() }));
 vi.mock('firebase-admin/firestore', () => ({ FieldValue: { serverTimestamp: () => 'ts' }, Timestamp: { now: () => 'now' } }));
+const crm = vi.hoisted(() => ({ upsert: vi.fn() }));
+vi.mock('@/lib/community-contact', () => ({ upsertCommunityContact: crm.upsert }));
 import { DELETE, POST } from './[communityId]/membership/route';
 
 const T = 'tenants/grace';
@@ -42,6 +44,7 @@ const open = { ...newCommunityDraft('Youth'), visibility: 'public', status: 'pub
 
 beforeEach(() => {
   h.docs.clear();
+  crm.upsert.mockReset(); crm.upsert.mockResolvedValue(undefined);
   h.auth.mockResolvedValue({ uid: 'u1', email: 'u1@test.com' });
   h.docs.set('users/u1', { displayName: 'Ana' });
   h.docs.set(`${T}/communities/youth`, open);
@@ -78,6 +81,18 @@ describe('joining and leaving a community', () => {
     h.docs.delete('users/u1');
     expect((await join('youth')).status).toBe(409);
     expect((await join('missing')).status).toBe(404);
+  });
+
+  it('updates the one CRM contact on join and on leave, and reports a CRM failure for a retry', async () => {
+    crm.upsert.mockClear();
+    await join('youth');
+    expect(crm.upsert).toHaveBeenCalledWith({ uid: 'u1', tenantId: 'grace', communityId: 'youth' });
+    await leave('youth');
+    expect(crm.upsert).toHaveBeenCalledTimes(2);
+    crm.upsert.mockRejectedValueOnce(new Error('CRM offline'));
+    expect((await join('youth')).status).toBe(503);
+    // The membership itself committed; the retry repairs the contact.
+    expect(h.docs.get(`${T}/communities/youth/members/u1`)!.status).toBe('active');
   });
 
   it('leaves, keeping the join date, and leaving twice changes nothing', async () => {

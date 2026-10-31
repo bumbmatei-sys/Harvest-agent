@@ -846,5 +846,8 @@ const THE_342_BASELINE = {
     ['7d8216a48dc9272d29187eeeb797df9017e40e168414e24edda705fbb47b5f95', 'THE-999998 (PR #561) — community join + CRM chunk (d): community contact badge and join/leave CRM wiring in AdminCRM; no bounded read or index requirement changed'],
     ['8ceb79e1a7a8461f205f5148781d6a738567efc76926cd0f35789ff290d3ef49', '#561 review — adds the shadcn owner data-erasure control; existing CRM queries and completeness labels remain unchanged'],
     ['d5e621d347f7502ac4f04fe5227f9d0e89c8225f450536d664a81c9e9ac1a6c5', '#561 review — routes existing community-contact deletion to the dedicated erasure control so onboarding is removed too; CRM read completeness remains asserted'],
+    // APPENDED BY #573, nothing above substituted: one CRM across every community —
+    // community, status and newsletter dropdowns and a badge per community. No read changed.
+    ['44eb4a3c6ad3c19a38d1353c4eb1131dce443c962c0d227feee4d6a20520fbd1', '#573 — one CRM across every community: three dropdown filters and per-community badges; no read or write changed'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

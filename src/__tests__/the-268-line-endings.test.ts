@@ -120,6 +120,19 @@ const BINARY_EXTENSIONS: readonly string[] = ATTR_RULES.filter(
 const isDeclaredBinary = (rel: string): boolean =>
   BINARY_EXTENSIONS.includes(path.extname(rel).toLowerCase());
 
+/**
+ * #575: the PRD (#574) carries ~490 Eden reference screenshots as WebP. They
+ * are recorded by DIRECTORY rather than one by one, and each must be a whole,
+ * well-formed WebP: the RIFF header's size field has to equal the file length,
+ * so a line-ending rewrite anywhere in the file is caught exactly as the PNG
+ * magic catches it below.
+ */
+const PRD_SCREENSHOTS = 'docs/prd/screenshots/';
+function isWholeWebp(buf: Buffer): boolean {
+  return buf.length >= 12 && buf.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    buf.subarray(8, 12).toString('latin1') === 'WEBP' && buf.readUInt32LE(4) === buf.length - 8;
+}
+
 /* ── 0. The sweep actually swept something ────────────────────────────────── */
 
 /**
@@ -225,7 +238,8 @@ describe('binaries are not treated as text', () => {
   });
 
   it('the binary set is the original 13 PNGs plus the #529 proof shots', () => {
-    const binaries = FILES.filter((rel) => isDeclaredBinary(rel));
+    // #575: the PRD screenshots are checked by directory, in their own case below.
+    const binaries = FILES.filter((rel) => isDeclaredBinary(rel) && !rel.startsWith(PRD_SCREENSHOTS));
     expect(binaries).toEqual([
       // APPENDED BY #568, nothing below removed. Eden community reference
       // screenshots, JPEG rather than PNG (see the signature check below).
@@ -418,11 +432,30 @@ describe('binaries are not treated as text', () => {
     ]);
   });
 
+  it('#575: the PRD screenshot folder holds only whole WebP images and their text manifests', () => {
+    for (const rel of FILES.filter((file) => file.startsWith(PRD_SCREENSHOTS))) {
+      if (rel.endsWith('/_manifest.json')) continue;
+      expect(path.extname(rel), `${rel} is not a WebP`).toBe('.webp');
+      expect(isWholeWebp(bytesOf(rel)), `${rel} is not a whole WebP (damaged header or a rewritten byte)`).toBe(true);
+    }
+  });
+
+  it('#575: the WebP check catches a damaged header and a changed length', () => {
+    const body = Buffer.from('VP8 example-image-bytes');
+    const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP'), body]);
+    webp.writeUInt32LE(webp.length - 8, 4);
+    expect(isWholeWebp(webp)).toBe(true);
+    // A CRLF rewrite inserts bytes, so the RIFF size no longer matches.
+    expect(isWholeWebp(Buffer.concat([webp, Buffer.from('\r')]))).toBe(false);
+    expect(isWholeWebp(Buffer.concat([Buffer.from('RIFX'), webp.subarray(4)]))).toBe(false);
+    expect(isWholeWebp(Buffer.from('RIFF'))).toBe(false);
+  });
+
   it('every declared binary is still a structurally valid PNG', () => {
     const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const JPEG_SOI = Buffer.from([0xff, 0xd8, 0xff]);
     const JPEG_EOI = Buffer.from([0xff, 0xd9]);
-    for (const rel of FILES.filter(isDeclaredBinary)) {
+    for (const rel of FILES.filter((file) => isDeclaredBinary(file) && !file.startsWith(PRD_SCREENSHOTS))) {
       const buf = bytesOf(rel);
       // #568's JPEGs: the start-of-image marker, and an end-of-image marker
       // somewhere, not last: Samsung phones append a metadata trailer after it.

@@ -145,3 +145,38 @@ describe('#561 review r5 — an existing contact is bound only to a verified own
     expect(h.docs.get('contacts/donor')).toMatchObject({ ...donor, communityUserId: 'u' });
   });
 });
+
+describe('#573 one CRM across every community', () => {
+  it('records the default community under communities.default, named after the ministry', async () => {
+    h.docs.set('tenants/target', { name: 'Grace Chapel' });
+    await upsertCommunityContact(input);
+    expect(contactRows()[0][1].communities).toEqual({ default: { name: 'Grace Chapel', status: 'active', joinedAt: joined, leftAt: null } });
+  });
+  it('adds a second community to the same contact without touching the default entry or flat fields', async () => {
+    h.docs.set('tenants/target', { name: 'Grace Chapel' });
+    await upsertCommunityContact(input);
+    h.docs.set('tenants/target/communities/youth', { name: 'Youth' });
+    h.docs.set('tenants/target/communities/youth/members/u', { status: 'active', joinedAt: left, consentAt: left, consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2, leftAt: null });
+    await upsertCommunityContact({ ...input, communityId: 'youth' });
+    expect(contactRows()).toHaveLength(1);
+    const data = contactRows()[0][1];
+    expect(data.communities).toEqual({
+      default: { name: 'Grace Chapel', status: 'active', joinedAt: joined, leftAt: null },
+      youth: { name: 'Youth', status: 'active', joinedAt: left, leftAt: null },
+    });
+    expect(data).toMatchObject({ communityStatus: 'active', communityJoinedAt: joined });
+  });
+  it('marks a left community as left and never unsubscribes a newsletter subscriber', async () => {
+    h.docs.set('tenants/target/communities/youth', { name: 'Youth' });
+    h.docs.set('tenants/target/communities/youth/members/u', { status: 'left', joinedAt: joined, leftAt: left, consentAt: joined, consentScope: 'owner_contact_and_view_name_email_answers', consentVersion: 2 });
+    await upsertCommunityContact({ ...input, communityId: 'youth' });
+    const [path] = contactRows()[0];
+    h.docs.set(path, { ...h.docs.get(path), emailStatus: 'subscribed' });
+    await upsertCommunityContact({ ...input, communityId: 'youth' });
+    expect(h.docs.get(path)).toMatchObject({ emailStatus: 'subscribed', communities: { youth: { status: 'left', leftAt: left } } });
+    // Leaving the default community also leaves a subscriber subscribed.
+    Object.assign(h.docs.get('tenants/target/communityMembers/u')!, { status: 'left', leftAt: left });
+    await upsertCommunityContact(input);
+    expect(h.docs.get(path)).toMatchObject({ emailStatus: 'subscribed', communityStatus: 'left' });
+  });
+});

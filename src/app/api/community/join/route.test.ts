@@ -283,8 +283,10 @@ describe('departure privacy', () => {
     fx.auth.mockResolvedValue({ uid: 'person', email: 'member@example.org', emailVerified: true, tenantId: 'original', isAdmin: false });
     await join(request(joinBody));
     fx.docs['users/person'].email = ' MEMBER@Example.org ';
-    fx.docs['contacts/linked'] = { tenantId: 'target', communityUserId: 'person', email: 'member@example.org', emailStatus: 'subscribed', notes: 'private' };
-    fx.docs['contacts/duplicate'] = { tenantId: 'target', email: ' MEMBER@example.org ', emailStatus: 'subscribed' };
+    // #573: these two never subscribed to the newsletter; their only permission
+    // came from joining, which leaving withdraws. Subscribers are covered below.
+    fx.docs['contacts/linked'] = { tenantId: 'target', communityUserId: 'person', email: 'member@example.org', emailStatus: 'none', notes: 'private' };
+    fx.docs['contacts/duplicate'] = { tenantId: 'target', email: ' MEMBER@example.org ', emailStatus: 'none' };
     fx.docs['contacts/foreign'] = { tenantId: 'foreign', communityUserId: 'person', email: 'member@example.org', emailStatus: 'subscribed' };
     fx.docs['tenants/target/channels/private'] = { members: ['person', 'other'], audience: 'selected' };
     fx.docs['tenants/target/channels/all'] = { members: ['person'], audience: 'all' };
@@ -348,10 +350,9 @@ describe('departure privacy', () => {
   it('excludes left members and duplicates from the real newsletter store and audience', async () => {
     fx.docs['contacts/allowed'] = { tenantId: 'target', email: 'allowed@example.org', emailStatus: 'subscribed' };
     expect((await leave(request({ tenantId: 'target' }))).status).toBe(200);
-    // Even a stale server-side opt-in cannot override the left marker.
+    // A later opt-in written on top cannot reach them: the departure hash blocks the address.
     fx.docs['contacts/linked'].emailStatus = 'subscribed';
     const contacts = await firestoreEmailStore.listContacts('target');
-    expect(contacts.find(contact => contact.id === 'linked')?.status).toBe('unsubscribed');
     const suppressed = await firestoreEmailStore.listSuppressed('target');
     expect(suppressed.has(communitySuppressionId(' MEMBER@example.org '))).toBe(true);
     expect(resolveAudience(contacts, [], new Set(contacts.filter(c => suppressed.has(communitySuppressionId(c.email))).map(c => c.email))).recipients.map(contact => contact.email)).toEqual(['allowed@example.org']);
@@ -361,12 +362,21 @@ describe('departure privacy', () => {
     const hashes = await firestoreEmailStore.listSuppressed('target');
     expect(resolveAudience(reimported, [], new Set(reimported.filter(c => hashes.has(communitySuppressionId(c.email))).map(c => c.email))).recipients.map(contact => contact.email)).toEqual(['allowed@example.org']);
   });
-  it('keeps a stale subscribed left contact out of newsletters even without a suppression document', async () => {
-    fx.docs['contacts/linked'].communityStatus = 'left';
+  // WAS 'keeps a stale subscribed left contact out of newsletters even without a
+  // suppression document'. Inverted by Matei's decision (#573): a newsletter
+  // subscriber who leaves a community keeps the newsletter they opted in to.
+  it('keeps a newsletter subscriber who left the community in the newsletter audience', async () => {
+    fx.docs['contacts/linked'].emailStatus = 'subscribed';
     delete fx.docs['contacts/duplicate'];
+    expect((await leave(request({ tenantId: 'target' }))).status).toBe(200);
+    expect(fx.docs['contacts/linked']).toMatchObject({ communityStatus: 'left', emailStatus: 'subscribed' });
+    expect(fx.docs['contacts/linked']).not.toHaveProperty('emailUnsubscribedAt');
+    // No newsletter block is written for them...
+    expect(fx.docs[`tenants/target/emailSuppressions/${communitySuppressionId('member@example.org')}`]).toBeUndefined();
+    // ...while one-to-one owner email and community notifications still stop for someone who left.
+    expect(await tenantEmailBlocked('target', 'member@example.org')).toBe(true);
     const contacts = await firestoreEmailStore.listContacts('target');
-    expect((await firestoreEmailStore.listSuppressed('target')).size).toBe(0);
-    expect(resolveAudience(contacts, []).recipients).toEqual([]);
+    expect(resolveAudience(contacts, []).recipients.map(contact => contact.email)).toEqual(['member@example.org']);
   });
   it('keeps a stale subscribed contact out of every block lookup solely by its hash record', async () => {
     await leave(request({ tenantId: 'target' }));
@@ -471,7 +481,7 @@ describe('departure privacy', () => {
     fx.failRead = ''; fx.failWrite = true;
     expect((await leave(request({ tenantId: 'target' }))).status).toBe(503);
     expect(fx.docs[memberPath].status).toBe('active');
-    expect(fx.docs['contacts/linked'].emailStatus).toBe('subscribed');
+    expect(fx.docs['contacts/linked'].emailStatus).toBe('none');
   });
   it.each(['member', 'owner'])('allows the %s to erase CRM and answers without restoring access or email', async actor => {
     fx.docs['contactActivities/one'] = { tenantId: 'target', contactId: 'linked', description: 'private' };
