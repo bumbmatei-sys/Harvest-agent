@@ -6,6 +6,7 @@ import { captureHandledError } from '@/lib/money-path-sentry';
 import { COMMUNITY_CONSENT_SCOPE, COMMUNITY_CONSENT_VERSION } from '@/lib/community-membership';
 import { DEFAULT_COMMUNITY_ID, isCommunityId, membershipIndexId, readCommunityRecord } from '@/lib/community/communities';
 import { communitiesRef, isTenantIdParam } from '@/lib/community/communities-server';
+import { upsertCommunityContact } from '@/lib/community-contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,9 @@ async function change(request: NextRequest, communityId: string, joining: boolea
       tx.set(indexRef, { tenantId, communityId, status: 'left', joinedAt: previous.joinedAt ?? null, leftAt: now });
     }
   });
+  // #573: one CRM across every community. A retry repairs the contact from the
+  // authoritative membership, so a failure here surfaces and is safe to repeat.
+  await upsertCommunityContact({ uid: user.uid, tenantId, communityId });
   return NextResponse.json({ ok: true });
 }
 

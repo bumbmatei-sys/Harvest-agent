@@ -63,11 +63,20 @@ export function writeCommunityDeparture(tx: FirebaseFirestore.Transaction, depar
   for (const channel of departure.channels) {
     tx.update(channel.ref, { members: channel.data().members.filter((member: unknown) => member !== uid) });
   }
+  // #573 (Matei's decision): leaving never unsubscribes a newsletter subscriber,
+  // whose subscription was its own opt-in. Only addresses whose permission came
+  // from joining alone are unsubscribed and blocked, as before.
+  const subscribed = new Set(departure.contacts
+    .filter(contact => contact.data().emailStatus === 'subscribed' && typeof contact.data().email === 'string')
+    .map(contact => normalizeEmail(contact.data().email)));
   for (const contact of departure.contacts) {
-    tx.update(contact.ref, { emailStatus: 'unsubscribed', emailUnsubscribedAt: at.toDate().toISOString(),
+    const keepsNewsletter = contact.data().emailStatus === 'subscribed';
+    tx.update(contact.ref, {
+      ...(keepsNewsletter ? {} : { emailStatus: 'unsubscribed', emailUnsubscribedAt: at.toDate().toISOString() }),
       ...(contact.data().communityUserId === uid ? { communityStatus: 'left', communityLeftAt: at } : {}) });
   }
   for (const email of departure.emails) {
+    if (subscribed.has(email)) continue;
     const emailHash = communitySuppressionId(email);
     const previous = departure.blocks.find(doc => doc.id === emailHash)?.data();
     const record = previous && previous.from !== 'community-leave'

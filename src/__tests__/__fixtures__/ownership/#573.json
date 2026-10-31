@@ -1,0 +1,45 @@
+{
+  "ticket": "#573",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "63a3037f0fa49fa7f3558af7163320e8932fb1abbd99832673790a20caa9e1d3",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: adds `communities` to communityContactKeys, so the per-community history on a CRM contact is server-owned like the flat default-community fields; nothing else changes (631 rules tests pass, the parameterised forge/delete case covers the new key)."
+    },
+    {
+      "file": "tests/rules/community-join.rules.test.ts",
+      "digest": "6221d232988b1eb594fd3198689a58a6f46dde725cbebc2a3765a16e69b893cd",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: the server-field fixture gains `communities`, so the existing forge/delete case now also proves no client, not even a full admin, can write it. Nothing removed."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "44eb4a3c6ad3c19a38d1353c4eb1131dce443c962c0d227feee4d6a20520fbd1",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: one CRM across every community: three dropdown filters (community, status in it, newsletter) from community/CrmCommunityFilters, combined with the existing search/type/newsletter predicate through lib/crm-communities, and a badge per community on each row and on the contact card. No write, refusal, dialog or money path is touched; the file's writes, primitives and colours are unchanged."
+    },
+    {
+      "file": "src/lib/community-contact.ts",
+      "digest": "d178dacdb62c7f3319419d386bad105fb75254bd6eb81144e21477f7deef6d91",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: upsertCommunityContact takes a communityId and keeps a `communities` map on the contact (default + every other community); the flat community* fields stay for the default. Leaving never unsubscribes a newsletter subscriber (Matei's decision)."
+    },
+    {
+      "file": "src/lib/community-contact.test.ts",
+      "digest": "c2e3c635bf54174bd92bf254ebdeb3d4f9078d4d33ad4e42a0225ab85d1ffe4f",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: appends three cases for the communities map and the subscriber rule; every prior case retained."
+    },
+    {
+      "file": "src/lib/community-privacy.ts",
+      "digest": "0c645c13ed157663e9003c19abf3a7e5d9a1c117167752dad0aba8cbc2b4e38e",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: departure no longer unsubscribes or hash-blocks a contact who subscribed to the newsletter (Matei's decision); a leaver who never subscribed is unsubscribed and blocked as before, and one-to-one owner email and community notifications still stop for anyone who left."
+    },
+    {
+      "file": "src/lib/email/firestore-store.ts",
+      "digest": "048b9c690beb538156fb2ac80a837e26f9663379617e1ecf56b43927c7b49173",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: listContacts no longer turns a left community member into 'unsubscribed'; the newsletter reads the recorded opt-in, and non-subscribing leavers stay out through their departure unsubscribe and hash block."
+    },
+    {
+      "file": "src/app/api/community/join/route.test.ts",
+      "digest": "0f44c06e1a01cbb2bb2b099adfd19e00c4ddd77982b61f188111408a482f6a6c",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: departure fixtures are now non-subscribers (their only permission was joining), keeping every block assertion; the 'stale subscribed left contact' case is inverted to Matei's rule (a subscriber who leaves keeps the newsletter, gets no block, and is still stopped from one-to-one and community email)."
+    }
+  ]
+}

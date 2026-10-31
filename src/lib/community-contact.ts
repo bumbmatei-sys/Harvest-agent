@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminAuth, adminDb } from './firebase-admin';
 import { normaliseSource } from './community-membership';
+import { DEFAULT_COMMUNITY_ID } from './community/communities';
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const emailKey = (value: unknown) => text(value).toLowerCase();
@@ -15,16 +16,28 @@ const emailKey = (value: unknown) => text(value).toLowerCase();
  * Preserve its owner-entered fields. Never merge/delete pre-existing duplicates.
  * The deterministic fallback and transactional query make concurrent retries safe.
  */
-export async function upsertCommunityContact({ uid, tenantId }: { uid: string; tenantId: string }): Promise<void> {
+/**
+ * One CRM across every community of the ministry (#573). The contact carries a
+ * `communities` map keyed by community id ('default' for the ministry's own),
+ * each entry its name, status and dates, so one person in three communities is
+ * one contact with three entries. The flat community* fields stay for the
+ * default community, which the existing badge and rules read.
+ */
+export async function upsertCommunityContact({ uid, tenantId, communityId = DEFAULT_COMMUNITY_ID }: { uid: string; tenantId: string; communityId?: string }): Promise<void> {
   const contacts = adminDb.collection('contacts');
   const id = `community_${tenantId}_${createHash('sha256').update(uid).digest('hex')}`;
+  const isDefault = communityId === DEFAULT_COMMUNITY_ID;
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
   await adminDb.runTransaction(async tx => {
-    const [memberDoc, profileDoc, rows] = await Promise.all([
-      tx.get(adminDb.collection('tenants').doc(tenantId).collection('communityMembers').doc(uid)),
+    const [memberDoc, profileDoc, rows, tenantDoc, communityDoc] = await Promise.all([
+      tx.get(isDefault ? tenantRef.collection('communityMembers').doc(uid) : tenantRef.collection('communities').doc(communityId).collection('members').doc(uid)),
       tx.get(adminDb.collection('users').doc(uid)),
       tx.get(contacts.where('tenantId', '==', tenantId)),
+      tx.get(tenantRef),
+      tx.get(isDefault ? tenantRef : tenantRef.collection('communities').doc(communityId)),
     ]);
     const member = memberDoc.data();
+    const communityName = text((isDefault ? tenantDoc : communityDoc).data()?.name) || 'Community';
     // Legacy membership has no sharing consent. Do not fabricate it on retries
     // or leave. The next explicit rejoin records consent through the join API.
     if (!member) return;
@@ -35,7 +48,7 @@ export async function upsertCommunityContact({ uid, tenantId }: { uid: string; t
     }
     if (!['active', 'left'].includes(member.status) || !member.joinedAt ||
         (member.status === 'left' && !member.leftAt)) throw new Error('Invalid community contact membership.');
-    const source = normaliseSource(member.source);
+    const source = isDefault ? normaliseSource(member.source) : null;
     const sorted = [...rows.docs].sort((a, b) => a.id.localeCompare(b.id));
     const linked = sorted.find(doc => doc.data().communityUserId === uid || doc.id === id);
     const profile = profileDoc.data();
@@ -66,15 +79,27 @@ export async function upsertCommunityContact({ uid, tenantId }: { uid: string; t
     const destination = await tx.get(ref);
     if (destination.exists && destination.data()?.tenantId !== tenantId) throw new Error('Contact tenant mismatch.');
     const now = Timestamp.now();
+    const saved = destination.exists ? destination.data()! : {};
+    const communities = {
+      ...(saved.communities && typeof saved.communities === 'object' ? saved.communities : {}),
+      [communityId]: { name: communityName, status: member.status, joinedAt: member.joinedAt, leftAt: member.status === 'left' ? member.leftAt : null },
+    };
+    // Leaving a community never unsubscribes a newsletter subscriber (Matei's
+    // decision, #573): the subscription was its own opt-in. Someone who never
+    // subscribed only had the join consent, which leaving the default withdraws.
+    const unsubscribe = isDefault && member.status === 'left' && saved.emailStatus !== 'subscribed';
     const metadata = {
       // Never invent scope/version for a historical timestamp-only consent.
       ...(member.consentScope !== undefined ? { consentScope: member.consentScope } : {}),
       ...(member.consentVersion !== undefined ? { consentVersion: member.consentVersion } : {}),
       consentAt: member.consentAt,
-      ...(member.status === 'left' ? { emailStatus: 'unsubscribed' } : {}),
-      source: 'community', communityUserId: uid, communitySource: source,
-      communityStatus: member.status, communityJoinedAt: member.joinedAt,
-      communityLeftAt: member.status === 'left' ? member.leftAt : null,
+      ...(unsubscribe ? { emailStatus: 'unsubscribed' } : {}),
+      source: 'community', communityUserId: uid, communities,
+      ...(isDefault ? {
+        communitySource: source,
+        communityStatus: member.status, communityJoinedAt: member.joinedAt,
+        communityLeftAt: member.status === 'left' ? member.leftAt : null,
+      } : {}),
     };
     if (destination.exists) {
       tx.set(ref, metadata, { merge: true });
