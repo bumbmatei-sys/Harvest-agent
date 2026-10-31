@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { loadUserCommunityIds } from '@/lib/community/use-community';
 import { auth, db } from '@/firebase';
 import { readPublicListing } from '@/lib/community/public-listing';
-import { communityHref, communityPath } from '@/lib/community/navigation';
+import { communityHref, communityPath, communitySpacePath } from '@/lib/community/navigation';
+import { readCommunityRecord } from '@/lib/community/communities';
 import { canonicalPlanId } from '@/utils/plan-id';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 import { CommunitySwitcher } from './MobileCommunityNav';
@@ -28,6 +29,25 @@ export function DiscoverData({ currentTenantId }: { currentTenantId?: string | n
   }, []);
   return <DiscoverView state={state} member={member} />;
 }
+/**
+ * #576: the communities other than a ministry's default one that this person
+ * belongs to, from their own membership index. One the reader can no longer
+ * see (unpublished or deleted) is left out rather than failing the list.
+ */
+export async function loadJoinedSpaces(uid: string): Promise<MemberCommunity[]> {
+  const index = await getDocs(query(collection(db, 'users', uid, 'communityMemberships'), where('status', '==', 'active')));
+  const spaces = await Promise.all(index.docs.map(async entry => {
+    const { tenantId, communityId } = entry.data();
+    if (typeof tenantId !== 'string' || typeof communityId !== 'string') return null;
+    try {
+      const saved = await getDoc(doc(db, 'tenants', tenantId, 'communities', communityId));
+      if (!saved.exists()) return null;
+      const record = readCommunityRecord(communityId, saved.data());
+      return { name: record.name, logoUrl: record.iconUrl || undefined, href: communityHref(communitySpacePath(tenantId, communityId)) };
+    } catch { return null; }
+  }));
+  return spaces.filter((space): space is NonNullable<typeof space> => space !== null).sort((a, b) => a.name.localeCompare(b.name));
+}
 export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, switcher }: { uid?: string; currentTenantId: string | null; onEnter: () => void; onDiscover: () => void; switcher?: { open: boolean; onOpenChange: (open: boolean) => void } }) {
   const [state, setState] = useState<LoadState<MemberCommunity[]>>({ status: 'loading' });
   useEffect(() => {
@@ -45,7 +65,7 @@ export function CommunitiesData({ uid, currentTenantId, onEnter, onDiscover, swi
         if (typeof data.name !== 'string' || !data.name.trim() || !validSlug(data.subdomain)) throw new Error('Invalid community');
         return { name: data.name, logoUrl: typeof data.config?.logo === 'string' ? data.config.logo : undefined, href: tenantId === currentTenantId ? undefined : communityHref(communityPath(tenantId)) };
       }));
-      return communities.filter((community): community is NonNullable<typeof community> => community !== null);
+      return [...communities.filter((community): community is NonNullable<typeof community> => community !== null), ...await loadJoinedSpaces(uid)];
     }
     setState({ status: 'loading' });
     load().then(data => { if (!cancelled) setState({ status: 'ready', data }); }).catch(() => { if (!cancelled) setState({ status: 'error', message: 'Could not load your communities. Please try again later.' }); });

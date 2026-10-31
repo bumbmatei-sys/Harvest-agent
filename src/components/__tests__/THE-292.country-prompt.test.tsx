@@ -511,6 +511,8 @@ describe('no funnel marker, route order or Turnstile mount changed', () => {
       // THE-999998: reviewed member route; every original funnel/admin route
       // below retains its exact position relative to every other original.
       '/community/:tenantId',
+      // #576: the reviewed space route for a community other than the default one.
+      '/community/:tenantId/:communityId',
       '/auth', '/onboarding', '/church-onboarding',
       '/admin', '/admin/:section', '/admin/:section/:itemId', '/', '*',
     ]);

@@ -19,7 +19,8 @@ import MainApp from './components/MainApp';
 import { CommunitySignupReturn } from './components/community/CommunitySignupReturn';
 import { dropCommunityReturnForFunnel } from './lib/community/navigation';
 import { CommunityMemberPage } from './components/community/CommunityMemberPage';
-import { communityIdFromPath, communitySignupPath, safeCommunityReturnPath } from './lib/community/navigation';
+import { CommunitySpacePage } from './components/community/CommunitySpacePage';
+import { communityIdFromPath, communitySignupPath, communitySpaceFromPath, safeCommunityReturnPath } from './lib/community/navigation';
 import AffiliateDashboard from './components/AffiliateDashboard';
 import Onboarding from './components/Onboarding';
 import ChurchOnboarding from './components/ChurchOnboarding';
@@ -572,7 +573,7 @@ const AppInner: React.FC = () => {
         setIsSuperAdmin(false);
         setUserRole('user');
         setUserTenantId(undefined); // unresolved — no signed-in user to resolve a tenant for
-        const communityReturn = communityIdFromPath(window.location.pathname)
+        const communityReturn = (communityIdFromPath(window.location.pathname) || communitySpaceFromPath(window.location.pathname))
           ? safeCommunityReturnPath(`${window.location.pathname}${window.location.search || '?join=1'}`) : null;
         if (communityReturn) sessionStorage.setItem(COMMUNITY_RETURN_KEY, communityReturn);
         navigate(communityReturn ? communitySignupPath(communityReturn) : '/auth', { replace: true });
@@ -644,6 +645,7 @@ const AppInner: React.FC = () => {
       <OnboardingGate>
       <Routes>
         <Route path="/community/:tenantId" element={<CommunityMemberPage />} />
+        <Route path="/community/:tenantId/:communityId" element={<CommunitySpacePage />} />
         <Route path="/auth" element={<AuthPage onNavigate={handleNavigate} />} />
         <Route
           path="/onboarding"

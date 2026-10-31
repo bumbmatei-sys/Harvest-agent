@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { communityHref, communityIdFromPath, communityJoinPath, communitySignupPath, communitySource, safeCommunityReturnPath } from './navigation';
+import { communityHref, communityIdFromPath, communityJoinPath, communitySignupPath, communitySource, communitySpaceFromPath, communitySpacePath, safeCommunityReturnPath } from './navigation';
 describe('same-origin community navigation', () => {
-  it.each(['https://evil.test/community/a', '//evil.test', '/\\evil.test', '/%2f%2fevil.test', '/community/a%0a', '/community/a\n', '/auth', 'javascript:alert(1)', '/community/../admin', '/community/a/extra', '/community/a%5c', '/community/a?next=\n'])('refuses unsafe return path %s', path => {
+  it.each(['https://evil.test/community/a', '//evil.test', '/\\evil.test', '/%2f%2fevil.test', '/community/a%0a', '/community/a\n', '/auth', 'javascript:alert(1)', '/community/../admin', '/community/a/extra/more', '/community/a/Extra', '/community/a/-x', '/community/a%5c', '/community/a?next=\n'])('refuses unsafe return path %s', path => {
     expect(safeCommunityReturnPath(path)).toBeNull();
   });
   it('hands tenant-host discovery to the central origin without changing host identity', () => {
@@ -24,5 +24,15 @@ describe('same-origin community navigation', () => {
     expect(communityIdFromPath('/community/a')).toBe('a');
     expect(communityIdFromPath('/admin/a')).toBeNull();
     expect(communityIdFromPath('/community/a/admin')).toBeNull();
+  });
+  // #576: '/community/a/extra' was refused before communities other than the
+  // default one had pages. It is now one, so it moved to the accepted list.
+  it('accepts and parses a community space path, and keeps it out of the default scope', () => {
+    expect(safeCommunityReturnPath('/community/grace/youth-night?join=1')).toBe('/community/grace/youth-night?join=1');
+    expect(communitySpaceFromPath('/community/grace/youth-night')).toEqual({ tenantId: 'grace', communityId: 'youth-night' });
+    expect(communitySpaceFromPath('/community/grace')).toBeNull();
+    expect(communitySpacePath('grace', 'youth')).toBe('/community/grace/youth');
+    expect(() => communitySpacePath('grace', 'Bad Id')).toThrow();
+    expect(communityIdFromPath('/community/grace/youth')).toBeNull();
   });
 });

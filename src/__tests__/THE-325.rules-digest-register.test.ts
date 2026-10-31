@@ -783,12 +783,13 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
  */
 const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string, change: string, why: string]>> = {
   'src/components/__tests__/the-255-install-app.test.tsx': [
-    '6daf1f553d295d3a6ca136fdff15cf624ab153c88fd267affb1ad8fa7f8f6dcb',
-    'THE-999998',
+    '07f6b7f16d7b0c79f8aa14ebb9528de3064f76d511e7c344acba4645347df1c0',
+    '#576',
     'the public /api/waitlist route answers CORS for the marketing site, so it '
       + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
       + 'red, so the list never moved with it. No other line of the suite changed.'
-      + ' THE-999998 appends the exact reviewed /community/:tenantId route while preserving all original route ordering, marker and install assertions. Previous current digest: 74c840b447d9cd8bda7b1012c879cd4f0adae071768b3ef3eaa3850ce5667a1d.',
+      + ' THE-999998 appends the exact reviewed /community/:tenantId route while preserving all original route ordering, marker and install assertions. Previous current digest: 74c840b447d9cd8bda7b1012c879cd4f0adae071768b3ef3eaa3850ce5667a1d.'
+      + ' #576 appends /community/:tenantId/:communityId directly after that route; every original route keeps its position. Previous current digest: 6daf1f553d295d3a6ca136fdff15cf624ab153c88fd267affb1ad8fa7f8f6dcb.',
   ],
   // APPENDED BY #529, then the current digest moved by #531, by #536, and again
   // when #530 merged main. This map holds one current digest, so the earlier

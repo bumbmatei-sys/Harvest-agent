@@ -1,6 +1,13 @@
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 import { isCommunityTenantId, type CommunitySource } from '../community-membership';
 
+/**
+ * A ministry's default community page, or (#576) one of its other communities:
+ * /community/{tenantId} or /community/{tenantId}/{communityId}.
+ */
+const COMMUNITY_RETURN_PATH = /^\/community\/[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?:\/[a-z0-9][a-z0-9-]{0,62})?$/;
+const COMMUNITY_SPACE_PATH = /^\/community\/([A-Za-z0-9][A-Za-z0-9_-]{0,127})\/([a-z0-9][a-z0-9-]{0,62})$/;
+
 /** Accept only literal same-origin paths; reject encoded separators/controls too. */
 export function safeCommunityReturnPath(value: unknown): string | null {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\\s\u0000-\u001f\u007f]/.test(value)) return null;
@@ -8,7 +15,7 @@ export function safeCommunityReturnPath(value: unknown): string | null {
     const decoded = decodeURIComponent(value);
     if (decoded.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(decoded)) return null;
     const parsed = new URL(value, 'https://theharvest.app');
-    if (parsed.origin !== 'https://theharvest.app' || !/^\/community\/[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(parsed.pathname)) return null;
+    if (parsed.origin !== 'https://theharvest.app' || !COMMUNITY_RETURN_PATH.test(parsed.pathname)) return null;
     return `${parsed.pathname}${parsed.search}`;
   } catch { return null; }
 }
@@ -48,4 +55,15 @@ export function communityHref(path: string, hostname = typeof window === 'undefi
   if (!safeCommunityReturnPath(path)) throw new Error('Invalid community path.');
   const tenantHost = hostname.endsWith('.theharvest.app') && !isNonTenantSubdomain(hostname.split('.')[0]);
   return tenantHost ? `https://theharvest.app${path}` : path;
+}
+
+/** #576: the tenant and community of a community space page, or null. */
+export function communitySpaceFromPath(pathname: string): { tenantId: string; communityId: string } | null {
+  const match = COMMUNITY_SPACE_PATH.exec(pathname);
+  return match ? { tenantId: match[1], communityId: match[2] } : null;
+}
+export function communitySpacePath(tenantId: string, communityId: string): string {
+  const path = `/community/${tenantId}/${communityId}`;
+  if (!communitySpaceFromPath(path)) throw new Error('Invalid community.');
+  return path;
 }

@@ -326,6 +326,8 @@ describe('the paid funnel’s route order and markers are unchanged', () => {
       // THE-999998: reviewed member route; every original funnel/admin route
       // below retains its exact position relative to every other original.
       '/community/:tenantId',
+      // #576: the reviewed space route for a community other than the default one.
+      '/community/:tenantId/:communityId',
       '/auth',
       '/onboarding',
       '/church-onboarding',

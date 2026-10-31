@@ -605,7 +605,8 @@ describe('4 — the member app is state-driven, so it has the same symptom by a 
     // routes are the SPA root and the community page (/community/:tenantId),
     // which is a route of its own rather than a tab.
     const member = ANALYTICS_ROUTES.filter((r) => r.surface === 'member').map((r) => r.pattern);
-    expect(member).toEqual(['/', '/community/[tenantId]']);
+    // #576 adds the space of a community other than the default one, also a route.
+    expect(member).toEqual(['/', '/community/[tenantId]', '/community/[tenantId]/[communityId]']);
   });
 });
 

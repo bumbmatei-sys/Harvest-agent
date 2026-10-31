@@ -913,6 +913,7 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
   { file: 'src/components/community/CommunityEntryDialog.tsx', ticket: 'THE-999999', why: 'The community entry dialog uses the shared checkbox to record a member’s explicit acceptance of the ministry’s community rules.' },
   { file: 'src/components/community/ClosedCommunity.tsx', ticket: '#570', why: 'APPENDED BY #570. The closed community notice uses the shared empty state, the same primitive the other no-content screens use, for the title, the explanation and its one action.' },
   { file: 'src/components/community/AdminCommunities.tsx', ticket: '#570', why: 'APPENDED BY #570. The Communities page and its editor use the shared textarea for the About text and toggle groups for the free or paid, public or private and open or apply choices.' },
+  { file: 'src/components/community/CommunitySpacePage.tsx', ticket: '#576', why: 'APPENDED BY #576. The community space uses the shared textarea for the feed composer and the chat message box.' },
   { file: 'src/components/digital-products/DigitalProducts.tsx', ticket: 'DIGITAL-1', why: 'DIGITAL-1 uses the existing dialog and other primitives for digital product editing and member catalogue actions; the primitives themselves are unchanged.' },
   {
     file: 'src/components/AdminEvents.tsx',

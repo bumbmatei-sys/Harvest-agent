@@ -3,6 +3,14 @@
 export const COMMUNITY_CONSENT_VERSION = 2;
 export const COMMUNITY_CONSENT_SCOPE = 'owner_contact_and_view_name_email_answers';
 export const COMMUNITY_CONSENT_NOTICE = 'By joining, you agree that the community owner can contact you and can see your name, email and answers.';
+/**
+ * #576: the notice shown before joining any community other than a ministry's
+ * default one, in the wording Matei approved. Same scope as version 2 (owner
+ * contact, name, email, answers), so it records the same consent version.
+ */
+export function communityConsentNotice(community: string, ministry: string): string {
+  return `Joining ${community} shares your name and email with ${ministry}, who runs it. They can see your answers to any questions and may contact you about the community. You can leave anytime.`;
+}
 
 export const COMMUNITY_SOURCES = ['discover', 'link', 'website'] as const;
 export type CommunitySource = typeof COMMUNITY_SOURCES[number];

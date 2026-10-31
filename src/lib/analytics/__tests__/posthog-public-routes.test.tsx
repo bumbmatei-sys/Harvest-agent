@@ -156,6 +156,7 @@ const RESOLVED_PATH: Record<string, string> = {
   // worth reopening the question.
   '/admin/[section]/[itemId]': '/admin/docs/kR91mVzQ7dLpAe30',
   '/community/[tenantId]': '/community/tenant-a',
+  '/community/[tenantId]/[communityId]': '/community/tenant-a/youth-night',
   // Every named section: the path IS the pattern, which is the point of THE-227.
   ...Object.fromEntries(ADMIN_SECTION_SLUGS.map((slug) => [`/admin/${slug}`, `/admin/${slug}`])),
   '/blog/[id]': '/blog/7bQxs2LmNfA4dR8v',
