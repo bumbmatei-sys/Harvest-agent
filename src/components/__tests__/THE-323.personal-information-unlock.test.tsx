@@ -911,6 +911,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/kit.tsx',
       // #556: split series start fields retain the mobile floor on their shared Inputs.
       'src/components/events/EventScheduleFields.tsx',
+      'src/components/events/EventStartField.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as
