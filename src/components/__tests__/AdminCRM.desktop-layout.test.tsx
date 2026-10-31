@@ -672,6 +672,9 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // is what makes "this link obeys Rule 4" a fact rather than seven copies
       // of a number that agree today.
       'src/components/admin/GivingDocsLink.tsx',
+      // #570 — the admin Communities page takes FORM_CONTAINER as its measure, the
+      // same as the Products page it mirrors. It mints no width of its own.
+      'src/components/community/AdminCommunities.tsx',
       'src/components/country/CountryPrompt.tsx',
       // THE-313 — the order of service, mounted on the event detail view. Two
       // files, and only ONE of them spends a rule: `events/ServicePlanRow.tsx`

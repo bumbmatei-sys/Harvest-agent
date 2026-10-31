@@ -628,6 +628,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '22f9216013b729aeb8da0ba19af045aa1e48014fea0977b7a05f42eebf5da566',
     // APPENDED #566: the sidebar side starts from the current page and follows route changes; every gate and route unchanged.
     'a8d6a92c9ce5cb503ead8c6bcf6414b1a1f9f7cc96f7081d0b6afb946a7a8b8b',
+    // APPENDED BY #570: the Communities page replaces the community setup tab.
+    '3cdf0683e87e40c9401d658b947ff8aa05971d7ffb87262a6183fc145cd2864b',
     // main at 902763a, where this branch started.
     '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
     // main at 133d557 — THE-291 (#434) removed the client-side write to plan.

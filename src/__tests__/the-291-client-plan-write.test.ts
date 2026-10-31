@@ -640,7 +640,14 @@ describe('5 · the money path is byte-identical', () => {
     // and server-owned notices; neither route grants a billing entitlement.
     const eventRoutes = ['src/app/api/events/edit/route.ts', 'src/app/api/events/cancel/route.ts'];
     for (const route of eventRoutes) expect(routes).toContain(route);
-    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route) && !membershipRoutes.includes(route) && !eventRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
+    // #570: the admin Communities page. These routes write community records and
+    // the closed flag; they read the plan to hold the community limit and write none.
+    const communitiesRoutes = ['src/app/api/communities/route.ts', 'src/app/api/communities/[communityId]/route.ts'];
+    for (const route of communitiesRoutes) {
+      expect(routes).toContain(route);
+      expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);
+    }
+    expect(routes.filter((route) => !digitalRoutes.includes(route) && !communityReviewRoutes.includes(route) && !signupRoutes.includes(route) && !membershipRoutes.includes(route) && !eventRoutes.includes(route) && !communitiesRoutes.includes(route)).length, 'an API route was added or removed').toBe(142);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',

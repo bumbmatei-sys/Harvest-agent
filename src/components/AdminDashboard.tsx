@@ -44,6 +44,7 @@ import { SignupPagesScreen } from './signup-pages/SignupPagesScreen';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import { CommunitySettingsScreen } from './community/CommunitySettingsScreen';
+import { AdminCommunities } from './community/AdminCommunities';
 import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
@@ -933,7 +934,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.communityGroups) &&
       canCommunity &&
       { id: 'community', label: 'Community', icon: NAV_ICONS.communities },
-    canCommunity && { id: 'community-setup', label: 'Community setup', icon: NAV_ICONS.communities },
+    canCommunity && { id: 'community-setup', label: 'Communities', icon: NAV_ICONS.communities },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
     isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
@@ -1522,12 +1523,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 ? <div className="p-4 lg:p-0"><AdminSms /></div>
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community-setup' && canCommunity ? (
-            <CommunitySettingsScreen tenantId={tenantId} available={{
+            <div className="p-4 lg:p-0"><AdminCommunities tenantId={tenantId} defaultSetup={<CommunitySettingsScreen tenantId={tenantId} available={{
               news: planAllows(features?.newsFeed), blog: planAllows(features?.blog),
               courses: true, events: true, messages: planAllows(features?.communityGroups),
               prayer: true, give: planAllows(features?.fundraising),
               livestream: planAllows(features?.livestream), bible: true, map: planAllows(features?.map),
-            }} />
+            }} />} /></div>
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

@@ -148,6 +148,10 @@ vi.mock('../AdminCheckin', screenStub('AdminCheckin'));
 vi.mock('../AdminLivestream', screenStub('AdminLivestream'));
 vi.mock('../AdminSms', screenStub('AdminSms'));
 vi.mock('../AdminCommunity', screenStub('AdminCommunity'));
+// #570: the Communities page wraps the default community's setup.
+vi.mock('../community/AdminCommunities', () => ({
+  AdminCommunities: () => <div data-screen="AdminCommunities" />,
+}));
 vi.mock('../community/CommunitySettingsScreen', () => ({
   CommunitySettingsScreen: () => <div data-screen="CommunitySettingsScreen" />,
 }));
@@ -649,14 +653,15 @@ describe("6 — a limited admin's permission gates still apply on top of the pla
   it.each([
     { permission: 'manageSettings', visible: false },
     { permission: 'manageCommunity', visible: true },
-  ])('Community setup matches the server permission for a $permission-only admin', async ({ permission, visible }) => {
+  // #570 renamed the entry to Communities; the page holds the default community's setup.
+  ])('Communities matches the server permission for a $permission-only admin', async ({ permission, visible }) => {
     store.current = { ...store.current, tenantPlan: 'ministry' };
     ctx.current = { ...ctx.current, tenantPlan: 'ministry' };
     await mount({ role: 'admin', permissions: { [permission]: true } }, 'community-setup');
     const labels = Array.from(container.querySelectorAll('[data-nav-group-labels]'))
       .flatMap(group => group.getAttribute('data-nav-group-labels')!.split('|'));
-    expect(labels.includes('Community setup')).toBe(visible);
-    expect(container.querySelector('[data-screen="CommunitySettingsScreen"]') !== null).toBe(visible);
+    expect(labels.includes('Communities')).toBe(visible);
+    expect(container.querySelector('[data-screen="AdminCommunities"]') !== null).toBe(visible);
   });
 
   it("a limited admin's permission gates still apply on top of the plan gate", async () => {
