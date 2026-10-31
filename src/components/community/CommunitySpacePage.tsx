@@ -7,7 +7,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { communityConsentNotice, isCommunityTenantId } from '@/lib/community-membership';
 import { DEFAULT_COMMUNITY_ID, formatCommunityPrice, isCommunityId, type CommunityRecord } from '@/lib/community/communities';
 import {
-  changeMembership, createPost, sendMessage, useChannels, useCommunityRecord, useIsMember, useMessages, usePosts,
+  changeMembership, createPost, sendMessage, useChannels, useCommunityRecord, useIsMember, useMembers, useMessages, usePosts,
 } from '@/lib/community/space';
 import { isTenantAdminRole } from '@/lib/roles';
 import { checkRosterAdminStatus } from '@/utils/tenant.utils';
@@ -116,12 +116,12 @@ function PublicPage({ tenantId, community, ministryName }: { tenantId: string; c
   </section>;
 }
 
-type Section = 'feed' | 'chat';
+type Section = 'feed' | 'chat' | 'members';
 
 function Space({ tenantId, community, isAdmin }: { tenantId: string; community: CommunityRecord; isAdmin: boolean }) {
   const navigate = useNavigate();
   const [section, setSection] = useState<Section>('feed');
-  const sections: Array<[Section, string]> = [['feed', 'Feed'], ['chat', 'Chat']];
+  const sections: Array<[Section, string]> = [['feed', 'Feed'], ['chat', 'Chat'], ['members', 'Members']];
   return <div data-community-space={community.id} className="flex min-h-dvh flex-col md:flex-row">
     <nav aria-label={`${community.name} sections`} className="flex shrink-0 flex-col gap-1 border-b border-line bg-surface-raised p-3 md:w-60 md:border-b-0 md:border-r">
       <div className="mb-2 flex items-center gap-3"><CommunityIcon community={community} size="size-10" /><span className="font-display text-lg leading-tight">{community.name}</span></div>
@@ -135,7 +135,7 @@ function Space({ tenantId, community, isAdmin }: { tenantId: string; community: 
     </nav>
     <main className="min-w-0 flex-1 p-4 md:p-6">
       {community.status !== 'published' && <p className="mb-4 rounded-lg border border-line bg-surface-sunken p-3 text-sm">This community is a draft. Only your team can see it until you publish it.</p>}
-      {section === 'feed' ? <Feed tenantId={tenantId} communityId={community.id} /> : <Chat tenantId={tenantId} communityId={community.id} />}
+      {section === 'feed' ? <Feed tenantId={tenantId} communityId={community.id} /> : section === 'chat' ? <Chat tenantId={tenantId} communityId={community.id} /> : <Members tenantId={tenantId} communityId={community.id} />}
     </main>
   </div>;
 }
@@ -198,5 +198,23 @@ function Chat({ tenantId, communityId }: { tenantId: string; communityId: string
         </li>)}</ol>)}
       <Composer placeholder="Message" action="Send" max={2000} onSubmit={text => sendMessage(tenantId, communityId, channelId, text)} />
     </div>
+  </section>;
+}
+
+function Members({ tenantId, communityId }: { tenantId: string; communityId: string }) {
+  const members = useMembers(tenantId, communityId);
+  if (members.status === 'loading') return <p role="status">Loading members…</p>;
+  if (members.status === 'error') return <p role="alert">{members.message}</p>;
+  const { members: list, truncated } = members.data;
+  return <section aria-label="Members" className="mx-auto max-w-2xl space-y-4">
+    <h2 className="font-display text-2xl">{list.length === 1 ? '1 member' : `${list.length.toLocaleString()}${truncated ? '+' : ''} members`}</h2>
+    {list.length === 0 ? <p className="text-muted">No members yet.</p> : <ul className="divide-y divide-line rounded-xl border border-line bg-surface-raised">
+      {list.map(person => <li key={person.uid} data-member={person.uid} className="flex items-center gap-3 p-3">
+        {person.photoURL
+          ? <img src={person.photoURL} alt="" className="size-10 rounded-full object-cover" />
+          : <div aria-hidden className="flex size-10 items-center justify-center rounded-full bg-surface-sunken text-sm font-semibold text-muted">{person.name.slice(0, 1).toUpperCase()}</div>}
+        <div><p className="font-semibold">{person.name}</p>{person.joinedAt && <p className="text-xs text-muted">Joined {new Date(person.joinedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</p>}</div>
+      </li>)}
+    </ul>}
   </section>;
 }

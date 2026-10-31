@@ -8,6 +8,7 @@ import { auth, db } from '@/firebase';
 import { authFetch } from '@/utils/auth-fetch';
 import { COMMUNITY_CONSENT_VERSION } from '@/lib/community-membership';
 import { readCommunityRecord, type CommunityRecord } from './communities';
+import type { MemberListEntry } from './members';
 
 /**
  * The member side of a community other than a ministry's default one (#576).
@@ -139,4 +140,23 @@ export async function sendMessage(tenantId: string, communityId: string, channel
   });
   // The preview is best effort: the message itself is what matters.
   await updateDoc(doc(communityRef(tenantId, communityId), 'channels', channelId), { lastMessage: text.slice(0, 140), lastMessageAt: serverTimestamp() }).catch(() => {});
+}
+
+
+/** #576: the community's members, names and photos only, from the server. */
+export function useMembers(tenantId: string, communityId: string): Load<{ members: MemberListEntry[]; truncated: boolean }> {
+  const [state, setState] = useState<Load<{ members: MemberListEntry[]; truncated: boolean }>>({ status: 'loading' });
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading' });
+    authFetch(`/api/communities/${communityId}/members?tenantId=${encodeURIComponent(tenantId)}`)
+      .then(async response => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(body.members)) throw new Error(typeof body.error === 'string' ? body.error : 'Could not load members. Please try again.');
+        if (!cancelled) setState({ status: 'ready', data: { members: body.members, truncated: body.truncated === true } });
+      })
+      .catch(error => { if (!cancelled) setState({ status: 'error', message: error instanceof Error ? error.message : 'Could not load members. Please try again.' }); });
+    return () => { cancelled = true; };
+  }, [tenantId, communityId]);
+  return state;
 }
