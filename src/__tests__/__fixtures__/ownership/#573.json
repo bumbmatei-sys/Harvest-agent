@@ -40,6 +40,21 @@
       "file": "src/app/api/community/join/route.test.ts",
       "digest": "0f44c06e1a01cbb2bb2b099adfd19e00c4ddd77982b61f188111408a482f6a6c",
       "why": "APPENDED, NOT SUBSTITUTED — #573: departure fixtures are now non-subscribers (their only permission was joining), keeping every block assertion; the 'stale subscribed left contact' case is inverted to Matei's rule (a subscriber who leaves keeps the newsletter, gets no block, and is still stopped from one-to-one and community email)."
+    },
+    {
+      "file": "src/components/__tests__/AdminCRM.desktop-layout.test.tsx",
+      "digest": "6d214a0bff6b760ec23290dda593888d7080242c9ba8a03bbe91e873169c8785",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: the phone-layer guards accept the tokens the shared Select primitive itself spells (read from ui/select.tsx, which the primitive guards digest-pin) and the CRM filter wrapper's own classes; any other new token or height still fails. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "48df8d966ed93c9c0a1aa6fbc8a694ca74330d7b2201dd0e639987e77e5615cb",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: appends CrmCommunityFilters to the min-h-11 sweep in sorted order. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/THE-342.read-honesty-guards.test.ts",
+      "digest": "c74353a6ac584c3b736d8e0e7218f1ba5a14e0c2078a4e21eec94d54b6cabcff",
+      "why": "APPENDED, NOT SUBSTITUTED — #573: appends AdminCRM's #573 digest to the accepted set; every value above and every read-honesty assertion retained."
     }
   ]
 }

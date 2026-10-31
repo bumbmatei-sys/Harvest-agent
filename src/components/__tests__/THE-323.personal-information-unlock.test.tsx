@@ -833,6 +833,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/community/CommunityMemberPage.tsx',
       'src/components/community/CommunityReviews.tsx', // Review controls use the phone floor.
       'src/components/community/CommunitySettingsEditor.tsx',
+      // APPENDED BY #573. The CRM community, status and newsletter dropdowns take the phone floor.
+      'src/components/community/CrmCommunityFilters.tsx',
       'src/components/community/DeleteCommunityData.tsx', // #561: erasure confirmation uses shadcn controls.
       'src/components/community/DiscoveryViews.tsx', // Discovery card actions.
       // #557: Free member shell controls use the phone touch floor.
