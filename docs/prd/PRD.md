@@ -2007,3 +2007,210 @@ No Eden reference applies to this section's subject matter.
 See [§21](#21-open-questions-for-matei) items tagged **Security**.
 
 ---
+
+## 20. Non-functional requirements, analytics & roadmap
+
+### 20.1 Non-functional requirements
+- **Mobile-first, every screen.** Touch targets ≥44px below `sm`, 38px above
+  ([§16.3](#163-design-tokens-from-agentsmd-restated-only-where-load-bearing-for-ui-work)); a
+  bare shadcn `<Button>` does not clear either floor on its own and needs an explicit height
+  class.
+- **Read honesty.** A figure ships only if its read is exact or provably complete; a capped list
+  says so on screen (`AGENTS.md`, [§17.3](#173-dashboard)).
+- **Contrast is measured**, via a real compiled-stylesheet test, not eyeballed
+  ([§16.3](#163-design-tokens-from-agentsmd-restated-only-where-load-bearing-for-ui-work)).
+- **No unordered `limit(N)` Firestore query** anywhere in the product — Firestore has no
+  default order, so an unordered limit returns arbitrary rows (`AGENTS.md`, behind at least 41
+  prior instances).
+- **Testing:** Vitest + Testing Library, `happy-dom` by default, `node` + a dedicated
+  measurement harness for anything that measures real layout (CDP-attached; `happy-dom` has no
+  layout engine).
+- **CI:** runs on `pull_request` only; `main` has no `push` trigger and is therefore
+  unprotected against a direct push bypassing CI entirely (`AGENTS.md`) — worth knowing before
+  assuming every change to `main` was checked.
+- **Firestore rules auto-deploy to production on merge**; any rules change this document's
+  requirements imply (e.g. new `communities` sub-resources, a `communityId` field on events)
+  needs its own founder sign-off, separate from the app-code PR around it.
+- **Performance:** Vercel's serverless request body cap is 4.5MB — any new upload surface this
+  document specifies (QR image assets are tiny and fine; a future large upload is not) should
+  use the existing presign-then-PUT pattern (`/api/storage/presign`), not a direct POST through
+  an API route.
+
+### 20.2 Analytics
+See [§19.5](#195-product-analytics-is-scoped-specifically-because-of-what-this-app-holds) for
+the privacy-driven design of the PostHog install. In non-functional terms:
+- **Vercel Analytics** (`@vercel/analytics/next`) covers every Next route today, anonymously,
+  for traffic/Web Vitals.
+- **PostHog**, once a project key is set, additionally covers identified admin/member usage
+  (by Firebase `uid`, grouped by tenant) and anonymous public-route traffic — but is currently
+  inert in production (no key configured).
+- **Recommendation carried over from the install's own documentation:** keep both until PostHog
+  has a month of real data, then decide whether Vercel Analytics is still earning its place.
+- Any new feature in this document that should be measured (e.g. "evangelism loop completion" —
+  QR scan → form submit → community join, [§1.2](#12-the-evangelism-loop-this-product-is-built-around))
+  needs its event name and properties added to the closed vocabulary in
+  `src/lib/analytics/events.ts` deliberately — autocapture is off by design, so nothing is
+  tracked by accident, which also means nothing is tracked unless someone adds it.
+
+### 20.3 Roadmap / phasing — an inventory, not a sequencing decision
+This document surfaced the following gaps between what's built and what's specified. Listing
+them together here is useful for prioritization, but **the actual order and timing is Matei's
+call, not this document's** — see [§21](#21-open-questions-for-matei) for the specific questions
+each one raises.
+
+**Foundational (several other items depend on these):**
+- Remove the subdomain-at-signup step from `ChurchOnboarding.tsx`/`FirstRunSetup.tsx`
+  ([§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan), [§4.3](#43-functional-requirements)).
+- Build the website publisher that claims a subdomain at publish time
+  ([§13](#13-website-builder--public-website)), since it's both the replacement for the
+  subdomain-at-signup step and the home for the link-in-bio-style public page
+  ([§11](#11-link-in-bio)).
+
+**Completing the evangelism loop ([§1.2](#12-the-evangelism-loop-this-product-is-built-around)):**
+- The after-submit community/product card on Forms and Sign-up pages
+  ([§9.4](#94-after-submit-card)).
+- QR codes on Forms (Sign-up pages already have them) and SVG export everywhere
+  ([§9.5](#95-qr-codes--required-on-every-plan-png--svg)).
+- The plain-language consent notice shown before joining a community
+  ([§6.5](#65-consent-notice)).
+- CRM filters by community, source, status, event tags and dates
+  ([§6.4](#64-one-crm-many-communities--and-the-filters-it-needs)).
+- The Events+Communities integration end to end ([§8](#8-events--communities-integration)).
+
+**Checkout correctness:**
+- The shadcn "Payment didn't go through" state with Try again / Choose another plan, and the
+  60-second pending-payment timeout, distinct from `WorkspaceHandoff`'s existing 180-second
+  stalled-but-paid screen ([§3.4](#34-checkout-must-verify-real-payment-status-server-side)).
+
+**Revenue-adjacent, lower urgency:**
+- Newsletter domain verification (own-domain sending) and bring-your-own-key
+  ([§12.3](#123-feature-flag-and-provider-split)).
+- The OmniSocials Connect embed, once the native-composer-vs-embed question is resolved
+  ([§14.5](#145-omnisocials-connect--planned-not-started)).
+- AI assistant actions beyond RAG chat, gated on resolving the MiMo pay-as-you-go key blocker
+  first ([§15.2](#152-status-today-rag-chat-no-actions-yet), [§15.4](#154-model)).
+- Coaching, Bundle, and Community-as-a-product — explicitly roadmap-visible, not committed
+  ([§10.3](#103-whats-actually-built-today-grounded-in-code)).
+
+**Long-horizon infrastructure:**
+- The Firebase → Neon migration, gated on confirming the trade-off is worth it before any
+  scoping work starts ([§18](#18-architecture--future-firebase--neon)).
+
+**Compliance housekeeping:**
+- The analytics consent-banner legal question and the now-stale privacy-policy sentence in
+  `harvest-presentation-site` ([§19.5](#195-product-analytics-is-scoped-specifically-because-of-what-this-app-holds)).
+
+### 20.4 Screenshots
+No Eden reference applies to this section's subject matter.
+
+---
+
+## 21. Open questions for Matei
+
+Grouped by the tag used throughout this document. Each is a place where this PRD deliberately
+stopped short of inventing a fact.
+
+**Vision**
+1. Should "evangelism loop completion" (QR scan → form submit → community join) become a
+   tracked product metric once the analytics consent question ([§Security](#q-security) below)
+   is resolved? ([§1.2](#12-the-evangelism-loop-this-product-is-built-around), [§20.2](#202-analytics))
+
+**Tenancy**
+2. Confirm the no-subdomain-at-signup direction fully supersedes `ChurchOnboarding.tsx`'s and
+   `FirstRunSetup.tsx`'s current subdomain step, and approve removing it as a concrete change.
+   ([§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan))
+3. What should happen to the post-payment landing screen's *purpose* (telling the owner where
+   their account is) once the subdomain-at-signup step is removed and `WorkspaceHandoff`'s
+   origin-crossing problem no longer exists in the same shape? ([§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan))
+
+**Billing**
+4. Is the 60-second pending-payment timeout meant to replace or sit alongside
+   `WorkspaceHandoff`'s existing 180-second stalled-but-paid timeout? This document treated them
+   as two different moments (ambiguous-not-yet-confirmed vs. confirmed-but-slow) — please
+   confirm that reading is correct. ([§3.4](#34-checkout-must-verify-real-payment-status-server-side))
+
+**Onboarding**
+5. Ministry name is still collected at sign-up for use as the workspace/default-community name
+   — confirm this stays even once it no longer doubles as a subdomain slug, and confirm whether
+   `signupSubdomain` (the stored marker field name) should be renamed now that it no longer
+   means what its name says. ([§4.3](#43-functional-requirements))
+
+**Communities**
+6. Is publishing a second community (currently withheld until each community has its own
+   independent feed/chat) actively being built toward, or on indefinite hold?
+   ([§5.4](#54-functional-requirements))
+
+**CRM**
+7. What exact wording should the plain-language consent notice use before a visitor joins a
+   community — specifically, how should it describe what the owner can see (name, email,
+   answers) without sounding like a legal disclaimer that discourages joining?
+   ([§6.5](#65-consent-notice))
+8. Should Forms and Sign-up pages share one inbox, or is keeping them as two separate
+   submission surfaces intentional? ([§9.6](#96-inbox--kpis))
+
+**Events-Communities**
+9. What priority/timeline should the Events+Communities integration have, given no code for it
+   exists yet and it touches CRM filtering, consent, and the join path all at once?
+   ([§8](#8-events--communities-integration))
+
+**Forms**
+10. (See CRM #8 above — the inbox question spans both sections.)
+
+**Products**
+11. Should Coaching, Bundle, or Community-as-a-product move from "listed but unavailable" to
+    active development, and if so, in what order? ([§10.3](#103-whats-actually-built-today-grounded-in-code))
+
+**LinkInBio / Website**
+12. `website-brief.md` contains two drafts that disagree: an earlier line says Free has "no
+    website, no subdomain," while a later line in the same document says "website + subdomain on
+    every plan, no gate." This document assumed the later, no-gate line is final, consistent
+    with [§2.4](#24-required-direction-no-subdomain-at-sign-up-on-any-plan)'s "subdomain claimed
+    only at publish time, on whichever plan allows a published site" — please confirm which
+    draft is actually final, and if a plan gate on *publishing* (not on having a subdomain
+    pre-assigned) is intended after all. ([§13.5](#135-plan-availability))
+
+**Newsletter**
+13. What priority should domain verification (sending from the ministry's own domain instead of
+    Harvest's shared sending address) have — it's real scope, not a toggle flip.
+    ([§12.3](#123-feature-flag-and-provider-split))
+14. Confirm bring-your-own-sending-key is out of scope for an initial release and genuinely a
+    later "advanced" tier. ([§12.3](#123-feature-flag-and-provider-split))
+
+**Social**
+15. Does OmniSocials Connect **replace** the native composer/calendar/queue that's already
+    built, or does it **add** inbox/analytics on top while the native composer stays the
+    default? This changes the shape of the work substantially.
+    ([§14.5](#145-omnisocials-connect--planned-not-started))
+
+**AI**
+16. Is an agentic assistant (performs actions, not just RAG chat) in scope for a first AI
+    assistant release, or is RAG chat the v1 and actions a v2? ([§15.2](#152-status-today-rag-chat-no-actions-yet))
+17. Has the MiMo pay-as-you-go key (replacing the Token Plan subscription key that its own terms
+    forbid using as an application backend) been obtained, and is this still a launch blocker
+    for *any* AI assistant usage, not just actions? ([§15.4](#154-model))
+
+**Architecture**
+18. Is the Firebase → Neon trade-off (relational integrity and RLS vs. losing the offline/
+    realtime client SDK the mobile-first member app currently benefits from) worth pursuing at
+    all, before any scoping work starts? ([§18.3](#183-why-this-would-ever-be-worth-doing-to-confirm-not-assume))
+19. If the migration proceeds, which auth provider replaces Firebase Auth, and on what timeline
+    relative to the data migration itself? ([§18.4](#184-proposed-scope-and-phasing))
+
+**Security** <a id="q-security"></a>
+20. Does an EU church's members require a consent banner for the PostHog analytics processor?
+    This is a legal question this document explicitly does not answer.
+    ([§19.5](#195-product-analytics-is-scoped-specifically-because-of-what-this-app-holds))
+21. Who owns fixing the now-stale sentence in `harvest-presentation-site`'s privacy policy
+    (`src/content/legal.ts`), given it lives in a different repository than this one?
+    ([§19.5](#195-product-analytics-is-scoped-specifically-because-of-what-this-app-holds))
+
+**Screenshot sourcing (process note, not a product question)**
+22. This document's screenshots are restricted to the Eden reference folders
+    (`eden-archive/`, `eden-ref/`, the `eden-*` subfolders of `reference-shots/`, and
+    `website-ref/eden-email-themes/`) per Matei's direction mid-document. Several sections
+    therefore show no screenshot at all because no Eden analogue exists for a Harvest-specific
+    feature (Accounts & tenancy, Onboarding, Events+Communities integration, Website builder as
+    its own surface, Campaigns/giving, Dashboard, Team/admin roles, Architecture, Security,
+    Non-functional) — confirm this is the intended scope, or whether a follow-up pass should add
+    current-Harvest-UI screenshots for those sections from the fuller `screens.json` inventory.
+
