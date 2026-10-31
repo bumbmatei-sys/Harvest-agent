@@ -417,3 +417,129 @@ that happens to be responsive.
 See [§21](#21-open-questions-for-matei) items tagged **Onboarding**.
 
 ---
+
+## 5. Communities
+
+### 5.1 Goal
+Let a ministry run one or more communities — a feed, chat, and membership roster, public or
+private, free or (eventually) paid — in the same place visitors discover it, following Eden's
+community product closely enough that an Eden user would recognise the shape immediately.
+
+### 5.2 Users / roles
+Owner/admin with `manageCommunity` permission (create, edit, publish, delete communities,
+moderate feed/chat), member (joins, posts, chats, leaves), visitor (browses Discover, reads a
+public community's About page before joining).
+
+### 5.3 The default community, and why "several communities" is not a flat list
+Every tenant has always had **one** community — its existing feed/chat/membership, configured at
+`tenants/{t}/settings/community`. That one is now called the **default community**
+(`DEFAULT_COMMUNITY_ID = 'default'`, `src/lib/community/communities.ts`) and keeps living in the
+same place; it is never a row in the new `communities` sub-collection. Every *additional*
+community a ministry creates is a full record at `tenants/{t}/communities/{id}`
+(`communitiesRef`, `src/lib/community/communities-server.ts:24`), with its own name, tagline,
+icon, About text, visibility, pricing and joining mode. `loadCommunities()` always returns the
+default community first (unless the ministry has closed it, in which case it's omitted
+entirely — `defaultClosed`), then the rest in creation order.
+
+### 5.4 Functional requirements
+- **Create:** an owner with `manageCommunity` creates a community from a name; the server
+  derives a unique, URL-safe id (`communityIdFor`) and the ministry's `maxCommunities` plan cap
+  is enforced server-side (`communityLimit`, reading `getEffectiveFeatures(...).maxCommunities`,
+  with `-1` meaning unlimited — this is the same `UNLIMITED_CAP` sentinel used for campuses).
+- **Edit:** `name` (≤80 chars), `tagline` (≤160), `about` (≤10,000), `iconUrl` (HTTPS only,
+  ≤2048 chars, no embedded credentials), `visibility` (`public`/`private`), `joining.mode`
+  (`open`/`apply`), `pricing` (`free` or `paid`). All validated server-side in
+  `readCommunityEdit` — a malformed record fails the whole admin list load rather than silently
+  vanishing, per the Silent-Failure Rule in `AGENTS.md`.
+- **Publish:** a community starts `draft`; publishing a **second** community is withheld
+  (`PUBLISH_LATER_MESSAGE`) until each community has its own independent feed and chat — the
+  setup is saved as a draft in the meantime, so nothing is lost, but only the default community
+  is fully live multi-community-ready today.
+- **Paid communities are "coming soon," enforced on the server, not just hidden in the UI.**
+  `PAID_COMMUNITIES_ENABLED = false`; the editor shows Paid with the copy
+  `PAID_COMING_SOON_MESSAGE` ("Keep this community free for now"), and the edit API refuses a
+  `paid` pricing object outright regardless of what the client sends. This waits on the business
+  entity (an LLC) that can legally take the payments — it is not a UI-only gate.
+- **Delete:** the default community cannot be deleted outright (it can be "closed" via
+  `settings.closed`), but a non-default community a ministry created can be deleted; deletion is
+  restricted to the owner/admin who manages it (`DeleteCommunityDialog`,
+  `src/components/community/AdminCommunities.tsx:139`).
+- **Editor layout follows the one shared product-editor pattern (`AGENTS.md`):** steps in a
+  column on the left, options for the current step in the middle, live preview of what a member
+  will see on the right (`CommunityEditor`, `src/components/community/AdminCommunities.tsx:175`
+  — "Eden's community editor, first steps: the steps on the left, the form beside them"). This is
+  the reference implementation other product editors in this document ([§10](#10-products))
+  are expected to match, not invent their own layout for.
+- **Discover:** a public community (`visibility: 'public'`, published, listed in
+  `discovery_listings/{tenantId}`) appears on the Discover page as a card with **Join** (open
+  communities) or **View** (communities requiring questions/application) actions, matching
+  Eden's Discover surface (`DiscoverView`, `src/components/community/DiscoveryViews.tsx`).
+  Joining is blocked server-side, not just hidden client-side, if the tenant's own settings or
+  the discovery listing say the community isn't open (`communityMembershipRequest`,
+  `src/lib/community-membership-api.ts`).
+- **Join/leave** mechanics, the owner CRM contact they create, and the consent/erasure model are
+  specified in full in [§6](#6-community-join--crm) — they are one feature, split into two
+  sections here only because §6 also covers the cross-community CRM.
+
+### 5.5 Eden parity notes
+This is the single largest Eden-parity surface in the product: the 95 reference screens for
+this section cover Eden's community setup wizard (offer type, joining/access, people & roles,
+pricing), the member-facing feed and chat, and the Discover listing card pattern. Harvest's
+editor already follows Eden's "steps on the left" structure; the live-preview panel and the
+Discover card visuals are the parts still being matched pixel-for-pixel.
+
+### 5.6 Plan availability
+Communities (the default one) are available on every plan including Free. Multiple communities
+and paid communities are gated by plan/add-on caps and the `PAID_COMMUNITIES_ENABLED` switch
+respectively — see [§3](#3-plans-billing--checkout).
+
+### 5.7 Data model notes
+- `tenants/{t}/settings/community` — the default community's content/config.
+- `tenants/{t}/communities/{id}` — a `CommunityRecord` for every additional community.
+- `tenants/{t}/communityMembers/{uid}` — default-community roster entry.
+- `users/{uid}/communityMemberships/{tenantId}__{communityId}` — a member's index entry for a
+  *non-default* community (`membershipIndexId`).
+- `discovery_listings/{tenantId}` — the authoritative "is this public" flag Discover and the
+  join API both check independently of the tenant's own settings doc.
+
+### 5.8 Edge cases
+- A community whose stored record fails validation must fail the admin's list load loudly
+  (thrown error), never drop silently from the list — `loadCommunities` is written this way on
+  purpose.
+- A join attempt against a community that the settings doc says is open but the discovery
+  listing says is unpublished (or vice versa) must be refused; both must agree.
+- A ministry that closes its default community loses it from the public list entirely, not just
+  from Discover — `defaultClosed` removes it from `loadCommunities()`'s own return value.
+
+### 5.9 Mobile
+Member-facing feed, chat, and the Discover card list must all work at mobile width — this is
+the primary surface most members use, almost entirely from a phone app shell
+([§16](#16-ui-system)).
+
+### 5.10 Acceptance criteria
+- Creating, editing, and (for non-default communities) deleting a community is scoped to
+  `manageCommunity` and to the owning tenant; no cross-tenant leakage.
+- Attempting to set a community's pricing to `paid` through the API, bypassing the UI, is
+  refused with the coming-soon message.
+- A public, open community appears on Discover with a working Join action that creates both the
+  roster entry and the member's own membership index entry in one transaction.
+
+### 5.11 Screenshots
+
+<table><tr>
+<td><img src="screenshots/05-communities/comm-001-desktop-25-store-your-access.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/05-communities/comm-002-desktop-26-store-communities.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/05-communities/comm-093-desktop-community-06-setup-joining-access.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/05-communities/comm-094-desktop-community-07-setup-people-roles.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr></table>
+
+All 95 Eden reference screens for Communities and Discover are in
+`docs/prd/screenshots/05-communities/` — see `_manifest.json` for the complete list (setup
+wizard steps, feed, chat, member roster, Discover cards). All captured at desktop width; no
+mobile Eden reference exists in the source archive for this surface.
+
+### 5.12 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Communities**.
+
+---
