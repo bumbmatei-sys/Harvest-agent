@@ -1,6 +1,7 @@
 import { DEFAULT_COMMUNITY_BRAND, isCommunityBrandColor } from './branding';
 import type { Listing } from '@/components/community/DiscoveryViews';
 import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
+import { DEFAULT_COMMUNITY_ID, isCommunityId } from './communities';
 
 /** Validate and project the public index on every read, without passing extra fields to the browser. */
 export function readPublicListing(data: Record<string, unknown>): Listing {
@@ -31,6 +32,9 @@ export function readPublicListing(data: Record<string, unknown>): Listing {
   const ratingCount = data.ratingCount === undefined && data.ratingAvg === undefined ? 0 : data.ratingCount;
   const ratingAvg = data.ratingCount === undefined && data.ratingAvg === undefined ? 0 : data.ratingAvg;
   if (!Number.isSafeInteger(ratingCount) || (ratingCount as number) < 0 || typeof ratingAvg !== 'number' || !Number.isFinite(ratingAvg) || (ratingCount === 0 ? ratingAvg !== 0 : ratingAvg < 1 || ratingAvg > 5)) throw new Error('Invalid public community rating');
-  return { tenantId, slug, name, logoUrl, brandColor, shortDescription, memberCount: memberCount as number, coverUrl: coverUrl as string, galleryUrls: galleryUrls as string[], longDescription, ownerName, isPublic, ratingCount: ratingCount as number, ratingAvg };
+  // #576: a listing for a community other than the ministry's default one.
+  const communityId = data.communityId;
+  if (communityId !== undefined && (!isCommunityId(communityId) || communityId === DEFAULT_COMMUNITY_ID)) throw new Error('Invalid public community listing');
+  return { ...(communityId !== undefined ? { communityId } : {}), tenantId, slug, name, logoUrl, brandColor, shortDescription, memberCount: memberCount as number, coverUrl: coverUrl as string, galleryUrls: galleryUrls as string[], longDescription, ownerName, isPublic, ratingCount: ratingCount as number, ratingAvg };
 
 }

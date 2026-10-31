@@ -1,0 +1,40 @@
+{
+  "ticket": "#577",
+  "entries": [
+    {
+      "file": "src/components/community/DiscoveryViews.tsx",
+      "digest": "9365339dcdf73119df9f9c13b1e9c76a5a879e9b474d12610925f10b10243711",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: a Discover listing may now name a community other than the default one (communityId): its Join goes to that community's own page with src=discover, it shows no ministry reviews or rating line (those belong to the default community), and its card key includes the community id. Default listings behave exactly as before."
+    },
+    {
+      "file": "src/components/community/DiscoveryViews.test.tsx",
+      "digest": "5b4be92986e67cb6b9a8a212dbcf9a458bf3589ec99fe7267683d2a55f225010",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: one test covers a community listing's Join link, the absence of ministry reviews, and both kinds of listing side by side. Nothing removed."
+    },
+    {
+      "file": "src/lib/community/listing.ts",
+      "digest": "21d53110bc68452aea232f63757cfeb28801ea44623e3d365d44aa28465e0875",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: adds communityListingId and makeCommunitySpaceListing, the public projection of a live public community, checked with readPublicListing before it is written so one bad listing can never fail all of Discover. makeDiscoveryListing is unchanged."
+    },
+    {
+      "file": "src/lib/community/listing.test.ts",
+      "digest": "82b7054b95f8573e431c0d8a80a347633f86fe79a5e28c6ec36b5d630a5f529d",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: covers the new projection, its read-back, and its refusals. Nothing removed."
+    },
+    {
+      "file": "src/lib/community/public-listing.ts",
+      "digest": "dcc4ab8a1b30abe5bfa92ca35f466ce00ebd7416343f9cfc720ea7bae964bcd4",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: accepts an optional communityId (a valid id, never 'default') and passes it through; every other check is unchanged."
+    },
+    {
+      "file": "src/lib/community/public-listing.test.ts",
+      "digest": "8cd90bfcf53027eb8dd2c964870c6171263af8adfc240611d976478e2ed8df11",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: covers the optional communityId, accepted and refused. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "c7cb38525065da4fdc1962ab4bfe236129c091472eb75576331fd1c6df9f638d",
+      "why": "APPENDED, NOT SUBSTITUTED — #577: names the new read-only members route among the community routes, which must write no billing entitlement. The count is unchanged."
+    }
+  ]
+}

@@ -644,7 +644,9 @@ describe('5 · the money path is byte-identical', () => {
     // the closed flag; they read the plan to hold the community limit and write none.
     const communitiesRoutes = ['src/app/api/communities/route.ts', 'src/app/api/communities/[communityId]/route.ts',
       // #572: join and leave a non-default community; membership records only.
-      'src/app/api/communities/[communityId]/membership/route.ts'];
+      'src/app/api/communities/[communityId]/membership/route.ts',
+      // #576: a community's member list; reads only, names and photos.
+      'src/app/api/communities/[communityId]/members/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);

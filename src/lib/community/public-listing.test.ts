@@ -12,3 +12,12 @@ describe('public listing ratings', () => {
     expect(() => readPublicListing({ ...listing, ...rating })).toThrow();
   });
 });
+
+// #576: listings for communities other than a ministry's default one.
+describe('community listings', () => {
+  it('passes a valid community id through and refuses a bad or default one', () => {
+    expect(readPublicListing({ ...listing, communityId: 'youth' })).toMatchObject({ tenantId: 'one', communityId: 'youth' });
+    expect(readPublicListing(listing)).not.toHaveProperty('communityId');
+    for (const communityId of ['default', 'Bad Id', '', 7]) expect(() => readPublicListing({ ...listing, communityId })).toThrow();
+  });
+});

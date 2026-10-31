@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
   posts: { status: 'ready', data: [] } as Load<unknown[]>,
   channels: { status: 'ready', data: [] } as Load<unknown[]>,
   messages: { status: 'ready', data: [] } as Load<unknown[]>,
+  members: { status: 'ready', data: { members: [], truncated: false } } as Load<unknown>,
   roster: 'not-admin', tenant: { name: 'Grace Chapel', ownerId: 'owner' } as Record<string, unknown>,
   changeMembership: vi.fn(), createPost: vi.fn(), sendMessage: vi.fn(), messagesFor: vi.fn(),
 }));
@@ -22,7 +23,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('@/utils/tenant.utils', () => ({ checkRosterAdminStatus: async () => h.roster }));
 vi.mock('@/store/useAppStore', () => ({ useAppStore: () => ({ currentUser: { uid: 'u' } }) }));
 vi.mock('@/lib/community/space', () => ({
-  useCommunityRecord: () => h.record, useIsMember: () => h.member, usePosts: () => h.posts, useChannels: () => h.channels,
+  useCommunityRecord: () => h.record, useIsMember: () => h.member, usePosts: () => h.posts, useChannels: () => h.channels, useMembers: () => h.members,
   useMessages: (_t: string, _c: string, channelId: string | null) => { h.messagesFor(channelId); return h.messages; },
   changeMembership: h.changeMembership, createPost: h.createPost, sendMessage: h.sendMessage,
 }));
@@ -54,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.record = { status: 'ready', data: youth() };
   h.member = { status: 'ready', data: false };
+  h.members = { status: 'ready', data: { members: [], truncated: false } };
   h.posts = { status: 'ready', data: [] }; h.channels = { status: 'ready', data: [] }; h.messages = { status: 'ready', data: [] };
   h.roster = 'not-admin'; h.tenant = { name: 'Grace Chapel', ownerId: 'owner' };
   h.changeMembership.mockResolvedValue(undefined); h.createPost.mockResolvedValue(undefined); h.sendMessage.mockResolvedValue(undefined);
@@ -149,6 +151,25 @@ describe('community space', () => {
     await type('Message', 'Praying for you');
     await click(button('Send'));
     expect(h.sendMessage).toHaveBeenCalledWith('grace', 'youth', 'prayer', 'Praying for you');
+  });
+
+  // #576: who is in the community, names and photos only.
+  it('lists the members', async () => {
+    h.members = { status: 'ready', data: { truncated: false, members: [
+      { uid: 'a', name: 'Ana', photoURL: 'https://cdn.test/a.png', joinedAt: Date.UTC(2026, 9, 1) },
+      { uid: 'b', name: 'Member', photoURL: '', joinedAt: null },
+    ] } };
+    await mount();
+    await click(button('Members'));
+    expect(host.querySelector('h2')!.textContent).toBe('2 members');
+    expect(host.querySelector('[data-member="a"]')!.textContent).toContain('Ana');
+    expect(host.querySelector('[data-member="a"] img')!.getAttribute('src')).toBe('https://cdn.test/a.png');
+    expect(host.querySelector('[data-member="b"]')!.textContent).toBe('MMember');
+    h.members = { status: 'error', message: 'Join this community to see its members.' };
+    await act(async () => root.render(null));
+    await mount();
+    await click(button('Members'));
+    expect(host.querySelector('[role="alert"]')!.textContent).toBe('Join this community to see its members.');
   });
 
   it('lets a member leave', async () => {
