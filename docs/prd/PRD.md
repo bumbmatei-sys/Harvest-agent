@@ -1444,3 +1444,90 @@ and public page), which this section is built from directly.
 See [§21](#21-open-questions-for-matei) items tagged **Website**.
 
 ---
+
+## 14. Social scheduler
+
+### 14.1 Goal
+Let a ministry compose, schedule, and queue posts to the social accounts it connects — built
+first as Harvest's own native composer, calendar and queue, with a later phase replacing/
+augmenting it with a white-label embed of a third-party product ("OmniSocials Connect").
+
+### 14.2 Users / roles
+Owner/admin with the social scheduler entitlement (plan inclusion or add-on) — composes,
+schedules, connects accounts.
+
+### 14.3 What's built today: Harvest's own composer
+`SocialScheduler.tsx` is a real, fairly complete feature, not a stub: four views — **accounts,
+compose, calendar, queue** — with per-platform fields (`PLATFORM_FIELDS`, `SOCIAL_PLATFORMS`),
+media attachment validation (`validateSocialMedia`), a calendar keyed by day
+(`calendarDayKey`, `postsOnCalendarDay`, `undatedDrafts`), and timezone-aware scheduling
+(`isoToWallTime`/`wallTimeInZoneToIso`, workspace timezone). A "Made with AI" disclosure applies
+per-platform (`platformsSupportingMadeWithAi`), relevant to [§15](#15-ai-assistant) if AI drafts
+a post.
+
+### 14.4 Plan / add-on gating
+`SocialUpgradeWall.tsx` is deliberately careful about what it promises: social scheduling "is
+included with one tier and is an add-on on every other," but the wall **never names a specific
+plan or price**, because — per `AGENTS.md` — the social scheduler add-on has no Dodo product
+attached yet, so naming a tier would promise a purchase path that doesn't exist. This is a
+precise, already-correct piece of copy discipline worth preserving as the feature grows.
+
+### 14.5 OmniSocials Connect — planned, not started
+No reference to "OmniSocials" exists anywhere in this codebase or in the decision briefs
+reviewed for this document. Per this document's brief, the plan is a **white-label embed**
+('Secured by OmniSocials' line only, Harvest logo/colours otherwise), rolled out in phases:
+**composer first, then inbox, then analytics and calendar**, as an iframe scoped per workspace
+first. Read against what's already built ([§14.3](#143-whats-built-today-harvests-own-composer)):
+Harvest's own composer/calendar/queue already cover the "composer first" surface natively —
+so the open design question this raises (and does not answer, per this document's
+no-invented-facts rule) is whether OmniSocials Connect **replaces** the native composer, or
+layers in **inbox/analytics** only, leaving today's native compose/calendar/queue in place. See
+Open Questions.
+
+### 14.6 Auto-DM — Eden reference only, not planned
+The brief is explicit that this is **not planned** for Harvest; the 7 reference screenshots
+exist only because the Eden image set included them, per this document's instruction to include
+every image from the Eden folders in its matching section. No functional requirement follows
+from them.
+
+### 14.7 Eden parity
+The reference set covers Eden's own Publish surface (create, queue, calendar, analytics) and —
+for completeness only, not as a plan — its Auto-DM overview and configuration screens.
+
+### 14.8 Data model notes
+`SocialWorkspace`, `SocialAccount`, `SocialPost`, `SocialTarget` (`src/lib/social/types.ts`) —
+tenant-scoped, platform-scoped. An OmniSocials embed phase would need its own data boundary
+decision (whose data model wins per phase) once that integration starts.
+
+### 14.9 Edge cases
+- A post scheduled in one timezone and viewed by an admin in another must display consistently
+  — `workspaceTimeZone` is the single source of truth, not the browser's local zone.
+- An entitlement that lapses mid-session (add-on removed) must fall back to the upgrade wall
+  without losing drafted-but-unscheduled posts.
+
+### 14.10 Mobile
+Compose and queue review are plausible mobile use cases (an admin approving a scheduled post
+from a phone); the calendar view is more desktop-oriented but must still be usable on mobile.
+
+### 14.11 Acceptance criteria
+- An admin without the entitlement sees the upgrade wall with no plan name hard-coded in it.
+- A scheduled post's displayed time matches its stored UTC instant when converted through the
+  workspace timezone, regardless of the viewing admin's local timezone.
+
+### 14.12 Screenshots
+
+<table><tr>
+<td><img src="screenshots/14-social-scheduler/social-001-desktop-05-publish-create.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/14-social-scheduler/social-003-desktop-09-publish-calendar.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+</tr><tr>
+<td><img src="screenshots/14-social-scheduler/social-004-desktop-10-publish-analytics.webp" width="340"><br>Eden reference (design we copy) — desktop</td>
+<td><img src="screenshots/14-social-scheduler/social-005-desktop-46-store-auto-dm-overview.webp" width="340"><br>Eden reference (design we copy) — desktop (reference only — Auto-DM is not planned)</td>
+</tr></table>
+
+All 36 Eden reference screens for Social scheduler and Auto-DM are in
+`docs/prd/screenshots/14-social-scheduler/` (see `_manifest.json`).
+
+### 14.13 Open questions
+See [§21](#21-open-questions-for-matei) items tagged **Social**.
+
+---
