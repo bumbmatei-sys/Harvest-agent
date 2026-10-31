@@ -1,15 +1,22 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  contactCommunities, type CommunityCarrier, type CommunityFilters, type CommunityStatusFilter, type EmailFilter,
+  CONTACT_SOURCES, contactCommunities, type CommunityCarrier, type CommunityFilters, type CommunityStatusFilter, type DateField, type EmailFilter, type SourceFilter,
 } from '@/lib/crm-communities';
 
 const STATUS_LABELS: Record<CommunityStatusFilter, string> = { any: 'Any status', active: 'Active', left: 'Left' };
 const EMAIL_LABELS: Record<EmailFilter, string> = { any: 'Any email', subscribed: 'Subscribed', unsubscribed: 'Unsubscribed', none: 'Not subscribed' };
+// #577: how a contact arrived, and when they joined or left.
+const SOURCE_LABELS: Record<SourceFilter, string> = {
+  any: 'Any source', discover: 'Discover', link: 'Direct link', website: 'Website', community: 'Community',
+  import: 'Newsletter import', other: 'Added another way',
+};
+const DATE_LABELS: Record<DateField, string> = { joined: 'Joined', left: 'Left' };
 
-/** The CRM's community, status and newsletter dropdowns (#573). They combine with search and type. */
+/** The CRM's community, status, newsletter (#573), source and date (#577) filters. They combine with search and type. */
 export function CrmCommunityFilters({ value, onChange, communities }: {
   value: CommunityFilters;
   onChange: (next: CommunityFilters) => void;
@@ -35,6 +42,19 @@ export function CrmCommunityFilters({ value, onChange, communities }: {
       <SelectTrigger aria-label="Filter by newsletter" className="min-h-11 sm:min-h-0"><SelectValue>{EMAIL_LABELS[value.email]}</SelectValue></SelectTrigger>
       <SelectContent>{(Object.keys(EMAIL_LABELS) as EmailFilter[]).map(key => <SelectItem key={key} value={key}>{EMAIL_LABELS[key]}</SelectItem>)}</SelectContent>
     </Select>
+    <Select value={value.source} onValueChange={next => { if (next) onChange({ ...value, source: next as SourceFilter }); }}>
+      <SelectTrigger aria-label="Filter by source" className="min-h-11 sm:min-h-0"><SelectValue>{SOURCE_LABELS[value.source]}</SelectValue></SelectTrigger>
+      <SelectContent>{(['any', ...CONTACT_SOURCES] as SourceFilter[]).map(key => <SelectItem key={key} value={key}>{SOURCE_LABELS[key]}</SelectItem>)}</SelectContent>
+    </Select>
+    <span className="flex flex-wrap items-center gap-2">
+      <Select value={value.dateField} disabled={value.community === 'none'} onValueChange={next => { if (next) onChange({ ...value, dateField: next as DateField }); }}>
+        <SelectTrigger aria-label="Date to filter by" className="min-h-11 sm:min-h-0"><SelectValue>{DATE_LABELS[value.dateField]}</SelectValue></SelectTrigger>
+        <SelectContent>{(Object.keys(DATE_LABELS) as DateField[]).map(key => <SelectItem key={key} value={key}>{DATE_LABELS[key]}</SelectItem>)}</SelectContent>
+      </Select>
+      <Input type="date" aria-label="From date" className="min-h-11 w-auto sm:min-h-0" disabled={value.community === 'none'} value={value.from} max={value.to || undefined} onChange={event => onChange({ ...value, from: event.target.value })} />
+      <span aria-hidden className="text-sm text-muted">to</span>
+      <Input type="date" aria-label="To date" className="min-h-11 w-auto sm:min-h-0" disabled={value.community === 'none'} value={value.to} min={value.from || undefined} onChange={event => onChange({ ...value, to: event.target.value })} />
+    </span>
   </div>;
 }
 

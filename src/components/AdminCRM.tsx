@@ -2,7 +2,7 @@
 import { DeleteCommunityData } from './community/DeleteCommunityData';
 import { CommunityContactBadge } from './community/CommunityContactBadge';
 import { CommunityMemberships, CrmCommunityFilters } from './community/CrmCommunityFilters';
-import { communityOptions, matchesCommunityFilters, NO_COMMUNITY_FILTERS, type CommunityFilters } from '../lib/crm-communities';
+import { communityFiltersActive, communityFiltersToParams, communityOptions, matchesCommunityFilters, NO_COMMUNITY_FILTERS, type CommunityFilters } from '../lib/crm-communities';
 import { OnboardingAnswers } from './community/OnboardingAnswers';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -906,8 +906,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     type: filter,
     newsletter: newsletterSelection,
   }) && matchesCommunityFilters(c, communityFilters));
-  const filtersActive = Boolean(search) || filter !== 'all' || newsletterSelection !== 'all' ||
-    communityFilters.community !== 'all' || communityFilters.communityStatus !== 'any' || communityFilters.email !== 'any';
+  const filtersActive = Boolean(search) || filter !== 'all' || newsletterSelection !== 'all' || communityFiltersActive(communityFilters);
 
   const exportCsv = async () => {
     if (exporting) return;
@@ -918,6 +917,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       params.set('newsletter', newsletterSelection);
       params.set('type', filter);
       params.set('q', search);
+      // #577: the export applies the same community, source and date filters
+      // as the list, through the same predicate.
+      communityFiltersToParams(communityFilters, params);
       const res = await authFetch(`/api/admin/crm-export?${params.toString()}`);
       if (!res.ok) {
         const data = await res.json().catch(() => null);

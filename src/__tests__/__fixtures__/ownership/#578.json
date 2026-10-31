@@ -1,0 +1,20 @@
+{
+  "ticket": "#578",
+  "entries": [
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "789c13b447407a8708676b367f79493a29906e9d279d03a37da2dd7bafdef71a",
+      "why": "APPENDED, NOT SUBSTITUTED — #578: the filters-active check reads communityFiltersActive, and the CSV export sends the community, source and date filters through communityFiltersToParams, so the export applies every filter the list applies (PRD §6.4). No write, refusal, dialog or money path is touched; the file's primitives and colours are unchanged."
+    },
+    {
+      "file": "src/components/__tests__/AdminCRM.desktop-layout.test.tsx",
+      "digest": "e8aae9e26e753fe535c8d194f583a321b75cba28d870d44e765de41b362d7b52",
+      "why": "APPENDED, NOT SUBSTITUTED — #578: the CRM's from/to date fields are the shared Input primitive; its tokens are admitted by reading ui/input.tsx, as #573 did for ui/select.tsx. Both fields carry min-h-11. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/THE-342.read-honesty-guards.test.ts",
+      "digest": "91417637772f1ca40f5e04f36f705862e41d9c0e51bfd0fe1b6838bf23fee017",
+      "why": "APPENDED, NOT SUBSTITUTED — #578: adds AdminCRM.tsx's new digest to the accepted set, after #573's. Nothing removed."
+    }
+  ]
+}
