@@ -1,5 +1,5 @@
 /**
- * `maxAdmins` — the tenant's admin-seat allowance (2 / 5 / 15).
+ * `maxAdmins` — the tenant's admin-seat allowance (1 / 2 / 5: Free, Church, Ministry).
  *
  * Shaped deliberately after `course-adoption.ts`'s cap helpers
  * (resolveCourseLimit / isAtCourseLimit / courseLimitMessage) so the two plan

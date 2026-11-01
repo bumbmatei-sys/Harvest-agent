@@ -89,11 +89,12 @@ describe('what each plan includes, per the spec', () => {
   const church = getPlanFeatures('church');
   const ministry = getPlanFeatures('ministry');
 
-  it('people limits are 500 and 5,000, admins 2 and 15', () => {
+  // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+  it('people limits are 500 and 5,000, admins 2 and 5', () => {
     expect(church.maxContacts).toBe(500);
     expect(ministry.maxContacts).toBe(5_000);
     expect(church.maxAdmins).toBe(2);
-    expect(ministry.maxAdmins).toBe(15);
+    expect(ministry.maxAdmins).toBe(5);
   });
 
   it('the AI assistant allowance is 300 and 5,000 messages, a real number and never "unlimited"', () => {

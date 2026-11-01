@@ -21,7 +21,8 @@ import { SUPER_ADMIN_EMAILS } from '../super-admins';
 const admin = (id: string, email = `${id}@church.org`) => ({ id, role: 'admin', email });
 
 describe('resolveAdminLimit — caps come from PLAN_FEATURES, never a literal', () => {
-  it('resolves 1 / 2 / 15 across PLAN_ORDER from the matrix itself', () => {
+  // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+  it('resolves 1 / 2 / 5 across PLAN_ORDER from the matrix itself', () => {
     // Compared against getPlanFeatures rather than hardcoded, so a matrix change
     // moves this test with it instead of leaving a stale literal behind.
     expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual(
@@ -31,8 +32,8 @@ describe('resolveAdminLimit — caps come from PLAN_FEATURES, never a literal', 
     // front of PLAN_ORDER with maxAdmins: 1 — one evangelist is one admin, and
     // a tier with no card must not become a free shared workspace. The three
     // PAID seat counts are unchanged.
-    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([1, 2, 15]);
-    expect(PRICED_PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 15]);
+    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([1, 2, 5]);
+    expect(PRICED_PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 5]);
   });
 
   it('fails closed to Individual (2) on an unknown, null or still-loading plan', () => {

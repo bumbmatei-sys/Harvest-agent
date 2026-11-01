@@ -838,7 +838,8 @@ describe('9 · no plan cap changed', () => {
     expect(caps, 'a plan cap moved — THE-207/THE-55 closed as won\'t-fix').toEqual([
       'free|1|0|500',
       'church|2|-1|500',
-      'ministry|15|-1|5000',
+      // WAS 'ministry|15|-1|5000'. Matei 2026-11-01 (R7): Ministry includes 5 admins; the add-on adds more.
+      'ministry|5|-1|5000',
     ]);
   });
 });

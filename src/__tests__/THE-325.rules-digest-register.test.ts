@@ -826,8 +826,8 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
-    '62cf18e95100a0cd86883fae1f987f9c55f0ee31da1661d347ece84be0fd2f04',
-    'THE-999998',
+    '284ac20565d3fc15e55e08e038bf9fd013c54fb885c2890a0ada646b180f66f8',
+    '#588',
     'the Ministry row of the matrix transcription gained socialScheduler true, because Matei '
       + 'approved the scheduler on the Ministry plan on 2026-10-21. One cell on one tier; the suite '
       + 'still asserts every other cell and no price moved. The previous digest was '
@@ -837,7 +837,8 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'APPENDED BY #554 / B1: comment creation now binds the parent tenant, exactly six fields, and the commenter profile name/photo. The suite records the exact reviewed /community_posts block digest while retaining its earlier clause assertions and every matrix, no-plan-rule, index, erasure and permalink check. '
       + 'This map keeps one current digest; the previous current digest remains recorded here: b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b (THE-378). The row in CONTENT_ASSERTING is untouched. '
       + 'APPENDED BY THE-999998 (PR #561), community join + CRM: the suite records the reviewed multi-community /community_posts block digest and its rule-clause fallback now states the isTenantAdmin(X) || isActiveCommunityMember(X) gate in place of belongsToTenant(X), with the 280 content cap as the terminal condition of the comment create clause. Every earlier property — tenant gate, author identity, createPosts permission, content cap, comments un-updatable — is still asserted. The suite still asserts content rather than a digest pin. '
-      + 'This map keeps one current digest; the previous current digest remains recorded here: d5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55 (#554 / B1), and f14d3dec26dccadf70c6826e259d52609758b2e120f31918c9a813e72d0d1f0d (#557) stays accepted in SIGNUP_SHELL_DIGESTS. The row in CONTENT_ASSERTING is untouched.',
+      + 'This map keeps one current digest; the previous current digest remains recorded here: d5e749edcebdeaf0e3aea35490fbc073367274ae0b1b6bc4e03e6bf4a075ba55 (#554 / B1), and f14d3dec26dccadf70c6826e259d52609758b2e120f31918c9a813e72d0d1f0d (#557) stays accepted in SIGNUP_SHELL_DIGESTS. The row in CONTENT_ASSERTING is untouched. '
+      + 'APPENDED BY #588 (Matei 2026-11-01): the Ministry row of the matrix transcription has maxAdmins 5 in place of 15, the one cap cell that moved. The suite still asserts every cell of every tier and no price moved. This map keeps one current digest; the previous current digest remains recorded here: 62cf18e95100a0cd86883fae1f987f9c55f0ee31da1661d347ece84be0fd2f04 (THE-999998). The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
     'a2fcd58b7b66fa1f29f6e445846ce4b159122d4ae3d419d4a5b6f3ffcf3d19f8',
