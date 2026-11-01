@@ -1,0 +1,20 @@
+{
+  "ticket": "#581",
+  "entries": [
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "510825e0f93933822ae71733e1e310e0f68088ccf6fdd07c5bd94956cc3fd6ea",
+      "why": "APPENDED, NOT SUBSTITUTED — #581: records SocialAnalyticsView as a skeleton adopter (the Analytics tab's loading block). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "18a692f56a76e174d4bee3df3c04608ad154daf6ca6f338fc7d547df5b6840d4",
+      "why": "APPENDED, NOT SUBSTITUTED — #581: names the social analytics route, which reads post metrics only and writes no billing entitlement. The count is unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "906d255653396259af0e6eb55a0113c08be1bf7ac6b06abce8cfabf12b067d38",
+      "why": "APPENDED, NOT SUBSTITUTED — #581: records SocialAnalyticsView, in sorted order, among the files that use the min-h-11 phone floor. Nothing removed."
+    }
+  ]
+}
