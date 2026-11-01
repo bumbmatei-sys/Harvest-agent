@@ -345,14 +345,16 @@ describe('the paid funnel’s route order and markers are unchanged', () => {
     for (const fn of [
       'beginPaymentConfirmation',
       'capturePaymentConfirmationHandoff',
-      'hasSeenPaymentConfirmation',
+      // WAS also 'hasSeenPaymentConfirmation' and 'withPaymentConfirmationHandoff':
+      // both only shaped the subdomain hop, which the domain move (#34) removed.
       'shouldConfirmPaymentBeforeHandoff',
-      'withPaymentConfirmationHandoff',
     ]) {
       expect(src, `${fn} is no longer imported by App.tsx`).toContain(fn);
     }
-    // The hop itself, byte-for-byte.
-    expect(src).toContain('const workspaceUrl = `https://${data.tenantId}.theharvest.app/admin`;');
+    // WAS: the hop itself, byte-for-byte (`https://${data.tenantId}.theharvest.app/admin`).
+    // #34: the app lives on theharvest.app only, so a paid admin stays on this origin.
+    expect(src).not.toContain('const workspaceUrl = `https://${data.tenantId}.theharvest.app/admin`;');
+    expect(src).toContain("navigate('/admin', { replace: true });");
   });
 
   /**

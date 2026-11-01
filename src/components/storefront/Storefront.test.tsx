@@ -5,6 +5,8 @@ import { emptyStorefront, newStorefrontBlock, type Storefront } from '@/lib/stor
 import { StorefrontPage } from './StorefrontPage';
 import { StorefrontBlogIndex } from './StorefrontBlogIndex';
 import { AdminStorefront, type StorefrontApi, type StorefrontLoaded } from './AdminStorefront';
+import { StorefrontAddress, type StorefrontAddressApi } from './StorefrontAddress';
+import { handleProblem } from '@/lib/storefront/handle';
 
 vi.mock('@/utils/auth-fetch', () => ({ authFetch: vi.fn() }));
 vi.mock('@/components/ImageUpload', () => ({ ImageUpload: () => <div data-testid="image-upload" /> }));
@@ -121,9 +123,54 @@ describe('the Storefront editor', () => {
     const harness = api({ ...page([]), published: false });
     await act(async () => root.render(<AdminStorefront api={harness.value} />));
     await act(async () => { await Promise.resolve(); });
-    expect(host.querySelector('[data-storefront-publish]')?.textContent).toContain('Your page is offhttps://grace.theharvest.app/storefront');
+    expect(host.querySelector('[data-storefront-publish]')?.textContent).toContain('Your page is offhttps://grace.theharvest.app');
     await click(host.querySelector('[aria-label="Page is live"]'));
     await click(button('Save'));
     expect(harness.saves[0].published).toBe(true);
+  });
+});
+
+describe('the Storefront address', () => {
+  it('accepts lower-case letters, numbers and single hyphens, and refuses platform names', () => {
+    expect(handleProblem('grace-chapel')).toBeNull();
+    expect(handleProblem('gc')).toMatch(/at least 3/);
+    expect(handleProblem('Grace')).toMatch(/lower-case/);
+    expect(handleProblem('grace--chapel')).toMatch(/single hyphens/);
+    expect(handleProblem('-grace')).toMatch(/lower-case/);
+    expect(handleProblem('admin')).toMatch(/reserved/);
+    expect(handleProblem('www')).toMatch(/reserved/);
+  });
+
+  it('checks the new address, then changes it and shows where the page now lives', async () => {
+    vi.useFakeTimers();
+    const api: StorefrontAddressApi = {
+      current: vi.fn(async () => 'grace'),
+      check: vi.fn(async (handle: string) => (handle === 'taken' ? { available: false, reason: 'That address is taken.' } : { available: true, reason: null })),
+      change: vi.fn(async (handle: string) => handle),
+    };
+    const onChanged = vi.fn();
+    await act(async () => root.render(<StorefrontAddress api={api} initialHandle="grace" onChanged={onChanged} />));
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="Address"]')!;
+    const type = async (value: string) => {
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await act(async () => { vi.advanceTimersByTime(350); });
+      await act(async () => { await Promise.resolve(); });
+    };
+    const change = () => [...host.querySelectorAll('button')].find((b) => b.textContent === 'Change')!;
+    expect(change().disabled).toBe(true);
+    await type('taken');
+    expect(host.textContent).toContain('That address is taken.');
+    expect(change().disabled).toBe(true);
+    await type('grace-chapel');
+    expect(host.textContent).toContain('grace-chapel.theharvest.app is free.');
+    await act(async () => { change().click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(api.change).toHaveBeenCalledWith('grace-chapel');
+    expect(onChanged).toHaveBeenCalledWith('grace-chapel');
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('https://grace-chapel.theharvest.app');
+    vi.useRealTimers();
   });
 });

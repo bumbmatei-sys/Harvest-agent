@@ -48,9 +48,7 @@ import { SIGNUP_BILLING_STORAGE_KEY } from './utils/signup-checkout';
 import {
   beginPaymentConfirmation,
   capturePaymentConfirmationHandoff,
-  hasSeenPaymentConfirmation,
   shouldConfirmPaymentBeforeHandoff,
-  withPaymentConfirmationHandoff,
 } from './utils/paid-arrival';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 import { isTenantAdminRole } from './lib/roles';
@@ -480,25 +478,13 @@ const AppInner: React.FC = () => {
                     })) {
                       beginPaymentConfirmation(data.tenantId);
                     } else {
-                      // THE-138 part 2. This is also the RESUMED hop: a payer
-                      // who acknowledged the confirmation and then came back to
-                      // the apex (browser back, a reopened link) is sent onward
-                      // from here rather than through the screen's own action.
-                      // It must carry the acknowledgement for the same reason
-                      // that action does, or the destination shows the
-                      // confirmation again and the duplicate survives on this
-                      // path alone.
-                      //
-                      // Carried ONLY when it demonstrably happened:
-                      // `completePaymentConfirmation` is the sole writer of that
-                      // flag and only the screen's own action calls it. Every
-                      // other arrival here — a church that did not just pay, an
-                      // established tenant on a stale success URL — hops
-                      // byte-for-byte as before.
-                      const workspaceUrl = `https://${data.tenantId}.theharvest.app/admin`;
-                      window.location.href = hasSeenPaymentConfirmation()
-                        ? withPaymentConfirmationHandoff(workspaceUrl)
-                        : workspaceUrl;
+                      // The app lives on theharvest.app only (#34, the domain
+                      // move): a ministry subdomain now serves its Storefront
+                      // and public pages, never the admin. So there is no hop
+                      // left to resume; the payer stays on this origin, where
+                      // the session already is.
+                      // WAS: window.location.href = https://<tenant>.theharvest.app/admin
+                      navigate('/admin', { replace: true });
                     }
                   } else {
                     if (!tenantExists) console.warn(

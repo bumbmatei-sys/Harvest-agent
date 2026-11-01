@@ -111,6 +111,8 @@ describe('desktop Settings popup (sidebar-13)', () => {
       'Campus setup',
       // APPENDED: the scheduler's Accounts tab moved here (Social accounts).
       'Social accounts',
+      // APPENDED (#34): the Storefront address; this plan has the Blog, so it shows.
+      'Storefront address',
       'Danger zone',
     ]);
     expect(document.body.textContent).toMatch(/Settings/);

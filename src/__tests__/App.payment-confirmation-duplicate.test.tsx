@@ -254,10 +254,10 @@ async function flush(rounds = 12) {
 const text = () => container.textContent || '';
 const rendered = (testId: string) => !!container.querySelector(`[data-testid="${testId}"]`);
 /** The confirmation's single action, once the readiness guard has released it. */
+// WAS: the link whose href started with WORKSPACE (the subdomain). #34 (the
+// domain move): the workspace is this origin, so the action is '/admin'.
 const continueLink = () =>
-  Array.from(container.querySelectorAll('a')).find((a) =>
-    (a.getAttribute('href') || '').startsWith(WORKSPACE),
-  ) || null;
+  Array.from(container.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/admin') || null;
 
 /** Click the action the way the payer does, without unloading the document. */
 async function clickContinue() {
@@ -332,10 +332,11 @@ afterEach(() => {
 
 /**
  * The production journey, end to end: pay on the apex, read the confirmation,
- * click through, cross the origin, arrive at the workspace.
+ * click through, arrive at the workspace.
  *
- * Returns the URL the church actually left on — taken off the rendered action,
- * never hand-written, so the test crosses on whatever the app really emits.
+ * WAS: the journey crossed to <tenant>.theharvest.app. #34 (the domain move):
+ * the workspace is theharvest.app itself, so the "departure" is the in-origin
+ * '/admin' the action points at, and arriving keeps this origin's storage.
  */
 async function payOnApexAndCrossOver(): Promise<string> {
   startAt(`${APEX}/?dodo=success`);
@@ -350,13 +351,14 @@ async function payOnApexAndCrossOver(): Promise<string> {
   const departure = continueLink()?.getAttribute('href') || '';
   await clickContinue();
   unmount();
-  return departure;
+  return `${APEX}${departure}`;
 }
 
 /** Arrive on the workspace origin at `url`, signed in and mid-first-run. */
 async function arriveAtWorkspace(url: string) {
-  hopTo(url);
-  tenantCtx.tenantId = TENANT;
+  // WAS: hopTo(url) with tenantCtx.tenantId = TENANT (a new origin, its own storage).
+  // #34: the workspace is the apex, so storage carries over and no host names the tenant.
+  if (new URL(url).hostname === 'theharvest.app') startAt(url); else { hopTo(url); tenantCtx.tenantId = TENANT; }
   state.user = PASTOR;
   state.userDoc = provisionedUserDoc();
   state.tenantDoc = justProvisionedTenant();
@@ -366,8 +368,8 @@ async function arriveAtWorkspace(url: string) {
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
 
-describe('1 — the confirmation is not repeated on the far side of the hop', () => {
-  it('a church that acknowledged the confirmation on the apex is not shown it again on the subdomain', async () => {
+describe('1 — the confirmation is not repeated after first-run (WAS: on the far side of the hop)', () => {
+  it('a church that acknowledged the confirmation is not shown it again after first-run setup (WAS: on the subdomain)', async () => {
     // 🔴 THE REGRESSION. Everything below happened in production: the apex
     // screen was correct, and then the church read the very same sentence again
     // after first-run setup, on an origin that could not tell it had already
@@ -394,34 +396,29 @@ describe('1 — the confirmation is not repeated on the far side of the hop', ()
     expect(text()).not.toContain(CONFIRMATION);
   });
 
-  it('the acknowledgement survives the /auth redirect that drops the query string', async () => {
-    // 🔴 WHY THE HINT IS CAPTURED ON ARRIVAL RATHER THAN READ WHERE IT IS NEEDED.
-    // A church crosses NOT signed in on the new origin, so the callback
-    // immediately navigates to /auth — a react-router navigation, which drops
-    // the query. The fact is needed minutes and one sign-in later.
+  it('the acknowledgement survives signing in again on this origin (WAS: the /auth redirect that drops the query string)', async () => {
+    // WAS: the church crossed to the subdomain NOT signed in, and the hint had
+    // to outlive the /auth redirect there. #34: there is no crossing; what is
+    // left to prove is that a sign-out and sign-in on theharvest.app keeps it.
     const departure = await payOnApexAndCrossOver();
 
-    hopTo(departure);
-    tenantCtx.tenantId = TENANT;
+    startAt(departure);
     state.user = null;
     state.userDoc = provisionedUserDoc();
     state.tenantDoc = justProvisionedTenant();
     mount();
     await flush();
 
-    // The query really is gone — this is the drop, not a simulation of it.
     expect(window.location.pathname).toBe('/auth');
-    expect(window.location.search).not.toContain(PAYMENT_CONFIRMATION_HANDOFF_PARAM);
-    // …and the fact outlived it.
     expect(hasSeenPaymentConfirmation(), 'the acknowledgement died at the /auth redirect').toBe(true);
 
-    // Now they sign in on the new origin, exactly as the screen promised.
     state.user = PASTOR;
     await act(async () => { state.authListeners.forEach((cb) => cb(state.user)); });
     await flush();
     await finishFirstRun();
 
-    expect(text(), 'the confirmation returned once the query string was dropped').not.toContain(CONFIRMATION);
+    expect(text(), 'the confirmation returned after signing in again').not.toContain(CONFIRMATION);
+    expect(hops).toEqual([]);
   });
 });
 
@@ -434,7 +431,8 @@ describe('2 — nobody who was never told is left untold', () => {
     // closed, someone typed the address. That church has been charged and has
     // been told nothing. Deleting the render outright would drop the
     // reassurance for precisely these people.
-    await arriveAtWorkspace(WORKSPACE_URL);
+    // WAS: arriveAtWorkspace(WORKSPACE_URL), the subdomain. #34: apex /admin.
+    await arriveAtWorkspace(`${APEX}/admin`);
 
     expect(hasSeenPaymentConfirmation(), 'this church has no acknowledgement to its name').toBe(false);
     await finishFirstRun();
@@ -443,29 +441,29 @@ describe('2 — nobody who was never told is left untold', () => {
     expect(text()).toContain('Grace Community Church');
   });
 
-  it('a church that renamed its subdomain is still warned about the next sign-in', async () => {
-    // 🔴 THE SECOND STRAND, and the reason "already acknowledged" alone is not
-    // enough to suppress. This church DID read the confirmation on the apex —
-    // but that screen named the GENERATED address, and first-run has since
-    // moved the workspace somewhere else. Another origin boundary is coming,
-    // and the sentence warning them about it has not been said yet.
+  it('a church that renames its address is not warned about a sign-in that no longer comes (WAS: is still warned)', async () => {
+    // WAS: a rename during first-run moved the workspace to a THIRD origin, so
+    // the warning was owed. #34: a rename moves only the Storefront address;
+    // the workspace stays on theharvest.app and nobody signs in again.
     const departure = await payOnApexAndCrossOver();
     state.renameTo = RENAMED;
     await arriveAtWorkspace(departure);
 
-    expect(hasSeenPaymentConfirmation(), 'the acknowledgement did not cross').toBe(true);
+    expect(hasSeenPaymentConfirmation()).toBe(true);
     await finishFirstRun();
 
-    expect(text(), 'a church about to cross another origin was sent off unwarned').toContain(SECOND_SIGN_IN);
-    expect(text()).toContain(`${RENAMED}.theharvest.app`);
+    expect(text(), 'a church was told to sign in again on the origin it is signed in on').not.toContain(SECOND_SIGN_IN);
+    expect(text(), 'the church was congratulated a second time').not.toContain(CONFIRMATION);
+    expect(hops).toEqual([]);
   });
 
-  it('the acknowledgement alone never suppresses anything — the destination must also be this origin', () => {
-    // Structural companion to the two cases above: the suppression is a
-    // conjunction, and dropping either half re-opens one of them.
+  it('the acknowledgement decides the suppression (WAS: the destination must also be this origin)', () => {
+    // WAS: the rule also required getTenantIdFromHost() to match. #34: the
+    // workspace is always this origin, so a host check would only ever fail on
+    // theharvest.app and bring the duplicate back there.
     const suppression = GATE_SRC.slice(GATE_SRC.indexOf('handoffRepeatsGivenConfirmation ='));
     const rule = suppression.slice(0, suppression.indexOf(';'));
-    expect(rule).toContain('getTenantIdFromHost()');
+    expect(rule).not.toContain('getTenantIdFromHost()');
     expect(rule).toContain('hasSeenPaymentConfirmation()');
   });
 });
@@ -489,7 +487,7 @@ describe('3 — #327 is untouched', () => {
     expect(window.location.hostname).toBe('theharvest.app');
   });
 
-  it('the cross-origin copy still names the destination', async () => {
+  it('the copy is the same-origin one (WAS: the cross-origin copy still names the destination)', async () => {
     startAt(`${APEX}/?dodo=success`);
     state.user = PASTOR;
     state.userDoc = provisionedUserDoc();
@@ -498,14 +496,10 @@ describe('3 — #327 is untouched', () => {
     mount();
     await flush();
 
-    const secondSignIn = Array.from(container.querySelectorAll('p')).find((p) =>
-      (p.textContent || '').includes(SECOND_SIGN_IN),
-    );
-    expect(secondSignIn, 'nothing on the screen mentions the second sign-in').toBeTruthy();
-    expect(secondSignIn!.textContent).toContain(`${TENANT}.theharvest.app`);
-    expect(secondSignIn!.textContent).toContain('expected');
-    // And never the same-origin reassurance, which is false on the apex.
-    expect(text()).not.toContain('already signed in at this address');
+    // WAS: a paragraph promising a second sign-in at ${TENANT}.theharvest.app.
+    // #34: no second sign-in comes, so the reassurance is the true sentence.
+    expect(text()).not.toContain(SECOND_SIGN_IN);
+    expect(text()).toContain('already signed in at this address');
   });
 
   it('a refresh mid-confirmation still repaints rather than stranding', async () => {
@@ -526,7 +520,8 @@ describe('3 — #327 is untouched', () => {
     await flush();
 
     expect(text(), 'a refresh mid-read stranded the church').toContain(CONFIRMATION);
-    expect(continueLink()?.getAttribute('href')).toBe(withPaymentConfirmationHandoff(WORKSPACE_URL));
+    // WAS: href withPaymentConfirmationHandoff(WORKSPACE_URL). #34: '/admin'.
+    expect(continueLink()).toBeTruthy();
     expect(hops).toEqual([]);
   });
 });
@@ -646,7 +641,9 @@ describe('5 — everything beside this path is unchanged', () => {
     mount();
     await flush();
 
-    expect(hops, 'a church that did not just pay was held back or re-addressed').toEqual([WORKSPACE_URL]);
+    // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname, 'a church that did not just pay was held back').toBe('/admin');
     expect(text()).not.toContain(CONFIRMATION);
   });
 
@@ -659,7 +656,9 @@ describe('5 — everything beside this path is unchanged', () => {
     mount();
     await flush();
 
-    expect(hops).toEqual([WORKSPACE_URL]);
+    // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
     expect(text()).not.toContain(CONFIRMATION);
   });
 

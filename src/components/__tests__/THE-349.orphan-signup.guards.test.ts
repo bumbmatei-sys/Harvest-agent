@@ -109,7 +109,10 @@ describe('1 · 🔴 there is no auth REDIRECT, so there is no hop to lose the te
     const mw = code('src/middleware.ts');
     expect(mw, 'middleware started setting cookies — the diagnosis in this ticket is now stale')
       .not.toMatch(/cookies|Set-Cookie|resolve-domain/i);
-    expect(mw).toMatch(/matcher: '\/api\/:path\*'/);
+    // WAS: matcher '/api/:path*'. #34 (the domain move) widened it so a ministry
+    // subdomain can be rewritten to its Storefront; it still sets no cookie,
+    // which is what this diagnosis rests on.
+    expect(mw).toMatch(/matcher: \['\/\(\(\?!_next\/static\|_next\/image\)\.\*\)'\]/);
   });
 });
 

@@ -290,15 +290,17 @@ describe('a free signup never says thank you for your payment', () => {
     expect(text()).toContain('Your account is ready.');
   });
 
-  it('still names the address and explains the one sign-in that is left', async () => {
+  it('still names the address and says no second sign-in comes (WAS: explains the one sign-in that is left)', async () => {
     getDoc.mockResolvedValue({ exists: () => true, data: () => ({ name: 'matei', plan: 'free' }) });
     await runFreeSignupThroughTheGate();
 
-    // The reassurance the paid screen gives is owed here too: the workspace
-    // really is on another origin and the sign-in really is coming.
-    expect(text()).toContain('matei.theharvest.app');
-    expect(text()).toContain('sign in once more');
-    expect(text()).toContain('nothing was lost');
+    // WAS: 'matei.theharvest.app' / 'sign in once more' / 'nothing was lost'.
+    // #34 (the domain move): the workspace is theharvest.app for everyone, so
+    // no second sign-in comes and the screen says so.
+    expect(text()).toContain('theharvest.app');
+    expect(text()).not.toContain('matei.theharvest.app');
+    expect(text()).not.toContain('sign in once more');
+    expect(text()).toContain('already signed in at this address');
   });
 
   it('a free tenant still carrying setupCompleted: false is not congratulated on a payment either', async () => {
@@ -427,7 +429,8 @@ describe('a paying church still sees its payment confirmation exactly once, befo
 
   it('and is not shown a second time once acknowledged', async () => {
     await arriveFromCheckout();
-    const go = control(/continue to gracechurch\.theharvest\.app/i);
+    // WAS: /continue to gracechurch\.theharvest\.app/i. #34: same origin.
+    const go = control(/go to your dashboard/i);
     expect(go, 'the confirmation offered no way onward').toBeTruthy();
     await act(async () => { go!.click(); });
 
@@ -443,12 +446,13 @@ describe('a paying church still sees its payment confirmation exactly once, befo
     expect(text(), 'the payer was congratulated twice').not.toContain('Your payment went through.');
   });
 
-  it('the acknowledgement rides the hop, so the destination origin does not repeat it', async () => {
+  it('the way onward stays on this origin, so nothing has to ride along (WAS: the acknowledgement rides the hop)', async () => {
     await arriveFromCheckout();
-    const go = control(/continue to gracechurch\.theharvest\.app/i);
-    expect(go!.getAttribute('href')).toContain('https://gracechurch.theharvest.app/admin');
-    expect(go!.getAttribute('href'), 'the hint that suppresses the duplicate was dropped')
-      .toContain('payment_confirmed=1');
+    // WAS: href https://gracechurch.theharvest.app/admin?payment_confirmed=1. #34:
+    // there is no other origin to tell; the acknowledgement is already in this
+    // origin's storage.
+    const go = control(/go to your dashboard/i);
+    expect(go!.getAttribute('href')).toBe('/admin');
   });
 
   it('the pre-hop confirmation is reached only from the paid-arrival lane', () => {
@@ -585,7 +589,7 @@ describe('a free signup does not route through the member app', () => {
     expect(text()).not.toContain('Finish setting up your ministry');
   });
 
-  it('the sign-in that remains is the one the confirmation warns about', async () => {
+  it('no second sign-in remains (WAS: the sign-in that remains is the one the confirmation warns about)', async () => {
     getDoc.mockResolvedValue({ exists: () => true, data: () => ({ name: 'matei', plan: 'free' }) });
     mount(<OnboardingGate><div>{MEMBER_APP}</div></OnboardingGate>);
     await signIn();
@@ -596,9 +600,11 @@ describe('a free signup does not route through the member app', () => {
 
     // One action, pointing at the new origin — the second sign-in is not
     // removed (it cannot be), it is announced and it happens exactly once.
-    const go = control(/continue to matei\.theharvest\.app/i);
+    // WAS: /continue to matei\.theharvest\.app/i → https://matei.theharvest.app/admin.
+    // #34: one action, on this origin.
+    const go = control(/go to your dashboard/i);
     expect(go, 'no way onward from the confirmation').toBeTruthy();
-    expect(go!.getAttribute('href')).toBe('https://matei.theharvest.app/admin');
+    expect(go!.getAttribute('href')).toBe('/admin');
   });
 });
 

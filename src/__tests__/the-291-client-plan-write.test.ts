@@ -658,7 +658,9 @@ describe('5 · the money path is byte-identical', () => {
       'src/app/api/social/auto-dm/[id]/route.ts',
       'src/app/api/social/auto-dm/[id]/logs/route.ts',
       // APPENDED BY #589: the Storefront's load and save; it writes storefronts/{tenantId} and no billing entitlement.
-      'src/app/api/storefront/route.ts'];
+      'src/app/api/storefront/route.ts',
+      // APPENDED BY #34: the Storefront address check and change; it writes storefront_handles and tenants.storefrontHandle, no billing entitlement.
+      'src/app/api/storefront/handle/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);

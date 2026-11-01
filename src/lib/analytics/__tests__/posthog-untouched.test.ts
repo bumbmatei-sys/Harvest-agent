@@ -253,7 +253,8 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // webhook is still the single writer of the plan and the add-on set.
   // firestore.rules and functions/ are NOT in this diff — their hashes above
   // are unchanged, which is the check that says so.
-  ['src/app/api/stripe/checkout/route.ts', '03ab52a15f4afd906411109404a58242c203691ad2254a9120dfd72387771723'],
+  // APPENDED BY #590 (the domain move): success/cancel return to theharvest.app, not the ministry subdomain. Nothing else changed.
+  ['src/app/api/stripe/checkout/route.ts', '03ab52a15f4afd906411109404a58242c203691ad2254a9120dfd72387771723', 'e7306e9f2061fb77992308a15f88d43f9e609413ba7dc9b1b00e134ba90363fb'],
   // ─── THE-256 REGENERATED THESE THREE, deliberately and with reason ───────
   //
   // 🔴 ONE ADDED REFUSAL EACH, and nothing else. Stripe closed the platform

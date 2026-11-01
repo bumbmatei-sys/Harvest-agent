@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireTenantAdmin, requireTenantPermission } from '@/lib/api-auth';
+import { requireStorefrontEditor } from '@/lib/storefront/access';
+import { currentHandle } from '@/lib/storefront/handle-server';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { isTenantIdParam, loadCommunities } from '@/lib/community/communities-server';
 import { readStorefront } from '@/lib/storefront/storefront';
 import { loadStorefront, loadStorefrontArticles, loadStorefrontEvents, saveStorefront } from '@/lib/storefront/server';
 
 export const dynamic = 'force-dynamic';
-
-/** Storefront is the ministry's public page, so it sits with the blog: tenant admins who may write articles. */
-async function requireStorefrontEditor(request: NextRequest, tenantId: string) {
-  const admin = await requireTenantAdmin(request, tenantId);
-  if (admin instanceof NextResponse) return admin;
-  if (!admin.isSuperAdmin && admin.tenantId === tenantId) {
-    const permitted = await requireTenantPermission(request, tenantId, 'writeArticles');
-    if (permitted instanceof NextResponse) return permitted;
-  }
-  return admin;
-}
 
 const titleOf = (data: Record<string, unknown>, fallback: string) =>
   (typeof data.title === 'string' && data.title) || (typeof data.name === 'string' && data.name) || fallback;
@@ -44,6 +34,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       storefront,
       subdomain: tenantId,
+      handle: currentHandle(tenantId, tenant.data()),
       articles,
       events,
       choices: {

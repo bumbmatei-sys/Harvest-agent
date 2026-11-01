@@ -107,10 +107,10 @@ const text = () => container.textContent || '';
 /** Everything on the screen a user could actually click. */
 const actionables = () => Array.from(container.querySelectorAll('a, button'));
 /** The single "take me there" action, if the guard has released it. */
+// WAS: the link whose href started with https://gracechurch.theharvest.app.
+// #34 (the domain move): the workspace is theharvest.app, so it is '/admin'.
 const continueLink = () =>
-  Array.from(container.querySelectorAll('a')).find((a) =>
-    (a.getAttribute('href') || '').startsWith('https://gracechurch.theharvest.app'),
-  ) || null;
+  Array.from(container.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/admin') || null;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -171,23 +171,24 @@ describe('1 — it states the payment succeeded, and names the ministry', () => 
 
 /* ── 2 ─────────────────────────────────────────────────────────────────────── */
 
-describe('2 — it names the destination and explains the second sign-in', () => {
+describe('2 — it names the destination and says no second sign-in comes (WAS: explains the second sign-in)', () => {
   it('shows the address the workspace lives at', async () => {
     render(<WorkspaceHandoff tenantId="gracechurch" />);
     await flush();
-    expect(text()).toContain('gracechurch.theharvest.app');
+    // WAS: 'gracechurch.theharvest.app'. #34: every workspace lives on theharvest.app.
+    expect(text()).toContain('theharvest.app');
+    expect(text()).not.toContain('gracechurch.theharvest.app');
   });
 
-  it('says the second sign-in is expected, not a failure', async () => {
+  it('says they are already signed in (WAS: the second sign-in is expected, not a failure)', async () => {
     render(<WorkspaceHandoff tenantId="gracechurch" />);
     await flush();
 
+    // WAS: 'sign in once more' / 'own web address' / 'nothing was lost'. #34: the
+    // app never leaves theharvest.app, so that promise would be untrue.
     const copy = text();
-    expect(copy).toContain('sign in once more');
-    expect(copy).toContain('expected');
-    // The reason must be the address, not something having gone wrong.
-    expect(copy).toContain('own web address');
-    expect(copy).toContain('nothing was lost');
+    expect(copy).not.toContain('sign in once more');
+    expect(copy).toContain('already signed in at this address');
   });
 });
 
@@ -260,7 +261,8 @@ describe('4 — once provisioning completes, the action becomes available', () =
 
     const link = continueLink();
     expect(link, 'the workspace resolved but no action was offered').toBeTruthy();
-    expect(link!.getAttribute('href')).toBe('https://gracechurch.theharvest.app/admin');
+    // WAS: 'https://gracechurch.theharvest.app/admin'. #34: in-origin.
+    expect(link!.getAttribute('href')).toBe('/admin');
   });
 
   it('releases the guard when provisioning lands mid-wait', async () => {
@@ -304,7 +306,8 @@ describe('5 — no path on this screen can initiate a second payment', () => {
 
     for (const el of actionables()) {
       expect(el.textContent || '', 'a payment action appeared post-charge').not.toMatch(PAY_ACTION);
-      expect(el.getAttribute('href')).toBe('https://gracechurch.theharvest.app/admin');
+      // WAS: 'https://gracechurch.theharvest.app/admin'. #34: in-origin.
+      expect(el.getAttribute('href')).toBe('/admin');
     }
   });
 
@@ -487,7 +490,8 @@ describe('8 — on the origin the workspace already lives on, it does not claim 
     const copy = text();
     expect(copy).toContain('Your payment went through.');
     expect(copy).toContain('Grace Community Church');
-    expect(copy).toContain('gracechurch.theharvest.app');
+    // WAS: 'gracechurch.theharvest.app'. #34: theharvest.app.
+    expect(copy).toContain('theharvest.app');
   });
 
   it('still withholds the action until the tenant document exists', async () => {
@@ -515,15 +519,16 @@ describe('8 — on the origin the workspace already lives on, it does not claim 
     }
   });
 
-  it('a DIFFERENT tenant on this host is still cross-origin', async () => {
-    // Guards against the comparison being written as "am I on any subdomain"
-    // rather than "am I on THIS workspace's subdomain".
+  it('no host makes it cross-origin (WAS: a DIFFERENT tenant on this host is still cross-origin)', async () => {
+    // WAS: on another ministry's subdomain the screen sent them across. #34: a
+    // ministry subdomain serves its Storefront, never this screen, and the
+    // workspace is always theharvest.app.
     setHost('https://someotherchurch.theharvest.app/');
     render(<WorkspaceHandoff tenantId="gracechurch" />);
     await flush();
 
-    expect(text()).toContain('sign in once more');
-    expect(continueLink()?.getAttribute('href')).toBe('https://gracechurch.theharvest.app/admin');
+    expect(text()).not.toContain('sign in once more');
+    expect(continueLink()).toBeTruthy();
   });
 });
 
@@ -576,15 +581,13 @@ describe('9 — the stuck-state support link is a real, monitored destination (T
     expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
   });
 
-  it('the cross-origin and same-origin copy from PR 327 is unchanged', async () => {
-    // Cross-origin: apex → subdomain (the default host set in beforeEach).
+  it('the same-origin copy from PR 327 is unchanged, and is now the only copy', async () => {
+    // WAS: the apex rendered PR 327's cross-origin copy ('sign in once more').
+    // #34: the apex IS the workspace, so it renders the same-origin copy too.
     render(<WorkspaceHandoff tenantId="gracechurch" />);
     await flush();
-    const crossOriginCopy = text();
-    expect(crossOriginCopy).toContain('sign in once more');
-    expect(crossOriginCopy).toContain('expected');
-    expect(crossOriginCopy).toContain('own web address');
-    expect(crossOriginCopy).toContain('nothing was lost');
+    expect(text()).not.toContain('sign in once more');
+    expect(text()).toContain('already signed in at this address');
 
     // Tear down and re-render on the workspace's own origin.
     act(() => { root?.unmount(); });

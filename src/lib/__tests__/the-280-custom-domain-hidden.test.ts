@@ -422,6 +422,7 @@ describe('5 — an already-provisioned domain keeps resolving', () => {
       '445344fb4038aa394495b0f4af67c321926ddd51b8523d9a7b7f12486a434b49',
       '42baa396bce16e5f3415f9f6714cf7d92af0263c97b505ef324a7423f3bd164a', // #557: free tenants have no subdomain
       'e2d3b69d6297a6815234ad69a8516cabccbb6845b5f6c3b84508b24f10e4b24a', // #557: retain legacy tenant resolution
+      '457455b8c1fdf6ded15a00a6f7522e9dbad20244df33d981aa0b2b4130770741', // #590: a claimed Storefront handle resolves first; the custom-domain path is unchanged
     ]).toContain(digest('src/lib/server-tenant.ts'));
     expect(digest('src/app/api/resolve-domain/route.ts'))
       .toBe('3e570a0e2a2c87887b1078f74cda7141e3857c2c535654af5ff88c725bc749f2');

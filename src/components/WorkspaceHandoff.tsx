@@ -4,7 +4,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { CheckCircle2, Loader2, ArrowRight, AlertCircle, Mail } from 'lucide-react';
 import { db } from '../firebase';
 import { useForcedLightTheme } from '../lib/theme-runtime';
-import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { withPaymentConfirmationHandoff } from '../utils/paid-arrival';
 
 const BRAND = 'var(--brand-color, #B8962E)';
@@ -210,7 +209,9 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [tenantId]);
 
-  const address = `${tenantId}.theharvest.app`;
+  // #34 domain move: the workspace lives on theharvest.app for every ministry;
+  // the ministry subdomain serves its Storefront. WAS: `${tenantId}.theharvest.app`
+  const address = 'theharvest.app';
   const displayName = ministryName || fallbackMinistryName || 'Your ministry';
 
   /**
@@ -249,7 +250,9 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
    * mounted `ssr: false` (`src/app/[[...slug]]/page.tsx:8`), and App.tsx:150
    * already calls it this way.
    */
-  const crossOrigin = tenantId !== getTenantIdFromHost();
+  // WAS: tenantId !== getTenantIdFromHost(). The app no longer runs on a
+  // ministry subdomain, so the workspace is always this origin.
+  const crossOrigin = false as boolean;
 
   /**
    * Where the single action goes.

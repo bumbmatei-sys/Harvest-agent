@@ -251,7 +251,7 @@ afterEach(() => {
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
 
-describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
+describe('1 — a provisioned paid tenant lands in its workspace (WAS: on its own subdomain)', () => {
   it('a freshly provisioned paid tenant lands on its own subdomain', async () => {
     // Exactly where the free lane leaves the evangelist: on the apex, on the
     // church-onboarding funnel path, with a tenant that now exists.
@@ -265,8 +265,11 @@ describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
 
     // 🔴 THE REPORT. Before the fix this was `[]` and the browser sat on apex
     // /admin — the origin with no tenant, and so with no roster and no nav.
-    expect(hops, 'the paid tenant was left on the apex instead of its own subdomain').toEqual([WORKSPACE_URL]);
-    expect(window.location.pathname, 'the founder was parked on apex /admin').not.toBe('/admin');
+    // WAS: hops === [WORKSPACE_URL] and pathname !== '/admin'. #34 (the domain
+    // move): the app lives on theharvest.app only, so the founder lands on
+    // apex /admin, where their tenant comes from the user doc as a Free one's does.
+    expect(hops, 'the paid tenant was sent off theharvest.app').toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
   });
 
   it.each(FUNNEL_SCREENS)(
@@ -285,7 +288,9 @@ describe('1 — a provisioned paid tenant lands on its own subdomain', () => {
       mount();
       await flush();
 
-      expect(hops).toEqual([WORKSPACE_URL]);
+      // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+      expect(hops).toEqual([]);
+      expect(window.location.pathname).toBe('/admin');
     },
   );
 
@@ -395,7 +400,9 @@ describe('7 — the paid signup landing is unchanged', () => {
     mount();
     await flush();
 
-    expect(hops).toEqual([WORKSPACE_URL]);
+    // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
   });
 
   it('the THE-138 payment confirmation still holds the hop for a just-provisioned church', async () => {

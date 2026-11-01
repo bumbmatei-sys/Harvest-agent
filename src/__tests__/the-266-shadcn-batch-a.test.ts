@@ -720,6 +720,8 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin/social/SocialAccountsSettings.tsx',
       // APPENDED BY #589. The Storefront editor waits as the page it will become.
       'src/components/storefront/AdminStorefront.tsx',
+      // APPENDED BY #34 (the domain move). The Storefront address waits as the field it will become.
+      'src/components/storefront/StorefrontAddress.tsx',
       // APPENDED BY UI-POLISH. A board's grid waits as the grid it will become: four card-shaped
       // blocks, a shape known before any note arrives.
       'src/components/boards/BoardGrid.tsx',
