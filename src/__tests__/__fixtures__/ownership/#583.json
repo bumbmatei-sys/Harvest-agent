@@ -2,23 +2,13 @@
   "ticket": "#583",
   "entries": [
     {
-      "file": "src/components/AdminDashboard.tsx",
-      "digest": "121bc1ae0d91999b69af5962e2e236c45bfcdc4042650ca1c435b30a9bcaecce",
-      "why": "APPENDED, NOT SUBSTITUTED — #583: one className on the admin content panel (SidebarInset): bg-card -> bg-background, plus the inset-variant override, so the panel stays on the light canvas (#FAFAF8) while cards take the sidebar grey (#F3F2EF) — Matei, 1 Nov: \"make the cards the same gray as the sidebar for a bit of a contrast effect\". No nav, tab, read, write or permission changed."
-    },
-    {
-      "file": "src/components/admin-shell/AdminShellPreview.tsx",
-      "digest": "cc837a6ece08429f624f76906b3500f1a3f84d3a6368a629e3b6dfdcebeb2f54",
-      "why": "APPENDED, NOT SUBSTITUTED — #583: the same className change on the preview shell's content panel, so the preview matches the app."
-    },
-    {
       "file": "src/__tests__/the-270-sidebar-install.test.ts",
-      "digest": "cbb111fe97fcc916bacd63fed04587c88b1fef8d3780c2ad8b12ff3acf307a66",
+      "digest": "2c423c2271dad3efdbaa00c071ab08ec6c6e24dedc67d1f8778ad42a852efa02",
       "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's (cards take the sidebar grey); the old digest is named beside it."
     },
     {
       "file": "src/__tests__/the-272-shadcn-batch-b.test.ts",
-      "digest": "563336ef697b632938d01e2bdc70b541b7494acb352a2750860a6d7dc05c597a",
+      "digest": "17de44b4ccea54035b9b5bfaf77bcde4b967abb4ea3e81ad2c5870effe68bd28",
       "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
     },
     {
@@ -28,12 +18,12 @@
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
-      "digest": "1bb0a497a408b573993bc3556b32191fe7d56333eaab1b263c650784019fa636",
+      "digest": "0f7fccee2d725e1148e744753c06b05d81ed0eebba985317a3fa1f423ca90b0b",
       "why": "APPENDED, NOT SUBSTITUTED — #583: the light card and popover tokens are #F3F2EF, the globals digest moves, and the light pair ratios on them are re-measured (each still clears AA); the old values are kept in a comment."
     },
     {
       "file": "src/__tests__/the-299-retention-guards.test.ts",
-      "digest": "7aeaeec4e0827c92434362123d68c1f5fd95440488d6948143477d5bb40cefb5",
+      "digest": "3c22e942f4d84c283c9499599163fdd1d0a5ae9b35616f0a0bedc0b259208ae9",
       "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
     },
     {
@@ -45,6 +35,21 @@
       "file": "src/components/course/__tests__/THE-311.course-palette.test.ts",
       "digest": "ab5d10f73e351445d126e8378ecbb57eb06033b4ce910f038adab62e240f71c4",
       "why": "APPENDED, NOT SUBSTITUTED — #583: the course success ink is --ink-green-800 (the -700 tick fell to 4.48:1 on the grey card), and the recorded gold-on-card failure reads 2.37:1 (was 2.66:1)."
+    },
+    {
+      "file": "src/components/__tests__/THE-296.settings-sections.test.tsx",
+      "digest": "7cff84a508b28328b048bd5badf88219bb540b578dd6e801365e35605c99460a",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-265-classic-default.test.ts",
+      "digest": "d3c41f13dce177a762335cf7e809f353eb518d5fc8fbd9d7b8cf6453a8e058a0",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-271-one-theme-system.test.tsx",
+      "digest": "330b9c838e82587be68c09f3d75d1044c4482a729734c74c589ce3f45d64d3ad",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
     }
   ]
 }

@@ -197,8 +197,8 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
 /** The out-of-scope files, pinned at 788a589. */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
-const GLOBALS_SHA = '6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509';
+// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+const GLOBALS_SHA = 'db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351';
 
 const FUNCTIONS_DIGESTS: Record<string, string> = {
   'functions/.gcloudignore': '9c20b803e45cd916',

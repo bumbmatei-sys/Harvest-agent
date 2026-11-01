@@ -153,8 +153,8 @@ const PRE_EXISTING_HOOKS = [
 
 /** As of 767ca9b. None is this PR's business; all are asserted in section 9. */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
-// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
-const GLOBALS_SHA = '6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509';
+// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+const GLOBALS_SHA = 'db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351';
 const COMPONENTS_JSON_SHA = '5102c25c44791f19be9a94380f85f6e78934feccbfce7fe9ec54c316e99a76b4';
 /** main's, as of 5b780e8 — proves this PR adds no dependency. */
 /**

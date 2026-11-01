@@ -1067,3 +1067,14 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+
+/* ── #583: grey cards on a light canvas ────────────────────────────────────
+   Cards (--surface-raised / --card) take the sidebar's warm grey in light
+   (Matei, 1 Nov: "make the cards the same gray as the sidebar for a bit of a
+   contrast effect"). The admin content panel also paints itself bg-card, which
+   would turn the whole page grey and lose that contrast, so in light it keeps
+   the page canvas instead. Unlayered on purpose: it must win over the panel's
+   own utility classes without editing the shell. Dark is unchanged. */
+:root:not([data-theme="dark"]) [data-admin-content] {
+  background-color: var(--background);
+}

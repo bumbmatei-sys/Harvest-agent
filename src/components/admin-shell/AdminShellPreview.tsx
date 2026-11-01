@@ -268,7 +268,7 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
           )}
           {sheet && <ForceMobileSheet />}
           <MobileBar className={AFTER_SHELL} />
-          <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background md:peer-data-[variant=inset]:bg-background">
+          <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
             <div className="hidden lg:block">
               <AdminContentBar
                 crumbs={[{ label: sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? '' }, { label: screen === 'events' ? 'Events' : 'Home' }]}

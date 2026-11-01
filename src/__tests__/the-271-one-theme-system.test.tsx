@@ -634,8 +634,8 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
     'src/lib/theme-runtime.ts': '8e18aeef43f70e7b2204881e9c71e69723651ce7b03a71cb1bae91b0297cb3ab',
     'src/lib/preauth-theme.ts': '1940796f21a9c5219ba6d35d15958eafb34aaada0e3a2670f5d858f65e840ad0',
     'src/lib/use-resolved-theme.ts': 'ec8961c8637fd0004c4cf8d6a9ba9830e88b7a02b65c730f52172acd396114a6',
-    // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
-    'src/app/globals.css': '6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509',
+    // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+    'src/app/globals.css': 'db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351',
     'src/components/ThemeToggle.tsx': 'efd6790ae14ebb1e5238ce601828589724ffcd4931f6c90e631927d9e1522277',
     // 🔴 PaletteFamilyToggle.tsx LEFT THIS LIST AT THE-338: the file is
     // deleted with the palette family axis. Its absence is asserted below,

@@ -434,8 +434,8 @@ describe('both palettes resolve every token this slice leans on', () => {
 describe('no new token was defined', () => {
   it('globals.css is byte-identical — the bridge has held through five batches', () => {
     expect(sha256(read('src/app/globals.css')))
-      // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
-      .toBe('6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509');
+      // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+      .toBe('db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351');
     expect(rootVars['--chart-5']).toBeTruthy();
     expect(rootVars['--chart-6']).toBeUndefined();
   });

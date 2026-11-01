@@ -73,7 +73,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
             accountMenu={<Button type="button" variant="ghost" className="size-8 min-h-11 text-sidebar-foreground sm:min-h-0" aria-label="My account">Account</Button>}
           />
         )}
-        <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background md:peer-data-[variant=inset]:bg-background">
+        <SidebarInset data-admin-content className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
           <div className="hidden lg:block">
             <AdminContentBar crumbs={[{ label: sectionForTab('social') ?? '' }, { label: viewTitle }]} />
           </div>

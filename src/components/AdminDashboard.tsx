@@ -1294,7 +1294,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       </div>{/* /nav visibility wrapper — THE-346 */}
 
       {/* Main Container */}
-      <SidebarInset data-admin-content className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background md:bg-background md:peer-data-[variant=inset]:bg-background">
+      <SidebarInset data-admin-content className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card md:bg-card">
         {/* Desktop toolbar — sidebar-07 pattern (trigger, separator, breadcrumb)
             with the screen's own actions on the right. The payments inbox sits
             in this bar. The platform bell stays in the sidebar footer. Mobile
