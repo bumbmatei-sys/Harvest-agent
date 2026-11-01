@@ -1,5 +1,6 @@
 import type { SocialPlatform } from './platforms';
 import { parseSocialPlatform, supportsMadeWithAi } from './platforms';
+import { readAnalyticsPost, type AnalyticsPost, type SocialAnalytics } from './analytics';
 import type { SocialAccount, SocialMedia, SocialPost, SocialPostDraft, SocialTarget, SocialWorkspace } from './types';
 
 /**
@@ -13,6 +14,8 @@ import type { SocialAccount, SocialMedia, SocialPost, SocialPostDraft, SocialTar
  */
 
 const ZERNIO_SOCIAL_API = 'https://api.zernio.com/v1';
+const ANALYTICS_PAGE_SIZE = 100;
+const ANALYTICS_MAX_PAGES = 5;
 
 export interface ZernioRequest {
   readonly url: string;
@@ -151,6 +154,27 @@ export class LiveSocialClient {
     if (!created.ok) return null;
     const id = created.data.profile?._id;
     return typeof id === 'string' && id ? id : null;
+  }
+
+  /**
+   * #582: published posts with their metrics, newest window first. Pages are
+   * read until the provider has no more, up to ANALYTICS_MAX_PAGES; beyond that
+   * the result says it is truncated rather than presenting a partial sum as whole.
+   */
+  async analytics(profileId: string, fromDate: string, toDate: string): Promise<SocialAnalytics | null> {
+    const posts: AnalyticsPost[] = [];
+    for (let page = 1; page <= ANALYTICS_MAX_PAGES; page += 1) {
+      const query = new URLSearchParams({ profileId, fromDate, toDate, limit: String(ANALYTICS_PAGE_SIZE), page: String(page) });
+      const result = await call<{ posts?: unknown[]; pagination?: { pages?: number } }>(this.key, `/analytics?${query}`, {}, this.fetchImpl);
+      if (!result.ok) return null;
+      for (const row of result.data.posts ?? []) {
+        const post = readAnalyticsPost(row);
+        if (post) posts.push(post);
+      }
+      const pages = typeof result.data.pagination?.pages === 'number' ? result.data.pagination.pages : page;
+      if (page >= pages) return { fromDate, toDate, posts, truncated: false };
+    }
+    return { fromDate, toDate, posts, truncated: true };
   }
 
   async load(profileId: string): Promise<SocialWorkspace | null> {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useMemo, type CSSProperties } from 'react';
+import { useCallback, useLayoutEffect, useMemo, type CSSProperties } from 'react';
 import { Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -10,6 +10,7 @@ import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from '@/compon
 import { useLgUp } from '@/components/admin-shell/use-lg';
 import { SocialScheduler, type SocialView } from '@/components/admin/social/SocialScheduler';
 import { SocialUpgradeWall } from '@/components/admin/social/SocialUpgradeWall';
+import { analyticsWindow, type AnalyticsRange } from '@/lib/social/analytics';
 import { applyTheme } from '@/lib/theme-runtime';
 import type { ThemeChoice } from '@/lib/theme';
 import { MockSocialClient } from '@/lib/social/mock-client';
@@ -18,7 +19,7 @@ import { sectionForTab, type ShellTabRef } from '@/components/admin-shell/shell-
 const CLOCK = new Date(Date.UTC(2024, 2, 15, 12));
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
-const VIEWS = ['accounts', 'compose', 'calendar', 'queue'] as const;
+const VIEWS = ['accounts', 'compose', 'calendar', 'queue', 'analytics'] as const;
 
 export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?: string }) {
   const lg = useLgUp();
@@ -30,6 +31,11 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
   }, [theme]);
 
   const workspace = useMemo(() => new MockSocialClient('preview', CLOCK).load(), []);
+  // #582: the Analytics tab reads the mock's sample metrics, never a real ministry's.
+  const sampleAnalytics = useCallback(async (range: AnalyticsRange) => {
+    const { fromDate, toDate } = analyticsWindow(range, CLOCK);
+    return new MockSocialClient('preview', CLOCK).analytics(fromDate, toDate);
+  }, []);
   const tabs = useMemo(() => new Map<string, ShellTabRef>([
     ['blog', { id: 'blog', label: 'Blog', icon: Radio }],
     ['branding', { id: 'branding', label: 'Branding', icon: Radio }],
@@ -79,6 +85,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
               initial={{ ...workspace, entitled: true }}
               initialView={initialView}
               onUpgrade={() => {}}
+              analyticsLoader={sampleAnalytics}
             />
           )}
           </div>

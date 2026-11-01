@@ -164,34 +164,16 @@ describe('SocialScheduler payload', () => {
     expect(preview.body.targets[0].fields.contentType).toBe('reel');
   });
 
-  it('switches the side panel list between drafts, scheduled and sent', async () => {
-    const workspace = new MockSocialClient('preview', clock).load();
-    await act(async () => {
-      root.render(
-        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="compose" onUpgrade={() => {}} />,
-      );
-    });
-    const panel = container.querySelector<HTMLElement>('[data-testid="social-side-panel"]');
-    const tab = (label: string) => [...(panel?.querySelectorAll('[role="tab"]') ?? [])]
-      .find((candidate) => candidate.textContent === label) as HTMLElement | undefined;
-
-    expect(tab('Drafts')?.getAttribute('aria-selected')).toBe('true');
-    expect(panel?.textContent).toContain('This Sunday');
-    expect(panel?.textContent).not.toContain('Verse of the day');
-
-    await act(async () => { tab('Scheduled')?.click(); });
-    expect(tab('Scheduled')?.getAttribute('aria-selected')).toBe('true');
-    expect(panel?.textContent).toContain('Verse of the day');
-    expect(panel?.textContent).not.toContain('This Sunday');
-    expect(panel?.textContent).not.toContain('Thank you for gathering');
-
-    await act(async () => { tab('Sent')?.click(); });
-    expect(tab('Sent')?.getAttribute('aria-selected')).toBe('true');
-    expect(panel?.textContent).toContain('Thank you for gathering');
-    expect(panel?.textContent).not.toContain('Verse of the day');
-
-    await act(async () => { tab('Drafts')?.click(); });
-    expect(panel?.textContent).toContain('This Sunday');
+  // WAS 'switches the side panel list between drafts, scheduled and sent'; #581 moves
+  // those lists to Eden's Queue and puts the post's live preview beside the composer.
+  it('previews the post as it is typed, counted against each chosen network', async () => {
+    await mountLive([INSTAGRAM]);
+    const preview = () => container.querySelector<HTMLElement>('[data-testid="social-preview"]')!;
+    expect(preview().querySelector('[data-testid="social-preview-text"]')?.textContent).toBe('No text');
+    await type('Sunday at 10.');
+    expect(preview().querySelector('[data-testid="social-preview-text"]')?.textContent).toBe('Sunday at 10.');
+    expect(preview().querySelector('[data-testid="social-preview-count"]')?.textContent).toBe('13 / 2,200');
+    expect(preview().querySelector('[data-preview-platform="instagram"]')?.textContent).toBe('InstagramSame as all · 13 of 2,200 characters');
   });
 
   it('sends the default of a Select the user never touched', async () => {

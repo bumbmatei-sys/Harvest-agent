@@ -16,10 +16,12 @@ import {
   cancelSocialPost,
   connectSocialAccount,
   createSocialPost,
+  loadSocialAnalytics,
   loadSocialWorkspace,
   updateSocialPost,
 } from './session';
 import { workspaceTimeZone } from './schedule-time';
+import { analyticsWindow, isAnalyticsRange, type SocialAnalytics } from './analytics';
 import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
 
 /**
@@ -40,6 +42,7 @@ export type { SocialActor };
 
 export type SocialErrorCode =
   | 'platform_not_offered'
+  | 'analytics_range_invalid'
   | 'post_incomplete'
   | 'schedule_invalid'
   | 'media_not_accepted'
@@ -454,4 +457,16 @@ export async function submitPost(
   const draft = Boolean(body && typeof body === 'object' && (body as Record<string, unknown>).draft === true);
   if (draft) return createDraft(actor, body);
   return schedule(actor, body, idempotencyKey);
+}
+
+/** #582: the Analytics tab's window of post metrics. */
+export async function analytics(actor: SocialActor, rangeParam: string | null): Promise<SocialResult<SocialAnalytics & { sample: boolean }>> {
+  const range = Number(rangeParam ?? 30);
+  if (!isAnalyticsRange(range)) return fail('analytics_range_invalid', 400);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const { fromDate, toDate } = analyticsWindow(range, new Date());
+  const result = await loadSocialAnalytics(access.tenantId, fromDate, toDate, new Date(), access.mockOnly);
+  if (!result) return fail('social_unavailable', 503);
+  return ok({ ...result, sample: access.sample });
 }

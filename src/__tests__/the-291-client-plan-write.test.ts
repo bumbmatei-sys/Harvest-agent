@@ -646,7 +646,9 @@ describe('5 · the money path is byte-identical', () => {
       // #572: join and leave a non-default community; membership records only.
       'src/app/api/communities/[communityId]/membership/route.ts',
       // #576: a community's member list; reads only, names and photos.
-      'src/app/api/communities/[communityId]/members/route.ts'];
+      'src/app/api/communities/[communityId]/members/route.ts',
+      // #582: the social scheduler's analytics; reads post metrics only.
+      'src/app/api/social/analytics/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);

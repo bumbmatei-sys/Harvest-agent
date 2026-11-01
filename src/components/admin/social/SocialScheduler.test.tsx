@@ -91,6 +91,18 @@ describe('SocialScheduler', () => {
     });
     expect(container.querySelector('[data-testid="social-queue"]')).toBeTruthy();
     expect(container.textContent).toContain('This Sunday');
+    // #581: Eden's three columns, each with its count, Scheduled grouped by day.
+    const columns = [...container.querySelectorAll<HTMLElement>('[data-queue-column]')];
+    expect(columns.map((c) => [c.dataset.queueColumn, c.querySelector('header')?.textContent])).toEqual([
+      ['drafts', 'Drafts1'], ['scheduled', 'Scheduled1Chicago'], ['sent', 'Sent1'],
+    ]);
+    expect(columns[1].querySelector('[data-queue-day] h3')?.textContent).toBe('Tuesday Mar 12');
+    expect(columns[1].textContent).toContain('10:00 AM');
+    // #581: networks show as logos, as on Eden, each with an accessible name.
+    expect(columns[1].querySelector('[data-platform-logo="instagram"]')?.getAttribute('aria-label')).toBe('Instagram');
+    expect(columns[2].textContent).toContain('PostedMar 4, 9:00 AM');
+    // Sent posts can no longer be edited or cancelled.
+    expect([...columns[2].querySelectorAll('button')]).toHaveLength(0);
   });
 
   it('shows a distinct unavailable state when bootstrap answers 503', async () => {
@@ -158,12 +170,18 @@ describe('SocialScheduler', () => {
         />,
       );
     });
-    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('This Sunday');
+    // #581: a draft has no place on the week grid; it sits in the Drafts panel.
+    expect([...container.querySelectorAll('[data-week-slot]')].some((slot) => slot.textContent?.includes('This Sunday'))).toBe(false);
     expect(container.querySelector('[data-testid="social-calendar-drafts"]')?.textContent).toContain('This Sunday');
-    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
+    // The Drafts button hides and shows the panel.
+    const toggle = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Drafts' && button.hasAttribute('aria-pressed'))!;
+    await act(async () => { toggle.click(); });
+    expect(container.querySelector('[data-testid="social-calendar-drafts"]')).toBeNull();
+    await act(async () => { toggle.click(); });
+    expect(container.querySelector('[data-testid="social-calendar-drafts"]')).toBeTruthy();
   });
 
-  it('centers the composer and docks the drafts panel on desktop classes only', async () => {
+  it('centers the composer with its preview beside it on desktop classes only', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {
       root.render(
@@ -181,12 +199,12 @@ describe('SocialScheduler', () => {
     expect(row?.className).toContain('lg:justify-center');
     expect(row?.className).not.toContain('justify-end');
     expect(row?.className).not.toContain('flex-1');
-    const panel = container.querySelector('[data-testid="social-side-panel"]');
-    expect(panel?.className).toContain('hidden');
-    expect(panel?.className).toContain('lg:flex');
-    expect(panel?.textContent).toContain('Drafts');
-    expect(panel?.textContent).toContain('Scheduled');
-    expect(panel?.textContent).toContain('Sent');
+    // WAS a docked Drafts / Scheduled / Sent panel; #581 follows Eden: the Queue holds
+    // those lists, and the composer's right side is the post's live preview.
+    expect(container.querySelector('[data-testid="social-side-panel"]')).toBeNull();
+    const preview = container.querySelector('[data-testid="social-preview"]');
+    expect(preview?.textContent).toContain('Main preview');
+    expect(preview?.textContent).toContain('Each platform');
   });
 
   it('shows a loading state, never the composer, until the server has answered, then the unavailable card if the load fails', async () => {
@@ -292,7 +310,9 @@ describe('SocialScheduler', () => {
     expect(container.querySelector('[data-testid="connect-youtube"]')?.hasAttribute('disabled')).toBe(false);
   });
 
-  it('names the selected calendar day and lists that day\'s post', async () => {
+  // WAS 'names the selected calendar day and lists that day's post' (a month picker
+  // and one day's list). #581 replaces both with Eden's week grid.
+  it('shows the week around the default day, places each post in its day and hour, and pages by week', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(clock);
     try {
@@ -302,18 +322,23 @@ describe('SocialScheduler', () => {
           <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="calendar" onUpgrade={() => {}} />,
         );
       });
-      const heading = container.querySelector('[data-testid="social-day-heading"]');
-      expect(heading?.textContent).toBe('15 March 2024');
-      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
-      const day = [...container.querySelectorAll('button')].find((button) => button.textContent === '12');
-      await act(async () => { day?.click(); });
-      expect(container.querySelector('[data-testid="social-day-heading"]')?.textContent).toBe('12 March 2024');
-      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).toContain('Verse of the day');
+      const title = () => container.querySelector('[data-testid="social-week-title"]')?.textContent;
+      const days = () => [...container.querySelectorAll<HTMLElement>('[data-week-day]')].map((d) => d.dataset.weekDay);
+      expect(title()).toBe('Week of March 15');
+      expect(days()).toEqual(['2024-03-15', '2024-03-16', '2024-03-17', '2024-03-18', '2024-03-19', '2024-03-20', '2024-03-21']);
+      expect(container.querySelector('[data-testid="social-calendar"]')?.textContent).not.toContain('Verse of the day');
+      await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Previous week"]')!.click(); });
+      expect(title()).toBe('Week of March 8');
+      // Verse of the day is scheduled for 10:00 on 12 March in the ministry's zone.
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('Verse of the day');
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('10:00 AM');
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"] [data-platform-logo="instagram"]')).toBeTruthy();
+      await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Next week"]')!.click(); });
+      expect(title()).toBe('Week of March 15');
     } finally {
       vi.useRealTimers();
     }
   });
-
   it('saves an undated draft edit and keeps a scheduled time required', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {

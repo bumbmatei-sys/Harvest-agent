@@ -57,7 +57,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 }));
 
 import { resetPublishOnce } from '../publish-once';
-import { cancel, createDraft, list, schedule, update, validate } from '../service';
+import { analytics, cancel, createDraft, list, schedule, update, validate } from '../service';
 
 const SCHEDULE_KEY = '22222222-2222-4222-8222-222222222222';
 
@@ -130,6 +130,20 @@ describe('social service', () => {
 
     const other = await list({ ...actor, requestedTenantId: 'other-ministry' });
     expect(other).toMatchObject({ ok: false, status: 403, error: 'Access denied to this tenant' });
+  });
+
+  // #582: the Analytics tab.
+  it('reads the sample analytics for an allowed range, and refuses another range or ministry', async () => {
+    const read = await analytics(actor, '7');
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.data.sample).toBe(true);
+    expect(read.data.truncated).toBe(false);
+    expect(read.data.posts.length).toBeGreaterThan(0);
+    expect(read.data.posts.every((post) => post.publishedAt.slice(0, 10) >= read.data.fromDate)).toBe(true);
+    expect(await analytics(actor, '31')).toMatchObject({ ok: false, status: 400, error: 'analytics_range_invalid' });
+    expect(await analytics(actor, 'all')).toMatchObject({ ok: false, status: 400 });
+    expect(await analytics({ ...actor, requestedTenantId: 'other-ministry' }, '30')).toMatchObject({ ok: false, status: 403 });
   });
 
   it('keeps the sample ministry zone when the caller names another', async () => {

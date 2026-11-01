@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -37,15 +35,21 @@ import {
   platformsSupportingMadeWithAi,
   type SocialPlatform,
 } from '@/lib/social/platforms';
-import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
+import { calendarDayKey, defaultCalendarDay, undatedDrafts } from '@/lib/social/calendar';
+import { queueDate, queueTime, scheduledByDay, sentNewestFirst } from '@/lib/social/queue';
+import type { AnalyticsRange, SocialAnalytics } from '@/lib/social/analytics';
+import { dayHeader, hourLabel, shiftDay, weekDays, weekHours, weekSlots, weekTitle } from '@/lib/social/week';
 import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
 import { validateSocialMedia } from '@/lib/social/media-rules';
 import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment } from './MediaAttachments';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
+import { PostPreview } from './PostPreview';
+import { SocialAnalyticsView, type AnalyticsLoader } from './SocialAnalyticsView';
+import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
-export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue';
+export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics';
 
 export interface SocialScreenData extends SocialWorkspace {
   readonly entitled: boolean;
@@ -98,28 +102,12 @@ function friendlyError(error: unknown): string {
   return 'The post could not be saved.';
 }
 
-function formatDayHeading(key: string): string {
-  const [year, month, day] = key.split('-').map(Number);
-  const noon = new Date(Date.UTC(year, (month || 1) - 1, day || 1, 12));
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(noon);
-}
-
 function futureIso(wall: string, timeZone: string, now = Date.now()): string | null {
   const iso = wallTimeInZoneToIso(wall, timeZone);
   if (!iso) return null;
   const parsed = Date.parse(iso);
   if (!Number.isFinite(parsed) || parsed <= now || parsed > now + MAX_SCHEDULE_MS) return null;
   return iso;
-}
-
-function dayFromKey(key: string): Date {
-  const [year, month, day] = key.split('-').map(Number);
-  return new Date(year, (month || 1) - 1, day || 1);
 }
 
 function labelFor(platform: SocialPlatform): string {
@@ -189,14 +177,24 @@ function targetsFor(
   });
 }
 
+/** #582: the Analytics tab's data, from the server. */
+async function loadAnalytics(range: AnalyticsRange): Promise<SocialAnalytics> {
+  const response = await authFetch(`/api/social/analytics?range=${range}`);
+  if (!response.ok) throw new Error('analytics_unavailable');
+  return (await response.json()) as SocialAnalytics;
+}
+
 export function SocialScheduler({
   initial,
   initialView = 'compose',
   planLoading = false,
   onUpgrade,
+  analyticsLoader = loadAnalytics,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
+  /** #582: where the Analytics tab reads from; the preview and tests pass sample data. */
+  analyticsLoader?: AnalyticsLoader;
   /**
    * The shell has not resolved the tenant's plan yet. The gate shows a loading
    * state until it has; it never guesses, because a guess that the server then
@@ -229,6 +227,7 @@ export function SocialScheduler({
   const [editWhen, setEditWhen] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const [showDrafts, setShowDrafts] = useState(true);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
@@ -333,14 +332,6 @@ export function SocialScheduler({
   const posts = data?.posts ?? [];
   const aiPlatforms = platformsSupportingMadeWithAi(selected.filter((slug): slug is SocialPlatform =>
     (SOCIAL_PLATFORMS as readonly string[]).includes(slug)));
-
-  const marked = useMemo(() => {
-    const zone = ministryZone(data?.timezone, browserZone);
-    return (data?.posts ?? [])
-      .map((post) => calendarDayKey(post.scheduledFor, zone))
-      .filter((value): value is string => Boolean(value))
-      .map((value) => dayFromKey(value));
-  }, [browserZone, data?.posts, data?.timezone]);
 
   if (unavailable) {
     return (
@@ -528,8 +519,10 @@ export function SocialScheduler({
 
   const zone = ministryZone(data?.timezone, browserZone);
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
-  const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
+  const week = weekDays(selectedDay);
+  const slots = weekSlots(posts, week, zone);
+  const hours = weekHours(slots);
   const media = attachments.map((item) => item.media);
   const mediaError = validateSocialMedia(media, []);
   const platformErrors = selected.map((platform) => validateSocialMedia(media, [platform as SocialPlatform])).filter((error) => error && error !== mediaError);
@@ -553,6 +546,7 @@ export function SocialScheduler({
               { value: 'compose', label: 'Compose' },
               { value: 'calendar', label: 'Calendar' },
               { value: 'queue', label: 'Queue' },
+              { value: 'analytics', label: 'Analytics' },
             ]}
           />
         )}
@@ -565,6 +559,10 @@ export function SocialScheduler({
       {notice && <p className="text-sm text-faint" role="status">{notice}</p>}
 
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
+        <TabsContent value="analytics" className="mt-4">
+          {view === 'analytics' && <SocialAnalyticsView load={analyticsLoader} />}
+        </TabsContent>
+
         <TabsContent value="accounts" className="mt-4">
           <AccountsPanel accounts={accounts} onConnect={connect} />
         </TabsContent>
@@ -572,44 +570,47 @@ export function SocialScheduler({
         <TabsContent value="compose" className="mt-4">
           <div className="flex w-full flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center" data-testid="social-compose-row">
           <Card className="w-full lg:max-w-[640px] lg:shrink-0" data-testid="social-composer">
-            <CardHeader>
-              <CardTitle className="font-display text-2xl font-semibold">New post</CardTitle>
-              <CardDescription>One text, then the accounts that should carry it.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <MediaAttachments items={attachments} setItems={setAttachments}>
-              <Textarea
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-                placeholder="What should this post say?"
-                className="min-h-32"
-                aria-label="Post text"
-              />
-              </MediaAttachments>
+            {/* #581: Eden's composer (docs/prd/screenshots/14-social-scheduler, 017):
+                Post to, then the post itself, then each network's options. */}
+            <CardContent className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold text-muted">Post to</span>
               <ToggleGroup
-                multiple
-                value={selected}
-                onValueChange={(next) => {
-                  const chosen = next;
-                  setSelected(chosen);
-                  setFields((current) => seedSelectDefaults(current, chosen));
-                }}
-                aria-label="Platforms"
-                className="flex flex-wrap"
-              >
-                {accounts.map((account) => (
-                  <ToggleGroupItem key={account.id} value={account.platform} className={CONTROL}>
-                    {labelFor(account.platform)}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+                  multiple
+                  value={selected}
+                  onValueChange={(next) => {
+                    const chosen = next;
+                    setSelected(chosen);
+                    setFields((current) => seedSelectDefaults(current, chosen));
+                  }}
+                  aria-label="Platforms"
+                  className="flex flex-wrap gap-1.5"
+                >
+                  {accounts.map((account) => (
+                    <ToggleGroupItem key={account.id} value={account.platform} className={`${CONTROL} size-11 rounded-full border border-line p-0 sm:size-10`}>
+                      {hasLogo(account.platform) ? <PlatformLogo platform={account.platform} className="size-4" /> : labelFor(account.platform)}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
+              <div className="rounded-xl border border-line bg-card p-3">
+                <MediaAttachments items={attachments} setItems={setAttachments}>
+                <Textarea
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  placeholder="What do you want to say?"
+                  className="min-h-32 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  aria-label="Post text"
+                />
+                </MediaAttachments>
+              </div>
               {selected.map((slug) => {
                 const platform = slug as SocialPlatform;
                 const specs = PLATFORM_FIELDS[platform] || [];
                 if (specs.length === 0) return null;
                 return (
                   <fieldset key={platform} className="flex flex-col gap-2" data-testid={`fields-${platform}`}>
-                    <legend className="mb-2 text-[13px] font-semibold text-strong">{labelFor(platform)}</legend>
+                    <legend className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-strong"><PlatformLogo platform={platform} decorative />{labelFor(platform)}</legend>
                     {specs.map((field) => {
                       const FieldWrap = field.kind === 'select' ? 'div' : 'label';
                       const inline = field.kind !== 'text';
@@ -697,44 +698,57 @@ export function SocialScheduler({
               </div>
             </CardContent>
           </Card>
-            <SidePanel posts={posts} />
+            <PostPreview
+              content={content}
+              mediaCount={attachments.length}
+              accounts={accounts}
+              platforms={selected.filter((slug): slug is SocialPlatform => (SOCIAL_PLATFORMS as readonly string[]).includes(slug))}
+            />
           </div>
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">
-          <Card data-testid="social-calendar">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-display text-2xl font-semibold">
-                <CalendarIcon className="size-5" aria-hidden />
-                Calendar
-              </CardTitle>
-              <CardDescription>Scheduled posts in {zone}.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 lg:flex-row">
-              <Calendar
-                mode="single"
-                selected={dayFromKey(selectedDay)}
-                onSelect={(next) => {
-                  if (!next) return;
-                  const month = String(next.getMonth() + 1).padStart(2, '0');
-                  const day = String(next.getDate()).padStart(2, '0');
-                  setPickedDay(`${next.getFullYear()}-${month}-${day}`);
-                }}
-                modifiers={{ scheduled: marked }}
-                modifiersClassNames={{ scheduled: 'bg-muted font-semibold' }}
-              />
-              <div className="flex flex-1 flex-col gap-4">
-                <section>
-                  <h2 className="mb-2 text-sm font-medium text-strong" data-testid="social-day-heading">{formatDayHeading(selectedDay)}</h2>
-                  <ul className="flex flex-col gap-2" data-testid="social-day-posts">
-                    {onDay.length === 0 && (
-                      <li className="text-sm text-faint">No posts on this day.</li>
-                    )}
-                    {onDay.map((post) => (
-                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
-                    ))}
-                  </ul>
-                </section>
+          {/* #581: Eden's week (docs/prd/screenshots/14-social-scheduler, 013-015). */}
+          <section data-testid="social-calendar" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 data-testid="social-week-title" className="font-display text-xl font-semibold text-strong">{weekTitle(selectedDay)}</h2>
+              <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                <Button type="button" variant="ghost" aria-pressed={showDrafts} className={`${CONTROL} h-auto px-2.5 text-xs font-semibold`} onClick={() => setShowDrafts((open) => !open)}>Drafts</Button>
+                <span className="px-1 text-xs text-faint">{(zone.split('/').pop() ?? zone).replace(/_/g, ' ')}</span>
+                <Button type="button" variant="ghost" aria-label="Previous week" className={`${CONTROL} h-auto px-2`} onClick={() => setPickedDay(shiftDay(selectedDay, -7))}>‹</Button>
+                <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2.5 text-xs font-semibold`} onClick={() => setPickedDay(calendarDayKey(new Date().toISOString(), zone))}>Today</Button>
+                <Button type="button" variant="ghost" aria-label="Next week" className={`${CONTROL} h-auto px-2`} onClick={() => setPickedDay(shiftDay(selectedDay, 7))}>›</Button>
+                <Button type="button" className={ACTION_PRIMARY} onClick={() => setView('compose')}>+ New post</Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <ScrollArea className="min-w-0 flex-1 rounded-xl border border-line bg-surface-raised">
+                <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
+                  <div />
+                  {week.map((day) => {
+                    const header = dayHeader(day);
+                    return <div key={day} data-week-day={day} className="border-l border-line px-2 py-2 text-center text-xs text-muted">
+                      {header.weekday} <span className="font-semibold text-strong">{header.day}</span>
+                    </div>;
+                  })}
+                  {hours.map((hour) => (
+                    <Fragment key={hour}>
+                      <div className="border-t border-line px-1.5 py-1 text-right text-[11px] text-faint">{hourLabel(hour)}</div>
+                      {week.map((day) => (
+                        <div key={day} data-week-slot={`${day}@${hour}`} className="flex min-h-14 flex-col gap-1 border-l border-t border-line p-1">
+                          {(slots.get(`${day}@${hour}`) ?? []).map((post) => (
+                            <article key={post.id} data-week-post={post.id} className="rounded-md bg-card px-2 py-1.5 shadow-xs">
+                              <p className="flex items-center gap-1.5 text-[11px] text-faint">{queueTime(post.scheduledFor, post.timezone || zone)} <PlatformLogos platforms={post.targets.map((target) => target.platform)} className="size-3" /></p>
+                              <p className="line-clamp-2 text-xs text-strong">{post.content}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              </ScrollArea>
+              {showDrafts && <aside className="rounded-xl border border-line bg-surface-raised p-3 lg:w-72">
                 <section data-testid="social-calendar-drafts">
                   <h2 className="mb-2 text-sm font-medium text-strong">Drafts</h2>
                   <ul className="flex flex-col gap-2">
@@ -746,14 +760,15 @@ export function SocialScheduler({
                     ))}
                   </ul>
                 </section>
-              </div>
-            </CardContent>
-          </Card>
+              </aside>}
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent value="queue" className="mt-4">
           <Queue
             posts={posts}
+            timeZone={ministryZone(data?.timezone, browserZone)}
             onEdit={(post) => {
               setEditing(post);
               setEditError(null);
@@ -880,40 +895,6 @@ export function SocialScheduler({
   );
 }
 
-function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
-  const [tab, setTab] = useState<'draft' | 'scheduled' | 'sent'>('draft');
-  const labels = { draft: 'Drafts', scheduled: 'Scheduled', sent: 'Sent' } as const;
-  const rows = posts.filter((post) => post.status === tab);
-  return (
-    <aside
-      className="hidden w-80 shrink-0 gap-3 rounded-xl border border-line bg-card p-3 lg:flex lg:flex-col"
-      data-testid="social-side-panel"
-    >
-      <SegmentedTabs
-        value={tab}
-        onValueChange={(next) => {
-          if (next === 'draft' || next === 'scheduled' || next === 'sent') setTab(next);
-        }}
-        className="gap-0"
-      >
-        <SegmentedTabsList aria-label="Drafts, scheduled and sent" className="w-full">
-          {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
-            <SegmentedTabsTrigger key={id} value={id} className={`${CONTROL} h-auto flex-1 px-2`}>
-              {labels[id]}
-            </SegmentedTabsTrigger>
-          ))}
-        </SegmentedTabsList>
-      </SegmentedTabs>
-      <ul className="flex flex-col gap-2">
-        {rows.length === 0 && <li className="px-1 text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
-        {rows.map((post) => (
-          <li key={post.id} className="rounded-xl border border-line bg-background px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
-        ))}
-      </ul>
-    </aside>
-  );
-}
-
 function AccountsPanel({
   accounts,
   onConnect,
@@ -931,7 +912,7 @@ function AccountsPanel({
         <ul className="flex flex-col gap-2">
           {accounts.map((account) => (
             <li key={account.id} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
-              <span className="text-sm text-strong">{labelFor(account.platform)}</span>
+              <span className="flex items-center gap-2 text-sm text-strong"><PlatformLogo platform={account.platform} decorative />{labelFor(account.platform)}</span>
               <span className="text-sm text-faint">{account.displayName} · @{account.username}</span>
             </li>
           ))}
@@ -940,8 +921,8 @@ function AccountsPanel({
           <p className="text-sm text-faint">Connect another account</p>
           <div className="flex flex-wrap items-center gap-2">
             {SOCIAL_PLATFORMS.map((platform) => (
-              <Button key={platform} type="button" variant="outline" className={CONTROL} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
-                {labelFor(platform)}
+              <Button key={platform} type="button" variant="outline" className={`${CONTROL} gap-2`} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
+                <PlatformLogo platform={platform} decorative />{labelFor(platform)}
               </Button>
             ))}
           </div>
@@ -953,67 +934,70 @@ function AccountsPanel({
 
 function Queue({
   posts,
+  timeZone,
   onEdit,
   onCancel,
 }: {
   posts: readonly SocialPost[];
+  timeZone: string;
   onEdit: (post: SocialPost) => void;
   onCancel: (post: SocialPost) => void;
 }) {
-  const groups: { id: SocialPost['status']; label: string }[] = [
-    { id: 'draft', label: 'Drafts' },
-    { id: 'scheduled', label: 'Scheduled' },
-    { id: 'sent', label: 'Sent' },
-  ];
+  // #581: Eden's Queue — three columns, Drafts · Scheduled (by day) · Sent.
+  const drafts = posts.filter((post) => post.status === 'draft');
+  const days = scheduledByDay(posts, timeZone, new Date());
+  const scheduledCount = days.reduce((n, day) => n + day.posts.length, 0);
+  const sent = sentNewestFirst(posts);
+  const platforms = (post: SocialPost) => <PlatformLogos platforms={post.targets.map((target) => target.platform)} />;
+  // Drafts and scheduled posts only; a sent post has gone out.
+  const actions = (post: SocialPost) => (
+    <div className="mt-2 flex gap-1">
+      <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2 text-xs font-semibold`} onClick={() => onEdit(post)}>Edit</Button>
+      <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2 text-xs font-semibold text-muted`} onClick={() => onCancel(post)}>Cancel</Button>
+    </div>
+  );
+  const column = (title: string, count: number, body: ReactNode, aside?: ReactNode) => (
+    <section data-queue-column={title.toLowerCase()} className="flex min-w-0 flex-col rounded-xl border border-line bg-surface-raised">
+      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+        <h2 className="text-sm font-semibold text-strong">{title}</h2>
+        <span className="text-xs text-faint">{count}</span>
+        {aside && <span className="ml-auto text-xs text-faint">{aside}</span>}
+      </header>
+      <ScrollArea className="h-[34rem]"><div className="flex flex-col gap-2 p-3">{body}</div></ScrollArea>
+    </section>
+  );
+  const none = (what: string) => <p className="px-1 py-6 text-center text-sm text-faint">Nothing {what}.</p>;
   return (
-    <Card data-testid="social-queue">
-      <CardHeader>
-        <CardTitle className="font-display text-2xl font-semibold">Queue</CardTitle>
-        <CardDescription>Drafts, scheduled posts, and posts that have gone out.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[28rem]">
-          <div className="flex flex-col gap-6">
-            {groups.map((group) => {
-              const rows = posts.filter((post) => post.status === group.id);
-              return (
-                <section key={group.id}>
-                  <h2 className="mb-2 text-sm font-medium text-strong">{group.label}</h2>
-                  {rows.length === 0 ? (
-                    <Empty className="border-line">
-                      <EmptyHeader>
-                        <EmptyTitle>None</EmptyTitle>
-                        <EmptyDescription>Nothing in {group.label.toLowerCase()}.</EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    <ul className="flex flex-col gap-2">
-                      {rows.map((post) => (
-                        <li key={post.id} className="flex flex-col gap-2 rounded-lg border border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <PostMediaThumb media={post.media} />
-                            <div><p className="text-sm text-strong">{post.content}</p>
-                            <p className="text-xs text-faint">
-                              {post.targets.map((target) => labelFor(target.platform)).join(', ')}
-                              {post.scheduledFor ? ` · ${isoToWallTime(post.scheduledFor, post.timezone || 'UTC').replace('T', ' ')}` : ''}
-                            </p></div>
-                          </div>
-                          {post.status !== 'sent' && (
-                            <div className="flex gap-2">
-                              <Button type="button" variant="outline" className={CONTROL} onClick={() => onEdit(post)}>Edit</Button>
-                              <Button type="button" variant="outline" className={CONTROL} onClick={() => onCancel(post)}>Cancel</Button>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div data-testid="social-queue" className="grid gap-3 lg:grid-cols-3">
+      {column('Drafts', drafts.length, drafts.length === 0 ? none('in drafts') : drafts.map((post) => (
+        <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+          <div className="flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-3 text-sm text-strong">{post.content}</p></div>
+          <p className="mt-1.5 text-xs text-faint">{platforms(post)}</p>
+          {actions(post)}
+        </article>
+      )))}
+      {column('Scheduled', scheduledCount, scheduledCount === 0 ? none('scheduled') : days.map((day) => (
+        <div key={day.key} data-queue-day={day.key} className="flex flex-col gap-2">
+          <h3 className="px-1 pt-1 text-sm font-semibold text-strong">{day.label} <span className="font-normal text-faint">{day.date}</span></h3>
+          {day.posts.map((post) => (
+            <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+              <p className="text-xs font-semibold text-muted">{queueTime(post.scheduledFor, post.timezone || timeZone)}<span className="ml-1.5 font-normal text-faint">{platforms(post)}</span></p>
+              <div className="mt-1 flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-3 text-sm text-strong">{post.content}</p></div>
+              {actions(post)}
+            </article>
+          ))}
+        </div>
+      )), (timeZone.split('/').pop() ?? timeZone).replace(/_/g, ' '))}
+      {column('Sent', sent.length, sent.length === 0 ? none('sent yet') : sent.map((post) => (
+        <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+          <p className="flex items-center gap-2 text-xs text-faint">
+            <span className="rounded-md bg-surface-sunken px-1.5 py-0.5 font-semibold text-muted">Posted</span>
+            {post.scheduledFor ? `${queueDate(post.scheduledFor, post.timezone || timeZone)}, ${queueTime(post.scheduledFor, post.timezone || timeZone)}` : ''}
+          </p>
+          <div className="mt-1.5 flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-4 text-sm text-strong">{post.content}</p></div>
+          <p className="mt-1.5 text-xs text-faint">{platforms(post)}</p>
+        </article>
+      )))}
+    </div>
   );
 }
