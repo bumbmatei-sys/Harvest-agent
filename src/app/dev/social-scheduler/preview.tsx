@@ -11,6 +11,8 @@ import { useLgUp } from '@/components/admin-shell/use-lg';
 import { SocialScheduler, type SocialView } from '@/components/admin/social/SocialScheduler';
 import { SocialUpgradeWall } from '@/components/admin/social/SocialUpgradeWall';
 import { analyticsWindow, type AnalyticsRange } from '@/lib/social/analytics';
+import { readCommentThreads, readComments, readConversations, readMessages, readReviews } from '@/lib/social/inbox';
+import type { InboxApi } from '@/components/admin/social/SocialInboxView';
 import { applyTheme } from '@/lib/theme-runtime';
 import type { ThemeChoice } from '@/lib/theme';
 import { MockSocialClient } from '@/lib/social/mock-client';
@@ -19,7 +21,7 @@ import { sectionForTab, type ShellTabRef } from '@/components/admin-shell/shell-
 const CLOCK = new Date(Date.UTC(2024, 2, 15, 12));
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
-const VIEWS = ['accounts', 'compose', 'calendar', 'queue', 'analytics'] as const;
+const VIEWS = ['accounts', 'compose', 'calendar', 'queue', 'analytics', 'inbox'] as const;
 
 export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?: string }) {
   const lg = useLgUp();
@@ -35,6 +37,22 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
   const sampleAnalytics = useCallback(async (range: AnalyticsRange) => {
     const { fromDate, toDate } = analyticsWindow(range, CLOCK);
     return new MockSocialClient('preview', CLOCK).analytics(fromDate, toDate);
+  }, []);
+  // #584: the sample inbox, parsed by the same readers the server uses; nothing is sent.
+  const sampleInbox = useMemo<InboxApi>(() => {
+    const mock = new MockSocialClient('preview', CLOCK);
+    return {
+      list: async (kind) => {
+        const body = mock.inboxList(kind);
+        if (kind === 'message') return { kind, items: readConversations(body) };
+        if (kind === 'comment') return { kind, items: readCommentThreads(body) };
+        return { kind, items: readReviews(body) };
+      },
+      thread: async (kind, id) => (kind === 'message'
+        ? { kind, messages: readMessages(mock.inboxThread(kind, id)) }
+        : { kind, comments: readComments(mock.inboxThread(kind, id)) }),
+      reply: async ({ kind, id, message, commentId }) => { mock.inboxReply(kind, id, message, commentId); },
+    };
   }, []);
   const tabs = useMemo(() => new Map<string, ShellTabRef>([
     ['blog', { id: 'blog', label: 'Blog', icon: Radio }],
@@ -86,6 +104,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
               initialView={initialView}
               onUpgrade={() => {}}
               analyticsLoader={sampleAnalytics}
+              inboxApi={sampleInbox}
             />
           )}
           </div>

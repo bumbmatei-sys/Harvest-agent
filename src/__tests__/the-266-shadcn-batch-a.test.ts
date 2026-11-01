@@ -712,6 +712,8 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin/social/SocialScheduler.tsx',
       // APPENDED BY #582. The scheduler's Analytics tab waits as the chart-sized block it will become.
       'src/components/admin/social/SocialAnalyticsView.tsx',
+      // APPENDED BY #584. The inbox list and an opening thread wait as the blocks they will become.
+      'src/components/admin/social/SocialInboxView.tsx',
       // APPENDED BY UI-POLISH. A board's grid waits as the grid it will become: four card-shaped
       // blocks, a shape known before any note arrives.
       'src/components/boards/BoardGrid.tsx',

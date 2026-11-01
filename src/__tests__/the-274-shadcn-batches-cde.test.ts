@@ -1428,6 +1428,11 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'state inside the list so keyboard focus stays on the input.',
   },
   {
+    file: 'src/components/admin/social/SocialInboxView.tsx',
+    ticket: '#584',
+    why: 'APPENDED BY #584. The unified inbox uses the shared select for its type, platform and account filters and the shared textarea for every reply.',
+  },
+  {
     file: 'src/components/admin/social/SocialScheduler.tsx',
     ticket: 'phase-2',
     why:

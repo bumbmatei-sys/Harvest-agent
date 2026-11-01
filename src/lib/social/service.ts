@@ -17,11 +17,16 @@ import {
   connectSocialAccount,
   createSocialPost,
   loadSocialAnalytics,
+  loadSocialInbox,
+  loadSocialInboxThread,
+  replySocialInbox,
   loadSocialWorkspace,
   updateSocialPost,
 } from './session';
 import { workspaceTimeZone } from './schedule-time';
 import { analyticsWindow, isAnalyticsRange, type SocialAnalytics } from './analytics';
+import { readReply, type InboxKind } from './inbox';
+import type { InboxListing, InboxThread } from './session';
 import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
 
 /**
@@ -43,6 +48,9 @@ export type { SocialActor };
 export type SocialErrorCode =
   | 'platform_not_offered'
   | 'analytics_range_invalid'
+  | 'inbox_kind_invalid'
+  | 'inbox_reply_invalid'
+  | 'inbox_not_found'
   | 'post_incomplete'
   | 'schedule_invalid'
   | 'media_not_accepted'
@@ -469,4 +477,43 @@ export async function analytics(actor: SocialActor, rangeParam: string | null): 
   const result = await loadSocialAnalytics(access.tenantId, fromDate, toDate, new Date(), access.mockOnly);
   if (!result) return fail('social_unavailable', 503);
   return ok({ ...result, sample: access.sample });
+}
+
+/** #584: the unified inbox. */
+const INBOX_KINDS = ['message', 'comment', 'review'] as const;
+const isInboxKind = (value: unknown): value is InboxKind => (INBOX_KINDS as readonly unknown[]).includes(value);
+const isInboxId = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\u0000-\u001f]/.test(value);
+
+export async function inboxList(actor: SocialActor, kind: unknown): Promise<SocialResult<InboxListing & { sample: boolean }>> {
+  if (!isInboxKind(kind)) return fail('inbox_kind_invalid', 400);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const listing = await loadSocialInbox(access.tenantId, kind, new Date(), access.mockOnly);
+  if (!listing) return fail('social_unavailable', 503);
+  return ok({ ...listing, sample: access.sample });
+}
+
+export async function inboxThread(actor: SocialActor, kind: unknown, id: unknown): Promise<SocialResult<InboxThread>> {
+  if ((kind !== 'message' && kind !== 'comment') || !isInboxId(id)) return fail('inbox_kind_invalid', 400);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const thread = await loadSocialInboxThread(access.tenantId, kind, id, new Date(), access.mockOnly);
+  if (thread === 'not_found') return fail('inbox_not_found', 404);
+  if (!thread) return fail('social_unavailable', 503);
+  return ok(thread);
+}
+
+export async function inboxReply(actor: SocialActor, body: unknown): Promise<SocialResult<{ sent: true }>> {
+  const input = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  if (!isInboxKind(input.kind) || !isInboxId(input.id)) return fail('inbox_kind_invalid', 400);
+  const message = readReply(input.message);
+  if (!message) return fail('inbox_reply_invalid', 400);
+  const commentId = input.kind === 'comment' ? (isInboxId(input.commentId) ? input.commentId : null) : undefined;
+  if (commentId === null) return fail('inbox_reply_invalid', 400);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const result = await replySocialInbox(access.tenantId, input.kind, input.id, message, commentId, new Date(), access.mockOnly);
+  if (result === 'not_found') return fail('inbox_not_found', 404);
+  if (!result) return fail('social_unavailable', 503);
+  return ok({ sent: true });
 }

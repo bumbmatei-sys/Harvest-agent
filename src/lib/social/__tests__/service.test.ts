@@ -57,7 +57,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 }));
 
 import { resetPublishOnce } from '../publish-once';
-import { analytics, cancel, createDraft, list, schedule, update, validate } from '../service';
+import { analytics, cancel, createDraft, inboxList, inboxReply, inboxThread, list, schedule, update, validate } from '../service';
 
 const SCHEDULE_KEY = '22222222-2222-4222-8222-222222222222';
 
@@ -144,6 +144,43 @@ describe('social service', () => {
     expect(await analytics(actor, '31')).toMatchObject({ ok: false, status: 400, error: 'analytics_range_invalid' });
     expect(await analytics(actor, 'all')).toMatchObject({ ok: false, status: 400 });
     expect(await analytics({ ...actor, requestedTenantId: 'other-ministry' }, '30')).toMatchObject({ ok: false, status: 403 });
+  });
+
+  // #584: the unified inbox.
+  it('lists each kind of inbox item and refuses an unknown kind or another ministry', async () => {
+    const dms = await inboxList(actor, 'message');
+    expect(dms).toMatchObject({ ok: true, data: { kind: 'message', sample: true } });
+    if (!dms.ok || dms.data.kind !== 'message') return;
+    expect(dms.data.items.map((c) => c.participantName)).toEqual(['Grace Okafor', 'Daniel Reyes']);
+    expect(dms.data.items[0].unread).toBe(true);
+    const reviews = await inboxList(actor, 'review');
+    expect(reviews.ok && reviews.data.kind === 'review' && reviews.data.items[0]).toMatchObject({ reviewerName: 'Maria P.', rating: 5, reply: null });
+    expect(await inboxList(actor, 'email')).toMatchObject({ ok: false, status: 400, error: 'inbox_kind_invalid' });
+    expect(await inboxList({ ...actor, requestedTenantId: 'other-ministry' }, 'message')).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it('opens and answers only this ministry\'s own items', async () => {
+    const thread = await inboxThread(actor, 'message', 'sample-dm-2');
+    expect(thread.ok && thread.data.kind === 'message' && thread.data.messages.map((m) => m.direction)).toEqual(['incoming', 'outgoing', 'incoming']);
+    expect(await inboxThread(actor, 'message', 'someone-elses-dm')).toMatchObject({ ok: false, status: 404, error: 'inbox_not_found' });
+    expect(await inboxReply(actor, { kind: 'message', id: 'someone-elses-dm', message: 'Hi' })).toMatchObject({ ok: false, status: 404 });
+
+    expect(await inboxReply(actor, { kind: 'message', id: 'sample-dm-1', message: '  Friday at 7! ' })).toMatchObject({ ok: true, data: { sent: true } });
+    const after = await inboxThread(actor, 'message', 'sample-dm-1');
+    expect(after.ok && after.data.kind === 'message' && after.data.messages.at(-1)).toMatchObject({ direction: 'outgoing', text: 'Friday at 7!' });
+
+    // A comment reply must name a comment under the ministry's own post.
+    expect(await inboxReply(actor, { kind: 'comment', id: 'sample-post-1', message: 'Yes!' })).toMatchObject({ ok: false, status: 400, error: 'inbox_reply_invalid' });
+    expect(await inboxReply(actor, { kind: 'comment', id: 'sample-post-1', commentId: 'not-here', message: 'Yes!' })).toMatchObject({ ok: false, status: 404 });
+    expect(await inboxReply(actor, { kind: 'comment', id: 'sample-post-1', commentId: 'c2', message: 'Yes, Sunday night.' })).toMatchObject({ ok: true });
+
+    expect(await inboxReply(actor, { kind: 'review', id: 'sample-review-1', message: 'Thank you, Maria!' })).toMatchObject({ ok: true });
+    const reviews = await inboxList(actor, 'review');
+    expect(reviews.ok && reviews.data.kind === 'review' && reviews.data.items[0].reply).toBe('Thank you, Maria!');
+
+    for (const bad of [{ kind: 'message', id: 'sample-dm-1', message: '   ' }, { kind: 'message', id: 'sample-dm-1', message: 'x'.repeat(2001) }, { kind: 'message', id: '', message: 'Hi' }, null]) {
+      expect((await inboxReply(actor, bad)).ok, JSON.stringify(bad)?.slice(0, 60)).toBe(false);
+    }
   });
 
   it('keeps the sample ministry zone when the caller names another', async () => {

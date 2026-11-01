@@ -811,6 +811,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // floor once the root drops to 14.5px.
       // APPENDED BY #582: the Analytics tab's pills, as `min-h-11 sm:min-h-[34px]`.
       'src/components/admin/social/SocialAnalyticsView.tsx',
+      // APPENDED BY #584: the inbox rows, filters and Send, with the same phone floor.
+      'src/components/admin/social/SocialInboxView.tsx',
       'src/components/admin/social/SocialScheduler.tsx',
       'src/components/admin/social/SocialUpgradeWall.tsx',
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor

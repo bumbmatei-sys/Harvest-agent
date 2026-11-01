@@ -648,7 +648,11 @@ describe('5 · the money path is byte-identical', () => {
       // #576: a community's member list; reads only, names and photos.
       'src/app/api/communities/[communityId]/members/route.ts',
       // #582: the social scheduler's analytics; reads post metrics only.
-      'src/app/api/social/analytics/route.ts'];
+      'src/app/api/social/analytics/route.ts',
+      // #584: the unified inbox — list, open one owned thread, and reply to an owned item.
+      'src/app/api/social/inbox/route.ts',
+      'src/app/api/social/inbox/thread/route.ts',
+      'src/app/api/social/inbox/reply/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);
