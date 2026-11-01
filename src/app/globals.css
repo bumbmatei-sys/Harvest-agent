@@ -154,7 +154,7 @@
  /* Eden shell pass: the canvas is #FAFAF8 and a raised card is #FDFDFD. No
     surface in the app is pure white any more; --text-strong stays the ink. */
  --surface:         #FAFAF8;           /* page ground — Eden canvas */
- --surface-raised:  #FDFDFD;           /* cards/panels — near-white, never #FFF */
+ --surface-raised:  #F3F2EF;           /* cards/panels — the sidebar's warm grey, for contrast on the canvas (Matei, 1 Nov: "everything is too white"); was #FDFDFD */
  /* (--surface-sunken, --surface-gold, --surface-night already exist above) */
  --border-default:  #E9E9E9;           /* common border — Eden card edge */
  --border-subtle:   #EFEFEF;           /* hairlines */

@@ -147,8 +147,12 @@ export const BORDER_LIGHT = 'var(--border-subtle)';
  * i.e. it fails AA today and would have gone on failing. One step darker clears
  * it at 4.79:1 and inverts to 13.49:1 on dark. The step costs a barely visible
  * darkening of a badge that was already too light to read.
+ *
+ * 🔴 #583: `--ink-green-800`. Cards became the sidebar's warm grey (#F3F2EF),
+ * and the -700 tick on a card fell to 4.48:1, just under AA. One more step
+ * darker clears it; on dark the -800 ramp value is lighter still, so it holds.
  */
-export const GREEN = 'rgb(var(--ink-green-700))';
+export const GREEN = 'rgb(var(--ink-green-800))';
 /** The success tint. `--c-green-50` is `#F0FDF4` to the byte in light, so this
  *  ground does not move at all; on dark it inverts to `#222A1E`. */
 export const GREEN_BG = 'rgb(var(--c-green-50))';

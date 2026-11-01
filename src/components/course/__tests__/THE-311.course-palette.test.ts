@@ -230,7 +230,7 @@ const MAPPING: ReadonlyArray<{ name: keyof typeof C; token: string; why: string 
   { name: 'TEXT3', token: '--text-faint', why: 'eyebrows and timestamps — the third step of the same ramp' },
   { name: 'BORDER', token: '--border-default', why: 'the common container border' },
   { name: 'BORDER_LIGHT', token: '--border-subtle', why: 'hairlines' },
-  { name: 'GREEN', token: '--ink-green-700', why: 'the success ink ramp; -600 is the old hex exactly but fails AA at 3.15:1 on the tint in both light palettes' },
+  { name: 'GREEN', token: '--ink-green-800', why: 'the success ink ramp; -600 is the old hex exactly but fails AA at 3.15:1 on the tint in both light palettes, and #583 moved -700 to -800 when cards turned grey and the tick on a card fell to 4.48:1' },
   { name: 'GREEN_BG', token: '--c-green-50', why: 'the success tint; #F0FDF4 to the byte in light, so the ground does not move' },
   { name: 'SHADOW_SM', token: '--ds-sh-sm', why: 'the app\'s elevation ramp, which globals.css already re-derives on dark as a hairline highlight plus a deeper black' },
   { name: 'SHADOW_MD', token: '--ds-sh-md', why: 'ditto, one step up' },
