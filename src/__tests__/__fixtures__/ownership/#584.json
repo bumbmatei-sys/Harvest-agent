@@ -1,0 +1,25 @@
+{
+  "ticket": "#584",
+  "entries": [
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "2dde9fd72f440a4c0ddfc58e78a63e7c230e6c03846b936e608fd1273387519e",
+      "why": "APPENDED, NOT SUBSTITUTED — #584: records SocialInboxView as a skeleton adopter (the inbox list and an opening thread). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "ecd82ef81930651642148e0de9e906d02d1858527694c907eb94e6485cc101c3",
+      "why": "APPENDED, NOT SUBSTITUTED — #584: records SocialInboxView as an adopter of select (type, platform and account filters) and textarea (replies). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "feb0031afd38556ad80b37cfc7fb18584abdd7eaebab25532f2e6daada93fd7f",
+      "why": "APPENDED, NOT SUBSTITUTED — #584: names the three inbox routes (list, thread, reply), which read and answer messages and write no billing entitlement. The count is unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "32142e95be017eb15279ba17d8313b80733cb2268ad27443077d95c4bfd9dc1d",
+      "why": "APPENDED, NOT SUBSTITUTED — #584: records SocialInboxView, in sorted order, among the files that use the min-h-11 phone floor. Nothing removed."
+    }
+  ]
+}
