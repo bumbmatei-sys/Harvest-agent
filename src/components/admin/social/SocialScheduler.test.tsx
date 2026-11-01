@@ -168,9 +168,15 @@ describe('SocialScheduler', () => {
         />,
       );
     });
-    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('This Sunday');
+    // #581: a draft has no place on the week grid; it sits in the Drafts panel.
+    expect([...container.querySelectorAll('[data-week-slot]')].some((slot) => slot.textContent?.includes('This Sunday'))).toBe(false);
     expect(container.querySelector('[data-testid="social-calendar-drafts"]')?.textContent).toContain('This Sunday');
-    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
+    // The Drafts button hides and shows the panel.
+    const toggle = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Drafts' && button.hasAttribute('aria-pressed'))!;
+    await act(async () => { toggle.click(); });
+    expect(container.querySelector('[data-testid="social-calendar-drafts"]')).toBeNull();
+    await act(async () => { toggle.click(); });
+    expect(container.querySelector('[data-testid="social-calendar-drafts"]')).toBeTruthy();
   });
 
   it('centers the composer and docks the drafts panel on desktop classes only', async () => {
@@ -302,7 +308,9 @@ describe('SocialScheduler', () => {
     expect(container.querySelector('[data-testid="connect-youtube"]')?.hasAttribute('disabled')).toBe(false);
   });
 
-  it('names the selected calendar day and lists that day\'s post', async () => {
+  // WAS 'names the selected calendar day and lists that day's post' (a month picker
+  // and one day's list). #581 replaces both with Eden's week grid.
+  it('shows the week around the default day, places each post in its day and hour, and pages by week', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(clock);
     try {
@@ -312,18 +320,22 @@ describe('SocialScheduler', () => {
           <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="calendar" onUpgrade={() => {}} />,
         );
       });
-      const heading = container.querySelector('[data-testid="social-day-heading"]');
-      expect(heading?.textContent).toBe('15 March 2024');
-      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
-      const day = [...container.querySelectorAll('button')].find((button) => button.textContent === '12');
-      await act(async () => { day?.click(); });
-      expect(container.querySelector('[data-testid="social-day-heading"]')?.textContent).toBe('12 March 2024');
-      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).toContain('Verse of the day');
+      const title = () => container.querySelector('[data-testid="social-week-title"]')?.textContent;
+      const days = () => [...container.querySelectorAll<HTMLElement>('[data-week-day]')].map((d) => d.dataset.weekDay);
+      expect(title()).toBe('Week of March 15');
+      expect(days()).toEqual(['2024-03-15', '2024-03-16', '2024-03-17', '2024-03-18', '2024-03-19', '2024-03-20', '2024-03-21']);
+      expect(container.querySelector('[data-testid="social-calendar"]')?.textContent).not.toContain('Verse of the day');
+      await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Previous week"]')!.click(); });
+      expect(title()).toBe('Week of March 8');
+      // Verse of the day is scheduled for 10:00 on 12 March in the ministry's zone.
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('Verse of the day');
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('10:00 AM · Instagram');
+      await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Next week"]')!.click(); });
+      expect(title()).toBe('Week of March 15');
     } finally {
       vi.useRealTimers();
     }
   });
-
   it('saves an undated draft edit and keeps a scheduled time required', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {

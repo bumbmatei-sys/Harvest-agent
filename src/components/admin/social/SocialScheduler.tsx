@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -37,8 +35,9 @@ import {
   platformsSupportingMadeWithAi,
   type SocialPlatform,
 } from '@/lib/social/platforms';
-import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
+import { calendarDayKey, defaultCalendarDay, undatedDrafts } from '@/lib/social/calendar';
 import { queueDate, queueTime, scheduledByDay, sentNewestFirst } from '@/lib/social/queue';
+import { dayHeader, hourLabel, shiftDay, weekDays, weekHours, weekSlots, weekTitle } from '@/lib/social/week';
 import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
@@ -99,28 +98,12 @@ function friendlyError(error: unknown): string {
   return 'The post could not be saved.';
 }
 
-function formatDayHeading(key: string): string {
-  const [year, month, day] = key.split('-').map(Number);
-  const noon = new Date(Date.UTC(year, (month || 1) - 1, day || 1, 12));
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(noon);
-}
-
 function futureIso(wall: string, timeZone: string, now = Date.now()): string | null {
   const iso = wallTimeInZoneToIso(wall, timeZone);
   if (!iso) return null;
   const parsed = Date.parse(iso);
   if (!Number.isFinite(parsed) || parsed <= now || parsed > now + MAX_SCHEDULE_MS) return null;
   return iso;
-}
-
-function dayFromKey(key: string): Date {
-  const [year, month, day] = key.split('-').map(Number);
-  return new Date(year, (month || 1) - 1, day || 1);
 }
 
 function labelFor(platform: SocialPlatform): string {
@@ -230,6 +213,7 @@ export function SocialScheduler({
   const [editWhen, setEditWhen] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const [showDrafts, setShowDrafts] = useState(true);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
@@ -334,14 +318,6 @@ export function SocialScheduler({
   const posts = data?.posts ?? [];
   const aiPlatforms = platformsSupportingMadeWithAi(selected.filter((slug): slug is SocialPlatform =>
     (SOCIAL_PLATFORMS as readonly string[]).includes(slug)));
-
-  const marked = useMemo(() => {
-    const zone = ministryZone(data?.timezone, browserZone);
-    return (data?.posts ?? [])
-      .map((post) => calendarDayKey(post.scheduledFor, zone))
-      .filter((value): value is string => Boolean(value))
-      .map((value) => dayFromKey(value));
-  }, [browserZone, data?.posts, data?.timezone]);
 
   if (unavailable) {
     return (
@@ -529,8 +505,10 @@ export function SocialScheduler({
 
   const zone = ministryZone(data?.timezone, browserZone);
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
-  const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
+  const week = weekDays(selectedDay);
+  const slots = weekSlots(posts, week, zone);
+  const hours = weekHours(slots);
   const media = attachments.map((item) => item.media);
   const mediaError = validateSocialMedia(media, []);
   const platformErrors = selected.map((platform) => validateSocialMedia(media, [platform as SocialPlatform])).filter((error) => error && error !== mediaError);
@@ -703,39 +681,47 @@ export function SocialScheduler({
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">
-          <Card data-testid="social-calendar">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-display text-2xl font-semibold">
-                <CalendarIcon className="size-5" aria-hidden />
-                Calendar
-              </CardTitle>
-              <CardDescription>Scheduled posts in {zone}.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 lg:flex-row">
-              <Calendar
-                mode="single"
-                selected={dayFromKey(selectedDay)}
-                onSelect={(next) => {
-                  if (!next) return;
-                  const month = String(next.getMonth() + 1).padStart(2, '0');
-                  const day = String(next.getDate()).padStart(2, '0');
-                  setPickedDay(`${next.getFullYear()}-${month}-${day}`);
-                }}
-                modifiers={{ scheduled: marked }}
-                modifiersClassNames={{ scheduled: 'bg-muted font-semibold' }}
-              />
-              <div className="flex flex-1 flex-col gap-4">
-                <section>
-                  <h2 className="mb-2 text-sm font-medium text-strong" data-testid="social-day-heading">{formatDayHeading(selectedDay)}</h2>
-                  <ul className="flex flex-col gap-2" data-testid="social-day-posts">
-                    {onDay.length === 0 && (
-                      <li className="text-sm text-faint">No posts on this day.</li>
-                    )}
-                    {onDay.map((post) => (
-                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
-                    ))}
-                  </ul>
-                </section>
+          {/* #581: Eden's week (docs/prd/screenshots/14-social-scheduler, 013-015). */}
+          <section data-testid="social-calendar" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 data-testid="social-week-title" className="font-display text-xl font-semibold text-strong">{weekTitle(selectedDay)}</h2>
+              <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                <Button type="button" variant="ghost" aria-pressed={showDrafts} className={`${CONTROL} h-auto px-2.5 text-xs font-semibold`} onClick={() => setShowDrafts((open) => !open)}>Drafts</Button>
+                <span className="px-1 text-xs text-faint">{(zone.split('/').pop() ?? zone).replace(/_/g, ' ')}</span>
+                <Button type="button" variant="ghost" aria-label="Previous week" className={`${CONTROL} h-auto px-2`} onClick={() => setPickedDay(shiftDay(selectedDay, -7))}>‹</Button>
+                <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2.5 text-xs font-semibold`} onClick={() => setPickedDay(calendarDayKey(new Date().toISOString(), zone))}>Today</Button>
+                <Button type="button" variant="ghost" aria-label="Next week" className={`${CONTROL} h-auto px-2`} onClick={() => setPickedDay(shiftDay(selectedDay, 7))}>›</Button>
+                <Button type="button" className={ACTION_PRIMARY} onClick={() => setView('compose')}>+ New post</Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <ScrollArea className="min-w-0 flex-1 rounded-xl border border-line bg-surface-raised">
+                <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
+                  <div />
+                  {week.map((day) => {
+                    const header = dayHeader(day);
+                    return <div key={day} data-week-day={day} className="border-l border-line px-2 py-2 text-center text-xs text-muted">
+                      {header.weekday} <span className="font-semibold text-strong">{header.day}</span>
+                    </div>;
+                  })}
+                  {hours.map((hour) => (
+                    <Fragment key={hour}>
+                      <div className="border-t border-line px-1.5 py-1 text-right text-[11px] text-faint">{hourLabel(hour)}</div>
+                      {week.map((day) => (
+                        <div key={day} data-week-slot={`${day}@${hour}`} className="flex min-h-14 flex-col gap-1 border-l border-t border-line p-1">
+                          {(slots.get(`${day}@${hour}`) ?? []).map((post) => (
+                            <article key={post.id} data-week-post={post.id} className="rounded-md bg-card px-2 py-1.5 shadow-xs">
+                              <p className="text-[11px] text-faint">{queueTime(post.scheduledFor, post.timezone || zone)} · {post.targets.map((target) => labelFor(target.platform)).join(', ')}</p>
+                              <p className="line-clamp-2 text-xs text-strong">{post.content}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              </ScrollArea>
+              {showDrafts && <aside className="rounded-xl border border-line bg-surface-raised p-3 lg:w-72">
                 <section data-testid="social-calendar-drafts">
                   <h2 className="mb-2 text-sm font-medium text-strong">Drafts</h2>
                   <ul className="flex flex-col gap-2">
@@ -747,9 +733,9 @@ export function SocialScheduler({
                     ))}
                   </ul>
                 </section>
-              </div>
-            </CardContent>
-          </Card>
+              </aside>}
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent value="queue" className="mt-4">
