@@ -170,7 +170,7 @@ describe('WCAG AA contrast in both themes', () => {
 describe('the light theme ramp values are pinned', () => {
   it.each([
     ['--surface', '#FAFAF8'],
-    ['--surface-raised', '#FDFDFD'],
+    ['--surface-raised', '#F3F2EF'], // #583: the sidebar grey (was #FDFDFD)
     ['--surface-sunken', '#EFEFEF'],
     ['--border-default', '#E9E9E9'],
     ['--text-strong', '#1A1A1A'],

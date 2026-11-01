@@ -265,9 +265,14 @@ describe('cards remain distinguishable from the page ground', () => {
     expect(ratio('dark', '--surface-raised', '--surface')).toBeGreaterThanOrEqual(1.1);
   });
 
-  it('the card is whiter than the page in light', () => {
+  // WAS 'the card is whiter than the page in light'. #583 (Matei, 1 Nov: "everything is too
+  // white") turns it round on purpose: the card takes the sidebar's warm grey and now sits a
+  // step DARKER than the #FAFAF8 canvas, which is the contrast he asked for. The gap is
+  // asserted, so a card drifting back onto the page still fails.
+  it('the card is a step darker than the page in light, and visibly so', () => {
     expect(luminanceOf(hex('light', '--surface-raised')))
-      .toBeGreaterThan(luminanceOf(hex('light', '--surface')));
+      .toBeLessThan(luminanceOf(hex('light', '--surface')));
+    expect(ratio('light', '--surface', '--surface-raised')).toBeGreaterThanOrEqual(1.05);
   });
 
   it('a chip still lifts off the card in both modes', () => {
@@ -436,8 +441,10 @@ describe('a form field edge is still visible', () => {
 // TEST 3 · Light mode is plain white
 // ═══════════════════════════════════════════════════════════════════════════
 describe('light mode is the Eden canvas, not Harvest cream', () => {
-  it('--surface-raised is the Eden card, a step off pure white', () => {
-    expect(hex('light', '--surface-raised')).toBe('#FDFDFD');
+  // WAS '#FDFDFD, a step off pure white'. #583: the card is the sidebar's warm grey.
+  it('--surface-raised is the sidebar\'s warm grey, the same as --sidebar', () => {
+    expect(hex('light', '--surface-raised')).toBe('#F3F2EF');
+    expect(hex('light', '--surface-raised')).toBe(hex('light', '--sidebar'));
   });
 
   it('--surface is the Eden canvas, not Harvest cream and not the old neutral', () => {
@@ -447,8 +454,11 @@ describe('light mode is the Eden canvas, not Harvest cream', () => {
   });
 
   const EDEN_WARM = new Set(['--surface', '--surface-tint']);
+  // #583: the card is the sidebar's own warm grey (#F3F2EF), a different warmth from the canvas
+  // pair above, so it is held to --sidebar instead (asserted with the card's value above).
+  const SIDEBAR_GREY = new Set(['--surface-raised']);
 
-  it.each(RAMP.filter((token) => !EDEN_WARM.has(token)))('%s is a neutral grey in light (R = G = B)', (token) => {
+  it.each(RAMP.filter((token) => !EDEN_WARM.has(token) && !SIDEBAR_GREY.has(token)))('%s is a neutral grey in light (R = G = B)', (token) => {
     const h = hex('light', token);
     const [r, g, b] = (h.slice(1).match(/../g) as string[]).map((x) => parseInt(x, 16));
     expect({ token, r, g, b }).toEqual({ token, r: g, g, b: g });

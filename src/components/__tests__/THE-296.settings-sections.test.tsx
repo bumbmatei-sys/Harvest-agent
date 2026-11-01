@@ -937,7 +937,8 @@ describe('13 · no colour hardcoded, no emoji; both palettes resolve — Classic
 
 /** sha256 of the two files that define the design tokens, at origin/main 133d557. */
 const TOKEN_SOURCE_DIGESTS: Record<string, string> = {
-  'src/app/globals.css': 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4',
+  // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
+  'src/app/globals.css': '6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509',
   'tailwind.config.ts': '32af690fa7f32c4e568deb8b66ff827ffbace309a07a83ff0d4582dd2cd15749',
 };
 

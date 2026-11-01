@@ -207,14 +207,15 @@ describe('zero visual change in the light theme', () => {
     // theming-stage3.test.ts, which is the check that actually matters.
   ];
 
-  it('the Eden card is #FDFDFD and bg-white stays #FFFFFF', async () => {
+  // WAS 'the Eden card is #FDFDFD ...'; #583 makes the card the sidebar grey #F3F2EF.
+  it('the card is the sidebar grey #F3F2EF and bg-white stays #FFFFFF', async () => {
     expect(swaps, 'a vocabulary pair came back — see the note above').toEqual([]);
     const css = await compile('<div class="bg-white bg-surface-raised"></div>');
     const card = declOf(css, 'bg-surface-raised', 'background-color');
     const white = declOf(css, 'bg-white', 'background-color');
     expect(card).toBeDefined();
     expect(white).toBeDefined();
-    expect(resolveColour(card!, allVars)).toBe('#FDFDFD');
+    expect(resolveColour(card!, allVars)).toBe('#F3F2EF');
     expect(resolveColour(white!, allVars)).toBe('#FFFFFF');
   });
 

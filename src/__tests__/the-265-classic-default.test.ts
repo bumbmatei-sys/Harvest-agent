@@ -596,7 +596,8 @@ describe('11 — globals.css, firestore.rules and functions/ are byte-identical'
     expect(
       digest('src/app/globals.css'),
       'globals.css changed — regenerate this digest only in the PR that changed the file, and say why',
-    ).toBe('a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4');
+    // #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask). Was a23d07afde7b.
+    ).toBe('6cd97d6fe43277853cf51a5ee0eb7873e22815caa2f251a4d597b734e3fd1509');
   });
 
   it('firestore.rules is untouched', () => {

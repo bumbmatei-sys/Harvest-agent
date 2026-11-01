@@ -555,7 +555,7 @@ describe('both surfaces remain readable in light mode', () => {
     // preference renders in, so these are the values that were on screen.
     const PINNED: Record<string, string> = {
       '--surface': '#FAFAF8',
-      '--surface-raised': '#FDFDFD',
+      '--surface-raised': '#F3F2EF', // #583: the sidebar grey (was #FDFDFD)
       '--surface-sunken': '#EFEFEF',
       '--surface-tint': '#F5F5F3',
       '--border-strong': '#C7C7C7',

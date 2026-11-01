@@ -508,9 +508,10 @@ const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> 
   Light: {
     "--background": "#FAFAF8",
     "--foreground": "#404040",
-    "--card": "#FDFDFD",
+    // #583: cards and popovers are the sidebar grey (was #FDFDFD).
+    "--card": "#F3F2EF",
     "--card-foreground": "#404040",
-    "--popover": "#FDFDFD",
+    "--popover": "#F3F2EF",
     "--popover-foreground": "#404040",
     "--primary": "#C9963A",
     "--secondary": "#E6B325",
