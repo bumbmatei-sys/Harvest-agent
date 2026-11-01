@@ -179,7 +179,7 @@ describe('SocialScheduler', () => {
     expect(container.querySelector('[data-testid="social-calendar-drafts"]')).toBeTruthy();
   });
 
-  it('centers the composer and docks the drafts panel on desktop classes only', async () => {
+  it('centers the composer with its preview beside it on desktop classes only', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {
       root.render(
@@ -197,12 +197,12 @@ describe('SocialScheduler', () => {
     expect(row?.className).toContain('lg:justify-center');
     expect(row?.className).not.toContain('justify-end');
     expect(row?.className).not.toContain('flex-1');
-    const panel = container.querySelector('[data-testid="social-side-panel"]');
-    expect(panel?.className).toContain('hidden');
-    expect(panel?.className).toContain('lg:flex');
-    expect(panel?.textContent).toContain('Drafts');
-    expect(panel?.textContent).toContain('Scheduled');
-    expect(panel?.textContent).toContain('Sent');
+    // WAS a docked Drafts / Scheduled / Sent panel; #581 follows Eden: the Queue holds
+    // those lists, and the composer's right side is the post's live preview.
+    expect(container.querySelector('[data-testid="social-side-panel"]')).toBeNull();
+    const preview = container.querySelector('[data-testid="social-preview"]');
+    expect(preview?.textContent).toContain('Main preview');
+    expect(preview?.textContent).toContain('Each platform');
   });
 
   it('shows a loading state, never the composer, until the server has answered, then the unavailable card if the load fails', async () => {

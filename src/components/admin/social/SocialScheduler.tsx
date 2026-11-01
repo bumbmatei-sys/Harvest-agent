@@ -44,6 +44,7 @@ import { authFetch } from '@/utils/auth-fetch';
 import { validateSocialMedia } from '@/lib/social/media-rules';
 import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment } from './MediaAttachments';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
+import { PostPreview } from './PostPreview';
 
 export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue';
 
@@ -551,37 +552,41 @@ export function SocialScheduler({
         <TabsContent value="compose" className="mt-4">
           <div className="flex w-full flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center" data-testid="social-compose-row">
           <Card className="w-full lg:max-w-[640px] lg:shrink-0" data-testid="social-composer">
-            <CardHeader>
-              <CardTitle className="font-display text-2xl font-semibold">New post</CardTitle>
-              <CardDescription>One text, then the accounts that should carry it.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <MediaAttachments items={attachments} setItems={setAttachments}>
-              <Textarea
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-                placeholder="What should this post say?"
-                className="min-h-32"
-                aria-label="Post text"
-              />
-              </MediaAttachments>
+            {/* #581: Eden's composer (docs/prd/screenshots/14-social-scheduler, 017):
+                Post to, then the post itself, then each network's options. */}
+            <CardContent className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold text-muted">Post to</span>
               <ToggleGroup
-                multiple
-                value={selected}
-                onValueChange={(next) => {
-                  const chosen = next;
-                  setSelected(chosen);
-                  setFields((current) => seedSelectDefaults(current, chosen));
-                }}
-                aria-label="Platforms"
-                className="flex flex-wrap"
-              >
-                {accounts.map((account) => (
-                  <ToggleGroupItem key={account.id} value={account.platform} className={CONTROL}>
-                    {labelFor(account.platform)}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+                  multiple
+                  value={selected}
+                  onValueChange={(next) => {
+                    const chosen = next;
+                    setSelected(chosen);
+                    setFields((current) => seedSelectDefaults(current, chosen));
+                  }}
+                  aria-label="Platforms"
+                  className="flex flex-wrap gap-1.5"
+                >
+                  {accounts.map((account) => (
+                    <ToggleGroupItem key={account.id} value={account.platform} className={`${CONTROL} gap-2 rounded-full border border-line px-3`}>
+                      <span aria-hidden data-initial={labelFor(account.platform).slice(0, 1)} className="flex size-6 items-center justify-center rounded-full bg-surface-sunken text-[11px] font-semibold text-muted before:content-[attr(data-initial)]" />
+                      {labelFor(account.platform)}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
+              <div className="rounded-xl border border-line bg-card p-3">
+                <MediaAttachments items={attachments} setItems={setAttachments}>
+                <Textarea
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  placeholder="What do you want to say?"
+                  className="min-h-32 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  aria-label="Post text"
+                />
+                </MediaAttachments>
+              </div>
               {selected.map((slug) => {
                 const platform = slug as SocialPlatform;
                 const specs = PLATFORM_FIELDS[platform] || [];
@@ -676,7 +681,12 @@ export function SocialScheduler({
               </div>
             </CardContent>
           </Card>
-            <SidePanel posts={posts} />
+            <PostPreview
+              content={content}
+              mediaCount={attachments.length}
+              accounts={accounts}
+              platforms={selected.filter((slug): slug is SocialPlatform => (SOCIAL_PLATFORMS as readonly string[]).includes(slug))}
+            />
           </div>
         </TabsContent>
 
@@ -865,40 +875,6 @@ export function SocialScheduler({
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
-  const [tab, setTab] = useState<'draft' | 'scheduled' | 'sent'>('draft');
-  const labels = { draft: 'Drafts', scheduled: 'Scheduled', sent: 'Sent' } as const;
-  const rows = posts.filter((post) => post.status === tab);
-  return (
-    <aside
-      className="hidden w-80 shrink-0 gap-3 rounded-xl border border-line bg-card p-3 lg:flex lg:flex-col"
-      data-testid="social-side-panel"
-    >
-      <SegmentedTabs
-        value={tab}
-        onValueChange={(next) => {
-          if (next === 'draft' || next === 'scheduled' || next === 'sent') setTab(next);
-        }}
-        className="gap-0"
-      >
-        <SegmentedTabsList aria-label="Drafts, scheduled and sent" className="w-full">
-          {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
-            <SegmentedTabsTrigger key={id} value={id} className={`${CONTROL} h-auto flex-1 px-2`}>
-              {labels[id]}
-            </SegmentedTabsTrigger>
-          ))}
-        </SegmentedTabsList>
-      </SegmentedTabs>
-      <ul className="flex flex-col gap-2">
-        {rows.length === 0 && <li className="px-1 text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
-        {rows.map((post) => (
-          <li key={post.id} className="rounded-xl border border-line bg-background px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
-        ))}
-      </ul>
-    </aside>
   );
 }
 
