@@ -3,6 +3,10 @@ import { MockSocialClient } from './mock-client';
 import { SOCIAL_SAMPLE_SCOPE, socialMode } from './mode';
 import { commitZernioProfile, releaseZernioProfileClaim, reserveZernioProfile, storedZernioProfileId } from './profile-lock';
 import type { SocialAnalytics } from './analytics';
+import {
+  readCommentThreads, readComments, readConversations, readMessages, readReviews,
+  type InboxComment, type InboxCommentThread, type InboxConversation, type InboxKind, type InboxMessage, type InboxReview,
+} from './inbox';
 import { oncePublish } from './publish-once';
 import { readZernioSocialKey } from './zernio-key';
 import { dropWorkspaceCache, shareLiveLoad } from './workspace-cache';
@@ -165,4 +169,97 @@ export async function loadSocialAnalytics(
   const profileId = await storedZernioProfileId(tenantId);
   if (!profileId) return { fromDate, toDate, posts: [], truncated: false };
   return new LiveSocialClient(readZernioSocialKey()).analytics(profileId, fromDate, toDate);
+}
+
+/**
+ * #584: the unified inbox. The provider key is shared by every ministry, so a
+ * conversation, comment thread or review is read or answered only when it is
+ * in THIS ministry's own list: an id from another ministry is not found here.
+ */
+export type InboxListing =
+  | { readonly kind: 'message'; readonly items: InboxConversation[] }
+  | { readonly kind: 'comment'; readonly items: InboxCommentThread[] }
+  | { readonly kind: 'review'; readonly items: InboxReview[] };
+
+type InboxSource = {
+  list(kind: InboxKind): Promise<unknown | null>;
+  thread(kind: 'message' | 'comment', id: string, accountId: string): Promise<unknown | null>;
+  reply(kind: InboxKind, id: string, accountId: string, message: string, commentId?: string): Promise<boolean>;
+};
+
+async function inboxSource(tenantId: string, now: Date, mockOnly: boolean): Promise<InboxSource | 'empty' | null> {
+  if (clientKind(mockOnly) === 'mock') {
+    const mock = new MockSocialClient(tenantId, now);
+    return {
+      list: async (kind) => mock.inboxList(kind),
+      thread: async (kind, id) => mock.inboxThread(kind, id),
+      reply: async (kind, id, _accountId, message, commentId) => mock.inboxReply(kind, id, message, commentId),
+    };
+  }
+  if (clientKind(mockOnly) !== 'live' || tenantId === SOCIAL_SAMPLE_SCOPE) return null;
+  const profileId = await storedZernioProfileId(tenantId);
+  if (!profileId) return 'empty';
+  const live = new LiveSocialClient(readZernioSocialKey());
+  return {
+    list: (kind) => live.inboxList(profileId, kind),
+    thread: (kind, id, accountId) => live.inboxThread(kind, id, accountId),
+    reply: (kind, id, accountId, message, commentId) => live.inboxReply(kind, id, accountId, message, commentId),
+  };
+}
+
+function parseListing(kind: InboxKind, body: unknown): InboxListing {
+  if (kind === 'message') return { kind, items: readConversations(body) };
+  if (kind === 'comment') return { kind, items: readCommentThreads(body) };
+  return { kind, items: readReviews(body) };
+}
+
+export async function loadSocialInbox(tenantId: string, kind: InboxKind, now = new Date(), mockOnly = false): Promise<InboxListing | null> {
+  const source = await inboxSource(tenantId, now, mockOnly);
+  if (!source) return null;
+  if (source === 'empty') return parseListing(kind, []);
+  const body = await source.list(kind);
+  return body === null ? null : parseListing(kind, body);
+}
+
+/** The owned item for an id, with the account it belongs to, or 'not_found'. */
+async function ownedItem(source: InboxSource, kind: InboxKind, id: string) {
+  const body = await source.list(kind);
+  if (body === null) return null;
+  const listing = parseListing(kind, body);
+  const item = (listing.items as Array<{ id?: string; postId?: string; accountId: string }>).find((entry) => (entry.id ?? entry.postId) === id);
+  return item ?? 'not_found';
+}
+
+export type InboxThread =
+  | { readonly kind: 'message'; readonly messages: InboxMessage[] }
+  | { readonly kind: 'comment'; readonly comments: InboxComment[] };
+
+export async function loadSocialInboxThread(
+  tenantId: string, kind: 'message' | 'comment', id: string, now = new Date(), mockOnly = false,
+): Promise<InboxThread | 'not_found' | null> {
+  const source = await inboxSource(tenantId, now, mockOnly);
+  if (!source) return null;
+  if (source === 'empty') return 'not_found';
+  const item = await ownedItem(source, kind, id);
+  if (item === null || item === 'not_found') return item;
+  const body = await source.thread(kind, id, item.accountId);
+  if (body === null) return null;
+  return kind === 'message' ? { kind, messages: readMessages(body) } : { kind, comments: readComments(body) };
+}
+
+export async function replySocialInbox(
+  tenantId: string, kind: InboxKind, id: string, message: string, commentId: string | undefined, now = new Date(), mockOnly = false,
+): Promise<'sent' | 'not_found' | null> {
+  const source = await inboxSource(tenantId, now, mockOnly);
+  if (!source) return null;
+  if (source === 'empty') return 'not_found';
+  const item = await ownedItem(source, kind, id);
+  if (item === null || item === 'not_found') return item;
+  if (kind === 'comment') {
+    // The comment answered must be one under this ministry's own post.
+    const thread = await source.thread('comment', id, item.accountId);
+    if (thread === null) return null;
+    if (!commentId || !readComments(thread).some((comment) => comment.id === commentId)) return 'not_found';
+  }
+  return (await source.reply(kind, id, item.accountId, message, commentId)) ? 'sent' : null;
 }

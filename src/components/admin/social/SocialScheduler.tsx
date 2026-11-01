@@ -47,9 +47,10 @@ import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment
 import { SocialUpgradeWall } from './SocialUpgradeWall';
 import { PostPreview } from './PostPreview';
 import { SocialAnalyticsView, type AnalyticsLoader } from './SocialAnalyticsView';
+import { SocialInboxView, type InboxApi } from './SocialInboxView';
 import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
-export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics';
+export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics' | 'inbox';
 
 export interface SocialScreenData extends SocialWorkspace {
   readonly entitled: boolean;
@@ -177,6 +178,17 @@ function targetsFor(
   });
 }
 
+/** #584: the Inbox, from the server. */
+async function inboxJson<T>(response: Response): Promise<T> {
+  if (!response.ok) throw new Error('inbox_unavailable');
+  return (await response.json()) as T;
+}
+const liveInboxApi: InboxApi = {
+  list: async (kind) => inboxJson(await authFetch(`/api/social/inbox?kind=${kind}`)),
+  thread: async (kind, id) => inboxJson(await authFetch(`/api/social/inbox/thread?kind=${kind}&id=${encodeURIComponent(id)}`)),
+  reply: async (input) => { await inboxJson(await authFetch('/api/social/inbox/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })); },
+};
+
 /** #582: the Analytics tab's data, from the server. */
 async function loadAnalytics(range: AnalyticsRange): Promise<SocialAnalytics> {
   const response = await authFetch(`/api/social/analytics?range=${range}`);
@@ -190,11 +202,14 @@ export function SocialScheduler({
   planLoading = false,
   onUpgrade,
   analyticsLoader = loadAnalytics,
+  inboxApi = liveInboxApi,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
   /** #582: where the Analytics tab reads from; the preview and tests pass sample data. */
   analyticsLoader?: AnalyticsLoader;
+  /** #584: where the Inbox reads and replies; the preview and tests pass the sample inbox. */
+  inboxApi?: InboxApi;
   /**
    * The shell has not resolved the tenant's plan yet. The gate shows a loading
    * state until it has; it never guesses, because a guess that the server then
@@ -546,6 +561,7 @@ export function SocialScheduler({
               { value: 'compose', label: 'Compose' },
               { value: 'calendar', label: 'Calendar' },
               { value: 'queue', label: 'Queue' },
+              { value: 'inbox', label: 'Inbox' },
               { value: 'analytics', label: 'Analytics' },
             ]}
           />
@@ -559,6 +575,10 @@ export function SocialScheduler({
       {notice && <p className="text-sm text-faint" role="status">{notice}</p>}
 
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
+        <TabsContent value="inbox" className="mt-4">
+          {view === 'inbox' && <SocialInboxView api={inboxApi} />}
+        </TabsContent>
+
         <TabsContent value="analytics" className="mt-4">
           {view === 'analytics' && <SocialAnalyticsView load={analyticsLoader} />}
         </TabsContent>
