@@ -15,7 +15,6 @@ import {
   hasSeenPaymentConfirmation,
   readPendingPaymentConfirmation,
 } from '../utils/paid-arrival';
-import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff, { CONFIRMS_ACCOUNT, CONFIRMS_PAYMENT } from './WorkspaceHandoff';
@@ -266,9 +265,13 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
    * answers MUST agree or the screen is suppressed in the very case whose copy
    * it still needs to deliver.
    */
+  // #34 (the domain move): the app lives on theharvest.app only, so the handoff
+  // is ALWAYS its same-origin variant, as `WorkspaceHandoff` now decides too. A
+  // church that renames its address during first-run moves only its Storefront;
+  // it crosses no origin and owes no warning. So the acknowledgement alone
+  // decides. WAS: `&& handoffTenantId === getTenantIdFromHost()` as well.
   const handoffRepeatsGivenConfirmation =
     handoffTenantId !== null
-    && handoffTenantId === getTenantIdFromHost()
     && hasSeenPaymentConfirmation();
 
   // THE-85: the funnel screens this gate renders have NO path of their own —

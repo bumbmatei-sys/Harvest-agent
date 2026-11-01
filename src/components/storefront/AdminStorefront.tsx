@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { PageHeader } from '@/components/admin-shell/PageHeader';
@@ -18,11 +18,15 @@ import {
 } from '@/lib/storefront/storefront';
 import { authFetch } from '@/utils/auth-fetch';
 import { StorefrontPage, type StorefrontArticleCard, type StorefrontEventCard } from './StorefrontPage';
+import { StorefrontAddress, liveStorefrontAddressApi, type StorefrontAddressApi } from './StorefrontAddress';
+import { storefrontAddress } from '@/lib/storefront/handle';
 
 export interface StorefrontChoice { readonly id: string; readonly title: string }
 export interface StorefrontLoaded {
   readonly storefront: Storefront;
   readonly subdomain: string;
+  /** Where the page is served: {handle}.theharvest.app. Starts as the ministry id. */
+  readonly handle?: string;
   readonly articles: readonly StorefrontArticleCard[];
   readonly events: readonly StorefrontEventCard[];
   readonly choices: Readonly<Record<'community' | 'course' | 'form', readonly StorefrontChoice[]>>;
@@ -127,7 +131,8 @@ function BlockFields({ block, choices, onChange }: {
  * Storefront editor (Eden 005–010, 016, 017): the blocks, the profile and the
  * look on the left, a live phone preview on the right. One template for now.
  */
-export function AdminStorefront({ api }: { api: StorefrontApi }) {
+export function AdminStorefront({ api, addressApi }: { api: StorefrontApi; addressApi?: StorefrontAddressApi }) {
+  const [handle, setHandle] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<StorefrontLoaded | null>(null);
   const [draft, setDraft] = useState<Storefront | null>(null);
   const [saved, setSaved] = useState<Storefront | null>(null);
@@ -140,6 +145,8 @@ export function AdminStorefront({ api }: { api: StorefrontApi }) {
     api.load().then((data) => { setLoaded(data); setDraft(data.storefront); setSaved(data.storefront); }, (e: Error) => setError(e.message));
   }, [api]);
   useEffect(() => { load(); }, [load]);
+  const subdomain = loaded?.subdomain ?? null;
+  const defaultAddressApi = useMemo(() => (subdomain ? liveStorefrontAddressApi(subdomain) : null), [subdomain]);
 
   if (!draft || !loaded) {
     return <div className="flex flex-col gap-4 p-4 lg:p-0">
@@ -162,7 +169,8 @@ export function AdminStorefront({ api }: { api: StorefrontApi }) {
     setOpen(block.id);
     setAdding(false);
   };
-  const url = `https://${loaded.subdomain}.theharvest.app/storefront`;
+  const liveHandle = handle ?? loaded.handle ?? loaded.subdomain;
+  const url = storefrontAddress(liveHandle);
   const titles = Object.fromEntries(Object.values(loaded.choices).flat().map((c) => [c.id, c.title]));
   const save = async (next = draft) => {
     setSaving(true); setError('');
@@ -187,6 +195,7 @@ export function AdminStorefront({ api }: { api: StorefrontApi }) {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-6">
+          <StorefrontAddress api={(addressApi ?? defaultAddressApi)!} initialHandle={liveHandle} onChanged={setHandle} />
           <section className="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface-raised p-4" data-storefront-publish>
             <div>
               <p className="font-semibold text-strong">{draft.published ? 'Your page is live' : 'Your page is off'}</p>

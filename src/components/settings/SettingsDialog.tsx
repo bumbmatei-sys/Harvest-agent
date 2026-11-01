@@ -7,6 +7,7 @@ import {
   CreditCard,
   Palette,
   Share2,
+  Store,
   User,
 } from "lucide-react";
 
@@ -48,6 +49,7 @@ import OnboardingSection from "./OnboardingSection";
 import PlanBillingSection from "./PlanBillingSection";
 import ProfileSection from "./ProfileSection";
 import { SocialAccountsSettings } from "../admin/social/SocialAccountsSettings";
+import { StorefrontAddress, liveStorefrontAddressApi } from "../storefront/StorefrontAddress";
 import {
   SETTINGS_NAV,
   settingsSectionFromLocation,
@@ -60,6 +62,7 @@ const NAV_ICONS: Record<SettingsNavId, React.ComponentType<{ className?: string 
   billing: CreditCard,
   setup: Building2,
   social: Share2,
+  storefront: Store,
   danger: AlertTriangle,
 };
 
@@ -133,7 +136,11 @@ export function SettingsDialog({
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
   // Cancelling is an owner action (the cancel route is requireOwner), so a non-owner admin gets no Danger zone.
   const showDanger = hasSubscription && canUpgrade;
-  const nav = showDanger ? SETTINGS_NAV : SETTINGS_NAV.filter((item) => item.id !== 'danger');
+  // The Storefront follows the Blog per tier, as its admin tab does; the route
+  // also checks the writeArticles permission and answers with an error if not.
+  const showStorefront = !!tenantId && currentPlan !== undefined && !!getPlanFeatures(currentPlan).blog;
+  const storefrontAddressApi = React.useMemo(() => (tenantId ? liveStorefrontAddressApi(tenantId) : null), [tenantId]);
+  const nav = SETTINGS_NAV.filter((item) => (item.id !== 'danger' || showDanger) && (item.id !== 'storefront' || showStorefront));
   const mainNav = nav.filter((item) => item.id !== 'danger');
   const dangerNav = nav.filter((item) => item.id === 'danger');
   const active = nav.find((item) => item.id === section) ?? nav[0];
@@ -275,6 +282,9 @@ export function SettingsDialog({
                 </div>
               )}
               {open && active.id === 'social' && <SocialAccountsSettings />}
+              {open && active.id === 'storefront' && storefrontAddressApi && (
+                <StorefrontAddress api={storefrontAddressApi} />
+              )}
               {open && active.id === 'danger' && showDanger && (
                 <CancelPlanBlock onConfirm={handleManage} />
               )}

@@ -1,0 +1,80 @@
+{
+  "ticket": "#590",
+  "entries": [
+    {
+      "file": "src/App.tsx",
+      "digest": "c5c5df5b758a28c06c82dba1791042266ea557bd735a88973618802992e03e35",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/__tests__/App.free-signup-landing.test.tsx",
+      "digest": "097b0297fbaa6db654769ac1414ed0412e89e7f11b4c917d0c919a7d2021d897",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "54d9626b303e9023e3e58ee1383715e83d9368f862248611027ebd6d5244c662",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "b712d61123d2cc90da573ca08285635167af4f2128319a40de9c269ae6fa9fea",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "ca59bcea8b47928bd3c5fc1049300ad69e5d29073a988f8c1e767f94008fa3fd",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/app/api/event-payment/claim/route.ts",
+      "digest": "56cc294256b9736d842a19df421dca52b230feeee73dcc3ff3c36f3cecda2ce4",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/app/api/event-payment/public-claim/route.ts",
+      "digest": "51b698bc3f8353183d2835fc5bb50a82aa61ae88fed217ffc4e14d2c07f3c24d",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/components/OnboardingGate.tsx",
+      "digest": "991be6c2d4d0faf6d17417a449d53d75a97a2773d32c90c53a9b9666b2fb98b1",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "206f09681edbfc6d04b36d61e91b11abe90337c4011155b30a3019de9b86d97b",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/components/__tests__/THE-349.orphan-signup.guards.test.ts",
+      "digest": "a6c5bc40d07a2b098e50146116d711ebf96fae17c4ac5115d2b578984f3f9a87",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/components/__tests__/free-signup-funnel.test.tsx",
+      "digest": "54bd6394e37f04f8490b9e51c084d02c7151895e74da30e46eb8f5a04c64d858",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/components/__tests__/the-255-install-app.test.tsx",
+      "digest": "329a300d7fbbda04cde76065ff939d538f1240c9c61a791e5b6e12547205c28b",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/lib/__tests__/the-280-custom-domain-hidden.test.ts",
+      "digest": "0afeb0a4a7c6b1c0e1d3eb5c66a401dbd025c30463b61e3553a1c290988d5951",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-untouched.test.ts",
+      "digest": "977f26c2c01a4e96991f94539bc2a32fe45561ffc11704630c15b6f5eeac1762",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    },
+    {
+      "file": "src/lib/server-tenant.ts",
+      "digest": "457455b8c1fdf6ded15a00a6f7522e9dbad20244df33d981aa0b2b4130770741",
+      "why": "APPENDED, NOT SUBSTITUTED — #590: the domain move. The app lives on theharvest.app only; a ministry subdomain serves its Storefront at the root plus its public pages, and the Storefront address can be renamed (storefront_handles → tenant) from the Storefront editor and Settings. The subdomain hop after sign-in and payment is gone, so a paid admin stays on theharvest.app like a Free one, the confirmation says no second sign-in comes, and checkout and claim links return to theharvest.app. Expectations that pinned the hop carry WAS notes."
+    }
+  ]
+}

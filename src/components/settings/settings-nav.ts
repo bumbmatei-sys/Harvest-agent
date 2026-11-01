@@ -2,7 +2,7 @@
  * Desktop Settings popup navigation.
  *
  * Labels use "Campus", never "Church". Order is the product order: Profile,
- * Campus & branding, Plan & billing, Campus setup, Social accounts, Danger zone.
+ * Campus & branding, Plan & billing, Campus setup, Social accounts, Storefront address, Danger zone.
  *
  * Deep links (`?section=`, hash, Stripe/Dodo return query params) map onto
  * these ids so a billing-portal return opens Plan & billing rather than
@@ -16,6 +16,8 @@ export const SETTINGS_NAV = [
   { id: 'setup', label: 'Campus setup' },
   // The founder moved the social scheduler's Accounts tab here; the composer's plus opens it.
   { id: 'social', label: 'Social accounts' },
+  // #34: where the Storefront lives, {handle}.theharvest.app. Also in the Storefront editor.
+  { id: 'storefront', label: 'Storefront address' },
   { id: 'danger', label: 'Danger zone' },
 ] as const;
 
@@ -43,6 +45,9 @@ const ALIASES: Record<string, SettingsNavId> = {
   statements: 'setup',
   social: 'social',
   'social-accounts': 'social',
+  storefront: 'storefront',
+  address: 'storefront',
+  handle: 'storefront',
   danger: 'danger',
   cancel: 'danger',
   'cancel-plan': 'danger',

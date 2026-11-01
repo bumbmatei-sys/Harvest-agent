@@ -229,10 +229,10 @@ async function flush(rounds = 12) {
 const text = () => container.textContent || '';
 const rendered = (testId: string) => !!container.querySelector(`[data-testid="${testId}"]`);
 /** The confirmation's single action, once the readiness guard has released it. */
+// WAS: the link whose href started with https://${TENANT}.theharvest.app. #34
+// (the domain move): the workspace is this origin, so the action is '/admin'.
 const continueLink = () =>
-  Array.from(container.querySelectorAll('a')).find((a) =>
-    (a.getAttribute('href') || '').startsWith(`https://${TENANT}.theharvest.app`),
-  ) || null;
+  Array.from(container.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/admin') || null;
 
 /** Click the action the way the payer does, without unloading the document. */
 async function clickContinue() {
@@ -326,7 +326,9 @@ describe('1 — the confirmation lands before the origin hop', () => {
     await flush();
 
     expect(text()).toContain('Grace Community Church');
-    expect(text()).toContain(`${TENANT}.theharvest.app`);
+    // WAS: `${TENANT}.theharvest.app`. #34: the workspace lives on theharvest.app.
+    expect(text()).toContain('theharvest.app');
+    expect(text()).not.toContain(`${TENANT}.theharvest.app`);
   });
 
   it('?stripe=success is recognised identically to ?dodo=success', async () => {
@@ -347,8 +349,8 @@ describe('1 — the confirmation lands before the origin hop', () => {
 
 /* ── 2 ─────────────────────────────────────────────────────────────────────── */
 
-describe('2 — the cross-origin copy is the honest one', () => {
-  it('the cross-origin handoff says they will sign in again at the new address', async () => {
+describe('2 — the same-origin copy is the honest one (WAS: the cross-origin copy)', () => {
+  it('the handoff says no second sign-in is needed (WAS: they will sign in again at the new address)', async () => {
     startAt(`${APEX}/?dodo=success`);
     state.user = PASTOR;
     state.userDoc = provisionedUserDoc();
@@ -362,15 +364,11 @@ describe('2 — the cross-origin copy is the honest one', () => {
     // sentence that promises it must name where, or it is a warning about an
     // unnamed elsewhere. Located by the claim it makes, then read for the
     // address it must contain.
-    const secondSignIn = Array.from(container.querySelectorAll('p')).find((p) =>
-      (p.textContent || '').includes('sign in once more'),
-    );
-    expect(secondSignIn, 'nothing on the screen mentions the second sign-in').toBeTruthy();
-    expect(secondSignIn!.textContent).toContain(`${TENANT}.theharvest.app`);
-    expect(secondSignIn!.textContent).toContain('expected');
-
-    // And it must NOT be the same-origin reassurance, which is false here.
-    expect(text()).not.toContain('already signed in at this address');
+    // WAS: a paragraph promising a second sign-in at ${TENANT}.theharvest.app.
+    // #34: the app no longer leaves theharvest.app, so that promise would be
+    // false; the same-origin reassurance is the true sentence now.
+    expect(text()).not.toContain('sign in once more');
+    expect(text()).toContain('already signed in at this address');
   });
 
   it('offers no way to pay again on the screen after a charge', async () => {
@@ -393,8 +391,8 @@ describe('2 — the cross-origin copy is the honest one', () => {
 
 /* ── 3 ─────────────────────────────────────────────────────────────────────── */
 
-describe('3 — the hop is gated, not removed', () => {
-  it('the subdomain redirect still happens after the confirmation', async () => {
+describe('3 — the confirmation still comes first (WAS: the hop is gated, not removed)', () => {
+  it('after the confirmation the church lands in its workspace on this origin (WAS: the subdomain redirect still happens)', async () => {
     startAt(`${APEX}/?dodo=success`);
     state.user = PASTOR;
     state.userDoc = provisionedUserDoc();
@@ -419,8 +417,9 @@ describe('3 — the hop is gated, not removed', () => {
     // also carries the acknowledgement, because THIS is the resumed hop: the
     // payer came back to the apex after clicking through, and without the hint
     // the destination would show the confirmation a second time.
-    expect(hops, 'the gate outlived the confirmation and stranded the church').toEqual([WORKSPACE_URL_CONFIRMED]);
-    expect(hops[0].startsWith(WORKSPACE_URL), 'the hop no longer lands on the workspace').toBe(true);
+    // WAS: hops === [WORKSPACE_URL_CONFIRMED]. #34: no hop; apex /admin.
+    expect(hops, 'the church was sent off theharvest.app').toEqual([]);
+    expect(window.location.pathname, 'the gate outlived the confirmation and stranded the church').toBe('/admin');
   });
 
   it('the action points at the workspace, which is where the redirect went', async () => {
@@ -432,10 +431,9 @@ describe('3 — the hop is gated, not removed', () => {
     mount();
     await flush();
 
-    const href = continueLink()?.getAttribute('href');
-    expect(href?.startsWith(WORKSPACE_URL), 'the action no longer points at the workspace').toBe(true);
-    // …and carries the acknowledgement over the boundary sessionStorage cannot.
-    expect(href).toBe(WORKSPACE_URL_CONFIRMED);
+    // WAS: WORKSPACE_URL_CONFIRMED. #34: same origin, so nothing has to ride along.
+    expect(continueLink(), 'the action no longer points at the workspace').toBeTruthy();
+    expect(container.innerHTML).not.toContain(WORKSPACE_URL);
   });
 
   it('holds nothing when the workspace does not resolve yet', async () => {
@@ -469,7 +467,9 @@ describe('4 — an arrival that did not just pay is untouched', () => {
     mount();
     await flush();
 
-    expect(hops, 'a church that did not just pay was held back').toEqual([WORKSPACE_URL]);
+    // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname, 'a church that did not just pay was held back').toBe('/admin');
     expect(text()).not.toContain('Your payment went through.');
     expect(sessionStorage.getItem(PAYMENT_CONFIRMATION_PENDING_KEY)).toBeNull();
   });
@@ -485,7 +485,9 @@ describe('4 — an arrival that did not just pay is untouched', () => {
     mount();
     await flush();
 
-    expect(hops).toEqual([WORKSPACE_URL]);
+    // WAS: [WORKSPACE_URL]. #34: no hop; apex /admin.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
     expect(text()).not.toContain('Your payment went through.');
   });
 
@@ -539,7 +541,8 @@ describe('5 — refreshing on the confirmation', () => {
     // 🔴 Never nowhere: the same confirmation, with the same way onward, and
     // still no unannounced hop.
     expect(text()).toContain('Your payment went through.');
-    expect(continueLink()?.getAttribute('href')).toBe(WORKSPACE_URL_CONFIRMED);
+    // WAS: href WORKSPACE_URL_CONFIRMED. #34: '/admin' on this origin.
+    expect(continueLink()).toBeTruthy();
     expect(hops).toEqual([]);
   });
 
@@ -557,9 +560,11 @@ describe('5 — refreshing on the confirmation', () => {
     mount();
     await flush();
 
-    // Acknowledged once ⇒ the hop is theirs to make, and it is made — carrying
-    // the acknowledgement, so the far origin does not repeat the screen.
-    expect(hops).toEqual([WORKSPACE_URL_CONFIRMED]);
+    // Acknowledged once ⇒ the journey completes. WAS: the hop, carrying the
+    // acknowledgement. #34: no hop; apex /admin, and the screen is not repeated.
+    expect(hops).toEqual([]);
+    expect(window.location.pathname).toBe('/admin');
+    expect(text()).not.toContain('Your payment went through.');
   });
 });
 

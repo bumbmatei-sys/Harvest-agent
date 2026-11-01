@@ -10,6 +10,8 @@ describe('settings popup nav', () => {
       'Campus setup',
       // APPENDED: the scheduler's Accounts tab moved here (Social accounts).
       'Social accounts',
+      // APPENDED (#34): the Storefront address, also editable in the Storefront editor.
+      'Storefront address',
       'Danger zone',
     ]);
     expect(SETTINGS_NAV.map((item) => item.label).join(' ')).not.toMatch(/church/i);
@@ -28,5 +30,7 @@ describe('settings popup nav', () => {
     expect(settingsSectionFromLocation('', '#setup')).toBe('setup');
     expect(settingsSectionFromLocation('?section=danger', '#profile')).toBe('danger');
     expect(settingsSectionFromLocation('', '')).toBe('profile');
+    expect(settingsSectionFromLocation('?section=storefront', '')).toBe('storefront');
+    expect(settingsSectionFromLocation('', '#handle')).toBe('storefront');
   });
 });

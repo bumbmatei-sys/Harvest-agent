@@ -21,6 +21,15 @@ export async function getTenantFromHost(host: string): Promise<Tenant | null> {
     if (isNonTenantSubdomain(subdomain)) return null;
 
     try {
+      // A Storefront address the ministry moved to (storefront_handles/{handle}).
+      // A handle never equals another ministry's id, so this cannot shadow one.
+      const claimed = await adminDb.collection('storefront_handles').doc(subdomain).get();
+      const claimedTenantId = claimed.exists ? claimed.data()?.tenantId : null;
+      if (typeof claimedTenantId === 'string' && claimedTenantId) {
+        const owner = await adminDb.collection('tenants').doc(claimedTenantId).get();
+        if (!owner.exists || owner.data()?.storefrontHandle !== subdomain) return null;
+        return { id: owner.id, ...owner.data() } as Tenant;
+      }
       const snap = await adminDb.collection('tenants').doc(subdomain).get();
       if (!snap.exists || snap.data()?.plan === 'free' || ((snap.data()?.plan != null || snap.data()?.subdomain != null) && snap.data()?.subdomain !== subdomain)) return null;
       return { id: snap.id, ...snap.data() } as Tenant;

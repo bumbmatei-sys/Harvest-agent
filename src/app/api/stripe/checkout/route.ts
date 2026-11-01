@@ -266,8 +266,8 @@ export async function POST(request: NextRequest) {
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `https://${tenantId}.theharvest.app/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://${tenantId}.theharvest.app/?stripe=cancel`,
+      success_url: `https://theharvest.app/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://theharvest.app/?stripe=cancel`,
       subscription_data: {
         metadata: { tenantId, plan, billing, ...(resolvedReferrerId ? { referrerId: resolvedReferrerId } : {}) },
       },

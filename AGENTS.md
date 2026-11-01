@@ -1,7 +1,7 @@
 # Harvest Agent — Project Context
 
 ## What This Is
-Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. A tenant signs up, gets a subdomain (e.g. `gracechurch.theharvest.app`), and runs its community from an admin dashboard. Members reach the same tenant through a mobile-first web app. Most tenants are churches; not all of them are, and user-facing copy says **"Ministries"**, never "churches".
+Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. A tenant signs up and runs its community from an admin dashboard on `theharvest.app`; its subdomain (e.g. `gracechurch.theharvest.app`) serves only its public side: the Storefront at the root, plus public pages such as forms, events and giving (#590). Members reach the same tenant through a mobile-first web app. Most tenants are churches; not all of them are, and user-facing copy says **"Ministries"**, never "churches".
 
 ## The Silent-Failure Rule
 Read this before writing anything.
@@ -342,6 +342,12 @@ And the structural rules:
   `resolveTenantIdFromHostname()` (`TenantContext.tsx`), `getTenantFromHost()`
   (`server-tenant.ts`) and AuthPage's derivation. A disagreement between them is the bug
   class behind #181 and #185. Never hardcode a subdomain string.
+- **The app runs on `theharvest.app` only (#590).** `src/middleware.ts` sends a ministry
+  subdomain to `routeForHost()` (`src/lib/storefront/host-routing.ts`): `/` is the
+  Storefront, `/blog` its blog, and only the public prefixes listed there pass through.
+  Never send an admin or member to `<tenant>.theharvest.app`. The Storefront address can
+  differ from the tenant id: `storefront_handles/{handle}` → `{ tenantId }`, checked first
+  by `getTenantFromHost()`; the tenant id itself is never reassigned.
 - **Super admin `tenantId` is `null`.** Any tenant-scoped write must resolve a real
   `tenantId` first or it writes to `tenants/null/...`.
 - **No unordered `limit(N)`.** Firestore has no default order, so an unordered limit
