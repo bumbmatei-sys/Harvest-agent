@@ -13,6 +13,9 @@ import { SocialUpgradeWall } from '@/components/admin/social/SocialUpgradeWall';
 import { analyticsWindow, type AnalyticsRange } from '@/lib/social/analytics';
 import { readCommentThreads, readComments, readConversations, readMessages, readReviews } from '@/lib/social/inbox';
 import type { InboxApi } from '@/components/admin/social/SocialInboxView';
+import type { AutoDmApi } from '@/components/admin/social/SocialAutoDmView';
+import { checkAutoDm, isAutoDmPlatform, readAutoDmLogs, readAutoDmRule, readAutoDmRules, toZernioAutomation } from '@/lib/social/auto-dm';
+import type { AutoDmAccount } from '@/lib/social/session';
 import { applyTheme } from '@/lib/theme-runtime';
 import type { ThemeChoice } from '@/lib/theme';
 import { MockSocialClient } from '@/lib/social/mock-client';
@@ -21,7 +24,7 @@ import { sectionForTab, type ShellTabRef } from '@/components/admin-shell/shell-
 const CLOCK = new Date(Date.UTC(2024, 2, 15, 12));
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
-const VIEWS = ['accounts', 'compose', 'calendar', 'queue', 'analytics', 'inbox'] as const;
+const VIEWS = ['accounts', 'compose', 'calendar', 'queue', 'analytics', 'inbox', 'autodm'] as const;
 
 export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?: string }) {
   const lg = useLgUp();
@@ -54,6 +57,29 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
       reply: async ({ kind, id, message, commentId }) => { mock.inboxReply(kind, id, message, commentId); },
     };
   }, []);
+  // Auto-DM: the sample automations, through the same checks and readers the server uses; nothing is armed.
+  const sampleAutoDm = useMemo<AutoDmApi>(() => {
+    const mock = new MockSocialClient('preview', CLOCK);
+    const accounts = workspace.accounts.filter((account): account is typeof account & AutoDmAccount => isAutoDmPlatform(account.platform));
+    const posts = workspace.posts.flatMap((post) => post.targets
+      .filter((target) => accounts.some((account) => account.id === target.accountId))
+      .map((target) => ({ id: post.id, accountId: target.accountId, title: target.text || post.content, status: post.status, scheduledFor: post.scheduledFor })));
+    return {
+      list: async () => ({ rules: readAutoDmRules(mock.autoDmList()), accounts, posts }),
+      save: async (id, input) => {
+        const platform = accounts.find((account) => account.id === input.accountId)?.platform ?? 'instagram';
+        const checked = checkAutoDm(input, platform);
+        if (!checked.ok) throw new Error(checked.message);
+        const body = toZernioAutomation(checked.value, platform, id ? 'update' : { profileId: 'preview' });
+        const saved = (id ? mock.autoDmUpdate(id, body) : mock.autoDmCreate(body)) as { automation?: unknown } | null;
+        const rule = readAutoDmRule(saved?.automation);
+        if (!rule) throw new Error('Could not save the automation.');
+        return rule;
+      },
+      remove: async (id) => { mock.autoDmDelete(id); },
+      logs: async (id) => readAutoDmLogs(mock.autoDmLogs(id)),
+    };
+  }, [workspace]);
   const tabs = useMemo(() => new Map<string, ShellTabRef>([
     ['blog', { id: 'blog', label: 'Blog', icon: Radio }],
     ['branding', { id: 'branding', label: 'Branding', icon: Radio }],
@@ -105,6 +131,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
               onUpgrade={() => {}}
               analyticsLoader={sampleAnalytics}
               inboxApi={sampleInbox}
+              autoDmApi={sampleAutoDm}
             />
           )}
           </div>

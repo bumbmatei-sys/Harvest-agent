@@ -8,6 +8,10 @@ import {
   type InboxComment, type InboxCommentThread, type InboxConversation, type InboxKind, type InboxMessage, type InboxReview,
 } from './inbox';
 import { oncePublish } from './publish-once';
+import {
+  checkAutoDm, isAutoDmPlatform, readAutoDmLogs, readAutoDmRule, readAutoDmRules, toZernioAutomation,
+  type AutoDmInput, type AutoDmLog, type AutoDmPlatform, type AutoDmRule,
+} from './auto-dm';
 import { readZernioSocialKey } from './zernio-key';
 import { dropWorkspaceCache, shareLiveLoad } from './workspace-cache';
 import type { SocialPlatform } from './platforms';
@@ -262,4 +266,165 @@ export async function replySocialInbox(
     if (!commentId || !readComments(thread).some((comment) => comment.id === commentId)) return 'not_found';
   }
   return (await source.reply(kind, id, item.accountId, message, commentId)) ? 'sent' : null;
+}
+
+/**
+ * Auto-DM. The provider key is shared by every ministry, so an automation is
+ * read, changed or deleted only when it is in THIS ministry's own profile list
+ * and runs on one of its own Instagram or Facebook accounts. A post it is tied
+ * to before publishing must be one of the ministry's own posts on that account.
+ */
+export interface AutoDmAccount {
+  readonly id: string;
+  readonly platform: AutoDmPlatform;
+  readonly username: string;
+  readonly displayName: string;
+}
+
+export interface AutoDmPostChoice {
+  readonly id: string;
+  readonly accountId: string;
+  readonly title: string;
+  readonly status: SocialPost['status'];
+  readonly scheduledFor: string | null;
+}
+
+export interface AutoDmWorkspace {
+  readonly rules: AutoDmRule[];
+  readonly accounts: AutoDmAccount[];
+  readonly posts: AutoDmPostChoice[];
+}
+
+type AutoDmSource = {
+  list(): Promise<unknown | null>;
+  create(body: Record<string, unknown>): Promise<unknown | null>;
+  update(id: string, body: Record<string, unknown>): Promise<unknown | null>;
+  remove(id: string): Promise<boolean>;
+  logs(id: string): Promise<unknown | null>;
+};
+
+async function autoDmSource(tenantId: string, now: Date, mockOnly: boolean): Promise<{ source: AutoDmSource; workspace: SocialWorkspace } | null> {
+  const workspace = await loadSocialWorkspace(tenantId, now, mockOnly);
+  if (!workspace) return null;
+  if (clientKind(mockOnly) === 'mock') {
+    const mock = new MockSocialClient(tenantId, now);
+    return {
+      workspace,
+      source: {
+        list: async () => mock.autoDmList(),
+        create: async (body) => mock.autoDmCreate(body),
+        update: async (id, body) => mock.autoDmUpdate(id, body),
+        remove: async (id) => mock.autoDmDelete(id),
+        logs: async (id) => mock.autoDmLogs(id),
+      },
+    };
+  }
+  if (clientKind(mockOnly) !== 'live') return null;
+  const live = new LiveSocialClient(readZernioSocialKey());
+  return {
+    workspace,
+    source: {
+      list: () => live.autoDmList(workspace.profileId),
+      create: (body) => live.autoDmCreate(body),
+      update: (id, body) => live.autoDmUpdate(id, body),
+      remove: (id) => live.autoDmDelete(id),
+      logs: (id) => live.autoDmLogs(id),
+    },
+  };
+}
+
+function autoDmAccounts(workspace: SocialWorkspace): AutoDmAccount[] {
+  return workspace.accounts.flatMap((account) => isAutoDmPlatform(account.platform)
+    ? [{ id: account.id, platform: account.platform, username: account.username, displayName: account.displayName }]
+    : []);
+}
+
+function autoDmPosts(workspace: SocialWorkspace, accounts: readonly AutoDmAccount[]): AutoDmPostChoice[] {
+  const ids = new Set(accounts.map((account) => account.id));
+  return workspace.posts.flatMap((post) => post.targets
+    .filter((target) => ids.has(target.accountId))
+    .map((target) => ({ id: post.id, accountId: target.accountId, title: (target.text || post.content).slice(0, 120), status: post.status, scheduledFor: post.scheduledFor })));
+}
+
+async function ownedRules(source: AutoDmSource, accounts: readonly AutoDmAccount[]): Promise<AutoDmRule[] | null> {
+  const body = await source.list();
+  if (body === null) return null;
+  const ids = new Set(accounts.map((account) => account.id));
+  return readAutoDmRules(body).filter((rule) => ids.has(rule.accountId));
+}
+
+export async function loadAutoDm(tenantId: string, now = new Date(), mockOnly = false): Promise<AutoDmWorkspace | null> {
+  const found = await autoDmSource(tenantId, now, mockOnly);
+  if (!found) return null;
+  const accounts = autoDmAccounts(found.workspace);
+  const rules = await ownedRules(found.source, accounts);
+  if (!rules) return null;
+  return { rules, accounts, posts: autoDmPosts(found.workspace, accounts) };
+}
+
+export type AutoDmSave =
+  | { readonly ok: true; readonly rule: AutoDmRule }
+  | { readonly ok: false; readonly error: 'auto_dm_invalid'; readonly message: string }
+  | { readonly ok: false; readonly error: 'account_not_owned' | 'auto_dm_not_found' | 'social_unavailable' };
+
+function readSaved(body: unknown, fallback: { id: string; input: AutoDmInput; platform: AutoDmPlatform }): AutoDmRule {
+  const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const parsed = readAutoDmRule(record.automation ?? record.data ?? record);
+  if (parsed) return parsed;
+  return { ...fallback.input, id: fallback.id, platform: fallback.platform, stats: { triggered: null, sent: null, failed: null, clicks: null } };
+}
+
+/** Creates an automation (no id) or replaces one this ministry owns. The account never changes. */
+export async function saveAutoDm(
+  tenantId: string, id: string | null, raw: unknown, now = new Date(), mockOnly = false,
+): Promise<AutoDmSave> {
+  const found = await autoDmSource(tenantId, now, mockOnly);
+  if (!found) return { ok: false, error: 'social_unavailable' };
+  const accounts = autoDmAccounts(found.workspace);
+  const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  let accountId = typeof input.accountId === 'string' ? input.accountId : '';
+  if (id) {
+    const rules = await ownedRules(found.source, accounts);
+    if (!rules) return { ok: false, error: 'social_unavailable' };
+    const existing = rules.find((rule) => rule.id === id);
+    if (!existing) return { ok: false, error: 'auto_dm_not_found' };
+    accountId = existing.accountId;
+  }
+  const account = accounts.find((entry) => entry.id === accountId);
+  if (!account) return { ok: false, error: 'account_not_owned' };
+  const checked = checkAutoDm({ ...input, accountId }, account.platform);
+  if (!checked.ok) return { ok: false, error: 'auto_dm_invalid', message: checked.message };
+  const value = checked.value;
+  if (value.postId && !autoDmPosts(found.workspace, [account]).some((post) => post.id === value.postId)) {
+    return { ok: false, error: 'auto_dm_invalid', message: 'That post is not one of this account’s posts.' };
+  }
+  const body = toZernioAutomation(value, account.platform, id ? 'update' : { profileId: found.workspace.profileId });
+  const saved = id ? await found.source.update(id, body) : await found.source.create(body);
+  if (saved === null) return { ok: false, error: 'social_unavailable' };
+  const record = saved && typeof saved === 'object' ? (saved as Record<string, unknown>) : {};
+  const nested = record.automation && typeof record.automation === 'object' ? (record.automation as Record<string, unknown>) : record;
+  const newId = id ?? (typeof nested._id === 'string' ? nested._id : typeof nested.id === 'string' ? nested.id : '');
+  if (!newId) return { ok: false, error: 'social_unavailable' };
+  return { ok: true, rule: readSaved(saved, { id: newId, input: value, platform: account.platform }) };
+}
+
+async function ownedRule(tenantId: string, id: string, now: Date, mockOnly: boolean): Promise<{ source: AutoDmSource } | 'not_found' | null> {
+  const found = await autoDmSource(tenantId, now, mockOnly);
+  if (!found) return null;
+  const rules = await ownedRules(found.source, autoDmAccounts(found.workspace));
+  if (!rules) return null;
+  return rules.some((rule) => rule.id === id) ? { source: found.source } : 'not_found';
+}
+
+export async function deleteAutoDm(tenantId: string, id: string, now = new Date(), mockOnly = false): Promise<'deleted' | 'not_found' | null> {
+  const owned = await ownedRule(tenantId, id, now, mockOnly);
+  if (owned === null || owned === 'not_found') return owned;
+  return (await owned.source.remove(id)) ? 'deleted' : null;
+}
+
+export async function loadAutoDmLogs(tenantId: string, id: string, now = new Date(), mockOnly = false): Promise<AutoDmLog[] | 'not_found' | null> {
+  const owned = await ownedRule(tenantId, id, now, mockOnly);
+  if (owned === null || owned === 'not_found') return owned;
+  const body = await owned.source.logs(id);
+  return body === null ? null : readAutoDmLogs(body);
 }

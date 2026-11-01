@@ -57,7 +57,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 }));
 
 import { resetPublishOnce } from '../publish-once';
-import { analytics, cancel, createDraft, inboxList, inboxReply, inboxThread, list, schedule, update, validate } from '../service';
+import { analytics, autoDmDelete, autoDmList, autoDmLogs, autoDmSave, cancel, createDraft, inboxList, inboxReply, inboxThread, list, schedule, update, validate } from '../service';
 
 const SCHEDULE_KEY = '22222222-2222-4222-8222-222222222222';
 
@@ -181,6 +181,48 @@ describe('social service', () => {
     for (const bad of [{ kind: 'message', id: 'sample-dm-1', message: '   ' }, { kind: 'message', id: 'sample-dm-1', message: 'x'.repeat(2001) }, { kind: 'message', id: '', message: 'Hi' }, null]) {
       expect((await inboxReply(actor, bad)).ok, JSON.stringify(bad)?.slice(0, 60)).toBe(false);
     }
+  });
+
+  // Auto-DM: comment-to-DM automations.
+  it('lists Auto-DM automations with only the Instagram and Facebook accounts and their posts', async () => {
+    const listed = await autoDmList(actor);
+    expect(listed).toMatchObject({ ok: true, data: { sample: true } });
+    if (!listed.ok) return;
+    expect(listed.data.accounts.map((a) => a.platform)).toEqual(['instagram', 'facebook']);
+    expect(listed.data.rules.map((r) => [r.name, r.stats.sent, r.stats.clicks])).toEqual([['Youth night sign-up', 45, 19]]);
+    expect(listed.data.posts.map((p) => p.id)).toEqual(['sample-draft', 'sample-scheduled', 'sample-sent']);
+    expect(await autoDmList({ ...actor, requestedTenantId: 'other-ministry' })).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it('creates, changes and deletes only this ministry\'s own automations, on its own accounts', async () => {
+    const draft = { accountId: 'sample-ig', name: 'Guide', keywords: ['guide'], dmMessage: 'Here you go!', postId: 'sample-scheduled' };
+    const created = await autoDmSave(actor, null, draft);
+    expect(created).toMatchObject({ ok: true, data: { rule: { name: 'Guide', accountId: 'sample-ig', platform: 'instagram', postId: 'sample-scheduled' } } });
+    if (!created.ok) return;
+    const id = created.data.rule.id;
+
+    // Another network's account, an account the ministry does not own, a post it does not own.
+    expect(await autoDmSave(actor, null, { ...draft, accountId: 'sample-yt' })).toMatchObject({ ok: false, status: 403, error: 'account_not_owned' });
+    expect(await autoDmSave(actor, null, { ...draft, accountId: 'someone-elses-ig' })).toMatchObject({ ok: false, status: 403 });
+    expect(await autoDmSave(actor, null, { ...draft, postId: 'someone-elses-post' })).toMatchObject({ ok: false, status: 400, error: 'auto_dm_invalid' });
+    // A form mistake comes back worded for the admin.
+    expect(await autoDmSave(actor, null, { ...draft, dmMessage: '' })).toMatchObject({ ok: false, status: 400, error: 'auto_dm_invalid', message: 'Write the DM people receive.' });
+
+    // An update keeps the account it runs on, whatever the body says.
+    const changed = await autoDmSave(actor, id, { ...draft, accountId: 'sample-fb', name: 'Free guide', isActive: false });
+    expect(changed).toMatchObject({ ok: true, data: { rule: { id, name: 'Free guide', accountId: 'sample-ig', isActive: false } } });
+    expect(await autoDmSave(actor, 'someone-elses-rule', draft)).toMatchObject({ ok: false, status: 404, error: 'auto_dm_not_found' });
+    expect(await autoDmSave(actor, '../x', draft)).toMatchObject({ ok: false, status: 404 });
+
+    const logs = await autoDmLogs(actor, 'sample-autodm-1');
+    expect(logs.ok && logs.data.logs.map((l) => [l.commenter, l.status])).toEqual([['grace.okafor', 'sent'], ['danreyes', 'sent'], ['ruth.m', 'skipped']]);
+    expect(await autoDmLogs(actor, 'someone-elses-rule')).toMatchObject({ ok: false, status: 404 });
+
+    expect(await autoDmDelete(actor, 'someone-elses-rule')).toMatchObject({ ok: false, status: 404 });
+    expect(await autoDmDelete(actor, id)).toMatchObject({ ok: true, data: { deleted: true } });
+    const after = await autoDmList(actor);
+    expect(after.ok && after.data.rules.map((r) => r.id)).toEqual(['sample-autodm-1']);
+    expect(await autoDmSave({ ...actor, requestedTenantId: 'other-ministry' }, null, draft)).toMatchObject({ ok: false, status: 403 });
   });
 
   it('keeps the sample ministry zone when the caller names another', async () => {

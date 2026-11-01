@@ -652,7 +652,11 @@ describe('5 · the money path is byte-identical', () => {
       // #584: the unified inbox — list, open one owned thread, and reply to an owned item.
       'src/app/api/social/inbox/route.ts',
       'src/app/api/social/inbox/thread/route.ts',
-      'src/app/api/social/inbox/reply/route.ts'];
+      'src/app/api/social/inbox/reply/route.ts',
+      // APPENDED BY Auto-DM: list and create, change or delete one owned automation, and its trigger log.
+      'src/app/api/social/auto-dm/route.ts',
+      'src/app/api/social/auto-dm/[id]/route.ts',
+      'src/app/api/social/auto-dm/[id]/logs/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);

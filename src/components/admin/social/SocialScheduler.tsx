@@ -48,9 +48,11 @@ import { SocialUpgradeWall } from './SocialUpgradeWall';
 import { PostPreview } from './PostPreview';
 import { SocialAnalyticsView, type AnalyticsLoader } from './SocialAnalyticsView';
 import { SocialInboxView, type InboxApi } from './SocialInboxView';
+import { SocialAutoDmView, type AutoDmApi } from './SocialAutoDmView';
+import { newAutoDm, type AutoDmLog, type AutoDmRule } from '@/lib/social/auto-dm';
 import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
-export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics' | 'inbox';
+export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics' | 'inbox' | 'autodm';
 
 export interface SocialScreenData extends SocialWorkspace {
   readonly entitled: boolean;
@@ -96,6 +98,8 @@ interface PendingAction {
   headers?: Record<string, string>;
   doneNotice: string;
   applyLocal: () => void;
+  /** Runs once the post is saved, with the server's answer; returns a notice to show instead of doneNotice. */
+  afterSave?: (body: unknown) => Promise<string | null>;
 }
 
 function friendlyError(error: unknown): string {
@@ -189,6 +193,20 @@ const liveInboxApi: InboxApi = {
   reply: async (input) => { await inboxJson(await authFetch('/api/social/inbox/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })); },
 };
 
+/** Auto-DM, from the server. A form mistake comes back with the server's own wording. */
+async function autoDmJson<T>(response: Response): Promise<T> {
+  const body = await response.json().catch(() => null) as (T & { message?: unknown }) | null;
+  if (!response.ok) throw new Error(typeof body?.message === 'string' ? body.message : 'Could not save the automation. Please try again.');
+  return body as T;
+}
+const jsonInit = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const liveAutoDmApi: AutoDmApi = {
+  list: async () => autoDmJson(await authFetch('/api/social/auto-dm')),
+  save: async (id, input) => (await autoDmJson<{ rule: AutoDmRule }>(await authFetch(id ? `/api/social/auto-dm/${encodeURIComponent(id)}` : '/api/social/auto-dm', jsonInit(id ? 'PATCH' : 'POST', input)))).rule,
+  remove: async (id) => { await autoDmJson(await authFetch(`/api/social/auto-dm/${encodeURIComponent(id)}`, { method: 'DELETE' })); },
+  logs: async (id) => (await autoDmJson<{ logs: AutoDmLog[] }>(await authFetch(`/api/social/auto-dm/${encodeURIComponent(id)}/logs`))).logs,
+};
+
 /** #582: the Analytics tab's data, from the server. */
 async function loadAnalytics(range: AnalyticsRange): Promise<SocialAnalytics> {
   const response = await authFetch(`/api/social/analytics?range=${range}`);
@@ -203,6 +221,7 @@ export function SocialScheduler({
   onUpgrade,
   analyticsLoader = loadAnalytics,
   inboxApi = liveInboxApi,
+  autoDmApi = liveAutoDmApi,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
@@ -210,6 +229,8 @@ export function SocialScheduler({
   analyticsLoader?: AnalyticsLoader;
   /** #584: where the Inbox reads and replies; the preview and tests pass the sample inbox. */
   inboxApi?: InboxApi;
+  /** Auto-DM's automations; the preview and tests pass the sample. */
+  autoDmApi?: AutoDmApi;
   /**
    * The shell has not resolved the tenant's plan yet. The gate shows a loading
    * state until it has; it never guesses, because a guess that the server then
@@ -230,6 +251,8 @@ export function SocialScheduler({
   );
   const [fields, setFields] = useState<FieldValues>(() => seedSelectDefaults({}, selected));
   const [madeWithAi, setMadeWithAi] = useState(false);
+  // Auto-DM from the composer: DM people who comment a keyword on this post.
+  const [autoDm, setAutoDm] = useState({ on: false, keywords: '', message: '', reply: '' });
   const [when, setWhen] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -450,6 +473,34 @@ export function SocialScheduler({
       targets,
       media: attachments.map(({ media }) => media),
     };
+    const dmTargets = targets.filter((target) => target.platform === 'instagram' || target.platform === 'facebook');
+    const dmKeywords = autoDm.keywords.split(',').map((word) => word.trim()).filter(Boolean);
+    if (autoDm.on && dmTargets.length > 0 && (dmKeywords.length === 0 || !autoDm.message.trim())) {
+      setNotice('Add a keyword and the DM for Auto-DM, or turn it off.');
+      return;
+    }
+    const afterSave = autoDm.on && dmTargets.length > 0 ? async (body: unknown): Promise<string | null> => {
+      const post = (body as { post?: SocialPost } | null)?.post;
+      if (!post?.id) return 'Saved. Auto-DM was not attached; set it up under Auto-DM.';
+      const failures: string[] = [];
+      for (const target of dmTargets) {
+        try {
+          await autoDmApi.save(null, {
+            ...newAutoDm(target.accountId),
+            name: `Auto-DM: ${content.trim().slice(0, 40)}`,
+            keywords: dmKeywords,
+            dmMessage: autoDm.message.trim(),
+            commentReply: autoDm.reply.trim(),
+            postId: post.id,
+            postTitle: content.trim().slice(0, 120),
+          });
+        } catch (caught) {
+          failures.push(caught instanceof Error ? caught.message : 'unknown');
+        }
+      }
+      if (failures.length === 0) return null;
+      return `Saved. Auto-DM could not be attached (${failures[0]}). Set it up under Auto-DM.`;
+    } : undefined;
     const payloadHash = canonicalJson(payload);
     if (!publishKey.current || publishKey.current.payloadHash !== payloadHash) {
       publishKey.current = { key: crypto.randomUUID(), payloadHash };
@@ -468,6 +519,7 @@ export function SocialScheduler({
       payload,
       headers,
       doneNotice,
+      afterSave,
       applyLocal: () => {
         const post: SocialPost = {
           id: `local-${posts.length + 1}`,
@@ -481,6 +533,7 @@ export function SocialScheduler({
         if (!data) return;
         setData({ ...data, posts: [post, ...posts] });
         setNotice(doneNotice);
+        if (afterSave) void afterSave({ post }).then((notice) => { if (notice) setNotice(notice); });
       },
     });
   }
@@ -506,7 +559,9 @@ export function SocialScheduler({
         return;
       }
       if (pending.url === '/api/social/posts' && pending.method === 'POST') publishKey.current = null;
-      setNotice(pending.doneNotice);
+      const afterNotice = pending.afterSave ? await pending.afterSave(body) : null;
+      if (pending.afterSave) setAutoDm({ on: false, keywords: '', message: '', reply: '' });
+      setNotice(afterNotice ?? pending.doneNotice);
       setPending(null);
       await refresh();
     } finally {
@@ -562,6 +617,7 @@ export function SocialScheduler({
               { value: 'calendar', label: 'Calendar' },
               { value: 'queue', label: 'Queue' },
               { value: 'inbox', label: 'Inbox' },
+              { value: 'autodm', label: 'Auto-DM' },
               { value: 'analytics', label: 'Analytics' },
             ]}
           />
@@ -577,6 +633,10 @@ export function SocialScheduler({
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
         <TabsContent value="inbox" className="mt-4">
           {view === 'inbox' && <SocialInboxView api={inboxApi} accounts={accounts} />}
+        </TabsContent>
+
+        <TabsContent value="autodm" className="mt-4">
+          {view === 'autodm' && <SocialAutoDmView api={autoDmApi} onOpenInbox={() => setView('inbox')} />}
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">
@@ -699,6 +759,24 @@ export function SocialScheduler({
                   <span className={OPTION_TITLE}>Made with AI</span>
                   <Switch checked={madeWithAi} onCheckedChange={setMadeWithAi} aria-label="Made with AI" />
                 </label>
+              )}
+              {(selected.includes('instagram') || selected.includes('facebook')) && (
+                <div className="flex flex-col gap-3 rounded-lg border border-line p-3" data-testid="composer-auto-dm">
+                  <div className={OPTION_ROW}>
+                    <span className={OPTION_TITLE}>Auto-DM people who comment a keyword</span>
+                    <Switch checked={autoDm.on} onCheckedChange={(on) => setAutoDm((current) => ({ ...current, on }))} aria-label="Auto-DM" />
+                  </div>
+                  {autoDm.on && (
+                    <>
+                      <p className="flex items-center gap-1.5 text-xs text-faint">
+                        On <PlatformLogos platforms={selected.filter((slug): slug is SocialPlatform => slug === 'instagram' || slug === 'facebook')} className="size-3" /> once the post is live. More options under Auto-DM.
+                      </p>
+                      <Input className={`${FIELD_CONTROL} border-line bg-card px-3`} aria-label="Auto-DM keywords" placeholder="Keywords, separated by commas" value={autoDm.keywords} onChange={(event) => setAutoDm((current) => ({ ...current, keywords: event.target.value }))} />
+                      <Textarea aria-label="Auto-DM message" rows={3} maxLength={1000} placeholder="Hey {{first_name}}! Here is the link." value={autoDm.message} onChange={(event) => setAutoDm((current) => ({ ...current, message: event.target.value }))} />
+                      <Input className={`${FIELD_CONTROL} border-line bg-card px-3`} aria-label="Auto-DM public reply" placeholder="Public reply (optional): Check your DMs!" value={autoDm.reply} onChange={(event) => setAutoDm((current) => ({ ...current, reply: event.target.value }))} />
+                    </>
+                  )}
+                </div>
               )}
               {mediaError && <p className="text-sm text-destructive" role="alert">{friendlyError(mediaError)}</p>}
               {platformErrors.map((error) => error && <p key={error} className="text-sm text-destructive" role="alert">{friendlyError(error)}</p>)}
