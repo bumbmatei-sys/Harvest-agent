@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Radio } from 'lucide-react';
 
 import { PageHeader } from '@/components/admin-shell/PageHeader';
 import { AdminPrimaryButton } from '@/components/admin/AdminUI';
@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FORM_CONTAINER } from '@/components/layout/form-layout';
@@ -35,13 +36,20 @@ async function call(url: string, init?: RequestInit) {
  * The Communities page: every community of the ministry, like Products. The
  * default community opens its existing setup; the others open the editor.
  */
-export function AdminCommunities({ tenantId, defaultSetup }: {
+export function AdminCommunities({ tenantId, defaultSetup, livestream }: {
   tenantId: string | null;
   /** The default community's existing setup screen. */
   defaultSetup: ReactNode;
+  /**
+   * The ministry's livestream, which members watch in the default community.
+   * It has no sidebar row: it opens from here. Absent when the admin may not
+   * manage it.
+   */
+  livestream?: ReactNode;
 }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [open, setOpen] = useState<string | null>(null);
+  const [section, setSection] = useState<'setup' | 'livestream'>('setup');
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<CommunityRecord | null>(null);
   const [notice, setNotice] = useState('');
@@ -55,8 +63,12 @@ export function AdminCommunities({ tenantId, defaultSetup }: {
 
   if (open === 'default') {
     return <div className="space-y-4">
-      <Button variant="ghost" className="min-h-11 sm:min-h-0" onClick={() => { setOpen(null); void refresh(); }}><ArrowLeft /> Communities</Button>
-      {defaultSetup}
+      <Button variant="ghost" className="min-h-11 sm:min-h-0" onClick={() => { setOpen(null); setSection('setup'); void refresh(); }}><ArrowLeft /> Communities</Button>
+      {livestream ? <Tabs value={section} onValueChange={value => setSection(value === 'livestream' ? 'livestream' : 'setup')}>
+        <TabsList aria-label="Default community"><TabsTrigger value="setup" className="min-h-11 sm:min-h-0">Setup</TabsTrigger><TabsTrigger value="livestream" className="min-h-11 sm:min-h-0"><Radio /> Livestream</TabsTrigger></TabsList>
+        <TabsContent value="setup">{defaultSetup}</TabsContent>
+        <TabsContent value="livestream" data-community-livestream="">{livestream}</TabsContent>
+      </Tabs> : defaultSetup}
     </div>;
   }
   const editing = open && load.status === 'ready' ? load.data.communities.find(c => c.id === open) : undefined;
@@ -100,7 +112,8 @@ export function AdminCommunities({ tenantId, defaultSetup }: {
           {community.tagline && <p className="mt-1 line-clamp-2 text-sm text-muted">{community.tagline}</p>}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => setOpen(community.id)}>Edit</Button>
+          {community.isDefault && livestream && <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => { setSection('livestream'); setOpen(community.id); }}><Radio /> Livestream</Button>}
+          <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => { setSection('setup'); setOpen(community.id); }}>Edit</Button>
           <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => setDeleting(community)}>Delete</Button>
         </div>
       </CardContent>

@@ -16,10 +16,10 @@ let list: Record<string, unknown>;
 let container: HTMLDivElement;
 let root: Root;
 
-async function mount() {
+async function mount(livestream?: React.ReactNode) {
   container = document.createElement('div');
   document.body.appendChild(container);
-  await act(async () => { root = createRoot(container); root.render(<AdminCommunities tenantId="grace" defaultSetup={<div data-testid="default-setup" />} />); });
+  await act(async () => { root = createRoot(container); root.render(<AdminCommunities tenantId="grace" defaultSetup={<div data-testid="default-setup" />} livestream={livestream} />); });
   await act(async () => { await Promise.resolve(); });
 }
 const button = (label: string) => [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === label) as HTMLButtonElement | undefined;
@@ -75,6 +75,33 @@ describe('admin Communities page', () => {
     expect(container.textContent).toContain('Your community is live');
     expect(container.querySelector('[data-community-link]')!.textContent).toMatch(/\/community\/grace\/youth$/);
     expect(button('Unpublish')).toBeTruthy();
+  });
+
+  it('opens the livestream from the default community, which is where it moved from the sidebar', async () => {
+    await mount(<div data-testid="livestream-admin" />);
+    const row = (id: string) => container.querySelector(`[data-community-row="${id}"]`)!;
+    // Only the default community carries it: the stream is the ministry's.
+    expect([...row('youth').querySelectorAll('button')].map(b => b.textContent)).not.toContain(' Livestream');
+    const open = [...row('default').querySelectorAll('button')].find(b => b.textContent?.trim() === 'Livestream');
+    await click(open);
+    expect(container.querySelector('[data-testid="livestream-admin"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="default-setup"]')).toBeNull();
+    // Edit opens the setup, and the tab beside it switches to the stream.
+    await click(button('Communities'));
+    await click(button('Edit'));
+    expect(container.querySelector('[data-testid="default-setup"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="livestream-admin"]')).toBeNull();
+    const tab = [...container.querySelectorAll('[role="tab"]')].find(b => b.textContent?.trim() === 'Livestream');
+    await click(tab);
+    expect(container.querySelector('[data-testid="livestream-admin"]')).not.toBeNull();
+  });
+
+  it('shows no livestream entry to an admin who may not manage it', async () => {
+    await mount();
+    expect(container.querySelector('[data-community-row="default"]')!.textContent).not.toContain('Livestream');
+    await click(button('Edit'));
+    expect(container.querySelector('[role="tab"]')).toBeNull();
+    expect(container.querySelector('[data-testid="default-setup"]')).not.toBeNull();
   });
 
   it('explains why an apply-first community cannot be published yet', async () => {

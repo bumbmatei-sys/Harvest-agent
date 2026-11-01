@@ -32,10 +32,13 @@ import {
  *
  * Two icon-only sides, matching Eden's workspace / store switch:
  *   people — home, people, giving (Boards is a section of its own, drawn by the sidebar)
- *   public — channels (social, newsletter, livestream, blog), engage
+ *   public — channels (social, newsletter, blog), engage
  *            (forms, events, check-in), products
  *
  * Community has no row. It is the menu in the top bar.
+ *
+ * Livestream has no row either. It lives inside the community, on the
+ * Communities page, because members watch it there.
  *
  * Branding is not a sidebar group. It lives in Settings > Campus & branding.
  * A branding-only admin, who cannot open Settings, still gets one row from
@@ -149,7 +152,6 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'social', label: 'Social', icon: Share2 },
       { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
-      { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'blog', label: 'Blog', icon: Newspaper },
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     ],

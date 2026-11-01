@@ -15,9 +15,11 @@ const tabs = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, 
 const shape = (side: 'people' | 'public') => groupsForSide(side, tabs).map((g) => ({ label: g.label, items: g.items.map((i) => i.id) }));
 
 describe('the sidebar, as the founder specified it', () => {
-  it('Public: Channels (Social, Newsletter, Livestream, Blog), Engage (Forms, Events, Check-in), Products', () => {
+  // WAS Channels (Social, Newsletter, Livestream, Blog). The founder moved
+  // Livestream into the community, so it has no row even with its tab present.
+  it('Public: Channels (Social, Newsletter, Blog), Engage (Forms, Events, Check-in), Products', () => {
     const groups = shape('public');
-    expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'livestream', 'blog', 'sms'] });
+    expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'blog', 'sms'] });
     expect(groups[1]).toEqual({ label: 'Engage', items: ['forms', 'events', 'checkin'] });
     expect(groups[2]).toEqual({ label: '', items: ['products'] });
   });
@@ -26,7 +28,7 @@ describe('the sidebar, as the founder specified it', () => {
     const without = new Map(tabs);
     without.delete('sms');
     const groups = groupsForSide('public', without).map((g) => g.items.map((i) => i.id));
-    expect(groups[0]).toEqual(['social', 'newsletter', 'livestream', 'blog']);
+    expect(groups[0]).toEqual(['social', 'newsletter', 'blog']);
   });
 
   it('People: People (CRM, Signups, Campuses, Services), Giving (Fundraising, Donations, Accounting), then Platform; Notes is not under Giving', () => {
