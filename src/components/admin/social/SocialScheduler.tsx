@@ -45,6 +45,7 @@ import { validateSocialMedia } from '@/lib/social/media-rules';
 import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment } from './MediaAttachments';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
 import { PostPreview } from './PostPreview';
+import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
 export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue';
 
@@ -569,9 +570,8 @@ export function SocialScheduler({
                   className="flex flex-wrap gap-1.5"
                 >
                   {accounts.map((account) => (
-                    <ToggleGroupItem key={account.id} value={account.platform} className={`${CONTROL} gap-2 rounded-full border border-line px-3`}>
-                      <span aria-hidden data-initial={labelFor(account.platform).slice(0, 1)} className="flex size-6 items-center justify-center rounded-full bg-surface-sunken text-[11px] font-semibold text-muted before:content-[attr(data-initial)]" />
-                      {labelFor(account.platform)}
+                    <ToggleGroupItem key={account.id} value={account.platform} className={`${CONTROL} size-11 rounded-full border border-line p-0 sm:size-10`}>
+                      {hasLogo(account.platform) ? <PlatformLogo platform={account.platform} className="size-4" /> : labelFor(account.platform)}
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
@@ -593,7 +593,7 @@ export function SocialScheduler({
                 if (specs.length === 0) return null;
                 return (
                   <fieldset key={platform} className="flex flex-col gap-2" data-testid={`fields-${platform}`}>
-                    <legend className="mb-2 text-[13px] font-semibold text-strong">{labelFor(platform)}</legend>
+                    <legend className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-strong"><PlatformLogo platform={platform} decorative />{labelFor(platform)}</legend>
                     {specs.map((field) => {
                       const FieldWrap = field.kind === 'select' ? 'div' : 'label';
                       const inline = field.kind !== 'text';
@@ -721,7 +721,7 @@ export function SocialScheduler({
                         <div key={day} data-week-slot={`${day}@${hour}`} className="flex min-h-14 flex-col gap-1 border-l border-t border-line p-1">
                           {(slots.get(`${day}@${hour}`) ?? []).map((post) => (
                             <article key={post.id} data-week-post={post.id} className="rounded-md bg-card px-2 py-1.5 shadow-xs">
-                              <p className="text-[11px] text-faint">{queueTime(post.scheduledFor, post.timezone || zone)} · {post.targets.map((target) => labelFor(target.platform)).join(', ')}</p>
+                              <p className="flex items-center gap-1.5 text-[11px] text-faint">{queueTime(post.scheduledFor, post.timezone || zone)} <PlatformLogos platforms={post.targets.map((target) => target.platform)} className="size-3" /></p>
                               <p className="line-clamp-2 text-xs text-strong">{post.content}</p>
                             </article>
                           ))}
@@ -895,7 +895,7 @@ function AccountsPanel({
         <ul className="flex flex-col gap-2">
           {accounts.map((account) => (
             <li key={account.id} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
-              <span className="text-sm text-strong">{labelFor(account.platform)}</span>
+              <span className="flex items-center gap-2 text-sm text-strong"><PlatformLogo platform={account.platform} decorative />{labelFor(account.platform)}</span>
               <span className="text-sm text-faint">{account.displayName} · @{account.username}</span>
             </li>
           ))}
@@ -904,8 +904,8 @@ function AccountsPanel({
           <p className="text-sm text-faint">Connect another account</p>
           <div className="flex flex-wrap items-center gap-2">
             {SOCIAL_PLATFORMS.map((platform) => (
-              <Button key={platform} type="button" variant="outline" className={CONTROL} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
-                {labelFor(platform)}
+              <Button key={platform} type="button" variant="outline" className={`${CONTROL} gap-2`} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
+                <PlatformLogo platform={platform} decorative />{labelFor(platform)}
               </Button>
             ))}
           </div>
@@ -931,7 +931,7 @@ function Queue({
   const days = scheduledByDay(posts, timeZone, new Date());
   const scheduledCount = days.reduce((n, day) => n + day.posts.length, 0);
   const sent = sentNewestFirst(posts);
-  const platforms = (post: SocialPost) => post.targets.map((target) => labelFor(target.platform)).join(' · ');
+  const platforms = (post: SocialPost) => <PlatformLogos platforms={post.targets.map((target) => target.platform)} />;
   // Drafts and scheduled posts only; a sent post has gone out.
   const actions = (post: SocialPost) => (
     <div className="mt-2 flex gap-1">
@@ -964,7 +964,7 @@ function Queue({
           <h3 className="px-1 pt-1 text-sm font-semibold text-strong">{day.label} <span className="font-normal text-faint">{day.date}</span></h3>
           {day.posts.map((post) => (
             <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
-              <p className="text-xs font-semibold text-muted">{queueTime(post.scheduledFor, post.timezone || timeZone)}<span className="font-normal text-faint"> · {platforms(post)}</span></p>
+              <p className="text-xs font-semibold text-muted">{queueTime(post.scheduledFor, post.timezone || timeZone)}<span className="ml-1.5 font-normal text-faint">{platforms(post)}</span></p>
               <div className="mt-1 flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-3 text-sm text-strong">{post.content}</p></div>
               {actions(post)}
             </article>

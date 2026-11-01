@@ -2,6 +2,7 @@
 import { characterCount, platformCounts, strictestLimit } from '@/lib/social/limits';
 import { PLATFORM_LABELS, type SocialPlatform } from '@/lib/social/platforms';
 import type { SocialAccount } from '@/lib/social/types';
+import { PlatformLogo } from './PlatformLogo';
 
 /**
  * Eden's composer preview (docs/prd/screenshots/14-social-scheduler, 017): the
@@ -45,7 +46,7 @@ export function PostPreview({ content, mediaCount, accounts, platforms }: {
           ? <p className="text-xs text-faint">Pick an account to post to.</p>
           : <ul className="flex flex-col gap-1.5">{counts.map((count) => (
             <li key={count.platform} data-preview-platform={count.platform} className="rounded-lg border border-line bg-card px-3 py-2">
-              <p className="text-sm font-medium text-strong">{PLATFORM_LABELS[count.platform]}</p>
+              <p className="flex items-center gap-2 text-sm font-medium text-strong"><PlatformLogo platform={count.platform} className="size-3.5" decorative />{PLATFORM_LABELS[count.platform]}</p>
               <p className={`text-xs ${count.over ? 'font-semibold text-destructive' : 'text-faint'}`}>
                 Same as all · {count.used.toLocaleString()} of {count.limit.toLocaleString()} characters
               </p>

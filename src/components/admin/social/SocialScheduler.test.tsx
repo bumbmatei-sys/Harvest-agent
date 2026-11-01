@@ -97,7 +97,9 @@ describe('SocialScheduler', () => {
       ['drafts', 'Drafts1'], ['scheduled', 'Scheduled1Chicago'], ['sent', 'Sent1'],
     ]);
     expect(columns[1].querySelector('[data-queue-day] h3')?.textContent).toBe('Tuesday Mar 12');
-    expect(columns[1].textContent).toContain('10:00 AM · Instagram');
+    expect(columns[1].textContent).toContain('10:00 AM');
+    // #581: networks show as logos, as on Eden, each with an accessible name.
+    expect(columns[1].querySelector('[data-platform-logo="instagram"]')?.getAttribute('aria-label')).toBe('Instagram');
     expect(columns[2].textContent).toContain('PostedMar 4, 9:00 AM');
     // Sent posts can no longer be edited or cancelled.
     expect([...columns[2].querySelectorAll('button')]).toHaveLength(0);
@@ -329,7 +331,8 @@ describe('SocialScheduler', () => {
       expect(title()).toBe('Week of March 8');
       // Verse of the day is scheduled for 10:00 on 12 March in the ministry's zone.
       expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('Verse of the day');
-      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('10:00 AM · Instagram');
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"]')?.textContent).toContain('10:00 AM');
+      expect(container.querySelector('[data-week-slot="2024-03-12@10"] [data-platform-logo="instagram"]')).toBeTruthy();
       await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Next week"]')!.click(); });
       expect(title()).toBe('Week of March 15');
     } finally {
