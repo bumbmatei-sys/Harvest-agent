@@ -71,13 +71,11 @@ describe('SocialScheduler', () => {
     expect(container.textContent).not.toContain('Twitter');
     expect(container.textContent).not.toContain('X');
 
-    await act(async () => {
-      const accounts = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Accounts');
-      accounts?.click();
-    });
-    expect(container.querySelector('[data-testid="social-accounts"]')).toBeTruthy();
-    expect(container.textContent).toContain('Sample Ministry');
-    expect(container.textContent).not.toContain('grace');
+    // WAS an Accounts tab beside Compose. The founder moved Accounts to Settings,
+    // so the page's tabs are the Planner's own: Compose, Calendar, Queue.
+    expect([...container.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Compose', 'Calendar', 'Queue']);
+    expect([...container.querySelectorAll('button')].some((button) => button.textContent === 'Accounts')).toBe(false);
+    expect(container.querySelector('h1')?.textContent).toBe('Planner');
 
     await act(async () => {
       const calendar = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Calendar');

@@ -95,7 +95,8 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('donations')).toBe('Giving');
     expect(sectionForTab('accounting')).toBe('Giving');
     expect(sectionForTab('blog')).toBe('Channels');
-    expect(sectionForTab('social')).toBe('Channels');
+    // WAS 'Channels'. Social media is its own section now.
+    expect(sectionForTab('social')).toBe('Social media');
     expect(sectionForTab('newsletter')).toBe('Channels');
     expect(sectionForTab('products')).toBeNull();
     expect(sectionForTab('courses')).toBe('Products');
@@ -115,19 +116,22 @@ describe('shell nav mapping', () => {
     // Side toggles and the pinned Home row are on screen with the items.
     // Group labels render no icon, so the group glyph is not part of this set.
     const visible = [...itemIcons, ...SHELL_SIDES.map((meta) => meta.icon), Home];
-    expect(itemIcons).toHaveLength(ids.length);
+    // WAS ids.length: one row per tab. The social tab has four rows now
+    // (Analytics, Planner, Inbox, Auto-DM), each with its own icon.
+    expect(itemIcons).toHaveLength(ids.length + 3);
     expect(new Set(visible).size).toBe(visible.length);
     expect(itemIcons.filter((icon) => icon === Church)).toHaveLength(1);
   });
 
-  it('does not label the Social item and its group with the same word', () => {
+  // WAS one 'Social' row under Channels. The founder's Social media section
+  // labels each row by its own section, never by the tab or the group.
+  it('does not label the Social items and their group with the same word', () => {
     const withSocial = new Map(tabs);
     withSocial.set('social', { id: 'social', label: 'Social', icon: FileText });
     withSocial.set('livestream', { id: 'livestream', label: 'Livestream', icon: FileText });
     const group = groupsForSide('public', withSocial).find((entry) => entry.items.some((item) => item.id === 'social'));
-    expect(group?.items.find((item) => item.id === 'social')?.label).toBe('Social');
-    expect(group?.label).not.toBe('Social');
-    expect(group?.label).toBe('Channels');
+    expect(group?.items.map((item) => item.label)).toEqual(['Analytics', 'Planner', 'Inbox', 'Auto-DM']);
+    expect(group?.label).toBe('Social media');
   });
 });
 
@@ -198,7 +202,8 @@ describe('desktop sidebar', () => {
     });
   }
 
-  it('shows one Social link, under Channels on the public side, and opens the social section', async () => {
+  // WAS one Social link under Channels that opened the social tab.
+  it('shows the Social media rows on the public side, each opening its section, with the open one active', async () => {
     const onNavigate = vi.fn();
     const withSocial = new Map(tabs);
     withSocial.set('social', { id: 'social', label: 'Social', icon: FileText });
@@ -211,6 +216,7 @@ describe('desktop sidebar', () => {
               side="public"
               onSide={() => {}}
               activeTab="social"
+              activeView="calendar"
               placeholder={null}
               tabs={withSocial}
               tenantName="Grace Ministry"
@@ -223,12 +229,15 @@ describe('desktop sidebar', () => {
         </TooltipProvider>,
       );
     });
-    const links = container.querySelectorAll('[data-nav-tab="social"]');
-    expect(links).toHaveLength(1);
-    expect(links[0]?.textContent).toContain('Social');
-    expect(links[0]?.closest('[data-nav-group]')?.getAttribute('data-nav-group-tabs')?.split(',')[0]).toBe('social');
-    await act(async () => { (links[0] as HTMLButtonElement).click(); });
-    expect(onNavigate).toHaveBeenCalledWith('social');
+    const links = [...container.querySelectorAll<HTMLButtonElement>('[data-nav-tab="social"]')];
+    expect(links.map((link) => [link.dataset.navView, link.textContent])).toEqual([
+      ['analytics', 'Analytics'], ['planner', 'Planner'], ['inbox', 'Inbox'], ['autodm', 'Auto-DM'],
+    ]);
+    expect(links[0]?.closest('[data-nav-group]')?.getAttribute('data-nav-group')).toBe('social-media');
+    // Calendar is one of the Planner's tabs, so the Planner row is the open one.
+    expect(links.map((link) => link.hasAttribute('data-active'))).toEqual([false, true, false, false]);
+    await act(async () => { links[3].click(); });
+    expect(onNavigate).toHaveBeenCalledWith('social', 'autodm');
   });
 
   it('switches between the two icon-only sides', async () => {

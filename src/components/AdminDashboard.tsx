@@ -49,7 +49,7 @@ import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
 import AdminLivestream from './AdminLivestream';
-import { SocialScheduler } from './admin/social/SocialScheduler';
+import { SocialScheduler, socialViewFromRoute } from './admin/social/SocialScheduler';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import AdminServices from './AdminServices';
@@ -1125,6 +1125,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           side={shellSide}
           onSide={setShellSide}
           activeTab={activeTab}
+          activeView={itemId ?? null}
           placeholder={shellPlaceholder}
           tabs={desktopNavById}
           tenantName={isWhiteLabel ? tenantName : 'Harvest'}
@@ -1503,7 +1504,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'social' ? (
-            <div className="p-4 lg:p-0"><SocialScheduler planLoading={!isSuperAdmin && !resolvedPlan} onUpgrade={() => go('upgrade')} /></div>
+            <div className="p-4 lg:p-0"><SocialScheduler planLoading={!isSuperAdmin && !resolvedPlan} onUpgrade={() => go('upgrade')} initialView={socialViewFromRoute(itemId)} onManageAccounts={() => (settingsPopup ? navigate('/admin/settings?section=social') : go('social', 'accounts'))} /></div>
           ) : activeTab === 'sms' ? (
             // With SMS hidden the nav entry is gone, so this branch only catches
             // a typed or bookmarked /admin/sms — and it must not render AdminSms

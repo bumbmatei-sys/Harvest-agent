@@ -2,7 +2,7 @@
  * Desktop Settings popup navigation.
  *
  * Labels use "Campus", never "Church". Order is the product order: Profile,
- * Campus & branding, Plan & billing, Campus setup, Danger zone.
+ * Campus & branding, Plan & billing, Campus setup, Social accounts, Danger zone.
  *
  * Deep links (`?section=`, hash, Stripe/Dodo return query params) map onto
  * these ids so a billing-portal return opens Plan & billing rather than
@@ -14,6 +14,8 @@ export const SETTINGS_NAV = [
   { id: 'campus', label: 'Campus & branding' },
   { id: 'billing', label: 'Plan & billing' },
   { id: 'setup', label: 'Campus setup' },
+  // The founder moved the social scheduler's Accounts tab here; the composer's plus opens it.
+  { id: 'social', label: 'Social accounts' },
   { id: 'danger', label: 'Danger zone' },
 ] as const;
 
@@ -39,6 +41,8 @@ const ALIASES: Record<string, SettingsNavId> = {
   giving: 'setup',
   'giving-statements': 'setup',
   statements: 'setup',
+  social: 'social',
+  'social-accounts': 'social',
   danger: 'danger',
   cancel: 'danger',
   'cancel-plan': 'danger',

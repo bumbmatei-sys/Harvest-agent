@@ -8,6 +8,8 @@ describe('settings popup nav', () => {
       'Campus & branding',
       'Plan & billing',
       'Campus setup',
+      // APPENDED: the scheduler's Accounts tab moved here (Social accounts).
+      'Social accounts',
       'Danger zone',
     ]);
     expect(SETTINGS_NAV.map((item) => item.label).join(' ')).not.toMatch(/church/i);
