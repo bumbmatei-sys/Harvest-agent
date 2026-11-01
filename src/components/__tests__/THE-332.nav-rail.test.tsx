@@ -396,6 +396,11 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       // drawer lists them, and /admin/community and /admin/courses resolve).
       'community',
       'courses',
+      // APPENDED, nothing above removed: Livestream left the sidebar for the main
+      // community on the Communities page, which opens it. The id stays a known tab
+      // (/admin/livestream resolves), and an admin who cannot open Communities keeps
+      // a Channels row; this admin can, so it has none.
+      'livestream',
     ];
     const missing = [...named].filter((id) => !reached.has(id));
 

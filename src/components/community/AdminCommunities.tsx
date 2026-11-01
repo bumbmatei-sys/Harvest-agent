@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Radio } from 'lucide-react';
 
 import { PageHeader } from '@/components/admin-shell/PageHeader';
 import { AdminPrimaryButton } from '@/components/admin/AdminUI';
@@ -35,10 +35,16 @@ async function call(url: string, init?: RequestInit) {
  * The Communities page: every community of the ministry, like Products. The
  * default community opens its existing setup; the others open the editor.
  */
-export function AdminCommunities({ tenantId, defaultSetup }: {
+export function AdminCommunities({ tenantId, defaultSetup, onOpenLivestream }: {
   tenantId: string | null;
   /** The default community's existing setup screen. */
   defaultSetup: ReactNode;
+  /**
+   * Opens the ministry's livestream, which members watch in the default
+   * community. It has no sidebar row: it opens from here. Absent when the
+   * admin may not reach it.
+   */
+  onOpenLivestream?: () => void;
 }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [open, setOpen] = useState<string | null>(null);
@@ -55,7 +61,10 @@ export function AdminCommunities({ tenantId, defaultSetup }: {
 
   if (open === 'default') {
     return <div className="space-y-4">
-      <Button variant="ghost" className="min-h-11 sm:min-h-0" onClick={() => { setOpen(null); void refresh(); }}><ArrowLeft /> Communities</Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" className="min-h-11 sm:min-h-0" onClick={() => { setOpen(null); void refresh(); }}><ArrowLeft /> Communities</Button>
+        {onOpenLivestream && <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={onOpenLivestream}><Radio /> Livestream</Button>}
+      </div>
       {defaultSetup}
     </div>;
   }
@@ -100,6 +109,7 @@ export function AdminCommunities({ tenantId, defaultSetup }: {
           {community.tagline && <p className="mt-1 line-clamp-2 text-sm text-muted">{community.tagline}</p>}
         </div>
         <div className="flex gap-2">
+          {community.isDefault && onOpenLivestream && <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={onOpenLivestream}><Radio /> Livestream</Button>}
           <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => setOpen(community.id)}>Edit</Button>
           <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={() => setDeleting(community)}>Delete</Button>
         </div>

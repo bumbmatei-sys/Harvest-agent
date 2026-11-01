@@ -1528,7 +1528,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               courses: true, events: true, messages: planAllows(features?.communityGroups),
               prayer: true, give: planAllows(features?.fundraising),
               livestream: planAllows(features?.livestream), bible: true, map: planAllows(features?.map),
-            }} />} /></div>
+            }} />} onOpenLivestream={allTabs.some((t) => t.id === 'livestream') ? () => go('livestream') : undefined} /></div>
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

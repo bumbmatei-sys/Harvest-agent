@@ -4,7 +4,7 @@ import {
   Home,
 } from 'lucide-react';
 
-import { SECTION_LANDING_TAB, groupsForSide, sectionForTab, sideForTab, type ShellTabRef } from './shell-nav';
+import { SECTION_LANDING_TAB, groupsForSide, sectionForTab, sideForTab, tabsOpenedFrom, type ShellTabRef } from './shell-nav';
 
 const ids = [
   'dashboard', 'social', 'newsletter', 'livestream', 'blog', 'forms', 'events', 'checkin', 'products', 'courses', 'ai',
@@ -20,6 +20,27 @@ describe('the sidebar, as the founder specified it', () => {
     expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'livestream', 'blog', 'sms'] });
     expect(groups[1]).toEqual({ label: 'Engage', items: ['forms', 'events', 'checkin'] });
     expect(groups[2]).toEqual({ label: '', items: ['products'] });
+  });
+
+  it('Livestream moved into the community: no Channels row while the Communities page is there to open it', () => {
+    const withCommunities = new Map(tabs);
+    withCommunities.set('community-setup', { id: 'community-setup', label: 'Communities', icon: Home });
+    const groups = groupsForSide('public', withCommunities).map((g) => ({ label: g.label, items: g.items.map((i) => i.id) }));
+    expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'blog', 'sms'] });
+    expect(groups.flatMap((g) => g.items)).toContain('community-setup');
+    // The Communities row reports what its page opens, so the nav still reaches it.
+    expect(tabsOpenedFrom('community-setup', withCommunities)).toEqual([withCommunities.get('livestream')!.label]);
+    const noStream = new Map(withCommunities);
+    noStream.delete('livestream');
+    expect(tabsOpenedFrom('community-setup', noStream)).toEqual([]);
+    // An admin who may run the stream but not open Communities keeps the row (above).
+    expect(shape('public')[0].items).toContain('livestream');
+  });
+
+  it('Livestream opens from Communities: its trail reads Communities > Livestream, linking back', () => {
+    expect(sectionForTab('livestream')).toBe('Communities');
+    expect(SECTION_LANDING_TAB.Communities).toBe('community-setup');
+    expect(sideForTab('livestream')).toBe('public');
   });
 
   it('SMS is not a row while its tab is absent (it is hidden platform-wide)', () => {

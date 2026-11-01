@@ -106,7 +106,9 @@ describe('shell nav mapping', () => {
       'crm', 'signups', 'churches', 'services', 'forms',
       'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
       'tenants', 'inbox', 'affiliate', 'blog', 'ai', 'social',
-      'livestream', 'sms', 'newsletter', 'products',
+      // WAS 'livestream' here too. Livestream moved into the community and
+      // has no sidebar row, so it draws no icon to compare.
+      'sms', 'newsletter', 'products',
     ];
     const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
     const itemIcons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));

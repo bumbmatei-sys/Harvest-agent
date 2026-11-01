@@ -1,6 +1,6 @@
 'use client';
 
-import { groupsForAllSides, type ShellTabRef } from './shell-nav';
+import { groupsForAllSides, tabsOpenedFrom, type ShellTabRef } from './shell-nav';
 
 /**
  * The labels entitlement tests already scan for.
@@ -29,7 +29,13 @@ export function NavEntitlementCatalog({
             data-nav-group={group.id}
             data-nav-group-tabs={live.map((item) => item.id).join(',')}
             data-nav-group-labels={live.map((item) => item.entitlementLabel).join('|')}
-          />
+          >
+            {/* Tabs a row's page opens instead of a row of their own (Livestream, from Communities). */}
+            {live.map((item) => {
+              const opens = tabsOpenedFrom(item.id, tabs);
+              return opens.length > 0 ? <div key={item.id} data-nav-opens={opens.join('|')} /> : null;
+            })}
+          </div>
         );
       })}
       <div

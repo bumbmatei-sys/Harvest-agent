@@ -261,6 +261,14 @@ function navLabels(): string[] {
      weaker signal here than `textContent` was — it is the name a screen reader
      announces, and the old collapsed sidebar carried the same name in a `title`
      attribute that no assistive technology could reach. */
+  /* Livestream moved into the community: it opens from the Communities page,
+     so it has no row of its own. The Communities row names what its page opens
+     (`data-nav-opens`), read here the way Courses is read off Products. */
+  container.querySelectorAll('[data-nav-opens]').forEach((b) => {
+    (b.getAttribute('data-nav-opens') ?? '').split('|').forEach((l) => {
+      if (ALL_TAB_LABELS.includes(l)) found.add(l);
+    });
+  });
   container.querySelectorAll('[data-nav-rail-tab]').forEach((b) => {
     const name = b.getAttribute('aria-label') ?? '';
     if (ALL_TAB_LABELS.includes(name)) found.add(name);

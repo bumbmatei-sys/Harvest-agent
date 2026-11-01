@@ -38,6 +38,7 @@ import {
 import {
   groupsForAllSides,
   groupsForSide,
+  tabsOpenedFrom,
   SHELL_SIDES,
   type ShellPlaceholderId,
   type ShellSideId,
@@ -247,6 +248,7 @@ export function AdminDesktopSidebar({
                       tooltip={item.label}
                       className={MENU_BUTTON}
                       data-nav-tab={item.placeholder ? undefined : item.id}
+                      data-nav-opens={item.placeholder ? undefined : tabsOpenedFrom(item.id, tabs).join('|') || undefined}
                       onClick={() => openItem(item.id, item.placeholder)}
                     >
                       <Icon />
