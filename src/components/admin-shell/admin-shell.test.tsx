@@ -94,7 +94,9 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('fundraising')).toBe('Giving');
     expect(sectionForTab('donations')).toBe('Giving');
     expect(sectionForTab('accounting')).toBe('Giving');
-    expect(sectionForTab('blog')).toBe('Channels');
+    // WAS 'Channels'. Blog sits with the Storefront in the Website section.
+    expect(sectionForTab('blog')).toBe('Website');
+    expect(sectionForTab('storefront')).toBe('Website');
     // WAS 'Channels'. Social media is its own section now.
     expect(sectionForTab('social')).toBe('Social media');
     expect(sectionForTab('newsletter')).toBe('Channels');

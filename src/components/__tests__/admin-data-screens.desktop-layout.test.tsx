@@ -1231,7 +1231,9 @@ describe("the admin shell's container is unchanged", () => {
       'manageFundraising', 'manageGivingStatements', 'manageGivingStatements',
       'manageLivestream', 'manageNewsletter', 'manageQR', 'manageQR',
       'manageSettings', 'manageSms', 'modifyChurches', 'uploadRag',
-      'writeArticles',
+      // APPENDED BY #589: `writeArticles` TWICE. The Storefront entry repeats the Blog's own
+      // permission rather than introducing one; /api/storefront checks the same name server-side.
+      'writeArticles', 'writeArticles',
     ]);
   });
 

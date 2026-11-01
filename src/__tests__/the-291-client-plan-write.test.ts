@@ -656,7 +656,9 @@ describe('5 · the money path is byte-identical', () => {
       // APPENDED BY Auto-DM: list and create, change or delete one owned automation, and its trigger log.
       'src/app/api/social/auto-dm/route.ts',
       'src/app/api/social/auto-dm/[id]/route.ts',
-      'src/app/api/social/auto-dm/[id]/logs/route.ts'];
+      'src/app/api/social/auto-dm/[id]/logs/route.ts',
+      // APPENDED BY #589: the Storefront's load and save; it writes storefronts/{tenantId} and no billing entitlement.
+      'src/app/api/storefront/route.ts'];
     for (const route of communitiesRoutes) {
       expect(routes).toContain(route);
       expect(read(route), `${route} must not write billing entitlements`).not.toMatch(/\b(?:plan|addons|features)\s*:/);

@@ -7,8 +7,9 @@ const ADMIN_MOBILE_NAV_TAB = 'flex flex-col items-center justify-center gap-1 w-
 const ADMIN_MOBILE_NAV_MORE = 'flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all data-[active=false]:text-faint';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package, Store } from 'lucide-react';
 import AdminBlog from './AdminBlog';
+import { AdminStorefront, liveStorefrontApi } from './storefront/AdminStorefront';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
@@ -287,6 +288,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   }, [activeTab]);
   const [shellPlaceholder, setShellPlaceholder] = useState<ShellPlaceholderId | null>(null);
   const lgUp = useLgUp();
+  const storefrontApi = React.useMemo(() => liveStorefrontApi(tenantId ?? ''), [tenantId]);
   useLayoutEffect(() => { ensureLightDefault(); }, []);
   // Nav customizer state
   const [showNavCustomizer, setShowNavCustomizer] = useState(false);
@@ -793,6 +795,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       (hasFullAccess || perms.createCourses) && { id: 'products', label: 'Products', icon: Package },
     navAllows(features?.blog) &&
       (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    // Storefront, the ministry's link-in-bio page. It sits with the Blog: the
+    // same plan cell and the same permission, so it adds no new entitlement.
+    navAllows(features?.blog) &&
+      (hasFullAccess || perms.writeArticles) && { id: 'storefront', label: 'Storefront', icon: Store },
     navAllows(features?.aiKnowledge) &&
       (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — Small Team and above; free sees it walled.
@@ -1383,6 +1389,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.blog)
               ? <div className="p-4 lg:p-0"><AdminBlog knowledgeBaseEnabled={knowledgeBaseEnabled} /></div>
               : <PlanUpgradeScreen featureName="Blog" featureKey="blog" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'storefront' ? (
+            planAllows(features?.blog)
+              ? <AdminStorefront api={storefrontApi} />
+              : <PlanUpgradeScreen featureName="Storefront" featureKey="blog" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'inbox' ? (
             <div className="p-4 lg:p-0"><PlatformInbox /></div>
           ) : activeTab === 'churches' ? (

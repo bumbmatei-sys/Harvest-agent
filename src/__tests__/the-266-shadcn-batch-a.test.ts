@@ -718,6 +718,8 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin/social/SocialAutoDmView.tsx',
       // APPENDED BY #587. Settings > Social accounts waits as the accounts card it will become.
       'src/components/admin/social/SocialAccountsSettings.tsx',
+      // APPENDED BY #589. The Storefront editor waits as the page it will become.
+      'src/components/storefront/AdminStorefront.tsx',
       // APPENDED BY UI-POLISH. A board's grid waits as the grid it will become: four card-shaped
       // blocks, a shape known before any note arrives.
       'src/components/boards/BoardGrid.tsx',
