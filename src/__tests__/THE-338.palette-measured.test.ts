@@ -127,7 +127,8 @@ describe('the promoted palette, measured in Chromium', () => {
         sunken: hex('dark', '--surface-sunken'),
       },
     }).toEqual({
-      light: { surface: '#FAFAF8', raised: '#FDFDFD', sunken: '#EFEFEF' },
+      // #583: raised is the sidebar grey (was #FDFDFD).
+      light: { surface: '#FAFAF8', raised: '#F3F2EF', sunken: '#EFEFEF' },
       dark: { surface: '#171717', raised: '#202020', sunken: '#0C0C0C' },
     });
   });

@@ -197,7 +197,8 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
 /** The out-of-scope files, pinned at 788a589. */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4';
+// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+const GLOBALS_SHA = 'db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351';
 
 const FUNCTIONS_DIGESTS: Record<string, string> = {
   'functions/.gcloudignore': '9c20b803e45cd916',
@@ -644,14 +645,15 @@ describe('every token the earlier phases shipped still resolves to the same valu
     light: {
       '--background': '#FAFAF8',
       '--foreground': '#404040',
-      '--card': '#FDFDFD',
+      // #583: the sidebar's warm grey (was #FDFDFD).
+      '--card': '#F3F2EF',
       '--muted': '#EFEFEF',
       '--muted-foreground': '#595959',
       '--primary': '#C9963A',
       '--primary-foreground': '#2D2519',
       '--accent': '#E0E0E0',
       '--accent-foreground': '#1A1A1A',
-      '--popover': '#FDFDFD',
+      '--popover': '#F3F2EF',
       '--popover-foreground': '#404040',
       '--sidebar': '#F3F2EF',
       '--sidebar-foreground': '#525252',
@@ -763,7 +765,9 @@ describe('every foreground/background pair the 21 components introduce clears AA
    * (indexes 4, 8 and 9) did not move past the pin tolerance.
    */
   const RATIOS: Record<Palette, number[]> = {
-    light: [10.19, 6.43, 10.19, 6.89, 13.18, 6.43, 5.69, 6.25, 9.02, 6.09],
+    // #583: cards and popovers are #F3F2EF (was #FDFDFD); every pair on them still clears AA. Was
+    // [10.19, 6.43, 10.19, 6.89, 13.18, 6.43, 5.69, 6.25, 9.02, 6.09].
+    light: [9.26, 5.84, 9.26, 6.26, 13.18, 5.84, 5.69, 6.25, 9.02, 6.09],
     dark: [10.15, 9.93, 10.15, 7.10, 12.82, 9.93, 5.69, 10.93, 12.18, 8.52],
   };
 

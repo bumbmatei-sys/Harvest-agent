@@ -493,7 +493,8 @@ describe('the account settings screens are readable in dark mode', () => {
     const dark = resolveColor(SAVED_ICON_TINT.bg, inTheme('dark'), resolveColor(SAVED_ICON_TINT.ground, inTheme('dark'), BACKSTOP.dark)!);
     // The mix is brand 12% over the card. The card is now #FDFDFD, so the
     // light pixel is #F7F1E6 rather than the old mix over pure white.
-    expect(light).toBe('#F7F1E6');
+    // #583: the card became the sidebar grey #F3F2EF, so the same mix lands on #EEE7D9.
+    expect(light).toBe('#EEE7D9');
     expect(dark, 'dark mode did not actually change from light').not.toBe(light);
   });
 });
@@ -530,7 +531,7 @@ describe('every screen in scope is still readable in light mode', () => {
     // rather than only described.
     const PINNED: Record<string, string> = {
       '--surface': '#FAFAF8',
-      '--surface-raised': '#FDFDFD',
+      '--surface-raised': '#F3F2EF', // #583: the sidebar grey (was #FDFDFD)
       '--surface-chip': '#E0E0E0',
       '--surface-sunken': '#EFEFEF',
       '--text-strong': '#1A1A1A',

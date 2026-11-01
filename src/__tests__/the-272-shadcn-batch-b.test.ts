@@ -157,7 +157,8 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
  */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4';
+// #583 moved globals.css: --surface-raised light #FDFDFD -> #F3F2EF (cards take the sidebar grey, Matei's ask), and the admin content panel keeps the light canvas. Was a23d07afde7b.
+const GLOBALS_SHA = 'db28fd260870f7f4cc0087d08d6a4f0037725546e1f63acf39f95de68df6a351';
 
 /** functions/ — byte-identical, file for file. Not this PR's business either. */
 const FUNCTIONS_DIGESTS: Record<string, string> = {

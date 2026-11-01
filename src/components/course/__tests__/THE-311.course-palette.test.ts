@@ -230,7 +230,7 @@ const MAPPING: ReadonlyArray<{ name: keyof typeof C; token: string; why: string 
   { name: 'TEXT3', token: '--text-faint', why: 'eyebrows and timestamps — the third step of the same ramp' },
   { name: 'BORDER', token: '--border-default', why: 'the common container border' },
   { name: 'BORDER_LIGHT', token: '--border-subtle', why: 'hairlines' },
-  { name: 'GREEN', token: '--ink-green-700', why: 'the success ink ramp; -600 is the old hex exactly but fails AA at 3.15:1 on the tint in both light palettes' },
+  { name: 'GREEN', token: '--ink-green-800', why: 'the success ink ramp; -600 is the old hex exactly but fails AA at 3.15:1 on the tint in both light palettes, and #583 moved -700 to -800 when cards turned grey and the tick on a card fell to 4.48:1' },
   { name: 'GREEN_BG', token: '--c-green-50', why: 'the success tint; #F0FDF4 to the byte in light, so the ground does not move' },
   { name: 'SHADOW_SM', token: '--ds-sh-sm', why: 'the app\'s elevation ramp, which globals.css already re-derives on dark as a hairline highlight plus a deeper black' },
   { name: 'SHADOW_MD', token: '--ds-sh-md', why: 'ditto, one step up' },
@@ -400,7 +400,9 @@ const PAIRS: ReadonlyArray<[string, string, string]> = [
 // 🔴 THE-338 — one light palette now, not two. The recorded shortfall is
 // unchanged at 2.66:1: gold ink on a white card is a property of the ACCENT
 // and the card, neither of which this ticket moved.
-const CARDED_LIGHT_GOLD_INK = { Light: 2.66 } as const;
+// #583: the light card became the sidebar grey #F3F2EF, so the recorded gold-on-card failure
+// reads 2.37:1 (was 2.66:1). Still recorded, not hidden; see the PR for the follow-up.
+const CARDED_LIGHT_GOLD_INK = { Light: 2.37 } as const;
 
 describe('3 — every foreground/background pair clears AA, in both palettes', () => {
   it.each(PALETTES)('$name', (p) => {

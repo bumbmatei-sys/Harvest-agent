@@ -1,0 +1,55 @@
+{
+  "ticket": "#583",
+  "entries": [
+    {
+      "file": "src/__tests__/the-270-sidebar-install.test.ts",
+      "digest": "2c423c2271dad3efdbaa00c071ab08ec6c6e24dedc67d1f8778ad42a852efa02",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's (cards take the sidebar grey); the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-272-shadcn-batch-b.test.ts",
+      "digest": "17de44b4ccea54035b9b5bfaf77bcde4b967abb4ea3e81ad2c5870effe68bd28",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-273-toast-dark-mode.test.tsx",
+      "digest": "db920d61bc722839c2ee08b3fd75a5ee09f2aa470ed9c9dbd62627d33c569a71",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: the light toast ratio on the card is 9.26:1 on the grey card (was 10.19:1); still far over AA."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "0f7fccee2d725e1148e744753c06b05d81ed0eebba985317a3fa1f423ca90b0b",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: the light card and popover tokens are #F3F2EF, the globals digest moves, and the light pair ratios on them are re-measured (each still clears AA); the old values are kept in a comment."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "3c22e942f4d84c283c9499599163fdd1d0a5ae9b35616f0a0bedc0b259208ae9",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/theming-member-app.test.ts",
+      "digest": "074fc56b1ec18fae9e6fa7b649dbe67921f39ef9b21bd47a492a368bd5be8902",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: the card token is #F3F2EF, and the brand-tint disc over it measures #EEE7D9 (was #F7F1E6)."
+    },
+    {
+      "file": "src/components/course/__tests__/THE-311.course-palette.test.ts",
+      "digest": "ab5d10f73e351445d126e8378ecbb57eb06033b4ce910f038adab62e240f71c4",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: the course success ink is --ink-green-800 (the -700 tick fell to 4.48:1 on the grey card), and the recorded gold-on-card failure reads 2.37:1 (was 2.66:1)."
+    },
+    {
+      "file": "src/components/__tests__/THE-296.settings-sections.test.tsx",
+      "digest": "7cff84a508b28328b048bd5badf88219bb540b578dd6e801365e35605c99460a",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-265-classic-default.test.ts",
+      "digest": "d3c41f13dce177a762335cf7e809f353eb518d5fc8fbd9d7b8cf6453a8e058a0",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    },
+    {
+      "file": "src/__tests__/the-271-one-theme-system.test.tsx",
+      "digest": "330b9c838e82587be68c09f3d75d1044c4482a729734c74c589ce3f45d64d3ad",
+      "why": "APPENDED, NOT SUBSTITUTED — #583: globals.css's pinned digest moves to #583's; the old digest is named beside it."
+    }
+  ]
+}

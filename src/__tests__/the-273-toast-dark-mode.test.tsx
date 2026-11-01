@@ -542,8 +542,9 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
     );
     expect(measured).toEqual({
       // Eden shell pass. Toast text sits on the card: #FDFDFD in light (10.19)
-      // and #202020 in dark (10.15).
-      Light: '10.19',
+      // and #202020 in dark (10.15). #583: the light card is the sidebar grey
+      // #F3F2EF, so light reads 9.26:1 — still far over AA.
+      Light: '9.26',
       Dark: '10.15',
     });
   });
