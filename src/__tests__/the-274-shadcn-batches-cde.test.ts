@@ -1433,6 +1433,11 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     why: 'APPENDED BY #584. The unified inbox uses the shared select for its type, platform and account filters and the shared textarea for every reply.',
   },
   {
+    file: 'src/components/admin/social/SocialAutoDmView.tsx',
+    ticket: '#586',
+    why: 'APPENDED BY Auto-DM. The automation editor uses the shared select, switch and textarea, and its sheet for the editor and the delete question.',
+  },
+  {
     file: 'src/components/admin/social/SocialScheduler.tsx',
     ticket: 'phase-2',
     why:

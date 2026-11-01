@@ -118,6 +118,41 @@ function inbox(tenantId: string, now: Date): MockInbox {
   return created;
 }
 
+/** Auto-DM: sample automations, in Zernio's response shape so the same reader parses them. */
+const autoDmStores = new Map<string, Record<string, unknown>[]>();
+
+function autoDms(tenantId: string, now: Date): Record<string, unknown>[] {
+  const existing = autoDmStores.get(tenantId);
+  if (existing) return existing;
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+  const created: Record<string, unknown>[] = [{
+    _id: 'sample-autodm-1',
+    accountId: 'sample-ig',
+    platform: 'instagram',
+    name: 'Youth night sign-up',
+    trigger: 'comment',
+    platformPostId: null,
+    postId: null,
+    keywords: ['youth', 'friday'],
+    matchMode: 'word',
+    dmMessage: 'Hey {{first_name}}! Here is the link to sign up for youth night.',
+    buttons: [{ type: 'url', title: 'Sign up', url: 'https://example.com/youth' }],
+    commentReply: 'Sent you a DM, {{first_name}}!',
+    publicReplyPolicy: 'after_dm',
+    repeatPolicy: { mode: 'once' },
+    actions: { likeComment: true },
+    isActive: true,
+    stats: { totalTriggered: 48, totalSent: 45, totalFailed: 1, totalClicks: 19 },
+    logs: [
+      { _id: 'sample-log-1', commenterUsername: 'grace.okafor', commentText: 'Youth night!', status: 'sent', createdAt: ago(25) },
+      { _id: 'sample-log-2', commenterUsername: 'danreyes', commentText: 'friday?', status: 'sent', createdAt: ago(240) },
+      { _id: 'sample-log-3', commenterUsername: 'ruth.m', commentText: 'youth', status: 'skipped', createdAt: ago(600) },
+    ],
+  }];
+  autoDmStores.set(tenantId, created);
+  return created;
+}
+
 function workspace(tenantId: string, now: Date): MutableWorkspace {
   const existing = stores.get(tenantId);
   if (existing) return existing;
@@ -133,6 +168,7 @@ function workspace(tenantId: string, now: Date): MutableWorkspace {
 export function resetSocialMock(): void {
   stores.clear();
   inboxStores.clear();
+  autoDmStores.clear();
 }
 
 function view(tenantId: string, now: Date): SocialWorkspace {
@@ -198,6 +234,43 @@ export class MockSocialClient {
     if (!review) return false;
     review.reply = { comment: message };
     return true;
+  }
+
+  /** Auto-DM: the sample automations, without their logs. */
+  autoDmList(): unknown {
+    return { success: true, automations: autoDms(this.tenantId, this.now).map(({ logs: _logs, ...rest }) => rest) };
+  }
+
+  /** Records a sample automation in memory; nothing is armed anywhere. */
+  autoDmCreate(body: Record<string, unknown>): unknown {
+    const state = autoDms(this.tenantId, this.now);
+    const account = workspace(this.tenantId, this.now).accounts.find((entry) => entry.id === body.accountId);
+    const created = { ...body, _id: `sample-autodm-${state.length + 1}`, platform: account?.platform, stats: { totalTriggered: 0, totalSent: 0, totalFailed: 0, totalClicks: 0 }, logs: [] };
+    state.push(created);
+    const { logs: _logs, ...rest } = created;
+    return { success: true, automation: rest };
+  }
+
+  autoDmUpdate(id: string, body: Record<string, unknown>): unknown | null {
+    const state = autoDms(this.tenantId, this.now);
+    const index = state.findIndex((row) => row._id === id);
+    if (index < 0) return null;
+    state[index] = { ...state[index], ...body };
+    const { logs: _logs, ...rest } = state[index];
+    return { success: true, automation: rest };
+  }
+
+  autoDmDelete(id: string): boolean {
+    const state = autoDms(this.tenantId, this.now);
+    const index = state.findIndex((row) => row._id === id);
+    if (index < 0) return false;
+    state.splice(index, 1);
+    return true;
+  }
+
+  autoDmLogs(id: string): unknown | null {
+    const row = autoDms(this.tenantId, this.now).find((entry) => entry._id === id);
+    return row ? { success: true, logs: row.logs ?? [] } : null;
   }
 
   /** #582: sample metrics for the preview, spread over the window; nothing real. */

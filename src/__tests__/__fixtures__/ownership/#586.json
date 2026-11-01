@@ -1,0 +1,25 @@
+{
+  "ticket": "#586",
+  "entries": [
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "afb68017c831a7785b3d56a1d4ed3eda69c6a8594f9332f8fbdc7eb28b074859",
+      "why": "APPENDED, NOT SUBSTITUTED — #586: records SocialAutoDmView as a skeleton adopter (the automations list and a trigger log). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "d54b6eacaeaad7faa05014e65fc02c02139ac5065e20584ecb164ff046a8ac32",
+      "why": "APPENDED, NOT SUBSTITUTED — #586: records SocialAutoDmView as an adopter of select, switch, textarea and sheet. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "6fbfd1dcae7e970b8512b0b42f215694b7e391afd09c513853d387f5e174d41e",
+      "why": "APPENDED, NOT SUBSTITUTED — #586: names the three Auto-DM routes (list and create, change or delete, trigger log), which manage comment-to-DM automations and write no billing entitlement. The count is unchanged."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "1c48cce0bbc413fc1c6f7a688c680a82ce2c1baf698174148805e792eadf63a4",
+      "why": "APPENDED, NOT SUBSTITUTED — #586: records SocialAutoDmView in the sorted min-h-11 list, with the same phone floor as the other social views. Nothing removed."
+    }
+  ]
+}

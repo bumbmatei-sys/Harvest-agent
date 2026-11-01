@@ -20,13 +20,18 @@ import {
   loadSocialInbox,
   loadSocialInboxThread,
   replySocialInbox,
+  deleteAutoDm,
+  loadAutoDm,
+  loadAutoDmLogs,
+  saveAutoDm,
   loadSocialWorkspace,
   updateSocialPost,
 } from './session';
 import { workspaceTimeZone } from './schedule-time';
 import { analyticsWindow, isAnalyticsRange, type SocialAnalytics } from './analytics';
 import { readReply, type InboxKind } from './inbox';
-import type { InboxListing, InboxThread } from './session';
+import type { AutoDmWorkspace, InboxListing, InboxThread } from './session';
+import type { AutoDmLog, AutoDmRule } from './auto-dm';
 import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
 
 /**
@@ -51,6 +56,8 @@ export type SocialErrorCode =
   | 'inbox_kind_invalid'
   | 'inbox_reply_invalid'
   | 'inbox_not_found'
+  | 'auto_dm_invalid'
+  | 'auto_dm_not_found'
   | 'post_incomplete'
   | 'schedule_invalid'
   | 'media_not_accepted'
@@ -74,7 +81,7 @@ export type SocialErrorCode =
 
 export type SocialResult<T> =
   | { readonly ok: true; readonly status: 200; readonly data: T }
-  | { readonly ok: false; readonly status: number; readonly error: SocialErrorCode };
+  | { readonly ok: false; readonly status: number; readonly error: SocialErrorCode; readonly message?: string };
 
 export type SocialActionKind = 'schedule' | 'publish' | 'update' | 'cancel' | 'draft';
 
@@ -279,7 +286,7 @@ export async function actorFromRequest(request: NextRequest): Promise<SocialActo
 }
 
 export function socialResponse(result: SocialResult<unknown>): NextResponse {
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!result.ok) return NextResponse.json({ error: result.error, ...(result.message ? { message: result.message } : {}) }, { status: result.status });
   return NextResponse.json(result.data);
 }
 
@@ -516,4 +523,52 @@ export async function inboxReply(actor: SocialActor, body: unknown): Promise<Soc
   if (result === 'not_found') return fail('inbox_not_found', 404);
   if (!result) return fail('social_unavailable', 503);
   return ok({ sent: true });
+}
+
+/**
+ * Auto-DM: comment-to-DM automations on the ministry's Instagram and Facebook
+ * accounts. Saving arms an automation that will DM people later, so only an
+ * admin who can run the scheduler reaches it, and every id is checked against
+ * the ministry's own list in the session layer.
+ */
+const isAutoDmId = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value);
+
+export async function autoDmList(actor: SocialActor): Promise<SocialResult<AutoDmWorkspace & { sample: boolean }>> {
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const workspace = await loadAutoDm(access.tenantId, new Date(), access.mockOnly);
+  if (!workspace) return fail('social_unavailable', 503);
+  return ok({ ...workspace, sample: access.sample });
+}
+
+export async function autoDmSave(actor: SocialActor, id: unknown, body: unknown): Promise<SocialResult<{ rule: AutoDmRule }>> {
+  if (id !== null && !isAutoDmId(id)) return fail('auto_dm_not_found', 404);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const saved = await saveAutoDm(access.tenantId, id, body, new Date(), access.mockOnly);
+  if (saved.ok) return ok({ rule: saved.rule });
+  if (saved.error === 'auto_dm_invalid') return { ok: false, status: 400, error: 'auto_dm_invalid', message: saved.message };
+  if (saved.error === 'auto_dm_not_found') return fail('auto_dm_not_found', 404);
+  if (saved.error === 'account_not_owned') return fail('account_not_owned', 403);
+  return fail('social_unavailable', 503);
+}
+
+export async function autoDmDelete(actor: SocialActor, id: unknown): Promise<SocialResult<{ deleted: true }>> {
+  if (!isAutoDmId(id)) return fail('auto_dm_not_found', 404);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const result = await deleteAutoDm(access.tenantId, id, new Date(), access.mockOnly);
+  if (result === 'not_found') return fail('auto_dm_not_found', 404);
+  if (!result) return fail('social_unavailable', 503);
+  return ok({ deleted: true });
+}
+
+export async function autoDmLogs(actor: SocialActor, id: unknown): Promise<SocialResult<{ logs: AutoDmLog[] }>> {
+  if (!isAutoDmId(id)) return fail('auto_dm_not_found', 404);
+  const access = await authorizeSocialActor(actor);
+  if (access instanceof NextResponse) return fromResponse(access);
+  const logs = await loadAutoDmLogs(access.tenantId, id, new Date(), access.mockOnly);
+  if (logs === 'not_found') return fail('auto_dm_not_found', 404);
+  if (!logs) return fail('social_unavailable', 503);
+  return ok({ logs });
 }

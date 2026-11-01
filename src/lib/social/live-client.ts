@@ -206,6 +206,41 @@ export class LiveSocialClient {
     return result.ok;
   }
 
+  /** Auto-DM: the profile's comment-to-DM automations, with their stats. */
+  async autoDmList(profileId: string): Promise<unknown | null> {
+    const result = await call<unknown>(this.key, `/comment-automations?${new URLSearchParams({ profileId })}`, {}, this.fetchImpl);
+    return result.ok ? result.data : null;
+  }
+
+  async autoDmCreate(body: Record<string, unknown>): Promise<unknown | null> {
+    const result = await call<unknown>(this.key, '/comment-automations', { method: 'POST', body }, this.fetchImpl);
+    return result.ok ? result.data : null;
+  }
+
+  /**
+   * Zernio documents this update as partial without naming the verb in the
+   * reference this client was written from, so PATCH is tried and a 404 or
+   * 405 is retried once as PUT. Any other refusal is returned as it is.
+   */
+  async autoDmUpdate(id: string, body: Record<string, unknown>): Promise<unknown | null> {
+    const path = `/comment-automations/${encodeURIComponent(id)}`;
+    const patched = await call<unknown>(this.key, path, { method: 'PATCH', body }, this.fetchImpl);
+    if (patched.ok) return patched.data;
+    if (patched.status !== 404 && patched.status !== 405) return null;
+    const put = await call<unknown>(this.key, path, { method: 'PUT', body }, this.fetchImpl);
+    return put.ok ? put.data : null;
+  }
+
+  async autoDmDelete(id: string): Promise<boolean> {
+    const result = await call<unknown>(this.key, `/comment-automations/${encodeURIComponent(id)}`, { method: 'DELETE' }, this.fetchImpl);
+    return result.ok;
+  }
+
+  async autoDmLogs(id: string): Promise<unknown | null> {
+    const result = await call<unknown>(this.key, `/comment-automations/${encodeURIComponent(id)}/logs?limit=50`, {}, this.fetchImpl);
+    return result.ok ? result.data : null;
+  }
+
   async load(profileId: string): Promise<SocialWorkspace | null> {
     const [accounts, posts] = await Promise.all([
       call<{ accounts?: unknown[] }>(
