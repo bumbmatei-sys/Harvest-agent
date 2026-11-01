@@ -809,6 +809,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // `min-h-11 sm:min-h-[38px]`: 44px below sm, and 38px from sm up, which
       // is the desktop control floor. A flat min-h-11 would sit under that
       // floor once the root drops to 14.5px.
+      // APPENDED BY #582: the Analytics tab's pills, as `min-h-11 sm:min-h-[34px]`.
+      'src/components/admin/social/SocialAnalyticsView.tsx',
       'src/components/admin/social/SocialScheduler.tsx',
       'src/components/admin/social/SocialUpgradeWall.tsx',
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor

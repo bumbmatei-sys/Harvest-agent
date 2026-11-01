@@ -710,6 +710,8 @@ describe('the out-of-scope files are untouched', () => {
       // APPENDED BY UI-POLISH. The social scheduler's wait for the server's entitlement answer: a known
       // shape (a title, a switcher and a card), shown instead of an optimistic composer.
       'src/components/admin/social/SocialScheduler.tsx',
+      // APPENDED BY #582. The scheduler's Analytics tab waits as the chart-sized block it will become.
+      'src/components/admin/social/SocialAnalyticsView.tsx',
       // APPENDED BY UI-POLISH. A board's grid waits as the grid it will become: four card-shaped
       // blocks, a shape known before any note arrives.
       'src/components/boards/BoardGrid.tsx',
