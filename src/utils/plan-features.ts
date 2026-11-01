@@ -571,7 +571,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxChurches: UNLIMITED_CAP,
     maxContacts: 5_000,
     maxCourses: 15,
-    maxAdmins: 15,
+    maxAdmins: 5,
     maxProducts: UNLIMITED_CAP,
     maxCommunities: UNLIMITED_CAP,
     aiMessagesPerMonth: 5_000,

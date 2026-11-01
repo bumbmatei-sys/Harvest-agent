@@ -816,7 +816,8 @@ describe('6 · no plan cap or price changed', () => {
     expect(caps).toEqual({
       free: { maxCourses: 1, maxAdmins: 1, maxContacts: 500 },
       church: { maxCourses: 5, maxAdmins: 2, maxContacts: 500 },
-      ministry: { maxCourses: 15, maxAdmins: 15, maxContacts: 5_000 },
+      // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+      ministry: { maxCourses: 15, maxAdmins: 5, maxContacts: 5_000 },
     });
   });
 
@@ -934,6 +935,9 @@ describe('6 · no plan cap or price changed', () => {
       ['reprice-church-ministry', '7f2994c24baa44900f169cbe4e33b9948fe81e2e487cdaf6cef5b18cecbc56be'],
       // #557 adds the Free shell capability flags without changing prices.
       ['free-shell-entitlements', 'a41e58a79582091a0fe066b990171d52036af94508a91f31bef7c50d635d444a'],
+      // APPENDED, never substituted (Matei approved 2026-11-01): Ministry includes 5 admins, not 15.
+      // One cap cell; no price, feature cell or code path moved. Recorded as R7 in plan-copy-exemption.ts.
+      ['ministry-five-admins', 'df142c053c920c5f4821c6f833f1feb6ae15a2d523c23cd7179f5240ce0479c7'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

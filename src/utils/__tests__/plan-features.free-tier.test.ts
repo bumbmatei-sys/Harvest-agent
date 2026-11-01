@@ -351,7 +351,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
     },
     ministry: {
       adminDashboard: true, createCommunity: true, newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
-      maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 15,
+      maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 5, /* WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more. */
       maxProducts: UNLIMITED_CAP, maxCommunities: UNLIMITED_CAP, aiMessagesPerMonth: 5000,
       customDomain: true, customBranding: true, newsletterAutomation: true, automatedNewsletter: true,
       smsAutomation: true, fundraising: true, eventRegistration: true, docs: true, crm: true, signups: true,

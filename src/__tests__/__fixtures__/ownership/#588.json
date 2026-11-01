@@ -1,0 +1,85 @@
+{
+  "ticket": "#588",
+  "entries": [
+    {
+      "file": "src/__tests__/THE-325.rules-digest-register.test.ts",
+      "digest": "013a3fb0169c76882d74b6111ff3ff3998e4214bc43debe4ccd2cf350ef6e6ad",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/__fixtures__/plan-copy-exemption.ts",
+      "digest": "1b1ec14849b80cd1e184132edc82d960c1c359e9d0d6d787dde2eecbbd89f5f4",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/pr-540.plan-copy-exemption.test.ts",
+      "digest": "828bd9fdb4426cd533e321789f46e3b7a10d5458ecd0558ebaa7503f847baaab",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/reprice-church-ministry.test.ts",
+      "digest": "bbf3e1695a62ecf52401ea3d9fb6fcc8e1b9bffdc14e8b4dc3893c37bc3005ac",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "468a6c04644c9fb5e3dae8bf3c2e8adee690c6f2200949728981c6c7312de743",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/components/AdminRoles.tsx",
+      "digest": "a1ad5b166d4ab06d82f7d06bf7456ac3a1c07a0e411cb123e5dfd5329e2e5964",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminRoles.maxAdmins.test.tsx",
+      "digest": "b244be504d99eb604625312c76ed2d294ea53cbf48cf518a202b919939519289",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-300.billing-surface.test.tsx",
+      "digest": "630be34076765e2a748baa5d706cd81a6da4bba3286e83abc3235d7919ea14af",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/admin-seats.test.ts",
+      "digest": "3dc962b8c9debeb5608959e233f821292dfcdb4d0c473ccff56167a4543f61cc",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.free-tier.test.ts",
+      "digest": "0f2cdd94d8a32bd1fe8786d7e0776f7cf029b6b201934ca7846fc2bcdaa2d5ba",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.news-feed.test.ts",
+      "digest": "284ac20565d3fc15e55e08e038bf9fd013c54fb885c2890a0ada646b180f66f8",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/plan-features.test.ts",
+      "digest": "0a5b1e34e5302b8f3a189ead1764ab169495697ed8fa591f51477b35524b3ef3",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "0dcef06b6f96d33aec50e1b21bea879fa37a4537d37c8af5e493f5d7bae6a17d",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/__tests__/the-343-ministry-reprice.test.ts",
+      "digest": "153f5aa27a6349334695f1a425e9f1831b7baad5b4011d35570fefe6019a78ca",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/admin-seats.ts",
+      "digest": "4399c1aecd8aa0e1170f42d6c924b5a9acc36636484412b312b068207cda30df",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    },
+    {
+      "file": "src/utils/plan-features.ts",
+      "digest": "df142c053c920c5f4821c6f833f1feb6ae15a2d523c23cd7179f5240ce0479c7",
+      "why": "APPENDED, NOT SUBSTITUTED — #588: Matei approved 2026-11-01: Ministry includes 5 admins, not 15 (R7); the Admin seat add-on stays. One cap cell; transcribed expectations and pin chains appended, nothing removed."
+    }
+  ]
+}

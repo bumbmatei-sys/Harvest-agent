@@ -756,7 +756,7 @@ export default function AdminRoles({ currentUserRole, currentUserPermissions, mo
                   they are platform staff, not a seat the church bought.
 
                   THE-181 — this was 18px of bare uppercase text. It is the plan
-                  cap: `maxAdmins` is 2 / 5 / 15 by plan and is raised by the $10
+                  cap: `maxAdmins` is 1 / 2 / 5 by plan and is raised by the $10
                   Admin Seat add-on, so it is the one line on this screen where an
                   admin learns their limit exists. It is now a labelled figure with
                   a seat meter, sized like the roster it heads.

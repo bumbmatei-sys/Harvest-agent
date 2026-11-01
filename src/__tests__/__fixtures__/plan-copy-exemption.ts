@@ -67,6 +67,7 @@ export const R5_APPROVAL = 'user instructed 2026-10-23: delete the quarterly pla
  * charged for, changed or written moved: `plan` is still written only by the webhook.
  */
 export const R6_APPROVAL = 'Matei approved 2026-10-27: reprice to two plans, Church $30/mo $300/yr and Ministry $90/mo $900/yr';
+export const R7_APPROVAL = 'Matei approved 2026-11-01: Ministry includes 5 admins, not 15; the Admin seat add-on stays for more';
 
 export const PLAN_UPGRADE_SECTION: RecordedExemption = {
   file: 'src/components/settings/PlanUpgradeSection.tsx',
@@ -266,6 +267,11 @@ export const PLAN_FEATURES: RecordedExemption = {
       { before: '  free: {\n    blog: false,', after: '  free: {\n    adminDashboard: false,\n    createCommunity: false,\n    blog: false,' },
       { before: '  church: {\n    blog: true,', after: '  church: {\n    adminDashboard: true,\n    createCommunity: true,\n    blog: true,' },
       { before: '  ministry: {\n    blog: true,', after: '  ministry: {\n    adminDashboard: true,\n    createCommunity: true,\n    blog: true,' },
+    ] },
+    // R7: Matei, 2026-11-01 — "the 90$/mo includes 5 not more"; "the add-on is ok for extra admins".
+    // One cell moves. The cap blocks new promotions only, so a ministry above 5 keeps every admin it has.
+    { approval: R7_APPROVAL, digest: 'df142c053c920c5f4821c6f833f1feb6ae15a2d523c23cd7179f5240ce0479c7', hunks: [
+      { before: '    maxCourses: 15,\n    maxAdmins: 15,', after: '    maxCourses: 15,\n    maxAdmins: 5,' },
     ] },
   ],
 };

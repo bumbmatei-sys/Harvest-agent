@@ -685,7 +685,7 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toMatch(/^(?:892baa7e7243c80a856110015192561119f53ea6c4941777a4a931d6bd77550b|437c28e97c1eec6461ce387fd88eba4998595e56e2b3b4cb65ae287fc3ee8a00)$/); // #557 appends the Free shell entitlement matrix digest.
+    ).toMatch(/^(?:892baa7e7243c80a856110015192561119f53ea6c4941777a4a931d6bd77550b|437c28e97c1eec6461ce387fd88eba4998595e56e2b3b4cb65ae287fc3ee8a00|82dd2e92c578174dd192f300d40ba0aa2d5595a6b3202c3b9e700699757aacb6)$/); // #557 appends the Free shell entitlement matrix digest. APPENDED (Matei 2026-11-01, R7): Ministry maxAdmins 15 -> 5, no price moved; the per-cell contract in plan-features.test.ts moved in the same commit.
   });
 
   it('and the tier ladder itself is untouched', () => {

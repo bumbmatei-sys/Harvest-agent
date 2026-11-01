@@ -398,7 +398,8 @@ describe('8 · an existing max tenant is NOT re-entitled, downgraded or disturbe
     // this reprice's doing. THE-343's claim — a price cut took nothing away —
     // is unaffected and is strengthened: the cap went UP afterwards, never down.
     expect(max.maxContacts).toBe(5_000);
-    expect(max.maxAdmins).toBe(15);
+    // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+    expect(max.maxAdmins).toBe(5);
     expect(max.maxCourses).toBe(15);
 
     // 🔴 AND MAX IS STILL THE TOP TIER ON EVERY BOOLEAN — derived, so a new

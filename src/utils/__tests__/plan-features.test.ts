@@ -68,7 +68,8 @@ describe('getPlanFeatures', () => {
     const f = getPlanFeatures('max');
     expect(f.customDomain).toBe(true);
     expect(f.maxContacts).toBe(5_000);
-    expect(f.maxAdmins).toBe(15);
+    // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+    expect(f.maxAdmins).toBe(5);
     // 🔴 -1 SINCE THE-370, and not by inheriting the deleted ultra tier: every
     // PAID tier is unlimited now, because the campus add-on that used to be the
     // only path past 1 is retired.
@@ -397,8 +398,9 @@ describe('capacity limits per tier', () => {
     expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([500, 5_000]);
   });
 
-  it('maxAdmins is 2 / 5 / 15', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 15]);
+  // WAS 15. Matei 2026-11-01: Ministry includes 5 admins (R7); the Admin seat add-on adds more.
+  it('maxAdmins is 2 / 5', () => {
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5]);
   });
 
   it('maxCourses is 2 / 5 / 15', () => {
