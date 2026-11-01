@@ -2100,6 +2100,17 @@ each one raises.
 - The analytics consent-banner legal question and the now-stale privacy-policy sentence in
   `harvest-presentation-site` ([§19.5](#195-product-analytics-is-scoped-specifically-because-of-what-this-app-holds)).
 
+**Low priority — Notes, exactly as Eden does them (added at Matei's request, 1 Nov 2026):**
+- Copy Eden's notes and their behaviour exactly: how a note is created, edited, organised on
+  boards, searched and opened, and how it saves. Harvest already has boards and personal
+  notes (`src/components/boards/`); this item brings them to Eden parity rather than adding a
+  second notes feature. Eden references:
+  `docs/prd/screenshots/10-products/products-026-desktop-15-library-board-personal-notes.webp`,
+  `docs/prd/screenshots/10-products/products-095-desktop-99b-sprint-notes.webp`, and Harvest's
+  current state in `docs/redesign/ui-polish-oct23/22-all-notes-grid.png` and
+  `docs/redesign/content-search/`. To be scoped against Eden screen by screen when it comes up;
+  it ranks after every item above.
+
 ### 20.4 Screenshots
 No Eden reference applies to this section's subject matter.
 
