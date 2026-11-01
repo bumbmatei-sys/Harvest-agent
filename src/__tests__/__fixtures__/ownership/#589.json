@@ -1,0 +1,125 @@
+{
+  "ticket": "#589",
+  "entries": [
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "ff94dd4e89e02ef80fd0e16504324d09899c78b9dbf28e63d40fa73729c25578",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "2a9e087d979b36a14e6aaf3b9b982920e6e5e1a257da18ecdb306fd03c76d5a9",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "b26f5a364e1e9f3fd1162489aa7d5423e0ea89e98d8f580edd460ab7dde88b28",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "cc9b430296fb6c126639784de9d8555b9e2fe29d4fe874d49bf2e7a19d0a6147",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "cd152168588f40a3c3a1a78eafc7dc5e9420053bca694a2d5fdd79978d71c2b1",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-291-client-plan-write.test.ts",
+      "digest": "e199276797e26631d96602cd585521f34328bc0b0e7083dfcecfbc1114a1208b",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "4d5484976400c524a82ad14f8d2275f7b700eba5e36769368e861c2404d87943",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "db69faddacc653691a9665b3f7255ace41f32f4c8b261e89e290bec15b9e1b0e",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "ef0d1f3a376168beec50737f1f9a963d3be16abe0c807f5746bbfa73c9151a42",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "203d4527f6319351db4efa251167154a75b5fb436a16d08515b74d5d6c7a5c9a",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.plan-entitlement.test.tsx",
+      "digest": "b66f54c13231b0e252b5a3d958077b5c4a290020a3b15e0dd00c658caad02455",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "832672aad07dd6e920f8d81ff9249a3d44be6958b4866b2548c724c226d2a8ec",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "fc023bd29ead95f9d9af6a5bfbc9b79ee3d5f75c34b1b0e4cd30da17a3758972",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "df2cd9902b93692a53d150d9f211e6cf989085eee40fa83c2419d194196aa8d4",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "27959a8b4c4abef06e1df0190a6dc5182997eb7cf33cdd9851d076cf9e8e0352",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "105239d28a91399f63f6ab49f2b3102648c6d59a9dff0d2005b819d02008b9b0",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "1676dbab7aa9d4d72551986a4fbb5baa1ada926f9038db59a232e57d997ace2a",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/admin-data-screens.desktop-layout.test.tsx",
+      "digest": "1f02b33072d4446d73f7aacc8c242d98460f27af80866a933d9791871b6c5b8b",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/admin-shell.test.tsx",
+      "digest": "661c773b3d68103b2a48c3d73d4f893475a74a2b6925e7e684f3445d944c6d58",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.test.ts",
+      "digest": "5fde1e11c1ff709080d65a40f77305efb93597e1564f1fb62b6eac124d887dd4",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "7e775a656c83a6705a1b1befad9d6349f1415c7b6896b3bf953e863fe3950acd",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/lib/admin-sections.ts",
+      "digest": "be37669a16bf40854f8e0136aa29f1e371fd9f697626506915425e9a156ccba6",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/lib/analytics/__tests__/posthog-public-routes.test.tsx",
+      "digest": "6b2e284851a060e807edd0b12dc866826fb2f05c3633c8e6f7bba5f0be569bbb",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/lib/analytics/routes.ts",
+      "digest": "e19e67c3526918e5da14f32a07b23ad0d8a6d94e6da2e89865e5734e0c6e6452",
+      "why": "APPENDED, NOT SUBSTITUTED — #589: Storefront (#589): the link-in-bio editor, its public page and blog index, the Website sidebar section with the Blog, and the tests and pins that follow. Appended, nothing removed."
+    }
+  ]
+}

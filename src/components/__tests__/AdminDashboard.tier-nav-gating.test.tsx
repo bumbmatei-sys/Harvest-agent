@@ -656,6 +656,30 @@ describe('5 — a super admin still sees everything through platformOverride', (
   });
 });
 
+// ── 5b ───────────────────────────────────────────────────────────────────────
+describe('5b — #589: the Storefront follows the Blog, tier by tier and permission by permission', () => {
+  const rawLabels = () => Array.from(container.querySelectorAll('[data-nav-group-labels]'))
+    .flatMap((group) => group.getAttribute('data-nav-group-labels')!.split('|'));
+  it.each(PLAN_ORDER)('on %s, the Storefront is in the nav exactly when the Blog is', async (plan) => {
+    store.current = { ...store.current, tenantPlan: plan };
+    ctx.current = { ...ctx.current, tenantPlan: plan };
+    await mount({}, '');
+    const labels = rawLabels();
+    expect(labels.includes('Storefront'), plan).toBe(labels.includes('Blog'));
+    await unmount();
+  });
+  it('a writeArticles-only admin reaches it, and an admin without that permission does not', async () => {
+    store.current = { ...store.current, tenantPlan: 'ministry' };
+    ctx.current = { ...ctx.current, tenantPlan: 'ministry' };
+    await mount({ role: 'admin', permissions: { writeArticles: true } }, '');
+    expect(rawLabels()).toContain('Storefront');
+    await unmount();
+    await mount({ role: 'admin', permissions: { manageCRM: true } }, '');
+    expect(rawLabels()).not.toContain('Storefront');
+    await unmount();
+  });
+});
+
 // ── 6 ────────────────────────────────────────────────────────────────────────
 describe("6 — a limited admin's permission gates still apply on top of the plan gate", () => {
   it.each([
@@ -825,7 +849,11 @@ describe('9 — the nav is derived from one tab array, not two', () => {
     // literal is the tripwire that makes an UNEXPLAINED fifteenth fail here.
     const navGates = (CODE.match(/navAllows\(/g) ?? []).length;
     const gatedTabs = TABS.filter((t) => t.cell !== null).length;
-    expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs);
+    // WAS toBe(gatedTabs). #589's Storefront entry repeats the Blog's clause word for word,
+    // `navAllows(features?.blog) && (hasFullAccess || perms.writeArticles)`, so it adds one
+    // nav clause and no new cell; the Storefront test below proves it follows the Blog per tier.
+    expect(CODE).toContain("(hasFullAccess || perms.writeArticles) && { id: 'storefront', label: 'Storefront', icon: Store }");
+    expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs + 1);
     // 15 -> 16 IS THE PRODUCTS PAGE AND NOTHING ELSE: a nav clause that repeats Courses' own.
     // #557 adds the signups-gated sign-up pages entry.
     expect(gatedTabs).toBe(17);

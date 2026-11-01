@@ -26,6 +26,7 @@ import {
   Receipt,
   Send,
   Share2,
+  Store,
   UserPlus,
   Users,
   type LucideIcon,
@@ -178,8 +179,18 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
       // community on the Communities page. An admin who may run the stream but
       // not Communities keeps this row, or they would have no way in.
       { id: 'livestream', label: 'Livestream', icon: Radio, onlyWithout: 'community-setup' },
-      { id: 'blog', label: 'Blog', icon: Newspaper },
       { id: 'sms', label: 'SMS', icon: MessageSquare },
+    ],
+  },
+  {
+    // The founder's Website section: the Storefront (link in bio) and the Blog
+    // together, since the Storefront's Blog block shows what the Blog publishes.
+    id: 'website',
+    label: 'Website',
+    icon: Store,
+    items: [
+      { id: 'storefront', label: 'Storefront', icon: Store },
+      { id: 'blog', label: 'Blog', icon: Newspaper },
     ],
   },
   {

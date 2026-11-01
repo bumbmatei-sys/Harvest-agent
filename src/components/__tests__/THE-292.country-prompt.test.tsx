@@ -634,6 +634,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '3cdf0683e87e40c9401d658b947ff8aa05971d7ffb87262a6183fc145cd2864b',
     'e26e917f5ed4bcd29d35f7c21c074f881d0388cc35b9ed9b731e5e77be077372', // #585: Livestream opens from the Communities page
     'adc79c0b2b3b5c7dbdb72238cae691b43b9c8451a7a70d117ca0d692df9adf6f', // #587: the Social media section
+    '203d4527f6319351db4efa251167154a75b5fb436a16d08515b74d5d6c7a5c9a', // #589: the Storefront tab
     // main at 902763a, where this branch started.
     '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
     // main at 133d557 — THE-291 (#434) removed the client-side write to plan.

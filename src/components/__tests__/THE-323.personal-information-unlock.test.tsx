@@ -952,6 +952,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/signup-pages/SignupPageBuilder.tsx',
       'src/components/signup-pages/SignupPagesScreen.tsx',
       'src/components/signup-pages/SubmissionsTable.tsx',
+      // APPENDED BY #589: the Storefront's controls, with the same phone floor.
+      'src/components/storefront/AdminStorefront.tsx',
+      'src/components/storefront/StorefrontBlogIndex.tsx',
+      'src/components/storefront/StorefrontPage.tsx',
     ]);
   });
 

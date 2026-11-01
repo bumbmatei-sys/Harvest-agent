@@ -65,6 +65,8 @@ const ADMIN_SECTION_TABLE = [
   // The Products page: every product the ministry sells or gives, with the type picker.
   ['products', 'products'],
   ['blog', 'blog'],
+  // Storefront, the ministry's link-in-bio page; it sits with the Blog.
+  ['storefront', 'storefront'],
   ['ai', 'ai-knowledge'],
   ['newsletter', 'newsletter'],
   ['fundraising', 'fundraising'],

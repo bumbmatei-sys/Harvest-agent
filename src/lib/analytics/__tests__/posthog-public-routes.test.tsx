@@ -169,6 +169,8 @@ const RESOLVED_PATH: Record<string, string> = {
   '/event/[eventId]': '/event/Qw8eR3tY6uI9oP2a',
   '/form/[formId]': '/form/aB3xQ7nJ5kL2mZ8w',
   '/giving': '/giving',
+  '/storefront': '/storefront',
+  '/storefront/blog': '/storefront/blog',
   '/subscribe': '/subscribe',
   '/pledge/[campaignId]': '/pledge/Hj6Nb2Vc9Xz4Kq7M',
   '/post/[postId]': '/post/Tg5Yh8Uj3Ik6Ol1P',
@@ -197,6 +199,8 @@ const PAGE_FILE: Record<string, string> = {
   '/event/[eventId]': 'src/app/event/[eventId]/page.tsx',
   '/form/[formId]': 'src/app/form/[formId]/page.tsx',
   '/giving': 'src/app/giving/page.tsx',
+  '/storefront': 'src/app/storefront/page.tsx',
+  '/storefront/blog': 'src/app/storefront/blog/page.tsx',
   '/subscribe': 'src/app/subscribe/page.tsx',
   '/pledge/[campaignId]': 'src/app/pledge/[campaignId]/page.tsx',
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
@@ -344,6 +348,9 @@ describe('1 — every route in the stated list emits a pageview', () => {
       '/event/[eventId]',
       '/form/[formId]',
       '/giving',
+      // The Storefront (link in bio) and its blog's View all page. APPENDED, not substituted.
+      '/storefront',
+      '/storefront/blog',
       // The newsletter sign-up page a ministry shares. APPENDED, not substituted.
       '/subscribe',
       '/pledge/[campaignId]',

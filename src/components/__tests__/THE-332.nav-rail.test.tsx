@@ -434,7 +434,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     // Social is a shell-nav destination. It is not one of the 23
     // DESKTOP_NAV_GROUPS ids and it is not a mobile-nav entry. The desktop
     // sidebar reaches it; the frozen group arrays do not.
-    const shellOnly = ['social'];
+    // APPENDED BY #589: the Storefront is a shell-nav destination on the same terms.
+    const shellOnly = ['social', 'storefront'];
     expect([...reached].sort())
       .toEqual([...named, ...shellOnly].filter((id) => !behindAKillSwitch.includes(id)).sort());
   });
