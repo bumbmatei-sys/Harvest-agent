@@ -103,6 +103,8 @@ function view(tenantId: string, now: Date): SocialWorkspace {
   };
 }
 
+import type { AnalyticsPost, SocialAnalytics } from './analytics';
+
 export class MockSocialClient {
   readonly mode = 'mock' as const;
 
@@ -113,6 +115,19 @@ export class MockSocialClient {
 
   load(): SocialWorkspace {
     return view(this.tenantId, this.now);
+  }
+
+  /** #582: sample metrics for the preview, spread over the window; nothing real. */
+  analytics(fromDate: string, toDate: string): SocialAnalytics {
+    const day = (offset: number) => new Date(Date.parse(`${toDate}T15:00:00Z`) - offset * 86_400_000).toISOString();
+    const rows: AnalyticsPost[] = [
+      { id: 'sample-a1', platform: 'instagram', content: 'Sunday recap: thank you for worshipping with us.', publishedAt: day(1), url: null, views: 820, likes: 64, comments: 9, shares: 4 },
+      { id: 'sample-a2', platform: 'facebook', content: 'Youth night is back this Friday at 7.', publishedAt: day(3), url: null, views: 410, likes: 22, comments: 6, shares: 11 },
+      { id: 'sample-a3', platform: 'youtube', content: 'Full sermon: The parable of the sower.', publishedAt: day(5), url: null, views: 1290, likes: 87, comments: 14, shares: 6 },
+      { id: 'sample-a4', platform: 'instagram', content: 'Verse of the day. "The light shines in the darkness."', publishedAt: day(12), url: null, views: 530, likes: 41, comments: 3, shares: 2 },
+      { id: 'sample-a5', platform: 'threads', content: 'What is one thing you are thankful for this week?', publishedAt: day(20), url: null, views: 260, likes: 18, comments: 12, shares: 1 },
+    ];
+    return { fromDate, toDate, posts: rows.filter((row) => row.publishedAt.slice(0, 10) >= fromDate), truncated: false };
   }
 
   connect(platform: SocialPlatform): { connected: false; reason: 'preview_connect_disabled' } {

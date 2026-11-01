@@ -80,3 +80,13 @@ export async function releaseZernioProfileClaim(tenantId: string, claim: string)
     tx.set(ref, { zernioProfileClaim: null, zernioProfileClaimedAt: null }, { merge: true });
   });
 }
+
+/**
+ * #582: the ministry's stored profile id, read without claiming one. Reads
+ * (analytics) never create a profile; a ministry with none has nothing to read.
+ */
+export async function storedZernioProfileId(tenantId: string): Promise<string | null> {
+  const snap = await tenantPrivateRef(tenantId).get();
+  const id = snap.exists ? snap.data()?.zernioProfileId : null;
+  return typeof id === 'string' && id.trim() ? id : null;
+}

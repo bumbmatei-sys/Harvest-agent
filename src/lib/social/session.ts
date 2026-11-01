@@ -1,7 +1,8 @@
 import { LiveSocialClient } from './live-client';
 import { MockSocialClient } from './mock-client';
 import { SOCIAL_SAMPLE_SCOPE, socialMode } from './mode';
-import { commitZernioProfile, releaseZernioProfileClaim, reserveZernioProfile } from './profile-lock';
+import { commitZernioProfile, releaseZernioProfileClaim, reserveZernioProfile, storedZernioProfileId } from './profile-lock';
+import type { SocialAnalytics } from './analytics';
 import { oncePublish } from './publish-once';
 import { readZernioSocialKey } from './zernio-key';
 import { dropWorkspaceCache, shareLiveLoad } from './workspace-cache';
@@ -144,4 +145,24 @@ export async function cancelSocialPost(tenantId: string, id: string, mockOnly = 
   const cancelled = await new LiveSocialClient(readZernioSocialKey()).cancel(id);
   if (cancelled) dropWorkspaceCache(tenantId);
   return cancelled;
+}
+
+/**
+ * #582: the ministry's post metrics for a window. Read only: a ministry with
+ * no profile yet has published nothing, so it gets an empty window rather than
+ * a profile created on its behalf.
+ */
+export async function loadSocialAnalytics(
+  tenantId: string,
+  fromDate: string,
+  toDate: string,
+  now = new Date(),
+  mockOnly = false,
+): Promise<SocialAnalytics | null> {
+  if (clientKind(mockOnly) === 'mock') return new MockSocialClient(tenantId, now).analytics(fromDate, toDate);
+  if (clientKind(mockOnly) !== 'live') return null;
+  if (tenantId === SOCIAL_SAMPLE_SCOPE) return null;
+  const profileId = await storedZernioProfileId(tenantId);
+  if (!profileId) return { fromDate, toDate, posts: [], truncated: false };
+  return new LiveSocialClient(readZernioSocialKey()).analytics(profileId, fromDate, toDate);
 }

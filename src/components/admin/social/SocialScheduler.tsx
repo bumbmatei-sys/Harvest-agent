@@ -37,6 +37,7 @@ import {
 } from '@/lib/social/platforms';
 import { calendarDayKey, defaultCalendarDay, undatedDrafts } from '@/lib/social/calendar';
 import { queueDate, queueTime, scheduledByDay, sentNewestFirst } from '@/lib/social/queue';
+import type { AnalyticsRange, SocialAnalytics } from '@/lib/social/analytics';
 import { dayHeader, hourLabel, shiftDay, weekDays, weekHours, weekSlots, weekTitle } from '@/lib/social/week';
 import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
@@ -45,9 +46,10 @@ import { validateSocialMedia } from '@/lib/social/media-rules';
 import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment } from './MediaAttachments';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
 import { PostPreview } from './PostPreview';
+import { SocialAnalyticsView, type AnalyticsLoader } from './SocialAnalyticsView';
 import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
-export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue';
+export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics';
 
 export interface SocialScreenData extends SocialWorkspace {
   readonly entitled: boolean;
@@ -175,14 +177,24 @@ function targetsFor(
   });
 }
 
+/** #582: the Analytics tab's data, from the server. */
+async function loadAnalytics(range: AnalyticsRange): Promise<SocialAnalytics> {
+  const response = await authFetch(`/api/social/analytics?range=${range}`);
+  if (!response.ok) throw new Error('analytics_unavailable');
+  return (await response.json()) as SocialAnalytics;
+}
+
 export function SocialScheduler({
   initial,
   initialView = 'compose',
   planLoading = false,
   onUpgrade,
+  analyticsLoader = loadAnalytics,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
+  /** #582: where the Analytics tab reads from; the preview and tests pass sample data. */
+  analyticsLoader?: AnalyticsLoader;
   /**
    * The shell has not resolved the tenant's plan yet. The gate shows a loading
    * state until it has; it never guesses, because a guess that the server then
@@ -534,6 +546,7 @@ export function SocialScheduler({
               { value: 'compose', label: 'Compose' },
               { value: 'calendar', label: 'Calendar' },
               { value: 'queue', label: 'Queue' },
+              { value: 'analytics', label: 'Analytics' },
             ]}
           />
         )}
@@ -546,6 +559,10 @@ export function SocialScheduler({
       {notice && <p className="text-sm text-faint" role="status">{notice}</p>}
 
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
+        <TabsContent value="analytics" className="mt-4">
+          {view === 'analytics' && <SocialAnalyticsView load={analyticsLoader} />}
+        </TabsContent>
+
         <TabsContent value="accounts" className="mt-4">
           <AccountsPanel accounts={accounts} onConnect={connect} />
         </TabsContent>
