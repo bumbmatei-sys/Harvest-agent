@@ -576,7 +576,7 @@ export function SocialScheduler({
 
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
         <TabsContent value="inbox" className="mt-4">
-          {view === 'inbox' && <SocialInboxView api={inboxApi} />}
+          {view === 'inbox' && <SocialInboxView api={inboxApi} accounts={accounts} />}
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">

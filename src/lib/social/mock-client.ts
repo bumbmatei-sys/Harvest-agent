@@ -88,8 +88,8 @@ function inbox(tenantId: string, now: Date): MockInbox {
   const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
   const created: MockInbox = {
     conversations: [
-      { id: 'sample-dm-1', platform: 'instagram', accountId: 'sample-instagram', participantName: 'Grace Okafor', lastMessage: 'What time is the youth night on Friday?', updatedTime: ago(12), unreadCount: 1 },
-      { id: 'sample-dm-2', platform: 'facebook', accountId: 'sample-facebook', participantName: 'Daniel Reyes', lastMessage: 'Thank you for praying for my mom.', updatedTime: ago(180) },
+      { id: 'sample-dm-1', platform: 'instagram', accountId: 'sample-ig', participantName: 'Grace Okafor', lastMessage: 'What time is the youth night on Friday?', updatedTime: ago(12), unreadCount: 1 },
+      { id: 'sample-dm-2', platform: 'facebook', accountId: 'sample-fb', participantName: 'Daniel Reyes', lastMessage: 'Thank you for praying for my mom.', updatedTime: ago(180) },
     ],
     messages: new Map([
       ['sample-dm-1', [
@@ -102,7 +102,7 @@ function inbox(tenantId: string, now: Date): MockInbox {
       ]],
     ]),
     threads: [
-      { postId: 'sample-post-1', platform: 'instagram', accountId: 'sample-instagram', content: 'Sunday recap: thank you for worshipping with us.', commentCount: 2, lastCommentAt: ago(40) },
+      { postId: 'sample-post-1', platform: 'instagram', accountId: 'sample-ig', content: 'Sunday recap: thank you for worshipping with us.', commentCount: 2, lastCommentAt: ago(40) },
     ],
     comments: new Map([
       ['sample-post-1', [
