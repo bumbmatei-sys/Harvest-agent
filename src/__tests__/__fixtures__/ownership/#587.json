@@ -1,0 +1,85 @@
+{
+  "ticket": "#587",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "adc79c0b2b3b5c7dbdb72238cae691b43b9c8451a7a70d117ca0d692df9adf6f",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: the social tab passes its route section to the scheduler (initialView, onManageAccounts) and the sidebar gets activeView. No nav array, permission term, plan gate or route moved."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "83bb46ccf30b4d4a1307ec067cfe2c60123739b32c654d9a0ef316f5d77c1ef5",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: adds the Social media group (Analytics, Planner, Inbox, Auto-DM rows on the social tab, each with a view) and rowViewOf; Social leaves Channels. Nothing else removed."
+    },
+    {
+      "file": "src/components/admin-shell/AdminDesktopSidebar.tsx",
+      "digest": "3c920d521b92f0cf76a42c2e25acccfbf4b0fccae5dbbe50e0b7e3fe55f18ec0",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: rows carry their view: activeView picks the open Social media row, onNavigate passes the view, keys and palette entries include it. Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/NavEntitlementCatalog.tsx",
+      "digest": "0d4358118b218847967882b88e551a7f5fb2041b8e212b08a9da0a716f20c09a",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: keys the data-nav-opens markers by tab and view, since the Social media rows share the social tab. Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.test.ts",
+      "digest": "c05cbbf2246a8e83a9c78021c0ea95f1a3e8c6bd281d1e5f15b3c7f2a15e56cc",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: expectations follow the Social media section, each changed line marked WAS; adds the row-view test. Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/admin-shell.test.tsx",
+      "digest": "8893311aefc48d9a6ac707a5ae4ea2fc79c3c3f30a3421576ca8896c5f9f88a5",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: expectations follow the Social media section, each changed line marked WAS. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-266-shadcn-batch-a.test.ts",
+      "digest": "190cd1f1fb9cc3ead45ccbc8e78b83b86c6ae6247b390b5d0bd9ca907052888c",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: records SocialAccountsSettings as a skeleton adopter. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "310ede92efda1d0bcf57d0c797549fd452f81ac9451306745cd45cbc77d049ab",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "73214ef80d41729cf78b0ddb0c85b32b03937a889d8ed169501fb5c9567e86a4",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "d479e3d23d647c5f6d08ef4f8f5ca587c29b58f75c0e32cd951ad78a7fae550e",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "23b51b0404473d893f34b8e872cbacbf39cd18014996e201540211457111eb7f",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "a375c589c4cf6732258918555e24de6b98f2b31859d07a3eea4fe15bd34641e0",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "d214edf34ca2076123088dc532407772fe19afba8adeab2c83df200a24a238d1",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "a02443c94f619ce89ccb29dfa3a1969c0d08ed02c021af174ed61a7fb95c58f9",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "f756534b2a3ac85ef55ac2238742bf5f984d9633a9aa33632cf0f2c69a2fc369",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "cd5826ed968f1040281e72e660625eca088e55c6bdb59242eeb967414cec0726",
+      "why": "APPENDED, NOT SUBSTITUTED — #587: appends the AdminDashboard digest for the Social media section (#587). Nothing removed."
+    }
+  ]
+}
