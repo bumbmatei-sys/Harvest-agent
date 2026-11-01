@@ -1037,6 +1037,9 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     // APPENDED BY #579, nothing above removed or rewritten: Eden's New event dialog
     // (Date, Time, How long). No nav, tab id, read, write or permission gate moved.
     'e47fe88861313037ede3db82fd4fd04ef0519a9655cd8ef4703d3e8fca8a067b',
+    // APPENDED BY #580, nothing above removed or rewritten: Eden's events list (header
+    // line, New event, Copy link, ⋯ menu). No nav, tab id, read, write or permission gate moved.
+    '0c810ec91a838aa192af421581c4b4b1a8dfb63fda4a578b0fce4d652a4cf123',
   ],
   'src/components/AdminServices.tsx': [
     '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',

@@ -1,0 +1,35 @@
+{
+  "ticket": "#580",
+  "entries": [
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "0c810ec91a838aa192af421581c4b4b1a8dfb63fda4a578b0fce4d652a4cf123",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: Eden's events list (docs/prd/screenshots/07-events, 001/005): the page line \"Every event you run, from your ministry and its communities. Share a link to any of them.\", \"New event\" for \"Create event\", a per-row \"Copy link\" to the existing registration URL, Edit / Pin / Delete behind a ⋯ dropdown menu calling the same handlers, and no status badge on a live event. The mobile card, every read, write, price and money path are unchanged."
+    },
+    {
+      "file": "src/__tests__/the-313-guards.test.ts",
+      "digest": "3d7511b2d46c7b7dfa2f617674424391aa3ed549faad41713eb893c286fb4da3",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: records `dropdown-menu` among the events screen's primitives for the row menu. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminMinistry.desktop-layout.test.tsx",
+      "digest": "4e6c8f9c968bdff46b101a3841594757bb01cb4abba152cb7fb671a2d95f0323",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: appends AdminEvents' stripped digest after the Eden list; records the published badge's two colour tokens as removed and the menu icon's lucide identifier as added; 'Create event' reads 'New event'. Every earlier pin kept."
+    },
+    {
+      "file": "src/components/__tests__/THE-345.paid-events.test.tsx",
+      "digest": "d620c43f79f9b8c607c6edc33e4becd7c20b78b4b389f61368faed67d76c2f94",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: 'Create event' reads 'New event', and three tests cover the Eden list: the page line and badges, Copy link, and the row menu. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-351.manual-payment.ui.test.tsx",
+      "digest": "f21e50c4b86df42d00bac795ccda38f353e619f27b912551cf2ee6b8dc1b6a0f",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: 'Create event' reads 'New event'. Nothing else changed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "159af2fe5c7f930f4d86834e1d10b1879101317e66d3c024a0d2751e11d7e608",
+      "why": "APPENDED, NOT SUBSTITUTED — #580: AdminEvents' digest after the Eden list joins its accepted list. Nothing removed."
+    }
+  ]
+}

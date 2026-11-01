@@ -206,7 +206,7 @@ async function screen() {
 /** Open the create form, from the list. */
 async function createForm(): Promise<HTMLElement> {
   const c = await screen();
-  await click(buttonContaining(c, 'Create event'));
+  await click(buttonContaining(c, 'New event'));
   return c;
 }
 
@@ -713,7 +713,8 @@ describe('THE-379 review regressions — admin events', () => {
     const c = await screen();
     const ctas = Array.from(c.querySelectorAll('button')).filter(button => /(?:Create|New) event/.test(button.textContent ?? ''));
     expect(ctas).toHaveLength(1);
-    expect(ctas[0].textContent).toContain('Create event');
+    // WAS 'Create event'; #580 adopts Eden's "New event".
+    expect(ctas[0].textContent).toContain('New event');
     await click(ctas[0]);
     expect(c.querySelector('[data-event-form-dialog]')).toBeTruthy();
   });
@@ -950,4 +951,47 @@ it('continues bounded cancellation requests until the server reports no notices 
   const dialog = [...c.querySelectorAll('[role="dialog"]')].at(-1)!;
   await click(buttonContaining(dialog, 'Cancel and email registrants')); await settle();
   expect(posts).toBe(2);
+});
+
+// #580: Eden's events list (docs/prd/screenshots/07-events, 001/005).
+describe('#580 the events list follows Eden', () => {
+  const lgRows = (c: ParentNode) => [...c.querySelectorAll<HTMLElement>('[role="button"].lg\\:flex')];
+  it('says what the page is for, and shows a badge only on an event that is not live', async () => {
+    eventsData.current = [FREE_EVENT, { ...FREE_EVENT, id: 'ev-draft', title: 'Draft Night', status: 'draft' as const }];
+    const c = await screen();
+    expect(c.textContent).toContain('Every event you run, from your ministry and its communities. Share a link to any of them.');
+    const live = lgRows(c).find(r => r.textContent?.includes('Free Conference'))!;
+    expect(live.textContent).not.toMatch(/published/i);
+    await click(buttonContaining(c, 'Drafts'));
+    const draft = lgRows(c).find(r => r.textContent?.includes('Draft Night'))!;
+    expect(draft.textContent).toMatch(/draft/i);
+  });
+  it('copies the event link from its row without opening the event', async () => {
+    eventsData.current = [FREE_EVENT];
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const c = await screen();
+    const copy = c.querySelector<HTMLButtonElement>('[data-copy-event-link]')!;
+    const dialogsBefore = c.querySelectorAll('[data-event-form-dialog], [role="dialog"]').length;
+    await click(copy);
+    expect(writeText).toHaveBeenCalledWith('https://t1.theharvest.app/event/ev-free');
+    expect(copy.textContent).toContain('Copied');
+    // Copying does not open the event (earlier tests may leave their own dialogs in the body).
+    expect(c.querySelectorAll('[data-event-form-dialog], [role="dialog"]').length).toBe(dialogsBefore);
+    // And the list is still showing: opening the event would replace it with the detail view.
+    expect(c.querySelector('[data-copy-event-link]')).toBeTruthy();
+  });
+  it('keeps Edit, Pin and Delete behind the row menu', async () => {
+    eventsData.current = [FREE_EVENT];
+    const c = await screen();
+    await click(c.querySelector<HTMLElement>('[aria-label="More for Free Conference"]')!);
+    const items = () => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items().map(i => i.textContent?.trim())).toEqual(['Edit', 'Pin to feed', 'Delete']);
+    await click(items().find(i => i.textContent?.includes('Pin to feed'))!);
+    expect(writes).toContain('update:tenants/t1/events/ev-free');
+    expect(stored.at(-1)).toEqual({ pinned: true });
+    await click(c.querySelector<HTMLElement>('[aria-label="More for Free Conference"]')!);
+    await click(items().find(i => i.textContent?.includes('Delete'))!);
+    expect(c.textContent).toContain('Delete this event?');
+  });
 });

@@ -957,12 +957,12 @@ const SURFACES: Record<Screen, Record<string, Nav>> = {
   AdminEvents: {
     default: NOOP,
     form: async (c) => {
-      await click(buttonContaining(c, 'Create event'));
+      await click(buttonContaining(c, 'New event'));
       return latestEventFormDialog();
     },
     // Ticket types and discount codes live behind the registrations toggle.
     formExpanded: async (c) => {
-      await click(buttonContaining(c, 'Create event'));
+      await click(buttonContaining(c, 'New event'));
       const dialog = latestEventFormDialog();
       // Narrowed to the parent-text match, not `button[aria-pressed]` — the
       // "Where" ToggleGroup (In person / Online) also carries aria-pressed
@@ -1735,6 +1735,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     'max-w-2xl': 672, 'max-w-3xl': 768, 'max-w-4xl': 896, 'max-w-5xl': 1024, 'max-w-6xl': 1152,
   };
   const ALLOWED_REMOVALS: Record<string, string> = {
+    // APPENDED BY #580: Eden shows no badge on a live event, so the published badge's
+    // two colour tokens leave the rendered list. Colour only; no size or spacing.
+    'bg-field-100': '#580: the published status badge no longer renders on a live event, as on Eden',
+    'text-field-700': '#580: the published status badge no longer renders on a live event, as on Eden',
     ...Object.fromEntries(Object.entries(NON_BINDING_CAPS)
       .map(([t, px]) => [t, `a ${px}px cap, above the 639px top of the phone range`])),
     'mx-auto': 'auto side margins on a block whose width is auto resolve to 0 — it centred nothing until a cap gave it something to centre, and the cap is now sm:-gated with it',
@@ -1974,6 +1978,8 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   ];
 
   const ALLOWED_ADDITIONS: Record<string, string> = {
+    // APPENDED BY #580: the row's ⋯ menu icon; an identifier with no CSS rule.
+    'lucide-ellipsis': '#580: lucide identifier on the events row menu trigger; this identifier defines no CSS rule.',
     ...Object.fromEntries(THE_379_MOBILE_TOKENS.map((t) => [t, THE_379_MOBILE_REASON])),
     ...Object.fromEntries(LIST_REDESIGN_MOBILE_TOKENS.map((t) => [t, LIST_REDESIGN_MOBILE_REASON])),
     // THE-555 upgrades lucide-react: numeric icon aliases now also emit their canonical class.
@@ -3019,6 +3025,11 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       // "Make event", and the cover image moves under More options. No write,
       // price, registration or money path changed.
       { strippedSha: '2d96b7a269d890497af05ad6bf233e4d645397a9ae020fd6e32c388f16345221', strippedLines: 1979 },
+      // APPENDED #580: Eden's events list. The header line and "New event", a per-row
+      // "Copy link" (the existing registration URL), and Edit / Pin / Delete behind a ⋯
+      // menu calling the same openEdit, togglePin and setDeleteId. No write, price or
+      // money path changed.
+      { strippedSha: 'c31b752e28037b58c2b3ee145c6ddce7902729c3fadcf8f805f89f7c6679a27c', strippedLines: 1991 },
     ];
     expect(accepted, DIFF_HINT('AdminEvents')).toContainEqual({
       strippedSha: sha(now), strippedLines: now.split('\n').length,
@@ -3308,6 +3319,8 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           ...(THE_379_REMOVED_COLOURS[name]?.[view] ?? []),
           // #556: raw Cancel/Save colours are replaced by the shared Button variants.
           ...(name === 'AdminEvents' && view === 'form' ? ['text-white', 'text-muted'] : []),
+          // #580: a live event shows no status badge, as on Eden.
+          ...(name === 'AdminEvents' && view === 'default' ? ['bg-field-100', 'text-field-700'] : []),
         ]);
         // THE-368's addition is merged into the EXPECTATION, in sort order, so
         // the comparison stays element-wise against the recorded baseline rather

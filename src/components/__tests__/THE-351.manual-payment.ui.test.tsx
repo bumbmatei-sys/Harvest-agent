@@ -167,7 +167,7 @@ async function screen() {
 }
 async function createForm(): Promise<HTMLElement> {
   const c = await screen();
-  await click(buttonContaining(c, 'Create event'));
+  await click(buttonContaining(c, 'New event'));
   return c;
 }
 async function detail(): Promise<HTMLElement> {

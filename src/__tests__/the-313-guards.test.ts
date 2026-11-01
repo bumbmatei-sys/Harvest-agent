@@ -518,7 +518,9 @@ describe('no new token, component or dependency was added', () => {
     // the calendar chunk stays out of the list's own bundle.
     expect(imports, 'the events screen adopted an unrecorded primitive')
       // #556 B1 replaces the reviewed raw controls with these exact primitives.
-      .toEqual(['alert', 'badge', 'button', 'checkbox', 'dialog', 'empty', 'input', 'radio-group', 'select', 'skeleton', 'switch', 'tabs', 'textarea', 'toggle-group']);
+      // APPENDED BY #580: `dropdown-menu` for Eden's ⋯ row menu (Edit, Pin, Delete), the
+      // installed primitive rather than three bare icon buttons.
+      .toEqual(['alert', 'badge', 'button', 'checkbox', 'dialog', 'dropdown-menu', 'empty', 'input', 'radio-group', 'select', 'skeleton', 'switch', 'tabs', 'textarea', 'toggle-group']);
   });
 
   it('the four new files import only modules that already existed', () => {
