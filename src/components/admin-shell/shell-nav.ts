@@ -37,8 +37,8 @@ import {
  *
  * Community has no row. It is the menu in the top bar.
  *
- * Livestream has no row either. It lives inside the community, on the
- * Communities page, because members watch it there.
+ * Livestream lives inside the community: it opens from the Communities page,
+ * and has a Channels row only for an admin who cannot open that page.
  *
  * Branding is not a sidebar group. It lives in Settings > Campus & branding.
  * A branding-only admin, who cannot open Settings, still gets one row from
@@ -95,6 +95,8 @@ interface ItemTemplate {
   readonly entitlementLabel?: string;
   readonly icon: LucideIcon;
   readonly placeholder?: ShellPlaceholderId;
+  /** Drawn only while this tab is absent: the row's screen normally opens from that one. */
+  readonly onlyWithout?: string;
 }
 
 interface GroupTemplate {
@@ -152,6 +154,10 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'social', label: 'Social', icon: Share2 },
       { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
+      // The founder moved Livestream into the community: it opens from the main
+      // community on the Communities page. An admin who may run the stream but
+      // not Communities keeps this row, or they would have no way in.
+      { id: 'livestream', label: 'Livestream', icon: Radio, onlyWithout: 'community-setup' },
       { id: 'blog', label: 'Blog', icon: Newspaper },
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     ],
@@ -198,15 +204,33 @@ const GROUPS_BY_SIDE: Record<ShellSideId, readonly GroupTemplate[]> = {
  * Courses is opened from the Products page, so it has no row of its own, and the
  * top bar reads "Products > Courses" with "Products" as a link back. Notes live
  * in the Boards section the sidebar draws under the groups, so the top bar reads
- * "Boards > ...".
+ * "Boards > ...". Livestream reads "Communities > Livestream".
  */
 const OFF_SIDEBAR_TABS: readonly { id: string; side: ShellSideId; section: string }[] = [
   { id: 'courses', side: 'public', section: 'Products' },
   { id: 'docs', side: 'people', section: 'Boards' },
+  // Livestream opens from the main community on the Communities page, so the
+  // top bar reads "Communities > Livestream" with a link back.
+  { id: 'livestream', side: 'public', section: 'Communities' },
 ];
 
+/**
+ * Tabs a row's own page opens, so they need no row of their own. Read by the
+ * sidebar onto the row, which is how entitlement tests see that the tab is
+ * still reachable from the nav.
+ */
+const OPENED_FROM: Readonly<Record<string, readonly string[]>> = { 'community-setup': ['livestream'] };
+
+/** Labels of the present tabs that open from this row's page. */
+export function tabsOpenedFrom(rowId: string, tabs: ReadonlyMap<string, ShellTabRef>): string[] {
+  return (OPENED_FROM[rowId] ?? []).flatMap((id) => {
+    const tab = tabs.get(id);
+    return tab ? [tab.label] : [];
+  });
+}
+
 /** The tab a section crumb links to. Only sections that have a page of their own are links. */
-export const SECTION_LANDING_TAB: Readonly<Record<string, string>> = { Products: 'products' };
+export const SECTION_LANDING_TAB: Readonly<Record<string, string>> = { Products: 'products', Communities: 'community-setup' };
 
 const PUBLIC_TAB_IDS = new Set([
   ...PUBLIC_GROUPS.flatMap((group) => group.items.map((item) => item.id)),
@@ -266,6 +290,7 @@ export function groupsForSide(
       }
       const tab = tabs.get(item.id);
       if (!tab) continue;
+      if (item.onlyWithout && tabs.has(item.onlyWithout)) continue;
       items.push({
         id: tab.id,
         label: tab.label,

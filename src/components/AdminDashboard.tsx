@@ -988,8 +988,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   }
 
   const moreTabs = [
-    // Livestream lives in the community now (see the desktop sidebar below).
-    ...drawerTabs.filter((t) => t.id !== 'livestream'),
+    ...drawerTabs,
     ...(showInbox ? [{ id: 'inbox', label: 'Platform Inbox', icon: Inbox }] : []),
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ];
@@ -1009,11 +1008,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // Community has no sidebar row: it is the menu in the top bar. The tab itself
   // stays (the mobile drawer and /admin/community still reach it).
   desktopNavById.delete('community');
-  // Livestream has no sidebar row either: the founder moved it into the
-  // community, so it opens from the main community on the Communities page.
-  // The tab stays, so /admin/livestream and the dashboard's live strip still
-  // reach it.
-  desktopNavById.delete('livestream');
   // Settings owns Campus & branding, so the sidebar row goes away for an admin
   // who can open the popup. A branding-only admin cannot, and the sidebar
   // keeps the one row they have left.
@@ -1534,11 +1528,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               courses: true, events: true, messages: planAllows(features?.communityGroups),
               prayer: true, give: planAllows(features?.fundraising),
               livestream: planAllows(features?.livestream), bible: true, map: planAllows(features?.map),
-            }} />} livestream={navAllows(features?.livestream) && (hasFullAccess || perms.manageLivestream)
-              ? (planAllows(features?.livestream)
-                ? <AdminLivestream />
-                : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('community-setup')} onUpgrade={() => go('upgrade')} />)
-              : undefined} /></div>
+            }} />} onOpenLivestream={allTabs.some((t) => t.id === 'livestream') ? () => go('livestream') : undefined} /></div>
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

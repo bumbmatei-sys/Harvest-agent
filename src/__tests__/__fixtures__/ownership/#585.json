@@ -1,0 +1,110 @@
+{
+  "ticket": "#585",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "e26e917f5ed4bcd29d35f7c21c074f881d0388cc35b9ed9b731e5e77be077372",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: the Communities page gets onOpenLivestream, set when the livestream tab is already in allTabs, so the main community opens Livestream. No nav array, permission term, plan gate, route or screen mount moved."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "59f916a101596ab5aec99cf74d3c5f0d439bc841c404ec4a026eec9ed94af789",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: Livestream keeps its Channels row only while the Communities page is absent (onlyWithout), tabsOpenedFrom names it on the Communities row, and its trail reads Communities > Livestream. Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/AdminDesktopSidebar.tsx",
+      "digest": "14e72995d53d6de480c243cb2c3a99a99bf7bb46e95bbc344d2d3d2875745ee2",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: each row carries data-nav-opens, the tabs its page opens (Livestream on Communities). Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/NavEntitlementCatalog.tsx",
+      "digest": "4366088839bd3eba7a4dfe07b601d706463ef194a3dc842a884dfc66189d619e",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: the catalog carries the same data-nav-opens markers as the sidebar rows. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.plan-entitlement.test.tsx",
+      "digest": "256264b720fd9ada7adfaf939197643b00530ecf63c8defd88c008b09ce35f46",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: navLabels also reads data-nav-opens, so Livestream counts as reached from the Communities row. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "77eb12d6e1d29e1b103ca5a30337d639e014602655bd4108a79207eba81b8102",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: navLabels also reads data-nav-opens, so Livestream counts as reached from the Communities row. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-tab-matrix.test.tsx",
+      "digest": "c654b3b07b28bca93445b540b215d91e6fa2ecbd1cf086b20ff2563e926ccea8",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: navLabels also reads data-nav-opens, so Livestream counts as reached from the Communities row. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/the-245-sms-hidden-admin.test.tsx",
+      "digest": "9d9bfff373231c4a1ee8a8e80ab1c7c14bbc355aeef1a77c7f355df6c0360ad4",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: navLabels also reads data-nav-opens, so Livestream counts as reached from the Communities row. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "5cac04ff4404c32a7d433605739e6a251064b46f8a842b6e18bb812f68a8506a",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: lists livestream among the ids with no rail row, since it opens from the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "4c15ac97c6b571052ad545086847b6632c9dc5ad80750ba5ad9b47cbdab336f4",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "ec6ee193bea50b06011ac1cc504cf23849d55de1e0c89dd855cba6b748bd7032",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "2113fa9a5b629dba4b0f176d6496f188fec0ece894a396129a702a6d15283528",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "afb07c0cff8254bd1db21c03bb7b7e0e219dad1add73b97725194175480c14f7",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "1dbf2381e83ca3f8bf501711d4fcb66dea3a2d357d64339599d81d1ee7c26b37",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "92a8f2a11f8973dc565be2a086403a206355b82b1735a2be75f65c3919ed8e10",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "befc77fad7af044732880cbcd941b7d824b8757a994092801611e18b1470eeb0",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "02a79fa2681b3ebe5f7468ab79c1f537192603501730478ddb1401c9d193aa2e",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "a605a002855181bd66212c1367a96215ae6979c2d602d19ac7d9b2a428c6dea5",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.test.ts",
+      "digest": "a4b50600778b674f2f30d75ead947441af3e3e5f82baeb8583d80c2b4ff4661f",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/community/AdminCommunities.test.tsx",
+      "digest": "0b6105a18c18e38f885c87413754127d16eb0cdd20e52e7c79725bdf8861ce7d",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    },
+    {
+      "file": "src/components/community/AdminCommunities.tsx",
+      "digest": "cda0bfece09c0623198b8f0f1a327bdd2cae6718e4c5d3775a0eb87ab6e4502f",
+      "why": "APPENDED, NOT SUBSTITUTED — #585: records the AdminDashboard digest after Livestream moved into the Communities page. Nothing removed."
+    }
+  ]
+}
