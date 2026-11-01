@@ -72,6 +72,52 @@ interface MutableWorkspace {
 
 const stores = new Map<string, MutableWorkspace>();
 
+/** #584: the sample inbox, in Zernio's own response shapes so the same readers parse it. */
+interface MockInbox {
+  conversations: Record<string, unknown>[];
+  messages: Map<string, Record<string, unknown>[]>;
+  threads: Record<string, unknown>[];
+  comments: Map<string, Record<string, unknown>[]>;
+  reviews: Record<string, unknown>[];
+}
+const inboxStores = new Map<string, MockInbox>();
+
+function inbox(tenantId: string, now: Date): MockInbox {
+  const existing = inboxStores.get(tenantId);
+  if (existing) return existing;
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+  const created: MockInbox = {
+    conversations: [
+      { id: 'sample-dm-1', platform: 'instagram', accountId: 'sample-instagram', participantName: 'Grace Okafor', lastMessage: 'What time is the youth night on Friday?', updatedTime: ago(12), unreadCount: 1 },
+      { id: 'sample-dm-2', platform: 'facebook', accountId: 'sample-facebook', participantName: 'Daniel Reyes', lastMessage: 'Thank you for praying for my mom.', updatedTime: ago(180) },
+    ],
+    messages: new Map([
+      ['sample-dm-1', [
+        { id: 'm1', direction: 'incoming', text: 'Hi! What time is the youth night on Friday?', createdAt: ago(12) },
+      ]],
+      ['sample-dm-2', [
+        { id: 'm2', direction: 'incoming', text: 'Could you pray for my mom? She has surgery Tuesday.', createdAt: ago(1500) },
+        { id: 'm3', direction: 'outgoing', text: 'Of course, Daniel. We are praying with you.', createdAt: ago(1440) },
+        { id: 'm4', direction: 'incoming', text: 'Thank you for praying for my mom.', createdAt: ago(180) },
+      ]],
+    ]),
+    threads: [
+      { postId: 'sample-post-1', platform: 'instagram', accountId: 'sample-instagram', content: 'Sunday recap: thank you for worshipping with us.', commentCount: 2, lastCommentAt: ago(40) },
+    ],
+    comments: new Map([
+      ['sample-post-1', [
+        { id: 'c1', from: { name: 'Ruth M.' }, message: 'Such a powerful message this week 🙏', createdTime: ago(90), replies: [] },
+        { id: 'c2', from: { name: 'Sam Lee' }, message: 'Will the sermon be on YouTube?', createdTime: ago(40), replies: [] },
+      ]],
+    ]),
+    reviews: [
+      { id: 'sample-review-1', platform: 'googlebusiness', accountId: 'sample-google', reviewer: { displayName: 'Maria P.' }, starRating: 'FIVE', comment: 'A welcoming church family. The kids ministry is wonderful.', createTime: ago(4000) },
+    ],
+  };
+  inboxStores.set(tenantId, created);
+  return created;
+}
+
 function workspace(tenantId: string, now: Date): MutableWorkspace {
   const existing = stores.get(tenantId);
   if (existing) return existing;
@@ -86,6 +132,7 @@ function workspace(tenantId: string, now: Date): MutableWorkspace {
 
 export function resetSocialMock(): void {
   stores.clear();
+  inboxStores.clear();
 }
 
 function view(tenantId: string, now: Date): SocialWorkspace {
@@ -115,6 +162,42 @@ export class MockSocialClient {
 
   load(): SocialWorkspace {
     return view(this.tenantId, this.now);
+  }
+
+  /** #584: the sample inbox lists, in Zernio's response shapes. */
+  inboxList(kind: 'message' | 'comment' | 'review'): unknown {
+    const state = inbox(this.tenantId, this.now);
+    return { data: kind === 'message' ? state.conversations : kind === 'comment' ? state.threads : state.reviews };
+  }
+
+  inboxThread(kind: 'message' | 'comment', id: string): unknown {
+    const state = inbox(this.tenantId, this.now);
+    return { data: (kind === 'message' ? state.messages : state.comments).get(id) ?? [] };
+  }
+
+  /** Records a sample reply in memory; nothing is sent anywhere. */
+  inboxReply(kind: 'message' | 'comment' | 'review', id: string, message: string, commentId?: string): boolean {
+    const state = inbox(this.tenantId, this.now);
+    const at = this.now.toISOString();
+    if (kind === 'message') {
+      const thread = state.messages.get(id);
+      if (!thread) return false;
+      thread.push({ id: `sample-sent-${thread.length + 1}`, direction: 'outgoing', text: message, createdAt: at });
+      const conversation = state.conversations.find((c) => c.id === id);
+      if (conversation) { conversation.lastMessage = message; conversation.unreadCount = 0; }
+      return true;
+    }
+    if (kind === 'comment') {
+      const thread = state.comments.get(id);
+      const parent = thread?.find((c) => c.id === commentId);
+      if (!parent) return false;
+      (parent.replies as Record<string, unknown>[]).push({ id: `${commentId}-r${(parent.replies as unknown[]).length + 1}`, from: { name: 'You', isOwner: true }, message, createdTime: at, isOwner: true });
+      return true;
+    }
+    const review = state.reviews.find((r) => r.id === id);
+    if (!review) return false;
+    review.reply = { comment: message };
+    return true;
   }
 
   /** #582: sample metrics for the preview, spread over the window; nothing real. */

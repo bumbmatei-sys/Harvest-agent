@@ -1,6 +1,7 @@
 import type { SocialPlatform } from './platforms';
 import { parseSocialPlatform, supportsMadeWithAi } from './platforms';
 import { readAnalyticsPost, type AnalyticsPost, type SocialAnalytics } from './analytics';
+import type { InboxKind } from './inbox';
 import type { SocialAccount, SocialMedia, SocialPost, SocialPostDraft, SocialTarget, SocialWorkspace } from './types';
 
 /**
@@ -175,6 +176,34 @@ export class LiveSocialClient {
       if (page >= pages) return { fromDate, toDate, posts, truncated: false };
     }
     return { fromDate, toDate, posts, truncated: true };
+  }
+
+  /** #584: the unified inbox. Each list is this profile's own; each read and reply names it. */
+  async inboxList(profileId: string, kind: InboxKind): Promise<unknown | null> {
+    const path = kind === 'message' ? '/inbox/conversations' : kind === 'comment' ? '/inbox/comments' : '/inbox/reviews';
+    const query = new URLSearchParams({ profileId, limit: '50' });
+    const result = await call<unknown>(this.key, `${path}?${query}`, {}, this.fetchImpl);
+    return result.ok ? result.data : null;
+  }
+
+  async inboxThread(kind: 'message' | 'comment', id: string, accountId: string): Promise<unknown | null> {
+    const query = new URLSearchParams({ accountId });
+    const path = kind === 'message'
+      ? `/inbox/conversations/${encodeURIComponent(id)}/messages?${query}`
+      : `/inbox/comments/${encodeURIComponent(id)}?${query}`;
+    const result = await call<unknown>(this.key, path, {}, this.fetchImpl);
+    return result.ok ? result.data : null;
+  }
+
+  async inboxReply(kind: InboxKind, id: string, accountId: string, message: string, commentId?: string): Promise<boolean> {
+    const path = kind === 'message'
+      ? `/inbox/conversations/${encodeURIComponent(id)}/messages`
+      : kind === 'comment'
+        ? `/inbox/comments/${encodeURIComponent(id)}`
+        : `/inbox/reviews/${encodeURIComponent(id)}/reply`;
+    const body = { accountId, message, ...(kind === 'comment' && commentId ? { commentId } : {}) };
+    const result = await call<unknown>(this.key, path, { method: 'POST', body }, this.fetchImpl);
+    return result.ok;
   }
 
   async load(profileId: string): Promise<SocialWorkspace | null> {
