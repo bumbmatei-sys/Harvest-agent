@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -38,6 +38,7 @@ import {
   type SocialPlatform,
 } from '@/lib/social/platforms';
 import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
+import { queueDate, queueTime, scheduledByDay, sentNewestFirst } from '@/lib/social/queue';
 import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
@@ -754,6 +755,7 @@ export function SocialScheduler({
         <TabsContent value="queue" className="mt-4">
           <Queue
             posts={posts}
+            timeZone={ministryZone(data?.timezone, browserZone)}
             onEdit={(post) => {
               setEditing(post);
               setEditError(null);
@@ -953,67 +955,70 @@ function AccountsPanel({
 
 function Queue({
   posts,
+  timeZone,
   onEdit,
   onCancel,
 }: {
   posts: readonly SocialPost[];
+  timeZone: string;
   onEdit: (post: SocialPost) => void;
   onCancel: (post: SocialPost) => void;
 }) {
-  const groups: { id: SocialPost['status']; label: string }[] = [
-    { id: 'draft', label: 'Drafts' },
-    { id: 'scheduled', label: 'Scheduled' },
-    { id: 'sent', label: 'Sent' },
-  ];
+  // #581: Eden's Queue — three columns, Drafts · Scheduled (by day) · Sent.
+  const drafts = posts.filter((post) => post.status === 'draft');
+  const days = scheduledByDay(posts, timeZone, new Date());
+  const scheduledCount = days.reduce((n, day) => n + day.posts.length, 0);
+  const sent = sentNewestFirst(posts);
+  const platforms = (post: SocialPost) => post.targets.map((target) => labelFor(target.platform)).join(' · ');
+  // Drafts and scheduled posts only; a sent post has gone out.
+  const actions = (post: SocialPost) => (
+    <div className="mt-2 flex gap-1">
+      <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2 text-xs font-semibold`} onClick={() => onEdit(post)}>Edit</Button>
+      <Button type="button" variant="ghost" className={`${CONTROL} h-auto px-2 text-xs font-semibold text-muted`} onClick={() => onCancel(post)}>Cancel</Button>
+    </div>
+  );
+  const column = (title: string, count: number, body: ReactNode, aside?: ReactNode) => (
+    <section data-queue-column={title.toLowerCase()} className="flex min-w-0 flex-col rounded-xl border border-line bg-surface-raised">
+      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+        <h2 className="text-sm font-semibold text-strong">{title}</h2>
+        <span className="text-xs text-faint">{count}</span>
+        {aside && <span className="ml-auto text-xs text-faint">{aside}</span>}
+      </header>
+      <ScrollArea className="h-[34rem]"><div className="flex flex-col gap-2 p-3">{body}</div></ScrollArea>
+    </section>
+  );
+  const none = (what: string) => <p className="px-1 py-6 text-center text-sm text-faint">Nothing {what}.</p>;
   return (
-    <Card data-testid="social-queue">
-      <CardHeader>
-        <CardTitle className="font-display text-2xl font-semibold">Queue</CardTitle>
-        <CardDescription>Drafts, scheduled posts, and posts that have gone out.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[28rem]">
-          <div className="flex flex-col gap-6">
-            {groups.map((group) => {
-              const rows = posts.filter((post) => post.status === group.id);
-              return (
-                <section key={group.id}>
-                  <h2 className="mb-2 text-sm font-medium text-strong">{group.label}</h2>
-                  {rows.length === 0 ? (
-                    <Empty className="border-line">
-                      <EmptyHeader>
-                        <EmptyTitle>None</EmptyTitle>
-                        <EmptyDescription>Nothing in {group.label.toLowerCase()}.</EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    <ul className="flex flex-col gap-2">
-                      {rows.map((post) => (
-                        <li key={post.id} className="flex flex-col gap-2 rounded-lg border border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <PostMediaThumb media={post.media} />
-                            <div><p className="text-sm text-strong">{post.content}</p>
-                            <p className="text-xs text-faint">
-                              {post.targets.map((target) => labelFor(target.platform)).join(', ')}
-                              {post.scheduledFor ? ` · ${isoToWallTime(post.scheduledFor, post.timezone || 'UTC').replace('T', ' ')}` : ''}
-                            </p></div>
-                          </div>
-                          {post.status !== 'sent' && (
-                            <div className="flex gap-2">
-                              <Button type="button" variant="outline" className={CONTROL} onClick={() => onEdit(post)}>Edit</Button>
-                              <Button type="button" variant="outline" className={CONTROL} onClick={() => onCancel(post)}>Cancel</Button>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div data-testid="social-queue" className="grid gap-3 lg:grid-cols-3">
+      {column('Drafts', drafts.length, drafts.length === 0 ? none('in drafts') : drafts.map((post) => (
+        <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+          <div className="flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-3 text-sm text-strong">{post.content}</p></div>
+          <p className="mt-1.5 text-xs text-faint">{platforms(post)}</p>
+          {actions(post)}
+        </article>
+      )))}
+      {column('Scheduled', scheduledCount, scheduledCount === 0 ? none('scheduled') : days.map((day) => (
+        <div key={day.key} data-queue-day={day.key} className="flex flex-col gap-2">
+          <h3 className="px-1 pt-1 text-sm font-semibold text-strong">{day.label} <span className="font-normal text-faint">{day.date}</span></h3>
+          {day.posts.map((post) => (
+            <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+              <p className="text-xs font-semibold text-muted">{queueTime(post.scheduledFor, post.timezone || timeZone)}<span className="font-normal text-faint"> · {platforms(post)}</span></p>
+              <div className="mt-1 flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-3 text-sm text-strong">{post.content}</p></div>
+              {actions(post)}
+            </article>
+          ))}
+        </div>
+      )), (timeZone.split('/').pop() ?? timeZone).replace(/_/g, ' '))}
+      {column('Sent', sent.length, sent.length === 0 ? none('sent yet') : sent.map((post) => (
+        <article key={post.id} data-queue-post={post.id} className="rounded-lg border border-line bg-card p-3">
+          <p className="flex items-center gap-2 text-xs text-faint">
+            <span className="rounded-md bg-surface-sunken px-1.5 py-0.5 font-semibold text-muted">Posted</span>
+            {post.scheduledFor ? `${queueDate(post.scheduledFor, post.timezone || timeZone)}, ${queueTime(post.scheduledFor, post.timezone || timeZone)}` : ''}
+          </p>
+          <div className="mt-1.5 flex gap-3"><PostMediaThumb media={post.media} /><p className="line-clamp-4 text-sm text-strong">{post.content}</p></div>
+          <p className="mt-1.5 text-xs text-faint">{platforms(post)}</p>
+        </article>
+      )))}
+    </div>
   );
 }

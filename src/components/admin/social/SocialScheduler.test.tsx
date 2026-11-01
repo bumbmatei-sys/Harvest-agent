@@ -91,6 +91,16 @@ describe('SocialScheduler', () => {
     });
     expect(container.querySelector('[data-testid="social-queue"]')).toBeTruthy();
     expect(container.textContent).toContain('This Sunday');
+    // #581: Eden's three columns, each with its count, Scheduled grouped by day.
+    const columns = [...container.querySelectorAll<HTMLElement>('[data-queue-column]')];
+    expect(columns.map((c) => [c.dataset.queueColumn, c.querySelector('header')?.textContent])).toEqual([
+      ['drafts', 'Drafts1'], ['scheduled', 'Scheduled1Chicago'], ['sent', 'Sent1'],
+    ]);
+    expect(columns[1].querySelector('[data-queue-day] h3')?.textContent).toBe('Tuesday Mar 12');
+    expect(columns[1].textContent).toContain('10:00 AM · Instagram');
+    expect(columns[2].textContent).toContain('PostedMar 4, 9:00 AM');
+    // Sent posts can no longer be edited or cancelled.
+    expect([...columns[2].querySelectorAll('button')]).toHaveLength(0);
   });
 
   it('shows a distinct unavailable state when bootstrap answers 503', async () => {
