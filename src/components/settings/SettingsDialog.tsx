@@ -6,6 +6,7 @@ import {
   Building2,
   CreditCard,
   Palette,
+  Share2,
   User,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ import GivingStatementsSection from "./GivingStatementsSection";
 import OnboardingSection from "./OnboardingSection";
 import PlanBillingSection from "./PlanBillingSection";
 import ProfileSection from "./ProfileSection";
+import { SocialAccountsSettings } from "../admin/social/SocialAccountsSettings";
 import {
   SETTINGS_NAV,
   settingsSectionFromLocation,
@@ -57,6 +59,7 @@ const NAV_ICONS: Record<SettingsNavId, React.ComponentType<{ className?: string 
   campus: Palette,
   billing: CreditCard,
   setup: Building2,
+  social: Share2,
   danger: AlertTriangle,
 };
 
@@ -271,6 +274,7 @@ export function SettingsDialog({
                   </PaneSection>
                 </div>
               )}
+              {open && active.id === 'social' && <SocialAccountsSettings />}
               {open && active.id === 'danger' && showDanger && (
                 <CancelPlanBlock onConfirm={handleManage} />
               )}

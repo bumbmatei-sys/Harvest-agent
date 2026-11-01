@@ -4,7 +4,7 @@ import {
   Home,
 } from 'lucide-react';
 
-import { SECTION_LANDING_TAB, groupsForSide, sectionForTab, sideForTab, tabsOpenedFrom, type ShellTabRef } from './shell-nav';
+import { SECTION_LANDING_TAB, groupsForSide, rowViewOf, sectionForTab, sideForTab, tabsOpenedFrom, type ShellTabRef } from './shell-nav';
 
 const ids = [
   'dashboard', 'social', 'newsletter', 'livestream', 'blog', 'forms', 'events', 'checkin', 'products', 'courses', 'ai',
@@ -15,18 +15,36 @@ const tabs = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, 
 const shape = (side: 'people' | 'public') => groupsForSide(side, tabs).map((g) => ({ label: g.label, items: g.items.map((i) => i.id) }));
 
 describe('the sidebar, as the founder specified it', () => {
-  it('Public: Channels (Social, Newsletter, Livestream, Blog), Engage (Forms, Events, Check-in), Products', () => {
+  // WAS Channels (Social, Newsletter, Livestream, Blog) first. The founder gave
+  // social media its own section, each row one part of the social screen.
+  it('Public: Social media (Analytics, Planner, Inbox, Auto-DM), Channels, Engage, Products', () => {
     const groups = shape('public');
-    expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'livestream', 'blog', 'sms'] });
-    expect(groups[1]).toEqual({ label: 'Engage', items: ['forms', 'events', 'checkin'] });
-    expect(groups[2]).toEqual({ label: '', items: ['products'] });
+    const social = groupsForSide('public', tabs)[0];
+    expect(social.label).toBe('Social media');
+    expect(social.items.map((i) => [i.id, i.view, i.label])).toEqual([
+      ['social', 'analytics', 'Analytics'], ['social', 'planner', 'Planner'], ['social', 'inbox', 'Inbox'], ['social', 'autodm', 'Auto-DM'],
+    ]);
+    expect(groups[1]).toEqual({ label: 'Channels', items: ['newsletter', 'livestream', 'blog', 'sms'] });
+    expect(groups[2]).toEqual({ label: 'Engage', items: ['forms', 'events', 'checkin'] });
+    expect(groups[3]).toEqual({ label: '', items: ['products'] });
+    // Without the social tab there is no Social media section at all.
+    const without = new Map(tabs);
+    without.delete('social');
+    expect(groupsForSide('public', without)[0].label).toBe('Channels');
+  });
+
+  it('a Social media row is open for its own section; Compose, Calendar and Queue are the Planner', () => {
+    expect([undefined, 'planner', 'compose', 'calendar', 'queue'].map((item) => rowViewOf('social', item))).toEqual(['planner', 'planner', 'planner', 'planner', 'planner']);
+    expect(['analytics', 'inbox', 'autodm'].map((item) => rowViewOf('social', item))).toEqual(['analytics', 'inbox', 'autodm']);
+    expect(rowViewOf('crm', 'contact-1')).toBeNull();
   });
 
   it('Livestream moved into the community: no Channels row while the Communities page is there to open it', () => {
     const withCommunities = new Map(tabs);
     withCommunities.set('community-setup', { id: 'community-setup', label: 'Communities', icon: Home });
     const groups = groupsForSide('public', withCommunities).map((g) => ({ label: g.label, items: g.items.map((i) => i.id) }));
-    expect(groups[0]).toEqual({ label: 'Channels', items: ['social', 'newsletter', 'blog', 'sms'] });
+    // WAS groups[0], with Social first; Social media is its own section now.
+    expect(groups[1]).toEqual({ label: 'Channels', items: ['newsletter', 'blog', 'sms'] });
     expect(groups.flatMap((g) => g.items)).toContain('community-setup');
     // The Communities row reports what its page opens, so the nav still reaches it.
     expect(tabsOpenedFrom('community-setup', withCommunities)).toEqual([withCommunities.get('livestream')!.label]);
@@ -34,7 +52,7 @@ describe('the sidebar, as the founder specified it', () => {
     noStream.delete('livestream');
     expect(tabsOpenedFrom('community-setup', noStream)).toEqual([]);
     // An admin who may run the stream but not open Communities keeps the row (above).
-    expect(shape('public')[0].items).toContain('livestream');
+    expect(shape('public')[1].items).toContain('livestream');
   });
 
   it('Livestream opens from Communities: its trail reads Communities > Livestream, linking back', () => {
@@ -47,7 +65,8 @@ describe('the sidebar, as the founder specified it', () => {
     const without = new Map(tabs);
     without.delete('sms');
     const groups = groupsForSide('public', without).map((g) => g.items.map((i) => i.id));
-    expect(groups[0]).toEqual(['social', 'newsletter', 'livestream', 'blog']);
+    // WAS groups[0], with Social first; Social media is its own section now.
+    expect(groups[1]).toEqual(['newsletter', 'livestream', 'blog']);
   });
 
   it('People: People (CRM, Signups, Campuses, Services), Giving (Fundraising, Donations, Accounting), then Platform; Notes is not under Giving', () => {
@@ -89,8 +108,9 @@ describe('the sidebar, as the founder specified it', () => {
     expect(sectionForTab('products')).toBeNull();
   });
 
+  // WAS one row per tab id; the Social media rows share the social tab, each with its own section.
   it('every row is reachable from exactly one side', () => {
-    const all = [...shape('people'), ...shape('public')].flatMap((g) => g.items);
+    const all = [...groupsForSide('people', tabs), ...groupsForSide('public', tabs)].flatMap((g) => g.items.map((i) => `${i.id}:${i.view ?? ''}`));
     expect(new Set(all).size).toBe(all.length);
   });
 });

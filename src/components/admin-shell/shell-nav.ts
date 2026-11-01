@@ -4,6 +4,8 @@ import {
   BrainCircuit,
   Building2,
   CalendarCheck,
+  CalendarDays,
+  ChartLine,
   Church,
   ClipboardList,
   ContactRound,
@@ -16,11 +18,13 @@ import {
   Link2,
   ListChecks,
   MessageSquare,
+  MessagesSquare,
   Newspaper,
   Package,
   QrCode,
   Radio,
   Receipt,
+  Send,
   Share2,
   UserPlus,
   Users,
@@ -68,6 +72,8 @@ export interface ShellItem {
   readonly entitlementLabel: string;
   readonly icon: LucideIcon;
   readonly placeholder: ShellPlaceholderId | null;
+  /** A section inside the tab's screen (the Social media rows all open the social tab). */
+  readonly view: string | null;
 }
 
 export interface ShellGroup {
@@ -97,6 +103,8 @@ interface ItemTemplate {
   readonly placeholder?: ShellPlaceholderId;
   /** Drawn only while this tab is absent: the row's screen normally opens from that one. */
   readonly onlyWithout?: string;
+  /** Opens this section of the tab's screen; the row is labelled by the template, not the tab. */
+  readonly view?: string;
 }
 
 interface GroupTemplate {
@@ -148,11 +156,23 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
 
 const PUBLIC_GROUPS: readonly GroupTemplate[] = [
   {
+    // The founder's Social media section: the scheduler's sections as rows, so
+    // its page needs no row of seven tabs. Accounts live in Settings.
+    id: 'social-media',
+    label: 'Social media',
+    icon: Share2,
+    items: [
+      { id: 'social', view: 'analytics', label: 'Analytics', icon: ChartLine },
+      { id: 'social', view: 'planner', label: 'Planner', icon: CalendarDays },
+      { id: 'social', view: 'inbox', label: 'Inbox', icon: MessagesSquare },
+      { id: 'social', view: 'autodm', label: 'Auto-DM', icon: Send },
+    ],
+  },
+  {
     id: 'social',
     label: 'Channels',
     icon: Radio,
     items: [
-      { id: 'social', label: 'Social', icon: Share2 },
       { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
       // The founder moved Livestream into the community: it opens from the main
       // community on the Communities page. An admin who may run the stream but
@@ -285,6 +305,7 @@ export function groupsForSide(
           entitlementLabel: item.entitlementLabel ?? item.label,
           icon: item.icon,
           placeholder: item.placeholder,
+          view: null,
         });
         continue;
       }
@@ -293,12 +314,13 @@ export function groupsForSide(
       if (item.onlyWithout && tabs.has(item.onlyWithout)) continue;
       items.push({
         id: tab.id,
-        label: tab.label,
-        entitlementLabel: item.entitlementLabel ?? tab.label,
+        label: item.view ? item.label : tab.label,
+        entitlementLabel: item.entitlementLabel ?? (item.view ? item.label : tab.label),
         // The shell owns the glyph. Callers often pass one shared icon, and
         // using that would paint CRM, Campuses, Community and the rest alike.
         icon: item.icon,
         placeholder: null,
+        view: item.view ?? null,
       });
     }
     if (items.length > 0) {
@@ -306,6 +328,20 @@ export function groupsForSide(
     }
   }
   return groups;
+}
+
+/**
+ * Which row's section a route is showing. The social tab opens on the Planner;
+ * Compose, Calendar and Queue are the Planner's own tabs.
+ */
+const DEFAULT_VIEW: Readonly<Record<string, string>> = { social: 'planner' };
+const VIEW_ROW: Readonly<Record<string, string>> = { compose: 'planner', calendar: 'planner', queue: 'planner' };
+
+export function rowViewOf(tabId: string, itemId: string | null | undefined): string | null {
+  const fallback = DEFAULT_VIEW[tabId];
+  if (!fallback) return null;
+  if (!itemId) return fallback;
+  return VIEW_ROW[itemId] ?? itemId;
 }
 
 /** Both sides, for the entitlement catalogue and the command palette. */

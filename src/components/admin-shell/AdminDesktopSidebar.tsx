@@ -39,6 +39,7 @@ import {
   groupsForAllSides,
   groupsForSide,
   tabsOpenedFrom,
+  rowViewOf,
   SHELL_SIDES,
   type ShellPlaceholderId,
   type ShellSideId,
@@ -67,6 +68,7 @@ export function AdminDesktopSidebar({
   side,
   onSide,
   activeTab,
+  activeView = null,
   placeholder,
   tabs,
   tenantName,
@@ -82,11 +84,13 @@ export function AdminDesktopSidebar({
   side: ShellSideId;
   onSide: (side: ShellSideId) => void;
   activeTab: string;
+  /** The route's item segment, which picks the Social media row that is open. */
+  activeView?: string | null;
   placeholder: ShellPlaceholderId | null;
   tabs: ReadonlyMap<string, ShellTabRef>;
   tenantName: string;
   logoUrl: string;
-  onNavigate: (id: string) => void;
+  onNavigate: (id: string, view?: string) => void;
   onPlaceholder: (id: ShellPlaceholderId) => void;
   accountMenu: ReactNode;
   /** Name beside the avatar. Hidden when the rail is collapsed to icons. */
@@ -125,9 +129,10 @@ export function AdminDesktopSidebar({
     };
   }, []);
 
-  const openItem = (id: string, next: ShellPlaceholderId | null) => {
+  const openItem = (id: string, next: ShellPlaceholderId | null, view: string | null = null) => {
     setPaletteOpen(false);
     if (next) onPlaceholder(next);
+    else if (view) onNavigate(id, view);
     else onNavigate(id);
   };
 
@@ -138,11 +143,11 @@ export function AdminDesktopSidebar({
     for (const group of groupsForAllSides(tabs)) {
       for (const item of group.items) {
         pages.push({
-          key: `${group.id}:${item.id}`,
+          key: `${group.id}:${item.id}${item.view ? `:${item.view}` : ''}`,
           label: item.label,
           group: group.label || group.items[0]?.label || item.label,
           icon: item.icon,
-          onSelect: () => openItem(item.id, item.placeholder),
+          onSelect: () => openItem(item.id, item.placeholder, item.view),
         });
       }
     }
@@ -240,16 +245,17 @@ export function AdminDesktopSidebar({
                 const Icon = item.icon;
                 const isActive = item.placeholder
                   ? placeholder === item.placeholder
-                  : placeholder === null && activeTab === item.id;
+                  : placeholder === null && activeTab === item.id && (item.view === null || item.view === rowViewOf(item.id, activeView));
                 return (
-                  <SidebarMenuItem key={item.id}>
+                  <SidebarMenuItem key={`${item.id}:${item.view ?? ''}`}>
                     <SidebarMenuButton
                       isActive={isActive}
                       tooltip={item.label}
                       className={MENU_BUTTON}
                       data-nav-tab={item.placeholder ? undefined : item.id}
+                      data-nav-view={item.view ?? undefined}
                       data-nav-opens={item.placeholder ? undefined : tabsOpenedFrom(item.id, tabs).join('|') || undefined}
-                      onClick={() => openItem(item.id, item.placeholder)}
+                      onClick={() => openItem(item.id, item.placeholder, item.view)}
                     >
                       <Icon />
                       <span className="group-data-[collapsible=icon]:sr-only">{item.label}</span>

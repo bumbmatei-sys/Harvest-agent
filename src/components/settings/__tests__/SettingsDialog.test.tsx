@@ -109,6 +109,8 @@ describe('desktop Settings popup (sidebar-13)', () => {
       'Campus & branding',
       'Plan & billing',
       'Campus setup',
+      // APPENDED: the scheduler's Accounts tab moved here (Social accounts).
+      'Social accounts',
       'Danger zone',
     ]);
     expect(document.body.textContent).toMatch(/Settings/);

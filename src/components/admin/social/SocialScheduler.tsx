@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -53,6 +54,26 @@ import { newAutoDm, type AutoDmLog, type AutoDmRule } from '@/lib/social/auto-dm
 import { hasLogo, PlatformLogo, PlatformLogos } from './PlatformLogo';
 
 export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue' | 'analytics' | 'inbox' | 'autodm';
+
+/**
+ * The founder's Social media section: each sidebar row opens one section, so
+ * the page shows tabs only inside the Planner (Compose, Calendar, Queue).
+ * Accounts are managed in Settings.
+ */
+const SECTION_HEADER: Record<'planner' | 'analytics' | 'inbox' | 'autodm' | 'accounts', { title: string; subtitle: (zone: string) => string }> = {
+  planner: { title: 'Planner', subtitle: (zone) => `Write, schedule and see every post. Timezone ${zone}.` },
+  analytics: { title: 'Analytics', subtitle: () => 'How your posts did across every connected account.' },
+  inbox: { title: 'Inbox', subtitle: () => 'Messages, comments and reviews from every connected account.' },
+  autodm: { title: 'Auto-DM', subtitle: () => 'DM people who comment a keyword, reply to a story or mention you.' },
+  accounts: { title: 'Accounts', subtitle: () => 'The accounts this ministry has connected.' },
+};
+
+/** The view a route's item segment opens: a row's section, or one of the Planner's tabs. */
+export function socialViewFromRoute(itemId: string | null | undefined): SocialView {
+  // `accounts` is the phone's way in: the desktop opens Settings > Social accounts instead.
+  if (itemId === 'analytics' || itemId === 'inbox' || itemId === 'autodm' || itemId === 'calendar' || itemId === 'queue' || itemId === 'accounts') return itemId;
+  return 'compose';
+}
 
 export interface SocialScreenData extends SocialWorkspace {
   readonly entitled: boolean;
@@ -222,6 +243,7 @@ export function SocialScheduler({
   analyticsLoader = loadAnalytics,
   inboxApi = liveInboxApi,
   autoDmApi = liveAutoDmApi,
+  onManageAccounts,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
@@ -231,6 +253,8 @@ export function SocialScheduler({
   inboxApi?: InboxApi;
   /** Auto-DM's automations; the preview and tests pass the sample. */
   autoDmApi?: AutoDmApi;
+  /** Opens Settings > Social accounts, from the plus beside the composer's accounts. */
+  onManageAccounts?: () => void;
   /**
    * The shell has not resolved the tenant's plan yet. The gate shows a loading
    * state until it has; it never guesses, because a guess that the server then
@@ -243,6 +267,9 @@ export function SocialScheduler({
   const [failed, setFailed] = useState(false);
   const [forbidden, setForbidden] = useState<string | null>(null);
   const [view, setView] = useState<SocialView>(initialView);
+  // A sidebar row changes the route's section without remounting the screen.
+  useEffect(() => { setView(initialView); }, [initialView]);
+  const section: keyof typeof SECTION_HEADER = view === 'compose' || view === 'calendar' || view === 'queue' ? 'planner' : view;
   const [content, setContent] = useState(initial?.posts.find((post) => post.status === 'draft')?.content ?? '');
   const [selected, setSelected] = useState<string[]>(
     initial
@@ -604,24 +631,20 @@ export function SocialScheduler({
   return (
     <div className="flex w-full flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
       <PageHeader
-        title="Social"
-        subtitle={`Schedule a post to the accounts this ministry has connected. Timezone ${zone}.`}
-        tabs={(
+        title={SECTION_HEADER[section].title}
+        subtitle={SECTION_HEADER[section].subtitle(zone)}
+        tabs={section === 'planner' ? (
           <PageTabs
-            label="Social sections"
+            label="Planner"
             value={view}
             onValueChange={setView}
             items={[
-              { value: 'accounts', label: 'Accounts' },
               { value: 'compose', label: 'Compose' },
               { value: 'calendar', label: 'Calendar' },
               { value: 'queue', label: 'Queue' },
-              { value: 'inbox', label: 'Inbox' },
-              { value: 'autodm', label: 'Auto-DM' },
-              { value: 'analytics', label: 'Analytics' },
             ]}
           />
-        )}
+        ) : undefined}
       />
       {data?.sample && (
         <p className="rounded-lg border border-line bg-card px-4 py-3 text-sm text-faint" data-testid="social-sample-banner">
@@ -672,6 +695,11 @@ export function SocialScheduler({
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
+                {onManageAccounts && (
+                  <Button type="button" variant="outline" className={`${CONTROL} size-11 rounded-full border-dashed p-0 sm:size-10`} aria-label="Connect another account" title="Connect another account" data-testid="composer-add-account" onClick={onManageAccounts}>
+                    <Plus className="size-4" />
+                  </Button>
+                )}
               </div>
               <div className="rounded-xl border border-line bg-card p-3">
                 <MediaAttachments items={attachments} setItems={setAttachments}>
@@ -993,7 +1021,7 @@ export function SocialScheduler({
   );
 }
 
-function AccountsPanel({
+export function AccountsPanel({
   accounts,
   onConnect,
 }: {

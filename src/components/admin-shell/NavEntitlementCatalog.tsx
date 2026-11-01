@@ -33,7 +33,7 @@ export function NavEntitlementCatalog({
             {/* Tabs a row's page opens instead of a row of their own (Livestream, from Communities). */}
             {live.map((item) => {
               const opens = tabsOpenedFrom(item.id, tabs);
-              return opens.length > 0 ? <div key={item.id} data-nav-opens={opens.join('|')} /> : null;
+              return opens.length > 0 ? <div key={`${item.id}:${item.view ?? ''}`} data-nav-opens={opens.join('|')} /> : null;
             })}
           </div>
         );

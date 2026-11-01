@@ -92,9 +92,10 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
     ? (view as SocialView)
     : 'compose';
   const viewTitle = initialView === 'accounts' ? 'Accounts'
-    : initialView === 'calendar' ? 'Calendar'
-    : initialView === 'queue' ? 'Queue'
-    : 'Compose';
+    : initialView === 'analytics' ? 'Analytics'
+    : initialView === 'inbox' ? 'Inbox'
+    : initialView === 'autodm' ? 'Auto-DM'
+    : 'Planner';
 
   return (
     <TooltipProvider>
@@ -108,6 +109,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
             side="public"
             onSide={() => {}}
             activeTab="social"
+            activeView={initialView}
             placeholder={null}
             tabs={tabs}
             tenantName="Sample Ministry"
@@ -132,6 +134,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
               analyticsLoader={sampleAnalytics}
               inboxApi={sampleInbox}
               autoDmApi={sampleAutoDm}
+              onManageAccounts={() => {}}
             />
           )}
           </div>
