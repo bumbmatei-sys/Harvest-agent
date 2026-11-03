@@ -22,7 +22,7 @@ Ground rules:
    - `https://eden.so` — crawl of `/`, `/pricing`, `/teams`, `/enterprise`, `/features/discover`, `/features/creators`, plus dark-mode and mobile runs.
    - `https://app.eden.so` — sign-in page only, light and dark.
    - Raw JSON is in `docs/design/tokens/` with logo/favicon fields stripped.
-2. **Eden app's public CSS bundles** served from `app.eden.so/assets` (no login required). The app's theme custom properties (light `:root`, `.dark`, accent variants) are captured in `docs/design/tokens/eden-app.css-variables.css`. This is the most complete source for in-app tokens, because every logged-in page uses these variables.
+2. **Eden app's public CSS bundles** served from `app.eden.so/assets` (no login required). The app's theme custom properties (light `:root`, `.dark`, accent variants) were read from them and only the resulting values (HEX, sizes, radii, shadows) are recorded in the token tables below. The stylesheets themselves are not in the repo; a local reference copy is kept on the box at `/workspace/eden-design-ref/` (outside the repo). This is the most complete source for in-app tokens, because every logged-in page uses these variables.
 
 ### Not reachable
 
@@ -44,7 +44,6 @@ Note: the marketing site (eden.so) uses a different type system (EB Garamond dis
 - `eden-app-signin.dark.dembrandt.json`
 - `eden-app-signin.shadcn.css`
 - `eden-app-signin.tailwind-theme.css`
-- `eden-app.css-variables.css`
 - `eden-marketing.crawl6.dembrandt.json`
 - `eden-marketing.dark.dembrandt.json`
 - `eden-marketing.mobile.dembrandt.json`
