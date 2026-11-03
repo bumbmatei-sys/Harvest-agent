@@ -450,19 +450,17 @@ describe('AdminDashboard feeds the blog screen the same answer the knowledge bas
     expect(screen!.getAttribute('data-knowledge-base-enabled')).toBe(String(expected));
   });
 
-  it.each(SCENES)('$label — the AI tab renders AdminRAG exactly when the helper says so', async (scene) => {
-    const expected = shellSays(scene);
+  // AdminDashboard sets AI_KNOWLEDGE_NAV_ENABLED to false (founder: "hide ai
+  // knowledge for now"), so /admin/ai answers "Page not found." whatever the
+  // helper says. Flipping that constant back to true must restore the old
+  // assertion: AdminRAG mounts exactly when `shellSays(scene)` is true, and
+  // otherwise the "AI Knowledge" upgrade wall stands in its place.
+  it.each(SCENES)('$label — the AI tab shows "Page not found." instead of AdminRAG while the nav flag is off', async (scene) => {
     await open(scene, 'ai-knowledge');
 
-    const rag = host.querySelector('[data-screen="AdminRAG"]');
-    const wall = host.querySelector('[data-upgrade-wall]');
-    if (expected) {
-      expect(rag, 'the knowledge base stayed walled after the helper said yes').not.toBeNull();
-      expect(wall).toBeNull();
-    } else {
-      expect(rag, 'AdminRAG mounted while the helper said no').toBeNull();
-      expect(wall?.getAttribute('data-upgrade-wall')).toBe('AI Knowledge');
-    }
+    expect(host.querySelector('[data-screen="AdminRAG"]'), 'AdminRAG mounted while the AI nav is disabled').toBeNull();
+    expect(host.querySelector('[data-upgrade-wall]'), 'an upgrade wall stood in for a page that is hidden').toBeNull();
+    expect(host.textContent ?? '').toContain('Page not found.');
   });
 
   it('a Church tenant with no add-ons is handed false, the add-on flips it, and Ministry has it already', async () => {

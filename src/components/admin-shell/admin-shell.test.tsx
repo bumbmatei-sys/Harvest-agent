@@ -49,14 +49,17 @@ describe('shell nav mapping', () => {
     expect(people).not.toContain('sms');
   });
 
-  it('lists Forms, Events and Check-in in one Public group, and Branding in no sidebar group', () => {
+  it('lists Events, Forms and Check-in in one Public group, and Branding in no sidebar group', () => {
     const withForms = new Map(tabs);
     withForms.set('forms', { id: 'forms', label: 'Forms', icon: FileText });
     withForms.set('branding', { id: 'branding', label: 'Branding', icon: FileText });
     const publicGroups = groupsForSide('public', withForms);
     const engage = publicGroups.find((group) => group.items.some((item) => item.id === 'events'));
     expect(engage, 'Events is not in the Public side').toBeTruthy();
-    expect(engage!.items.map((item) => item.id)).toEqual(['forms', 'events', 'checkin']);
+    // The Engage group order is Newsletter, Events, Forms, Sign-up pages,
+    // Check-in; this map holds neither newsletter nor sign-up pages, so it reads
+    // Events, Forms, Check-in.
+    expect(engage!.items.map((item) => item.id)).toEqual(['events', 'forms', 'checkin']);
     for (const id of ['forms', 'events', 'checkin']) expect(sideForTab(id)).toBe('public');
     const everywhere = groupsForAllSides(withForms).flatMap((group) => group.items.map((item) => item.id));
     expect(everywhere, 'Branding is back in the sidebar; it lives in Settings > Campus & branding').not.toContain('branding');
@@ -99,7 +102,8 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('storefront')).toBe('Website');
     // WAS 'Channels'. Social media is its own section now.
     expect(sectionForTab('social')).toBe('Social media');
-    expect(sectionForTab('newsletter')).toBe('Channels');
+    // WAS 'Channels'. The Channels rows moved into Engage.
+    expect(sectionForTab('newsletter')).toBe('Engage');
     expect(sectionForTab('products')).toBeNull();
     expect(sectionForTab('courses')).toBe('Products');
   });

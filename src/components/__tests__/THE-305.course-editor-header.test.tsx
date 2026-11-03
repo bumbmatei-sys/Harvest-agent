@@ -790,6 +790,7 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     'e26e917f5ed4bcd29d35f7c21c074f881d0388cc35b9ed9b731e5e77be077372', // #585: Livestream opens from the Communities page
     'adc79c0b2b3b5c7dbdb72238cae691b43b9c8451a7a70d117ca0d692df9adf6f', // #587: the Social media section
     '203d4527f6319351db4efa251167154a75b5fb436a16d08515b74d5d6c7a5c9a', // #589: the Storefront tab
+    '427f4b4054d6401eca3f00a59d207408025fcbfe74adeb6389541edb467db162', // #592: quick wins (Social owner, AI Knowledge hidden)
   // main at 133d557 — THE-291 (#434) removed the client-side plan write.
   '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
   // main + THE-326 — service planning split out of Events into its own section.

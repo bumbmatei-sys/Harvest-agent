@@ -35,9 +35,12 @@ export interface SocialActor {
 }
 
 /**
- * The same people who see Social in the nav (`hasFullAccess`): a super
- * admin, a roster admin, the legacy church-admin role, or an admin whose
- * permission map has full access. A role of `admin` alone does not.
+ * The same people who see Social in the nav (`hasFullAccess`, or the plan
+ * owner): a super admin, the tenant owner, a roster admin, the legacy
+ * church-admin role, or an admin whose permission map has full access. A role
+ * of `admin` alone does not. The owner is read from `tenants/{tenantId}.ownerId`
+ * — the field `requireOwner` (src/lib/api-auth.ts) admits — never from the
+ * request.
  *
  * `isSuperAdmin` is the flag `verifyAuth` set from the verified token
  * (the platform-admin claim, or the frozen super-admin email list). Nothing
@@ -56,7 +59,12 @@ async function hasSocialFullAccess(user: AuthenticatedUser, tenantId: string): P
   const permissions = (data.permissions ?? {}) as Record<string, unknown>;
   if (data.role === 'church_admin') return true;
   if (permissions.fullAccess === true) return true;
-  return false;
+  // The buyer of the tenant: `tenants/{tenantId}.ownerId`, the same field
+  // `requireOwner` (src/lib/api-auth.ts) reads. A role of `admin` alone never
+  // granted this, so the owner was refused the screen they pay for.
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+  const tenant = tenantSnap.exists ? tenantSnap.data() || {} : {};
+  return tenant.ownerId === user.uid;
 }
 
 /**

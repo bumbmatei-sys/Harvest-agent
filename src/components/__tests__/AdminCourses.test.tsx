@@ -179,7 +179,10 @@ describe('AdminCourses as the Products page', () => {
     await mount({ productsPage: true });
     await act(async () => { newCourseButton('New product').click(); });
     const types = [...document.body.querySelectorAll('[data-product-type]')].map((e) => e.getAttribute('data-product-type'));
-    expect(types).toEqual(['course', 'digital-download', 'coaching', 'bundle', 'community', 'more']);
+    expect(types).toEqual(['course', 'digital-download', 'coaching', 'bundle', 'more']);
+    // The community product type was removed from the picker; a community is
+    // managed from the Communities page, not sold as a product.
+    expect(types, 'community is still offered in the New product picker').not.toContain('community');
     for (const banned of ['fundraising', 'event', 'service', 'form']) expect(types).not.toContain(banned);
     expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
     await pickCourseType();

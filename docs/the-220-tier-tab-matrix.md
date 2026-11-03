@@ -8,7 +8,7 @@
 | Campus | visible · full | visible · full | visible · full |
 | Courses | visible · full | visible · full | visible · full |
 | Blog | visible · upgrade screen | visible · full | visible · full |
-| AI Knowledge | visible · upgrade screen | hidden | visible · full |
+| AI Knowledge | hidden | hidden | hidden |
 | Newsletter | visible · upgrade screen | hidden | visible · full |
 | Fundraising | visible · upgrade screen | visible · full | visible · full |
 | Events | visible · upgrade screen | hidden | visible · full |

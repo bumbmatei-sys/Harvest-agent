@@ -17,26 +17,27 @@ const shape = (side: 'people' | 'public') => groupsForSide(side, tabs).map((g) =
 describe('the sidebar, as the founder specified it', () => {
   // WAS Channels (Social, Newsletter, Livestream, Blog) first. The founder gave
   // social media its own section, each row one part of the social screen.
-  it('Public: Social media (Analytics, Planner, Inbox, Auto-DM), Channels, Engage, Products', () => {
+  it('Public: Social media (Analytics, Planner, Inbox, Auto-DM), Website, Engage, Products', () => {
     const groups = shape('public');
     const social = groupsForSide('public', tabs)[0];
     expect(social.label).toBe('Social media');
     expect(social.items.map((i) => [i.id, i.view, i.label])).toEqual([
       ['social', 'analytics', 'Analytics'], ['social', 'planner', 'Planner'], ['social', 'inbox', 'Inbox'], ['social', 'autodm', 'Auto-DM'],
     ]);
-    // WAS Channels with Blog in it. The founder's Website section holds the Storefront and the Blog.
-    expect(groups[1]).toEqual({ label: 'Channels', items: ['newsletter', 'livestream', 'sms'] });
-    expect(groups[2]).toEqual({ label: 'Website', items: ['blog'] });
-    expect(groups[3]).toEqual({ label: 'Engage', items: ['forms', 'events', 'checkin'] });
-    expect(groups[4]).toEqual({ label: '', items: ['products'] });
+    // WAS a Channels group (Newsletter, Livestream, SMS): those rows moved to the
+    // end of Engage. The founder's Website section holds the Storefront and the Blog.
+    expect(groups[1]).toEqual({ label: 'Website', items: ['blog'] });
+    expect(groups[2]).toEqual({ label: 'Engage', items: ['newsletter', 'events', 'forms', 'checkin', 'livestream', 'sms'] });
+    expect(groups[3]).toEqual({ label: '', items: ['products'] });
+    expect(groups[4]).toEqual({ label: '', items: ['ai'] });
     const withStorefront = new Map(tabs);
     withStorefront.set('storefront', { id: 'storefront', label: 'Storefront', icon: Home });
     const website = groupsForSide('public', withStorefront).find((g) => g.id === 'website');
     expect(website && [website.label, website.items.map((i) => i.id)]).toEqual(['Website', ['storefront', 'blog']]);
-    // Without the social tab there is no Social media section at all.
+    // Without the social tab there is no Social media section at all, and Website leads.
     const without = new Map(tabs);
     without.delete('social');
-    expect(groupsForSide('public', without)[0].label).toBe('Channels');
+    expect(groupsForSide('public', without)[0].label).toBe('Website');
   });
 
   it('a Social media row is open for its own section; Compose, Calendar and Queue are the Planner', () => {
@@ -45,13 +46,13 @@ describe('the sidebar, as the founder specified it', () => {
     expect(rowViewOf('crm', 'contact-1')).toBeNull();
   });
 
-  it('Livestream moved into the community: no Channels row while the Communities page is there to open it', () => {
+  it('Livestream moved into the community: no row while the Communities page is there to open it', () => {
     const withCommunities = new Map(tabs);
     withCommunities.set('community-setup', { id: 'community-setup', label: 'Communities', icon: Home });
     const groups = groupsForSide('public', withCommunities).map((g) => ({ label: g.label, items: g.items.map((i) => i.id) }));
-    // WAS groups[0], with Social first; Social media is its own section now.
-    // WAS ['newsletter', 'blog', 'sms']: Blog moved to the Website section.
-    expect(groups[1]).toEqual({ label: 'Channels', items: ['newsletter', 'sms'] });
+    // WAS groups[0], with Social first; Social media is its own section now, and the
+    // old Channels rows sit at the end of Engage, past the Website section.
+    expect(groups[2]).toEqual({ label: 'Engage', items: ['newsletter', 'events', 'forms', 'checkin', 'sms'] });
     expect(groups.flatMap((g) => g.items)).toContain('community-setup');
     // The Communities row reports what its page opens, so the nav still reaches it.
     expect(tabsOpenedFrom('community-setup', withCommunities)).toEqual([withCommunities.get('livestream')!.label]);
@@ -59,7 +60,7 @@ describe('the sidebar, as the founder specified it', () => {
     noStream.delete('livestream');
     expect(tabsOpenedFrom('community-setup', noStream)).toEqual([]);
     // An admin who may run the stream but not open Communities keeps the row (above).
-    expect(shape('public')[1].items).toContain('livestream');
+    expect(shape('public')[2].items).toContain('livestream');
   });
 
   it('Livestream opens from Communities: its trail reads Communities > Livestream, linking back', () => {
@@ -72,9 +73,9 @@ describe('the sidebar, as the founder specified it', () => {
     const without = new Map(tabs);
     without.delete('sms');
     const groups = groupsForSide('public', without).map((g) => g.items.map((i) => i.id));
-    // WAS groups[0], with Social first; Social media is its own section now.
-    // WAS ['newsletter', 'livestream', 'blog']: Blog moved to the Website section.
-    expect(groups[1]).toEqual(['newsletter', 'livestream']);
+    // WAS groups[0], with Social first; Social media is its own section now, and the
+    // old Channels rows sit at the end of Engage, past the Website section.
+    expect(groups[2]).toEqual(['newsletter', 'events', 'forms', 'checkin', 'livestream']);
   });
 
   it('People: People (CRM, Signups, Campuses, Services), Giving (Fundraising, Donations, Accounting), then Platform; Notes is not under Giving', () => {

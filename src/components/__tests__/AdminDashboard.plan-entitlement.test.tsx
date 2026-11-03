@@ -419,10 +419,19 @@ describe("a Church tenant's admin nav is exactly the ten correct items", () => {
     expect(await entitledLabels('max' as TenantPlan)).toEqual(await entitledLabels('ministry'));
   }, 40_000);
 
-  it('shows the upgrade wall — naming the feature — on each of the eight it did not buy', async () => {
+  it('shows the upgrade wall — naming the feature — on each of the seven it did not buy', async () => {
     const walled: string[] = [];
     for (const row of GATED_TABS) {
       const { screen, wall } = await openTab('church', row);
+      // 🔴 AI Knowledge is not walled and is not reached either: the section is
+      // hidden for EVERY tier while AI_KNOWLEDGE_NAV_ENABLED is false, so a
+      // typed /admin/ai answers "Page not found." — never AdminRAG, and never an
+      // upgrade wall, which would advertise the feature being hidden.
+      if (row.label === 'AI Knowledge') {
+        expect(screen, 'AI Knowledge still mounted its screen while the section is hidden').toBeNull();
+        expect(wall, 'a typed /admin/ai sold the hidden feature').toBeNull();
+        continue;
+      }
       if (wall !== null) {
         walled.push(row.label);
         expect(screen, `${row.label} mounted its screen behind an upgrade wall`).toBeNull();
@@ -436,8 +445,11 @@ describe("a Church tenant's admin nav is exactly the ten correct items", () => {
     // same `eventRegistration` cell, so a tier that met the wall on Events now
     // meets it on Services too. ⚠️ Nothing Individual could reach before became
     // unreachable: the run sheet was behind Events, which was already walled.
+    // 🔴 'AI Knowledge' LEFT THIS LIST: it is hidden behind its own master switch
+    // (AI_KNOWLEDGE_NAV_ENABLED, false), so it is never walled — see the
+    // assertion above. Seven remain, all refused by the plan gate.
     expect(walled.sort()).toEqual(
-      ['AI Knowledge', 'Giving records', 'Events', 'Forms', 'Livestream', 'Newsletter', 'SMS', 'Services'].sort(),
+      ['Giving records', 'Events', 'Forms', 'Livestream', 'Newsletter', 'SMS', 'Services'].sort(),
     );
   });
 
@@ -464,6 +476,11 @@ describe.each([
   it('reaches exactly the surfaces its tier carries, and no others', async () => {
     const features = getPlanFeatures(plan);
     const expected = [...UNGATED_TABS, ...GATED_TABS]
+      // 🔴 AI Knowledge is hidden from EVERY surface while
+      // AI_KNOWLEDGE_NAV_ENABLED is false, so no tier reaches it — Ministry,
+      // whose `aiKnowledge` cell is true, included. Its hiding is asserted by
+      // name in the tests below.
+      .filter((r) => r.label !== 'AI Knowledge')
       .filter((r) => r.entitled(features))
       .map((r) => r.label)
       .sort();
@@ -499,8 +516,15 @@ describe('only the free tier shows every tab; a priced tier shows what it bought
     // 'Campus', an uncapped/unknown one 'Campuses'.
     const withoutChurch = (l: string[]) => l.filter((x) => x !== 'Campus' && x !== 'Campuses');
 
-    // Free carries every gated tab, none of which its own cells unlock.
+    // Free carries every gated tab, none of which its own cells unlock — bar the
+    // one section hidden from EVERY tier while AI_KNOWLEDGE_NAV_ENABLED is
+    // false, which is named here as hidden rather than skipped.
     for (const row of GATED_TABS) {
+      if (row.label === 'AI Knowledge') {
+        expect(navs.get('free')!, 'AI Knowledge is back in the free nav while the section is hidden')
+          .not.toContain(row.label);
+        continue;
+      }
       expect(navs.get('free')!, `free lost "${row.label}" — the point of the tier`).toContain(row.label);
     }
     // And the priced tiers are now strictly narrower, which is the correction.
@@ -568,6 +592,12 @@ describe('an unresolved plan is refused, not unlocked', () => {
     for (const row of GATED_TABS) {
       const { screen, wall } = await openTab(null, row);
       expect(screen, `${row.label} unlocked on an unresolved plan`).toBeNull();
+      // 🔴 AI Knowledge is hidden behind AI_KNOWLEDGE_NAV_ENABLED, not behind the
+      // plan gate, so it answers "Page not found." rather than a wall.
+      if (row.label === 'AI Knowledge') {
+        expect(wall, `${row.label} was sold on an upgrade wall while the section is hidden`).toBeNull();
+        continue;
+      }
       expect(wall, `${row.label} showed no upgrade wall on an unresolved plan`).not.toBeNull();
     }
   });
@@ -580,6 +610,13 @@ describe('a super admin still sees everything through platformOverride', () => {
     hasPlatformOverrideMock.mockReturnValue(true);
     for (const row of GATED_TABS) {
       const { screen, wall } = await openTab(null, row, { role: 'super_admin' });
+      // 🔴 platformOverride unlocks the PLAN gate; it does not lift a master
+      // switch. AI Knowledge stays hidden while AI_KNOWLEDGE_NAV_ENABLED is false.
+      if (row.label === 'AI Knowledge') {
+        expect(screen, 'platformOverride put a hidden section back').toBeNull();
+        expect(wall).toBeNull();
+        continue;
+      }
       expect(screen, `platformOverride lost "${row.label}"`).toBe(row.screen);
       expect(wall).toBeNull();
     }
@@ -599,11 +636,15 @@ describe('a super admin still sees everything through platformOverride', () => {
     // tenant's. Pinned so the narrowing cannot be "fixed" by widening it back.
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(false);
-    const { screen, wall } = await openTab('church', GATED_TABS.find((r) => r.label === 'AI Knowledge')!, {
+    // ⚠️ Newsletter is the example now, not AI Knowledge: that section is hidden
+    // behind AI_KNOWLEDGE_NAV_ENABLED for everyone, so it can no longer show the
+    // PLAN refusing anything. Newsletter is Church's own gap — the cell is false
+    // there and true on Ministry — so the wall it names is the plan talking.
+    const { screen, wall } = await openTab('church', GATED_TABS.find((r) => r.label === 'Newsletter')!, {
       role: 'super_admin',
     });
     expect(screen).toBeNull();
-    expect(wall).toBe('AI Knowledge');
+    expect(wall).toBe('Newsletter');
   });
 
   it('unlocks the platform tenant, which has no tenant plan to gate on', async () => {

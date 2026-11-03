@@ -1,0 +1,90 @@
+{
+  "ticket": "#592",
+  "entries": [
+    {
+      "file": "src/__tests__/the-276-dashboard-guards.test.ts",
+      "digest": "5b8eaecc601a9e4fa682674d482101d9f3bb6b2c7a71dfe4fa610e9288c82be6",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-283-growth-guards.test.ts",
+      "digest": "d4b76df258fea60446b3bfed8280b43bc104a3964f9d51241695c11ac392cb33",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-290-giving-guards.test.ts",
+      "digest": "26729495e1b3e61711185454866f0bf8c5bfea655606f77d9706a190ff0d657f",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-294-activity-guards.test.ts",
+      "digest": "c4340612aac0e5b51bcf7a490a7a2ad11addfc659feb7e4bfab9ca97e3cfa3d7",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-299-retention-guards.test.ts",
+      "digest": "a1189e5e0f8b9d18735a33b447145822e428c8a4cd5a2704a2057e5f37a33d10",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/__tests__/the-302-guards.test.ts",
+      "digest": "2112d02c073f2f8e436b2931361711eb56bae42ffabe0b14be906ebbf80e94b4",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "427f4b4054d6401eca3f00a59d207408025fcbfe74adeb6389541edb467db162",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.plan-entitlement.test.tsx",
+      "digest": "80d57528ef121e41dbe5887e0ef05c0b0a63df17a88819d43a54602c55d608ae",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-nav-gating.test.tsx",
+      "digest": "db2b8ac3e7e226b40cf8cbddfc0bd04caa26e84ac4d4a485fb4dea412937174b",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDashboard.tier-tab-matrix.test.tsx",
+      "digest": "e60d70bd4f239dbacc71ea618d3d74056d40d5242f6a56563921063264a2a267",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/AdminDocs.persistent-tree.test.tsx",
+      "digest": "913b3d1befbdca7a1e6440f7537c31ec50760d9e3cdac7918022aa4905ac3597",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-292.country-prompt.test.tsx",
+      "digest": "634d88267dbc5a3e1f48a3035642e9b80dc24b7cd78aaad846d20cb11d67e546",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-305.course-editor-header.test.tsx",
+      "digest": "23040ba9fbcfaf16a45c571ca4a21b94d888af230622b5e81abe87b9ea4ba3e7",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/__tests__/THE-332.nav-rail.test.tsx",
+      "digest": "5f06f1a7df9cbfb332c60223993decda441258280e6d912ba1cd9201d831034b",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/admin-shell.test.tsx",
+      "digest": "31c6297c3c39e460254d130f47c232f77a98a22504fa76e706ad191961d0378d",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.test.ts",
+      "digest": "28146ff250c6e44d5ad6abdaf9b9d251d58fdd94aa405afc92046e6d545a794c",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "099e9b31d05e6e8ff2e71177dd6b6bb7a3bdb7089104fa450cd210a96d214632",
+      "why": "APPENDED, NOT SUBSTITUTED — #592: quick wins (Social owner access, AI Knowledge hidden behind AI_KNOWLEDGE_NAV_ENABLED, Community removed from the New product picker, Channels folded into Engage), and the tests and pins that follow. Appended, nothing removed."
+    }
+  ]
+}
