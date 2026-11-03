@@ -1,0 +1,989 @@
+:root,:host {
+  --font-sans:var(--font-eden);
+  --font-serif:var(--font-geist-mono);
+  --font-mono:var(--font-geist-mono);
+  --color-red-50:#fef2f2;
+  --color-red-100:#ffe2e2;
+  --color-red-200:#ffcaca;
+  --color-red-300:#ffa3a3;
+  --color-red-400:#ff6568;
+  --color-red-500:#fb2c36;
+  --color-red-600:#e40014;
+  --color-red-700:#bf000f;
+  --color-red-950:#460809;
+  --color-orange-50:#fff7ed;
+  --color-orange-100:#ffedd5;
+  --color-orange-300:#ffb96d;
+  --color-orange-400:#ff8b1a;
+  --color-orange-600:#f05100;
+  --color-amber-50:#fffbeb;
+  --color-amber-100:#fef3c6;
+  --color-amber-200:#fee685;
+  --color-amber-300:#ffd236;
+  --color-amber-400:#fcbb00;
+  --color-amber-500:#f99c00;
+  --color-amber-600:#dd7400;
+  --color-amber-700:#b75000;
+  --color-amber-800:#953d00;
+  --color-amber-900:#7b3306;
+  --color-amber-950:#461901;
+  --color-yellow-400:#fac800;
+  --color-yellow-500:#edb200;
+  --color-yellow-600:#cd8900;
+  --color-yellow-700:#a36100;
+  --color-yellow-950:#432004;
+  --color-emerald-50:#ecfdf5;
+  --color-emerald-100:#d0fae5;
+  --color-emerald-200:#a4f4cf;
+  --color-emerald-300:#5ee9b5;
+  --color-emerald-400:#00d294;
+  --color-emerald-500:#00bb7f;
+  --color-emerald-600:#009767;
+  --color-emerald-700:#007956;
+  --color-emerald-800:#005f46;
+  --color-emerald-900:#004e3b;
+  --color-teal-100:#cbfbf1;
+  --color-teal-300:#46ecd5;
+  --color-teal-400:#00d3bd;
+  --color-teal-600:#009588;
+  --color-sky-100:#dff2fe;
+  --color-sky-200:#b8e6fe;
+  --color-sky-300:#77d4ff;
+  --color-sky-400:#00bcfe;
+  --color-sky-500:#00a5ef;
+  --color-sky-600:#0084cc;
+  --color-sky-700:#0069a4;
+  --color-sky-800:#005986;
+  --color-blue-200:#bedbff;
+  --color-blue-300:#90c5ff;
+  --color-blue-400:#54a2ff;
+  --color-blue-500:#3080ff;
+  --color-blue-600:#155dfc;
+  --color-blue-700:#1447e6;
+  --color-violet-50:#f5f3ff;
+  --color-violet-100:#ede9fe;
+  --color-violet-300:#c4b4ff;
+  --color-violet-400:#a685ff;
+  --color-violet-500:#8d54ff;
+  --color-violet-600:#7f22fe;
+  --color-violet-700:#7008e7;
+  --color-purple-600:#9810fa;
+  --color-fuchsia-100:#fae8ff;
+  --color-fuchsia-300:#f2a9ff;
+  --color-fuchsia-400:#ec6cff;
+  --color-fuchsia-500:#e12afb;
+  --color-fuchsia-600:#c600db;
+  --color-pink-300:#fda5d5;
+  --color-pink-500:#f6339a;
+  --color-pink-600:#e30076;
+  --color-rose-50:#fff1f2;
+  --color-rose-100:#ffe4e6;
+  --color-rose-200:#ffccd3;
+  --color-rose-300:#ffa2ae;
+  --color-rose-400:#ff667f;
+  --color-rose-500:#ff2357;
+  --color-rose-600:#e70044;
+  --color-rose-700:#c20039;
+  --color-neutral-50:#fafafa;
+  --color-neutral-100:#f5f5f5;
+  --color-neutral-200:#e5e5e5;
+  --color-neutral-300:#d4d4d4;
+  --color-neutral-400:#a1a1a1;
+  --color-neutral-500:#737373;
+  --color-neutral-600:#525252;
+  --color-neutral-700:#404040;
+  --color-neutral-800:#262626;
+  --color-neutral-900:#171717;
+  --color-neutral-950:#0a0a0a;
+  --color-black:#000;
+  --color-white:#fff;
+  --spacing:.25rem;
+  --container-xs:20rem;
+  --container-sm:24rem;
+  --container-md:28rem;
+  --container-lg:32rem;
+  --container-xl:36rem;
+  --container-2xl:42rem;
+  --container-3xl:48rem;
+  --container-4xl:56rem;
+  --container-5xl:64rem;
+  --container-6xl:72rem;
+  --text-xs:.75rem;
+  --text-xs--line-height:calc(1 / .75);
+  --text-sm:.875rem;
+  --text-sm--line-height:calc(1.25 / .875);
+  --text-base:1rem;
+  --text-base--line-height:calc(1.5 / 1);
+  --text-lg:1.125rem;
+  --text-lg--line-height:calc(1.75 / 1.125);
+  --text-xl:1.25rem;
+  --text-xl--line-height:calc(1.75 / 1.25);
+  --text-2xl:1.5rem;
+  --text-2xl--line-height:calc(2 / 1.5);
+  --text-3xl:1.875rem;
+  --text-3xl--line-height:calc(2.25 / 1.875);
+  --text-4xl:2.25rem;
+  --text-4xl--line-height:calc(2.5 / 2.25);
+  --text-5xl:3rem;
+  --text-5xl--line-height:1;
+  --font-weight-thin:100;
+  --font-weight-light:300;
+  --font-weight-normal:400;
+  --font-weight-medium:500;
+  --font-weight-semibold:600;
+  --font-weight-bold:700;
+  --tracking-tight:-.035em;
+  --tracking-normal:0em;
+  --tracking-wide:.025em;
+  --tracking-wider:.05em;
+  --tracking-widest:.1em;
+  --leading-tight:1.25;
+  --leading-snug:1.375;
+  --leading-normal:1.5;
+  --leading-relaxed:1.625;
+  --radius-sm:8px;
+  --radius-md:12px;
+  --radius-lg:18px;
+  --radius-xl:.75rem;
+  --radius-2xl:1rem;
+  --radius-3xl:1.5rem;
+  --shadow-md:0 8px 20px #0f172a0f;
+  --shadow-lg:0 14px 32px #0f172a14;
+  --drop-shadow-lg:0 4px 4px #00000026;
+  --ease-in:cubic-bezier(.4, 0, 1, 1);
+  --ease-out:cubic-bezier(0, 0, .2, 1);
+  --ease-in-out:cubic-bezier(.4, 0, .2, 1);
+  --animate-spin:spin 1s linear infinite;
+  --animate-ping:ping 1s cubic-bezier(0, 0, .2, 1) infinite;
+  --animate-pulse:pulse 2s cubic-bezier(.4, 0, .6, 1) infinite;
+  --animate-bounce:bounce 1s infinite;
+  --blur-xs:4px;
+  --blur-sm:8px;
+  --blur-md:12px;
+  --blur-xl:24px;
+  --blur-2xl:40px;
+  --blur-3xl:64px;
+  --aspect-video:16 / 9;
+  --default-transition-duration:.15s;
+  --default-transition-timing-function:cubic-bezier(.4, 0, .2, 1);
+  --default-font-family:var(--font-sans);
+  --default-mono-font-family:var(--font-mono);
+  --radius-chip:9px;
+  --radius-control:10px;
+  --color-text-dark-primary:#272523;
+  --color-text-dark-secondary:#686764;
+  --color-icon-dark-secondary:#91908e;
+  --color-eden-accent:var(--eden-host-accent,#39624d);
+  --font-eden-serif:"Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --gradient-dark:linear-gradient(90deg, #062a19 0%, #26553f 100%);
+  --font-eden:"Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-lora:"Lora", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-geist-mono:"Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --color-primary:#66b08b;
+  --color-primary-100:#052415;
+  --color-primary-90:#09321f;
+  --color-primary-80:#224735;
+  --color-primary-70:#395a4b;
+  --color-primary-60:#526f61;
+  --color-primary-50:#6a8377;
+  --color-primary-40:#90a297;
+  --color-primary-30:#b3bfb7;
+  --color-primary-20:#ccd4cd;
+  --color-primary-10:#e3e7e3;
+  --color-primary-5:#eff2ee;
+  --color-primary-translucent-100:#66b08b;
+  --color-primary-translucent-70:#66b08bb3;
+  --color-primary-translucent-40:#66b08b66;
+  --color-primary-translucent-10:#66b08b1a;
+  --color-primary-translucent-5:#66b08b0d;
+  --color-pastel-amber:#c99f5e;
+  --color-pastel-red:#b06866;
+  --color-pastel-blue:#668db0;
+  --color-pastel-violet:#8166b0;
+  --color-fruit-gray:#7a7a7a;
+  --color-fruit-gray-tint:#e2e2e2;
+  --color-fruit-gray-ink:#2e2e2e;
+  --color-fruit-amber:#dcab6f;
+  --color-fruit-amber-tint:#f7eddf;
+  --color-fruit-amber-ink:#54412a;
+  --color-fruit-orange:#d17866;
+  --color-fruit-orange-tint:#f5e1dd;
+  --color-fruit-orange-ink:#4f2e27;
+  --color-fruit-red:#b9575e;
+  --color-fruit-red-tint:#f0dadc;
+  --color-fruit-red-ink:#462124;
+  --color-fruit-pink:#cf8fb0;
+  --color-fruit-pink-tint:#f4e6ee;
+  --color-fruit-pink-ink:#4f3643;
+  --color-fruit-purple:#7d6599;
+  --color-fruit-purple-tint:#e2dde9;
+  --color-fruit-purple-ink:#30263a;
+  --color-fruit-indigo:#6470b4;
+  --color-fruit-indigo-tint:#dde0ef;
+  --color-fruit-indigo-ink:#262b44;
+  --color-fruit-blue:#51708c;
+  --color-fruit-blue-tint:#d9e0e6;
+  --color-fruit-blue-ink:#1f2b35;
+  --color-fruit-teal:#5fa8a6;
+  --color-fruit-teal-tint:#dceceb;
+  --color-fruit-teal-ink:#24403f;
+  --color-fruit-green:#66b08b;
+  --color-fruit-green-tint:#ddeee5;
+  --color-fruit-green-ink:#274335;
+  --color-fruit-red-text:#b9575e;
+  --color-fruit-amber-text:#9a784e;
+  --color-fruit-green-text:#4d8468;
+  --color-accent-cloudberry:#d17866;
+  --color-accent-gooseberry:#dcab6f;
+  --color-accent-eden:#66b08b;
+  --color-accent-olive:var(--color-accent-eden);
+  --color-accent-blueberry:#51708c;
+  --color-accent-acai:#7d6599;
+  --color-accent-strawberry:#a64b52;
+  --color-text-dark-error:#c0272e;
+  --color-background-page:#f7f7f5;
+  --color-background-pane:#fff;
+  --color-surface-popover:#fff;
+  --color-background-sidebar:#f9f9f7;
+  --color-background-secondary:#f6f6f4;
+  --color-background-field:#f5f5f3;
+  --color-background-field-hover:#e8e8e4;
+  --color-background-menu:#fff;
+  --color-background-main:#fff;
+  --surface-canvas:#fcfcfa;
+  --surface-sidebar:#f5f4f1;
+  --surface-card:#fff;
+  --surface-highlight:#f9f9f7;
+  --surface-floating:#fcfcfa;
+  --canvas-grid-dot:#27252321;
+  --color-border-subtle:#8e8e8e40;
+  --color-neutral-light:#fff;
+  --color-neutral-dark-10:#2725231a;
+  --color-button-primary-default-background:#000;
+  --color-button-primary-default-text:#fff;
+  --color-background-primary-selected:#66b08b1f;
+  --color-divider:#2725231a;
+  --background-page-gradient:radial-gradient(ellipse 120% 90% at 15% -10%, #0000000b 0%, #0000 75%), radial-gradient(ellipse 110% 80% at 105% 110%, #00000008 0%, #0000 80%);
+  --background-page-gradient-blend:multiply;
+  --background-page-grain:url("data:image/svg+xml;
+  --color-text-primary:#272523;
+  --color-text-secondary:#55524e;
+  --color-text-muted:#77746f;
+  --color-border:#2725231a;
+  --color-surface-subtle:#eff2ee;
+  --color-page:#f7f7f5;
+  --color-eden-primary:#66b08b;
+  --color-danger:#e36a66;
+  --color-danger-hover:#d95d59;
+  --font-eden-mono:"Geist Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root,:host {
+  --color-red-50:lab(96.5005% 4.18508 1.52328);
+  --color-red-100:lab(92.243% 10.2865 3.83865);
+  --color-red-200:lab(86.017% 19.8815 7.75869);
+  --color-red-300:lab(76.5514% 36.422 15.5335);
+  --color-red-400:lab(63.7053% 60.745 31.3109);
+  --color-red-500:lab(55.4814% 75.0732 48.8528);
+  --color-red-600:lab(48.4493% 77.4328 61.5452);
+  --color-red-700:lab(40.4273% 67.2623 53.7441);
+  --color-red-950:lab(13.003% 29.04 16.7519);
+  --color-orange-50:lab(97.7008% 1.53735 5.90649);
+  --color-orange-100:lab(94.7127% 3.58394 14.3151);
+  --color-orange-300:lab(80.8059% 21.7313 50.4455);
+  --color-orange-400:lab(70.0429% 42.5156 75.8207);
+  --color-orange-600:lab(57.1026% 64.2584 89.8886);
+  --color-amber-50:lab(98.6252% -.635922 8.42309);
+  --color-amber-100:lab(95.916% -1.21653 23.111);
+  --color-amber-200:lab(91.7203% -.505269 49.9084);
+  --color-amber-300:lab(86.4156% 6.13147 78.3961);
+  --color-amber-400:lab(80.1641% 16.6016 99.2089);
+  --color-amber-500:lab(72.7183% 31.8672 97.9407);
+  --color-amber-600:lab(60.3514% 40.5624 87.1228);
+  --color-amber-700:lab(47.2709% 42.9082 69.2966);
+  --color-amber-800:lab(37.8822% 37.1699 52.2718);
+  --color-amber-900:lab(31.2288% 30.2627 40.0378);
+  --color-amber-950:lab(15.8111% 20.9107 23.3752);
+  --color-yellow-400:lab(83.2664% 8.65132 106.895);
+  --color-yellow-500:lab(76.3898% 14.5258 98.4589);
+  --color-yellow-600:lab(62.7799% 22.4197 86.1544);
+  --color-yellow-700:lab(47.8202% 25.2426 66.5015);
+  --color-yellow-950:lab(16.8146% 15.7422 23.1133);
+  --color-emerald-50:lab(97.8462% -6.94966 1.85487);
+  --color-emerald-100:lab(94.9004% -17.0769 5.63836);
+  --color-emerald-200:lab(90.2247% -31.039 9.47084);
+  --color-emerald-300:lab(83.9203% -48.7124 13.8849);
+  --color-emerald-400:lab(75.0771% -60.7313 19.4147);
+  --color-emerald-500:lab(66.9756% -58.27 19.5419);
+  --color-emerald-600:lab(55.0481% -49.9246 15.93);
+  --color-emerald-700:lab(44.4871% -41.0396 11.0361);
+  --color-emerald-800:lab(35.3675% -33.1188 8.04002);
+  --color-emerald-900:lab(28.8637% -26.9249 5.45986);
+  --color-teal-100:lab(95.1845% -17.4212 -.425422);
+  --color-teal-300:lab(84.8977% -48.1516 -1.3321);
+  --color-teal-400:lab(76.0109% -53.3483 -2.27906);
+  --color-teal-600:lab(55.0223% -41.0774 -3.90277);
+  --color-sky-100:lab(94.3709% -4.56053 -8.23453);
+  --color-sky-200:lab(88.6983% -11.3978 -16.8488);
+  --color-sky-300:lab(80.3307% -20.2945 -31.385);
+  --color-sky-400:lab(70.687% -23.6078 -45.9483);
+  --color-sky-500:lab(63.3038% -18.433 -51.0407);
+  --color-sky-600:lab(51.7754% -11.4712 -49.8349);
+  --color-sky-700:lab(41.6013% -9.10804 -42.5647);
+  --color-sky-800:lab(35.164% -9.57692 -34.4068);
+  --color-blue-200:lab(86.15% -4.04379 -21.0797);
+  --color-blue-300:lab(77.5052% -6.4629 -36.42);
+  --color-blue-400:lab(65.0361% -1.42065 -56.9802);
+  --color-blue-500:lab(54.1736% 13.3369 -74.6839);
+  --color-blue-600:lab(44.0605% 29.0279 -86.0352);
+  --color-blue-700:lab(36.9089% 35.0961 -85.6872);
+  --color-violet-50:lab(96.2416% 2.28849 -5.51657);
+  --color-violet-100:lab(93.0838% 4.35197 -9.88284);
+  --color-violet-300:lab(76.7419% 18.3911 -37.0706);
+  --color-violet-400:lab(62.8239% 34.9159 -60.0512);
+  --color-violet-500:lab(49.9355% 55.1776 -81.8963);
+  --color-violet-600:lab(41.088% 68.9966 -91.995);
+  --color-violet-700:lab(35.2783% 67.9912 -88.793);
+  --color-purple-600:lab(43.0295% 75.21 -86.5669);
+  --color-fuchsia-100:lab(93.9419% 9.57647 -9.08735);
+  --color-fuchsia-300:lab(78.5378% 39.3533 -32.9615);
+  --color-fuchsia-400:lab(66.1178% 66.0652 -52.4733);
+  --color-fuchsia-500:lab(56.4256% 83.132 -64.639);
+  --color-fuchsia-600:lab(47.5131% 83.4271 -63.0363);
+  --color-pink-300:lab(77.8308% 38.525 -10.5394);
+  --color-pink-500:lab(56.9303% 76.8162 -8.07021);
+  --color-pink-600:lab(49.5493% 79.8381 2.31768);
+  --color-rose-50:lab(96.2369% 4.94155 1.28011);
+  --color-rose-100:lab(92.8221% 9.86832 2.60075);
+  --color-rose-200:lab(86.806% 19.1909 4.07754);
+  --color-rose-300:lab(76.6339% 38.3549 9.68835);
+  --color-rose-400:lab(64.4125% 63.0291 19.2068);
+  --color-rose-500:lab(56.101% 79.4328 31.4532);
+  --color-rose-600:lab(49.1882% 81.577 36.0311);
+  --color-rose-700:lab(41.1651% 71.6251 30.3087);
+  --color-neutral-50:lab(98.26% 0 0);
+  --color-neutral-100:lab(96.52% -.0000298023 .0000119209);
+  --color-neutral-200:lab(90.952% 0 -.0000119209);
+  --color-neutral-300:lab(84.92% 0 -.0000119209);
+  --color-neutral-400:lab(66.128% -.0000298023 .0000119209);
+  --color-neutral-500:lab(48.496% 0 0);
+  --color-neutral-600:lab(34.924% 0 0);
+  --color-neutral-700:lab(27.036% 0 0);
+  --color-neutral-800:lab(15.204% 0 -.00000596046);
+  --color-neutral-900:lab(7.78201% -.0000149012 0);
+  --color-neutral-950:lab(2.75381% 0 0);
+}
+
+.dark {
+  --color-primary:#73b490;
+  --color-primary-100:#9dd4b5;
+  --color-primary-90:#73b490;
+  --color-primary-80:#5ea07a;
+  --color-primary-70:#4a8c66;
+  --color-primary-60:#3a7854;
+  --color-primary-50:#2e6444;
+  --color-primary-40:#4a8c66;
+  --color-primary-30:#73b4904d;
+  --color-primary-20:#73b49033;
+  --color-primary-10:#73b49026;
+  --color-primary-5:#73b4901a;
+  --color-primary-translucent-100:#73b490;
+  --color-primary-translucent-70:#73b490b3;
+  --color-primary-translucent-40:#73b49066;
+  --color-primary-translucent-10:#73b4901a;
+  --color-primary-translucent-5:#73b4900d;
+  --color-pastel-amber:#cba772;
+  --color-pastel-red:#b47674;
+  --color-pastel-blue:#7496b4;
+  --color-pastel-violet:#8b74b4;
+  --color-fruit-gray:#a3a3a3;
+  --color-fruit-gray-tint:#545454;
+  --color-fruit-gray-ink:#fff;
+  --color-fruit-amber:#e2b77f;
+  --color-fruit-amber-tint:#715d44;
+  --color-fruit-amber-ink:#fff;
+  --color-fruit-orange:#df8b79;
+  --color-fruit-orange-tint:#6f4a41;
+  --color-fruit-orange-ink:#fff;
+  --color-fruit-red:#d47a80;
+  --color-fruit-red-tint:#6a4245;
+  --color-fruit-red-ink:#fff;
+  --color-fruit-pink:#dba0bf;
+  --color-fruit-pink-tint:#6e5361;
+  --color-fruit-pink-ink:#fff;
+  --color-fruit-purple:#9a85b8;
+  --color-fruit-purple-tint:#50475e;
+  --color-fruit-purple-ink:#fff;
+  --color-fruit-indigo:#8a93cf;
+  --color-fruit-indigo-tint:#494d68;
+  --color-fruit-indigo-ink:#fff;
+  --color-fruit-blue:#7b9bb8;
+  --color-fruit-blue-tint:#42515e;
+  --color-fruit-blue-ink:#fff;
+  --color-fruit-teal:#74b8b6;
+  --color-fruit-teal-tint:#3f5e5d;
+  --color-fruit-teal-ink:#fff;
+  --color-fruit-green:#66b08b;
+  --color-fruit-green-tint:#395a4a;
+  --color-fruit-green-ink:#fff;
+  --color-fruit-red-text:#d47a80;
+  --color-fruit-amber-text:#e2b77f;
+  --color-fruit-green-text:#7cc29f;
+  --color-accent-cloudberry:#e5737a;
+  --color-accent-gooseberry:#d4a83a;
+  --color-accent-eden:#73b490;
+  --color-accent-olive:var(--color-accent-eden);
+  --color-accent-nectarine:var(--color-accent-gooseberry);
+  --color-accent-blueberry:#6e96b8;
+  --color-accent-acai:#9b8bb8;
+  --color-accent-strawberry:#c96a6a;
+  --color-accent-seed:#c9a68a;
+  --color-accent-stone:#a0a0a0;
+  --color-text-dark-primary:#d9dcd8;
+  --color-text-dark-secondary:#919191;
+  --color-text-dark-error:#e5737a;
+  --color-icon-dark-secondary:#c3c3c3;
+  --color-background-page:#222;
+  --color-background-pane:#212121;
+  --color-surface-popover:#222;
+  --color-background-sidebar:#1a1a1a;
+  --color-background-secondary:#2a2a2a;
+  --color-background-field:#2a2a2a;
+  --color-background-field-hover:#222;
+  --color-background-menu:#222;
+  --color-background-main:#212121;
+  --surface-canvas:#1a1a1a;
+  --surface-sidebar:#fcfcfa;
+}
+
+.dark[data-accent=mono] {
+  --workspace-primary:#9e9e9e;
+  --workspace-primary-100:#c6c6c6;
+}
+
+[data-accent=ocean] {
+  --accent-seed-light:#0d3b63;
+  --accent-seed-dark:#6fa8d6;
+  --mood-tint-light:#3d84cf;
+  --mood-tint-dark:#5f9fe0;
+}
+
+[data-accent=violet] {
+  --accent-seed-light:#3b2a66;
+  --accent-seed-dark:#a992dc;
+  --mood-tint-light:#7c5cd6;
+  --mood-tint-dark:#9b7fe6;
+}
+
+[data-accent=amber] {
+  --accent-seed-light:#7c4310;
+  --accent-seed-dark:#e2a24f;
+  --mood-tint-light:#d49a4c;
+  --mood-tint-dark:#d9a26a;
+}
+
+[data-accent=rose] {
+  --accent-seed-light:#6d2038;
+  --accent-seed-dark:#d97b98;
+  --mood-tint-light:#d65c80;
+  --mood-tint-dark:#e0759a;
+}
+
+[data-accent=graphite] {
+  --accent-seed-light:#333b44;
+  --accent-seed-dark:#9aa6b2;
+  --mood-tint-light:#4f6c8c;
+  --mood-tint-dark:#7f95ad;
+}
+
+[data-accent=eden] {
+  --accent-seed-dark:#73b490;
+  --mood-tint-light:#4a9a64;
+  --mood-tint-dark:#5fb07f;
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --gradient-dark:linear-gradient(90deg, var(--accent-seed-light) 0%, var(--accent-seed-light) 100%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --gradient-dark:linear-gradient(90deg, color-mix(in srgb, var(--accent-seed-light), #000 28%) 0%, color-mix(in srgb, var(--accent-seed-light), #fff 10.2%) 100%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary:var(--accent-seed-light);
+  --color-primary-100:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-100:color-mix(in srgb, var(--accent-seed-light), #000 28%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-90:var(--accent-seed-light);
+  --color-primary-80:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-80:color-mix(in srgb, var(--accent-seed-light), #fff 10.2%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-70:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-70:color-mix(in srgb, var(--accent-seed-light), #fff 19.5%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-60:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-60:color-mix(in srgb, var(--accent-seed-light), #fff 29.8%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-50:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-50:color-mix(in srgb, var(--accent-seed-light), #fff 39.5%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-40:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-40:color-mix(in srgb, var(--accent-seed-light), #fff 54.6%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-30:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-30:color-mix(in srgb, var(--accent-seed-light), #fff 68.8%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-20:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-20:color-mix(in srgb, var(--accent-seed-light), #fff 79%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-10:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-10:color-mix(in srgb, var(--accent-seed-light), #fff 88.3%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-5:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-5:color-mix(in srgb, var(--accent-seed-light), #fff 93.7%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-100:var(--accent-seed-light);
+  --color-primary-translucent-70:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-70:color-mix(in srgb, var(--accent-seed-light) 70%, transparent);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-40:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-40:color-mix(in srgb, var(--accent-seed-light) 40%, transparent);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-10:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-10:color-mix(in srgb, var(--accent-seed-light) 10%, transparent);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-5:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-primary-translucent-5:color-mix(in srgb, var(--accent-seed-light) 5%, transparent);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-accent-eden:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-accent-eden:color-mix(in srgb, var(--accent-seed-light), #fff 19.5%);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-background-primary-selected:var(--accent-seed-light);
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --color-background-primary-selected:color-mix(in srgb, var(--accent-seed-light) 10%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --gradient-dark:linear-gradient(90deg, var(--accent-seed-dark) 0%, var(--accent-seed-dark) 100%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --gradient-dark:linear-gradient(90deg, color-mix(in srgb, var(--accent-seed-dark), #000 55%) 0%, color-mix(in srgb, var(--accent-seed-dark), #000 20%) 100%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary:var(--accent-seed-dark);
+  --color-primary-100:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-100:color-mix(in srgb, var(--accent-seed-dark), #fff 30%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-90:var(--accent-seed-dark);
+  --color-primary-80:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-80:color-mix(in srgb, var(--accent-seed-dark), #000 18%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-70:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-70:color-mix(in srgb, var(--accent-seed-dark), #000 36%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-60:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-60:color-mix(in srgb, var(--accent-seed-dark), #000 49%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-50:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-50:color-mix(in srgb, var(--accent-seed-dark), #000 60%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-40:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-40:color-mix(in srgb, var(--accent-seed-dark), #000 36%);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-30:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-30:color-mix(in srgb, var(--accent-seed-dark) 30%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-20:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-20:color-mix(in srgb, var(--accent-seed-dark) 20%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-10:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-10:color-mix(in srgb, var(--accent-seed-dark) 15%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-5:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-5:color-mix(in srgb, var(--accent-seed-dark) 10%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-100:var(--accent-seed-dark);
+  --color-primary-translucent-70:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-70:color-mix(in srgb, var(--accent-seed-dark) 70%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-40:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-40:color-mix(in srgb, var(--accent-seed-dark) 40%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-10:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-10:color-mix(in srgb, var(--accent-seed-dark) 10%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-5:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-primary-translucent-5:color-mix(in srgb, var(--accent-seed-dark) 5%, transparent);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-accent-eden:var(--accent-seed-dark);
+  --color-background-primary-selected:var(--accent-seed-dark);
+}
+
+.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-primary-selected:color-mix(in srgb, var(--accent-seed-dark) 15%, transparent);
+}
+
+.dark[data-accent=mono] {
+  --gradient-dark:linear-gradient(90deg, #000 0%, #0a0a0a 100%);
+  --color-primary:#e6e6e6;
+  --color-primary-100:#f4f4f4;
+  --color-primary-90:#e6e6e6;
+  --color-primary-80:#cfcfcf;
+  --color-primary-70:#b8b8b8;
+  --color-primary-60:#a1a1a1;
+  --color-primary-50:#8a8a8a;
+  --color-primary-40:#b8b8b8;
+  --color-primary-30:#e6e6e64d;
+  --color-primary-20:#e6e6e633;
+  --color-primary-10:#e6e6e626;
+  --color-primary-5:#e6e6e61a;
+  --color-primary-translucent-100:#e6e6e6;
+  --color-primary-translucent-70:#e6e6e6b3;
+  --color-primary-translucent-40:#e6e6e666;
+  --color-primary-translucent-10:#e6e6e61a;
+  --color-primary-translucent-5:#e6e6e60d;
+  --color-accent-eden:#e6e6e6;
+  --color-button-primary-default-background:#fff;
+  --color-button-primary-default-text:#000;
+  --color-background-primary-selected:#e6e6e624;
+  --color-background-page:#000;
+  --color-background-pane:#0a0a0a;
+  --color-background-sidebar:#050505;
+  --color-background-secondary:#141414;
+  --color-background-field:#141414;
+  --color-background-field-hover:#1e1e1e;
+  --color-background-menu:#0a0a0a;
+  --color-background-main:#0a0a0a;
+  --color-neutral-950:#000;
+  --color-neutral-light:#0a0a0a;
+  --color-border-subtle:#242424;
+  --color-divider:#ffffff17;
+  --surface-canvas:#000;
+  --surface-sidebar:#050505;
+  --surface-card:#000;
+  --surface-highlight:#000;
+  --surface-floating:#121212;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-canvas:#1a1a1a;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-canvas:color-mix(in srgb, #1a1a1a, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-sidebar:#fcfcfa;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-sidebar:color-mix(in srgb, #fff 5%, var(--surface-canvas));
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-highlight:#242424;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-highlight:color-mix(in srgb, #242424, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-floating:#212121;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --surface-floating:color-mix(in srgb, #212121, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-page:#222;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-page:color-mix(in srgb, #222, var(--mood-tint-dark) 6%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-pane:#212121;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-pane:color-mix(in srgb, #212121, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-surface-popover:#222;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-surface-popover:color-mix(in srgb, #222, var(--mood-tint-dark) 6%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-sidebar:#1a1a1a;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-sidebar:color-mix(in srgb, #1a1a1a, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-secondary:#2a2a2a;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-secondary:color-mix(in srgb, #2a2a2a, var(--mood-tint-dark) 7%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-field:#2a2a2a;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-field:color-mix(in srgb, #2a2a2a, var(--mood-tint-dark) 7%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-field-hover:#222;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-field-hover:color-mix(in srgb, #222, var(--mood-tint-dark) 6%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-menu:#222;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-menu:color-mix(in srgb, #222, var(--mood-tint-dark) 6%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-main:#212121;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-background-main:color-mix(in srgb, #212121, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-border-subtle:#2f2f2f;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-border-subtle:color-mix(in srgb, #2f2f2f, var(--mood-tint-dark) 8%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-neutral-light:#212121;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-neutral-light:color-mix(in srgb, #212121, var(--mood-tint-dark) 5%);
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-neutral-950:#1a1a1a;
+}
+
+.dark[data-accent=eden],.dark[data-accent=ocean],.dark[data-accent=violet],.dark[data-accent=amber],.dark[data-accent=rose],.dark[data-accent=graphite] {
+  --color-neutral-950:color-mix(in srgb, #1a1a1a, var(--mood-tint-dark) 5%);
+}
+
+html:not(.dark)[data-accent=mono] {
+  --color-primary:#2a2a2a;
+  --color-primary-100:#171717;
+  --color-primary-90:#2a2a2a;
+  --color-primary-80:#3d3d3d;
+  --color-primary-70:#525252;
+  --color-primary-60:#6b6b6b;
+  --color-primary-50:#858585;
+  --color-primary-40:#6b6b6b;
+  --color-primary-30:#2a2a2a4d;
+  --color-primary-20:#2a2a2a33;
+  --color-primary-10:#2a2a2a1f;
+  --color-primary-5:#2a2a2a12;
+  --color-primary-translucent-100:#2a2a2a;
+  --color-primary-translucent-70:#2a2a2ab3;
+  --color-primary-translucent-40:#2a2a2a66;
+  --color-primary-translucent-10:#2a2a2a1a;
+  --color-primary-translucent-5:#2a2a2a0d;
+  --color-accent-eden:#2a2a2a;
+  --color-button-primary-default-background:#000;
+  --color-button-primary-default-text:#fff;
+  --color-background-primary-selected:#2a2a2a14;
+  --color-background-page:#fff;
+  --color-background-pane:#fff;
+  --color-background-sidebar:#fbfbfb;
+  --color-background-secondary:#f4f4f4;
+  --color-background-field:#f4f4f4;
+  --color-background-field-hover:#ebebeb;
+  --color-background-menu:#fff;
+  --color-background-main:#fff;
+  --color-neutral-light:#fff;
+  --color-border-subtle:#e4e4e4;
+  --color-divider:#00000014;
+  --surface-canvas:#f4f4f4;
+  --surface-sidebar:#fff;
+  --surface-card:#fff;
+  --surface-highlight:#fff;
+  --surface-floating:#f4f4f4;
+}
+
+[data-accent=ocean],[data-accent=violet],[data-accent=amber],[data-accent=rose],[data-accent=graphite] {
+  --eden-loader-color-dark:var(--accent-seed-dark);
+}
+

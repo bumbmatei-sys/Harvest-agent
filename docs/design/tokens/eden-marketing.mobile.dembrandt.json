@@ -1,0 +1,4895 @@
+{
+ "url": "https://eden.so/",
+ "extractedAt": "2026-11-03T20:41:03.096Z",
+ "meta": {
+  "snapshotId": "8ac638eb-6a47-4b96-9ae6-597b85b7777d",
+  "httpStatus": 200,
+  "dembrandtVersion": "0.39.2",
+  "schemaVersion": "1.19.0",
+  "viewport": {
+   "width": 1920,
+   "height": 1080
+  },
+  "context": {
+   "viewport": {
+    "width": 1920,
+    "height": 1080
+   },
+   "deviceScaleFactor": 1,
+   "isMobile": false,
+   "hasTouch": false,
+   "colorScheme": "light",
+   "reducedMotion": "no-preference",
+   "forcedColors": "none",
+   "locale": "en-US",
+   "timezoneId": "America/New_York",
+   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+  },
+  "fontsReady": true,
+  "requestedUrl": "https://eden.so",
+  "contentLength": 228277,
+  "flags": {
+   "mobile": true
+  }
+ },
+ "siteName": "Eden",
+ "colors": {
+  "semantic": {
+   "secondary": "rgb(255, 255, 255)",
+   "background": "rgb(252, 252, 250)",
+   "text": "rgb(17, 17, 17)",
+   "primary": "rgb(102, 176, 139)",
+   "accent": "rgb(231, 199, 194)"
+  },
+  "semanticEvidence": {
+   "primary": {
+    "decision": "elected",
+    "rule": "chromatic",
+    "reason": "most used chromatic palette colour",
+    "tokens": [],
+    "alternates": [
+     {
+      "color": "#e7c7c2",
+      "count": 12,
+      "sources": []
+     },
+     {
+      "color": "#3d282a",
+      "count": 11,
+      "sources": []
+     }
+    ]
+   }
+  },
+  "palette": [
+   {
+    "color": "rgb(255, 255, 255)",
+    "normalized": "#ffffff",
+    "count": 443,
+    "confidence": "high",
+    "sources": [
+     "logo",
+     "rounded-[10px]",
+     "flex",
+     "h-8"
+    ],
+    "tokens": [
+     "--cm-pane",
+     "--cm-gutter"
+    ],
+    "lch": "lch(100% 0.028 53.346)",
+    "oklch": "oklch(100% 0 0)",
+    "role": "surface",
+    "onColor": "#000000",
+    "hover": "#d9d9d9"
+   },
+   {
+    "color": "rgb(0, 0, 0)",
+    "normalized": "#000000",
+    "count": 26,
+    "confidence": "high",
+    "sources": [],
+    "tokens": [
+     "--c-border-subtle",
+     "--c-border"
+    ],
+    "lch": "lch(0% 0 0)",
+    "oklch": "oklch(0% 0 0)",
+    "role": "surface",
+    "onColor": "#ffffff",
+    "hover": "#000000"
+   },
+   {
+    "color": "rgb(82, 80, 76)",
+    "normalized": "#52504c",
+    "count": 201,
+    "confidence": "high",
+    "sources": [
+     "bg-transparent",
+     "text-text-secondary",
+     "m-0"
+    ],
+    "lch": "lch(34.121% 2.691 84.947)",
+    "oklch": "oklch(43.1844% 0.00699 84.585)",
+    "role": "neutral",
+    "onColor": "#ffffff",
+    "hover": "#62605b"
+   },
+   {
+    "color": "rgb(102, 176, 139)",
+    "normalized": "#66b08b",
+    "count": 22,
+    "confidence": "high",
+    "sources": [],
+    "lch": "lch(66.247% 32.708 159.449)",
+    "oklch": "oklch(69.8348% 0.09291 160.912)",
+    "role": "accent",
+    "onColor": "#000000",
+    "hover": "#579676",
+    "variantOf": "primary"
+   },
+   {
+    "color": "rgb(231, 199, 194)",
+    "normalized": "#e7c7c2",
+    "count": 12,
+    "confidence": "medium",
+    "sources": [],
+    "lch": "lch(82.91% 13.081 31.987)",
+    "oklch": "oklch(85.545% 0.03708 28.371)",
+    "role": "accent",
+    "onColor": "#000000",
+    "hover": "#c4a9a5"
+   },
+   {
+    "color": "rgb(61, 40, 42)",
+    "normalized": "#3d282a",
+    "count": 11,
+    "confidence": "medium",
+    "sources": [],
+    "lch": "lch(18.799% 10.795 15.383)",
+    "oklch": "oklch(30.3047% 0.03176 12.83)",
+    "role": "accent",
+    "onColor": "#ffffff",
+    "hover": "#493032"
+   },
+   {
+    "color": "#fcfcfa",
+    "normalized": "#fcfcfa",
+    "count": 10,
+    "confidence": "high",
+    "sources": [
+     "manifest:theme_color"
+    ]
+   },
+   {
+    "color": "#0a0a0a",
+    "normalized": "#0a0a0a",
+    "count": 10,
+    "confidence": "high",
+    "sources": [
+     "manifest:background_color"
+    ]
+   },
+   {
+    "color": "rgb(16, 16, 16)",
+    "normalized": "#101010",
+    "count": 1,
+    "confidence": "medium",
+    "sources": [
+     "hover/focus"
+    ]
+   },
+   {
+    "color": "rgb(17, 17, 17)",
+    "normalized": "#111111",
+    "count": 1,
+    "confidence": "medium",
+    "sources": [
+     "hover/focus"
+    ]
+   },
+   {
+    "color": "rgb(245, 244, 241)",
+    "normalized": "#f5f4f1",
+    "count": 1,
+    "confidence": "medium",
+    "sources": [
+     "hover/focus"
+    ]
+   }
+  ],
+  "cssVariables": {
+   "--cm-name-3": {
+    "value": "#c0573f",
+    "hex": "#c0573f",
+    "lch": "lch(50.527% 54.605 39.965)",
+    "oklch": "oklch(58.3939% 0.14064 34.241)",
+    "scope": "root"
+   },
+   "--cm-name-2": {
+    "value": "#7350a0",
+    "hex": "#7350a0",
+    "lch": "lch(40.729% 47.532 305.942)",
+    "oklch": "oklch(50.5174% 0.12683 302.283)",
+    "scope": "root"
+   },
+   "--cm-pane": {
+    "value": "#fff",
+    "hex": "#ffffff",
+    "lch": "lch(100% 0.028 53.346)",
+    "oklch": "oklch(100% 0 0)",
+    "scope": "root"
+   },
+   "--cm-name-5": {
+    "value": "#b23d48",
+    "hex": "#b23d48",
+    "lch": "lch(43.719% 53.061 23.204)",
+    "oklch": "oklch(52.8783% 0.15161 18.584)",
+    "scope": "root"
+   },
+   "--cm-gutter": {
+    "value": "#f5f4f1",
+    "hex": "#f5f4f1",
+    "lch": "lch(96.205% 1.594 91.067)",
+    "oklch": "oklch(96.7084% 0.00413 91.447)",
+    "scope": "root"
+   },
+   "--cm-name-4": {
+    "value": "#a8711f",
+    "hex": "#a8711f",
+    "lch": "lch(52.547% 53.913 71.115)",
+    "oklch": "oklch(59.2539% 0.11546 71.746)",
+    "scope": "root"
+   },
+   "--tw-ring-color": {
+    "value": "rgba(59,130,246,.5)",
+    "hex": "#3b82f6",
+    "lch": "lch(54.617% 66.352 277.59 / 0.5)",
+    "oklch": "oklch(62.3083% 0.18801 259.815 / 0.5)",
+    "scope": "root"
+   },
+   "--c-border-subtle": {
+    "value": "rgba(0,0,0,.05)",
+    "hex": "#000000",
+    "lch": "lch(0% 0 0 / 0.05)",
+    "oklch": "oklch(0% 0 0 / 0.05)",
+    "scope": "root"
+   },
+   "--c-border": {
+    "value": "rgba(0,0,0,.08)",
+    "hex": "#000000",
+    "lch": "lch(0% 0 0 / 0.08)",
+    "oklch": "oklch(0% 0 0 / 0.08)",
+    "scope": "root"
+   },
+   "--cm-name-6": {
+    "value": "#8e604a",
+    "hex": "#8e604a",
+    "lch": "lch(45.386% 26.865 49.876)",
+    "oklch": "oklch(53.2701% 0.06882 46.362)",
+    "scope": "root"
+   },
+   "--cm-name-0": {
+    "value": "#2f8a5f",
+    "hex": "#2f8a5f",
+    "lch": "lch(51.319% 38.972 157.501)",
+    "oklch": "oklch(56.7933% 0.10915 159.115)",
+    "scope": "root"
+   },
+   "--cm-name-1": {
+    "value": "#3d6a94",
+    "hex": "#3d6a94",
+    "lch": "lch(43.011% 28.774 258.04)",
+    "oklch": "oklch(51.0767% 0.08363 248.203)",
+    "scope": "root"
+   }
+  },
+  "detected": [
+   {
+    "color": "rgb(255, 255, 255)",
+    "normalized": "#ffffff",
+    "count": 443,
+    "usageFrac": 0.34663536776212833,
+    "areaFrac": 0.09080926227059348,
+    "confidence": "high",
+    "sources": [
+     "rounded-[10px]",
+     "flex",
+     "h-8",
+     "inline-flex",
+     "m-0"
+    ],
+    "isToken": true
+   },
+   {
+    "color": "rgb(17, 17, 17)",
+    "normalized": "#111111",
+    "count": 275,
+    "usageFrac": 0.21517996870109546,
+    "areaFrac": 5.094589229522495e-05,
+    "confidence": "high",
+    "sources": [
+     "text-text-primary",
+     "truncate",
+     "flex",
+     "group",
+     "text-accent"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(82, 80, 76)",
+    "normalized": "#52504c",
+    "count": 201,
+    "usageFrac": 0.1572769953051643,
+    "areaFrac": 0,
+    "confidence": "high",
+    "sources": [
+     "bg-transparent",
+     "text-text-secondary",
+     "m-0",
+     "flex",
+     "group"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(112, 110, 105)",
+    "normalized": "#706e69",
+    "count": 85,
+    "usageFrac": 0.06651017214397496,
+    "areaFrac": 0,
+    "confidence": "high",
+    "sources": [
+     "mt-1",
+     "text-[0.74rem]",
+     "m-0",
+     "text-[0.7rem]"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(245, 244, 241)",
+    "normalized": "#f5f4f1",
+    "count": 38,
+    "usageFrac": 0.0297339593114241,
+    "areaFrac": 0.08270332048497814,
+    "confidence": "high",
+    "sources": [
+     "relative",
+     "rounded-full",
+     "fc-ui",
+     "min-w-0"
+    ],
+    "isToken": true
+   },
+   {
+    "color": "rgb(0, 0, 0)",
+    "normalized": "#000000",
+    "count": 26,
+    "usageFrac": 0.02034428794992175,
+    "areaFrac": 0.0248930011849741,
+    "confidence": "high",
+    "sources": [],
+    "isToken": true
+   },
+   {
+    "color": "rgb(102, 176, 139)",
+    "normalized": "#66b08b",
+    "count": 22,
+    "usageFrac": 0.017214397496087636,
+    "areaFrac": 4.222232681738703e-05,
+    "confidence": "high",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(22, 22, 22)",
+    "normalized": "#161616",
+    "count": 22,
+    "usageFrac": 0.017214397496087636,
+    "areaFrac": 0.009512607555596287,
+    "confidence": "high",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(250, 250, 250)",
+    "normalized": "#fafafa",
+    "count": 17,
+    "usageFrac": 0.013302034428794992,
+    "areaFrac": 2.2656253658709656e-05,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(252, 252, 250)",
+    "normalized": "#fcfcfa",
+    "count": 16,
+    "usageFrac": 0.012519561815336464,
+    "areaFrac": 0.7516998877583086,
+    "confidence": "high",
+    "sources": [
+     "bg-page",
+     "inline-flex"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(54, 35, 32)",
+    "normalized": "#362320",
+    "count": 12,
+    "usageFrac": 0.009389671361502348,
+    "areaFrac": 7.664514596671428e-05,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(231, 199, 194)",
+    "normalized": "#e7c7c2",
+    "count": 12,
+    "usageFrac": 0.009389671361502348,
+    "areaFrac": 0,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(61, 40, 42)",
+    "normalized": "#3d282a",
+    "count": 11,
+    "usageFrac": 0.008607198748043818,
+    "areaFrac": 8.008767277685947e-05,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(242, 209, 211)",
+    "normalized": "#f2d1d3",
+    "count": 11,
+    "usageFrac": 0.008607198748043818,
+    "areaFrac": 0,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(54, 124, 89)",
+    "normalized": "#367c59",
+    "count": 6,
+    "usageFrac": 0.004694835680751174,
+    "areaFrac": 7.954450572461185e-07,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(20, 20, 20)",
+    "normalized": "#141414",
+    "count": 6,
+    "usageFrac": 0.004694835680751174,
+    "areaFrac": 0.00048820117289231034,
+    "confidence": "medium",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(58, 58, 58)",
+    "normalized": "#3a3a3a",
+    "count": 4,
+    "usageFrac": 0.003129890453834116,
+    "areaFrac": 6.0630589918981916e-05,
+    "confidence": "medium",
+    "sources": [
+     "rounded-full"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(221, 238, 229)",
+    "normalized": "#ddeee5",
+    "count": 4,
+    "usageFrac": 0.003129890453834116,
+    "areaFrac": 0.00012521302959827966,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(39, 67, 53)",
+    "normalized": "#274335",
+    "count": 4,
+    "usageFrac": 0.003129890453834116,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(18, 18, 18)",
+    "normalized": "#121212",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 0.028430090173817656,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(45, 31, 38)",
+    "normalized": "#2d1f26",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 3.085246420259028e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(216, 192, 205)",
+    "normalized": "#d8c0cd",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(10, 10, 10)",
+    "normalized": "#0a0a0a",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [
+     "flex"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(247, 237, 223)",
+    "normalized": "#f7eddf",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 3.340869240433697e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(84, 65, 42)",
+    "normalized": "#54412a",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(46, 46, 45)",
+    "normalized": "#2e2e2d",
+    "count": 3,
+    "usageFrac": 0.002347417840375587,
+    "areaFrac": 3.867172060878145e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(24, 24, 22)",
+    "normalized": "#181816",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 0.0008579703531000685,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(57, 90, 74)",
+    "normalized": "#395a4a",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 0.0002627190496659966,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(28, 28, 28)",
+    "normalized": "#1c1c1c",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 0.0008012224025356563,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(226, 221, 233)",
+    "normalized": "#e2dde9",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 9.247048790486127e-06,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(48, 38, 58)",
+    "normalized": "#30263a",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(209, 120, 102)",
+    "normalized": "#d17866",
+    "count": 2,
+    "usageFrac": 0.001564945226917058,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(26, 25, 24)",
+    "normalized": "#1a1918",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0.002137095720467905,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(38, 29, 14)",
+    "normalized": "#261d0e",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 9.169762404478333e-06,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(208, 189, 168)",
+    "normalized": "#d0bda8",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(25, 25, 25)",
+    "normalized": "#191919",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0.006514135721539834,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(80, 71, 94)",
+    "normalized": "#50475e",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 3.0297915109719353e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(66, 81, 94)",
+    "normalized": "#42515e",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 1.7489046100558553e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(24, 24, 24)",
+    "normalized": "#181818",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0.00013729066852771773,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(191, 227, 207)",
+    "normalized": "#bfe3cf",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(48, 43, 54)",
+    "normalized": "#302b36",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 5.141841203537669e-06,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(221, 212, 230)",
+    "normalized": "#ddd4e6",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgba(13, 13, 13, 0.7)",
+    "normalized": "#0d0d0d",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 2.0338983413588163e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(229, 211, 187)",
+    "normalized": "#e5d3bb",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(134, 74, 0)",
+    "normalized": "#864a00",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.662173185306515e-05,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(244, 236, 225)",
+    "normalized": "#f4ece1",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(245, 245, 245)",
+    "normalized": "#f5f5f5",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.230082565088696e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(42, 36, 24)",
+    "normalized": "#2a2418",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.230009971711736e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(26, 18, 6)",
+    "normalized": "#1a1206",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.228698286303226e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(90, 58, 26)",
+    "normalized": "#5a3a1a",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.228770866510125e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(255, 122, 217)",
+    "normalized": "#ff7ad9",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.230009971711736e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(122, 46, 74)",
+    "normalized": "#7a2e4a",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 7.228770866510125e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(217, 224, 230)",
+    "normalized": "#d9e0e6",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 8.50131904931789e-06,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(31, 43, 53)",
+    "normalized": "#1f2b35",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(74, 158, 255)",
+    "normalized": "#4a9eff",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 3.9772252862305923e-07,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(127, 191, 154)",
+    "normalized": "#7fbf9a",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 1.3367896100941713e-06,
+    "confidence": "low",
+    "sources": [
+     "h-[11px]"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(224, 176, 74)",
+    "normalized": "#e0b04a",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 1.3367896100941713e-06,
+    "confidence": "low",
+    "sources": [
+     "h-[11px]"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(110, 160, 216)",
+    "normalized": "#6ea0d8",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 1.3367896100941713e-06,
+    "confidence": "low",
+    "sources": [
+     "h-[11px]"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(217, 138, 168)",
+    "normalized": "#d98aa8",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 1.3367896100941713e-06,
+    "confidence": "low",
+    "sources": [
+     "h-[11px]"
+    ],
+    "isToken": false
+   },
+   {
+    "color": "rgb(208, 88, 122)",
+    "normalized": "#d0587a",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(244, 230, 238)",
+    "normalized": "#f4e6ee",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 4.176086550542122e-06,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   },
+   {
+    "color": "rgb(79, 54, 67)",
+    "normalized": "#4f3643",
+    "count": 1,
+    "usageFrac": 0.000782472613458529,
+    "areaFrac": 0,
+    "confidence": "low",
+    "sources": [],
+    "isToken": false
+   }
+  ],
+  "occurrences": [
+   {
+    "hex": "#ffffff",
+    "paints": "text",
+    "slot": null,
+    "count": 368,
+    "area": 0,
+    "cssVar": "--cm-pane",
+    "state": null
+   },
+   {
+    "hex": "#111111",
+    "paints": "text",
+    "slot": null,
+    "count": 263,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#52504c",
+    "paints": "text",
+    "slot": null,
+    "count": 201,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#706e69",
+    "paints": "text",
+    "slot": null,
+    "count": 85,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#ffffff",
+    "paints": "fill",
+    "slot": null,
+    "count": 75,
+    "area": 8219634,
+    "cssVar": "--cm-pane",
+    "state": null
+   },
+   {
+    "hex": "#f5f4f1",
+    "paints": "fill",
+    "slot": null,
+    "count": 38,
+    "area": 7485921,
+    "cssVar": "--cm-gutter",
+    "state": null
+   },
+   {
+    "hex": "#000000",
+    "paints": "fill",
+    "slot": null,
+    "count": 26,
+    "area": 2253199,
+    "cssVar": "--c-border-subtle",
+    "state": null
+   },
+   {
+    "hex": "#161616",
+    "paints": "fill",
+    "slot": null,
+    "count": 22,
+    "area": 861037,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#66b08b",
+    "paints": "fill",
+    "slot": null,
+    "count": 20,
+    "area": 3822,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#fafafa",
+    "paints": "fill",
+    "slot": null,
+    "count": 17,
+    "area": 2051,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#fcfcfa",
+    "paints": "text",
+    "slot": null,
+    "count": 13,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#362320",
+    "paints": "fill",
+    "slot": null,
+    "count": 12,
+    "area": 6938,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#e7c7c2",
+    "paints": "text",
+    "slot": null,
+    "count": 12,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#111111",
+    "paints": "fill",
+    "slot": null,
+    "count": 11,
+    "area": 4611,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#3d282a",
+    "paints": "fill",
+    "slot": null,
+    "count": 11,
+    "area": 7249,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#f2d1d3",
+    "paints": "text",
+    "slot": null,
+    "count": 11,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#141414",
+    "paints": "fill",
+    "slot": null,
+    "count": 6,
+    "area": 44190,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#274335",
+    "paints": "text",
+    "slot": null,
+    "count": 4,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#367c59",
+    "paints": "text",
+    "slot": null,
+    "count": 4,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#3a3a3a",
+    "paints": "fill",
+    "slot": null,
+    "count": 4,
+    "area": 5488,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#ddeee5",
+    "paints": "fill",
+    "slot": null,
+    "count": 4,
+    "area": 11334,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#0a0a0a",
+    "paints": "text",
+    "slot": null,
+    "count": 3,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#121212",
+    "paints": "fill",
+    "slot": null,
+    "count": 3,
+    "area": 2573360,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#2d1f26",
+    "paints": "fill",
+    "slot": null,
+    "count": 3,
+    "area": 2793,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#2e2e2d",
+    "paints": "fill",
+    "slot": null,
+    "count": 3,
+    "area": 3500,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#54412a",
+    "paints": "text",
+    "slot": null,
+    "count": 3,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d8c0cd",
+    "paints": "text",
+    "slot": null,
+    "count": 3,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#f7eddf",
+    "paints": "fill",
+    "slot": null,
+    "count": 3,
+    "area": 3024,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#fcfcfa",
+    "paints": "fill",
+    "slot": null,
+    "count": 3,
+    "area": 68040390,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#181816",
+    "paints": "fill",
+    "slot": null,
+    "count": 2,
+    "area": 77660,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#1c1c1c",
+    "paints": "fill",
+    "slot": null,
+    "count": 2,
+    "area": 72523,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#30263a",
+    "paints": "text",
+    "slot": null,
+    "count": 2,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#367c59",
+    "paints": "fill",
+    "slot": null,
+    "count": 2,
+    "area": 72,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#395a4a",
+    "paints": "fill",
+    "slot": null,
+    "count": 2,
+    "area": 23780,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d17866",
+    "paints": "text",
+    "slot": null,
+    "count": 2,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#e2dde9",
+    "paints": "fill",
+    "slot": null,
+    "count": 2,
+    "area": 837,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#0d0d0d",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 1841,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#111111",
+    "paints": "border",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#181818",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 12427,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#191919",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 589629,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#1a1206",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#1a1918",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 193440,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#1f2b35",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#261d0e",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 830,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#2a2418",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#302b36",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 465,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#42515e",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 1583,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#4a9eff",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 36,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#4f3643",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#50475e",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 2742,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#5a3a1a",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#66b08b",
+    "paints": "border",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#66b08b",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#6ea0d8",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 121,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#7a2e4a",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#7fbf9a",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 121,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#864a00",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 6935,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#bfe3cf",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d0587a",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d0bda8",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d98aa8",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 121,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#d9e0e6",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 770,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#ddd4e6",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#e0b04a",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 121,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#e5d3bb",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#f4e6ee",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 378,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#f4ece1",
+    "paints": "text",
+    "slot": null,
+    "count": 1,
+    "area": 0,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#f5f5f5",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   },
+   {
+    "hex": "#ff7ad9",
+    "paints": "fill",
+    "slot": null,
+    "count": 1,
+    "area": 65,
+    "cssVar": null,
+    "state": null
+   }
+  ]
+ },
+ "typography": {
+  "styles": [
+   {
+    "context": "display",
+    "count": 6,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "65.6px (4.10rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.656px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 4,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "54.4px (3.40rem)",
+    "weight": 400,
+    "lineHeight": "1.15",
+    "spacing": "-0.544px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 10,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "54.4px (3.40rem)",
+    "weight": 400,
+    "lineHeight": "1.15",
+    "spacing": "-0.544px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "51.2px (3.20rem)",
+    "weight": 400,
+    "lineHeight": "1.08",
+    "spacing": "-0.512px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "51.2px (3.20rem)",
+    "weight": 400,
+    "lineHeight": "1.08",
+    "spacing": "-0.512px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 6,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "49.6px (3.10rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.496px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 6,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "49.6px (3.10rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.496px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 2,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "48px (3.00rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.48px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 2,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "48px (3.00rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.48px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "44.8px (2.80rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.448px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "44.8px (2.80rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.448px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "41.6px (2.60rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.416px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "41.6px (2.60rem)",
+    "weight": 400,
+    "lineHeight": "1.05",
+    "spacing": "-0.416px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "38.4px (2.40rem)",
+    "weight": 400,
+    "lineHeight": "1.10",
+    "spacing": "-0.384px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "38.4px (2.40rem)",
+    "weight": 400,
+    "lineHeight": "1.10",
+    "spacing": "-0.384px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "34px (2.13rem)",
+    "weight": 600,
+    "lineHeight": "1.00",
+    "spacing": "-1.36px",
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "30px (1.88rem)",
+    "weight": 500,
+    "lineHeight": "1.20",
+    "spacing": "-1.2px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "27px (1.69rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.945px",
+    "transform": null
+   },
+   {
+    "context": "heading-2",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "26px (1.63rem)",
+    "weight": 500,
+    "lineHeight": "1.30",
+    "spacing": "-1.04px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "26px (1.63rem)",
+    "weight": 500,
+    "lineHeight": "1.30",
+    "spacing": "-1.04px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": null,
+    "size": "26px (1.63rem)",
+    "weight": 700,
+    "lineHeight": "1.15",
+    "spacing": "-0.78px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "22px (1.38rem)",
+    "weight": 600,
+    "lineHeight": "1.00",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "21.6px (1.35rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "21px (1.31rem)",
+    "weight": 600,
+    "lineHeight": "1.22",
+    "spacing": "-0.735px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, Segoe UI",
+    "size": "21px (1.31rem)",
+    "weight": 600,
+    "lineHeight": "1.20",
+    "spacing": "-0.42px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "20.48px (1.28rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null,
+    "isFluid": true
+   },
+   {
+    "context": "body",
+    "count": 6,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "20px (1.25rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null,
+    "isFluid": true
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "20px (1.25rem)",
+    "weight": 500,
+    "lineHeight": "1.38",
+    "spacing": "-0.2px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, Segoe UI",
+    "size": "18px (1.13rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": "-0.27px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 6,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "17.6px (1.10rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null,
+    "isFluid": true
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "17.28px (1.08rem)",
+    "weight": 400,
+    "lineHeight": "1.62",
+    "spacing": null,
+    "transform": null,
+    "isFluid": true
+   },
+   {
+    "context": "body",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "17px (1.06rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": "-0.595px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16.8px (1.05rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 11,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "16.8px (1.05rem)",
+    "weight": 500,
+    "lineHeight": "1.38",
+    "spacing": "-0.168px",
+    "transform": null
+   },
+   {
+    "context": "text",
+    "count": 11,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "16.8px (1.05rem)",
+    "weight": 500,
+    "lineHeight": "1.38",
+    "spacing": "-0.168px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "16.8px (1.05rem)",
+    "weight": 500,
+    "lineHeight": "1.25",
+    "spacing": "-0.588px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "16.32px (1.02rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 309,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16px (1.00rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 16,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16px (1.00rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 12,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16px (1.00rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 8,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16px (1.00rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.56px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 9,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "16px (1.00rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.56px",
+    "transform": null
+   },
+   {
+    "context": "heading-4",
+    "count": 2,
+    "family": "EB Garamond",
+    "fallbacks": "Georgia",
+    "size": "16px (1.00rem)",
+    "weight": 500,
+    "lineHeight": "1.25",
+    "spacing": "-0.16px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 24,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "15.68px (0.98rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": "-0.5488px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 48,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.68px (0.98rem)",
+    "weight": 400,
+    "lineHeight": "1.60",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.5px (0.97rem)",
+    "weight": 500,
+    "lineHeight": "1.42",
+    "spacing": "-0.31px",
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.532px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.532px",
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 9,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "15.2px (0.95rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": "-0.532px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.532px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 13,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15.2px (0.95rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 12,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "15.2px (0.95rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-4",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "15px (0.94rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15px (0.94rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "15px (0.94rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 9,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14.72px (0.92rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "14.5px (0.91rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": "-0.29px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "14.5px (0.91rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 26,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14.4px (0.90rem)",
+    "weight": 500,
+    "lineHeight": "1.62",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 11,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14.08px (0.88rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 61,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14px (0.88rem)",
+    "weight": 400,
+    "lineHeight": "1.50",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14px (0.88rem)",
+    "weight": 400,
+    "lineHeight": "1.50",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "14px (0.88rem)",
+    "weight": 600,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 8,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "14px (0.88rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "14px (0.88rem)",
+    "weight": 650,
+    "lineHeight": "1.60",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "14px (0.88rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": "-0.49px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 6,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.68px (0.85rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.6px (0.85rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 75,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.6px (0.85rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.6px (0.85rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.5px (0.84rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.135px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 19,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.5px (0.84rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.5px (0.84rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 13,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13.5px (0.84rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 5,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13.5px (0.84rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13.5px (0.84rem)",
+    "weight": 600,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13.5px (0.84rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": "-0.4725px",
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.44px (0.84rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.4704px",
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 18,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13.12px (0.82rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.1312px",
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 12,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.12px (0.82rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 17,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.12px (0.82rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 116,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.12px (0.82rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 24,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13.12px (0.82rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 12,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13px (0.81rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 5,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13px (0.81rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "13px (0.81rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "13px (0.81rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": "-0.455px",
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 8,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.8px (0.80rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.8px (0.80rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 13,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.5px (0.78rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 7,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.5px (0.78rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 8,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.5px (0.78rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "ui",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.5px (0.78rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "12.5px (0.78rem)",
+    "weight": 600,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "body",
+    "count": 28,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12.48px (0.78rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 39,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12px (0.75rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 19,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12px (0.75rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 5,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "12px (0.75rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "heading-3",
+    "count": 6,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "12px (0.75rem)",
+    "weight": 600,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 9,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.84px (0.74rem)",
+    "weight": 400,
+    "lineHeight": "1.62",
+    "spacing": "-0.4144px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.84px (0.74rem)",
+    "weight": 400,
+    "lineHeight": "1.62",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.52px (0.72rem)",
+    "weight": 400,
+    "lineHeight": "1.38",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.52px (0.72rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": "-0.1152px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "11.52px (0.72rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": "-0.4032px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 11,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.5px (0.72rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 32,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.5px (0.72rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 6,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.5px (0.72rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.2px (0.70rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "-0.392px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 2,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11.2px (0.70rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "11.2px (0.70rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": "-0.112px",
+    "transform": null
+   },
+   {
+    "context": "link",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "11.2px (0.70rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": "-0.112px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 21,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11px (0.69rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "11px (0.69rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 7,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "11px (0.69rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 10,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "10.88px (0.68rem)",
+    "weight": 400,
+    "lineHeight": "1.62",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 28,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10.56px (0.66rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": "0.264px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 9,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10.5px (0.66rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 28,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10.5px (0.66rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "10.5px (0.66rem)",
+    "weight": 600,
+    "lineHeight": "1.25",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 11,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10px (0.63rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 36,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10px (0.63rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 11,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "10px (0.63rem)",
+    "weight": 600,
+    "lineHeight": "1.50",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "9.92px (0.62rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "9.92px (0.62rem)",
+    "weight": 400,
+    "lineHeight": "1.25",
+    "spacing": "-0.0992px",
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 21,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "9.5px (0.59rem)",
+    "weight": 400,
+    "lineHeight": "1.45",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 7,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "9.5px (0.59rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 31,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "9.5px (0.59rem)",
+    "weight": 500,
+    "lineHeight": "1.00",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 24,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "9px (0.56rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 12,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "9px (0.56rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 5,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "9px (0.56rem)",
+    "weight": 500,
+    "lineHeight": "1.00",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 17,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "8.5px (0.53rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 42,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "8.5px (0.53rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "8.5px (0.53rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 5,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "8px (0.50rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 1,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont",
+    "size": "8px (0.50rem)",
+    "weight": 600,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 4,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "7.5px (0.47rem)",
+    "weight": 400,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 3,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "7.5px (0.47rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   },
+   {
+    "context": "caption",
+    "count": 7,
+    "family": "Figtree",
+    "fallbacks": "-apple-system, BlinkMacSystemFont, Segoe UI",
+    "size": "7px (0.44rem)",
+    "weight": 500,
+    "lineHeight": "1.63",
+    "spacing": null,
+    "transform": null
+   }
+  ],
+  "sources": {
+   "googleFonts": [],
+   "adobeFonts": false,
+   "variableFonts": false,
+   "customFonts": [
+    "Eden Wordmark"
+   ],
+   "fontDisplay": "swap",
+   "urls": [
+    "https://eden.so/inter-tight-wordmark.woff2"
+   ],
+   "filteredFamilies": [
+    "Eden Wordmark"
+   ],
+   "selfHostedFonts": [
+    "inter-tight-wordmark.woff2"
+   ]
+  }
+ },
+ "spacing": {
+  "scaleType": "custom",
+  "commonValues": [
+   {
+    "px": "1px",
+    "display": "1px",
+    "rem": "0.06rem",
+    "count": 116,
+    "numericValue": 1
+   },
+   {
+    "px": "2px",
+    "display": "2px",
+    "rem": "0.13rem",
+    "count": 88,
+    "numericValue": 2
+   },
+   {
+    "px": "3px",
+    "display": "3px",
+    "rem": "0.19rem",
+    "count": 32,
+    "numericValue": 3
+   },
+   {
+    "px": "4px",
+    "display": "4px",
+    "rem": "0.25rem",
+    "count": 169,
+    "numericValue": 4
+   },
+   {
+    "px": "5px",
+    "display": "5px",
+    "rem": "0.31rem",
+    "count": 8,
+    "numericValue": 5
+   },
+   {
+    "px": "6px",
+    "display": "6px",
+    "rem": "0.38rem",
+    "count": 136,
+    "numericValue": 6
+   },
+   {
+    "px": "7px",
+    "display": "7px",
+    "rem": "0.44rem",
+    "count": 12,
+    "numericValue": 7
+   },
+   {
+    "px": "8px",
+    "display": "8px",
+    "rem": "0.50rem",
+    "count": 92,
+    "numericValue": 8
+   },
+   {
+    "px": "10px",
+    "display": "10px",
+    "rem": "0.63rem",
+    "count": 97,
+    "numericValue": 10
+   },
+   {
+    "px": "12px",
+    "display": "12px",
+    "rem": "0.75rem",
+    "count": 128,
+    "numericValue": 12
+   },
+   {
+    "px": "14px",
+    "display": "14px",
+    "rem": "0.88rem",
+    "count": 61,
+    "numericValue": 14
+   },
+   {
+    "px": "16px",
+    "display": "16px",
+    "rem": "1.00rem",
+    "count": 143,
+    "numericValue": 16
+   },
+   {
+    "px": "20px",
+    "display": "20px",
+    "rem": "1.25rem",
+    "count": 97,
+    "numericValue": 20
+   },
+   {
+    "px": "24px",
+    "display": "24px",
+    "rem": "1.50rem",
+    "count": 60,
+    "numericValue": 24
+   },
+   {
+    "px": "28px",
+    "display": "28px",
+    "rem": "1.75rem",
+    "count": 17,
+    "numericValue": 28
+   },
+   {
+    "px": "32px",
+    "display": "32px",
+    "rem": "2.00rem",
+    "count": 18,
+    "numericValue": 32
+   },
+   {
+    "px": "40px",
+    "display": "40px",
+    "rem": "2.50rem",
+    "count": 12,
+    "numericValue": 40
+   },
+   {
+    "px": "64px",
+    "display": "64px",
+    "rem": "4.00rem",
+    "count": 4,
+    "numericValue": 64
+   },
+   {
+    "px": "96px",
+    "display": "96px",
+    "rem": "6.00rem",
+    "count": 4,
+    "numericValue": 96
+   },
+   {
+    "px": "112px",
+    "display": "112px",
+    "rem": "7.00rem",
+    "count": 17,
+    "numericValue": 112
+   }
+  ]
+ },
+ "borderRadius": {
+  "values": [
+   {
+    "value": "2px",
+    "count": 48,
+    "elements": [
+     "span"
+    ],
+    "confidence": "high",
+    "numericValue": 2
+   },
+   {
+    "value": "3px",
+    "count": 3,
+    "elements": [
+     "span"
+    ],
+    "confidence": "low",
+    "numericValue": 3
+   },
+   {
+    "value": "4px",
+    "count": 3,
+    "elements": [
+     "span"
+    ],
+    "confidence": "low",
+    "numericValue": 4
+   },
+   {
+    "value": "5px",
+    "count": 38,
+    "elements": [
+     "span",
+     "img"
+    ],
+    "confidence": "high",
+    "numericValue": 5
+   },
+   {
+    "value": "6px",
+    "count": 22,
+    "elements": [
+     "img",
+     "span",
+     "div"
+    ],
+    "confidence": "high",
+    "numericValue": 6
+   },
+   {
+    "value": "7px",
+    "count": 23,
+    "elements": [
+     "span",
+     "tab",
+     "div"
+    ],
+    "confidence": "high",
+    "numericValue": 7
+   },
+   {
+    "value": "7px 7px 0px 0px",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low",
+    "numericValue": 7
+   },
+   {
+    "value": "8px",
+    "count": 64,
+    "elements": [
+     "a",
+     "Open menu",
+     "span",
+     "article",
+     "div"
+    ],
+    "confidence": "high",
+    "numericValue": 8
+   },
+   {
+    "value": "8px 8px 3px",
+    "count": 2,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low",
+    "numericValue": 8
+   },
+   {
+    "value": "9px",
+    "count": 68,
+    "elements": [
+     "span",
+     "div",
+     "button",
+     "tab",
+     "Eden on X"
+    ],
+    "confidence": "high",
+    "numericValue": 9
+   },
+   {
+    "value": "9px 9px 0px 0px",
+    "count": 11,
+    "elements": [
+     "div"
+    ],
+    "confidence": "high",
+    "numericValue": 9
+   },
+   {
+    "value": "10px",
+    "count": 42,
+    "elements": [
+     "a",
+     "tab",
+     "div",
+     "span",
+     "button"
+    ],
+    "confidence": "high",
+    "numericValue": 10
+   },
+   {
+    "value": "11px",
+    "count": 2,
+    "elements": [
+     "Scroll features left",
+     "Scroll features right"
+    ],
+    "confidence": "low",
+    "numericValue": 11
+   },
+   {
+    "value": "12px",
+    "count": 71,
+    "elements": [
+     "div",
+     "a",
+     "Sidebar",
+     "span",
+     "button"
+    ],
+    "confidence": "high",
+    "numericValue": 12
+   },
+   {
+    "value": "13px",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low",
+    "numericValue": 13
+   },
+   {
+    "value": "14px",
+    "count": 41,
+    "elements": [
+     "tablist",
+     "div",
+     "card",
+     "figure"
+    ],
+    "confidence": "high",
+    "numericValue": 14
+   },
+   {
+    "value": "16px",
+    "count": 22,
+    "elements": [
+     "article",
+     "div"
+    ],
+    "confidence": "high",
+    "numericValue": 16
+   },
+   {
+    "value": "17px",
+    "count": 11,
+    "elements": [
+     "card"
+    ],
+    "confidence": "high",
+    "numericValue": 17
+   },
+   {
+    "value": "18px",
+    "count": 13,
+    "elements": [
+     "div",
+     "aside",
+     "card"
+    ],
+    "confidence": "high",
+    "numericValue": 18
+   },
+   {
+    "value": "22px",
+    "count": 3,
+    "elements": [
+     "div",
+     "card"
+    ],
+    "confidence": "low",
+    "numericValue": 22
+   },
+   {
+    "value": "26px",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low",
+    "numericValue": 26
+   },
+   {
+    "value": "28px",
+    "count": 9,
+    "elements": [
+     "div",
+     "badge"
+    ],
+    "confidence": "medium",
+    "numericValue": 28
+   },
+   {
+    "value": "9999px",
+    "count": 209,
+    "elements": [
+     "span",
+     "img",
+     "div",
+     "Email address",
+     "Join our updates list"
+    ],
+    "confidence": "high",
+    "numericValue": 9999
+   },
+   {
+    "value": "32%",
+    "count": 1,
+    "elements": [
+     "span"
+    ],
+    "confidence": "low",
+    "numericValue": 32
+   },
+   {
+    "value": "50%",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low",
+    "numericValue": 50
+   }
+  ]
+ },
+ "borders": {
+  "combinations": [
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.08)",
+    "count": 54,
+    "elements": [
+     "tablist",
+     "article",
+     "div",
+     "figure",
+     "img"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.1)",
+    "count": 41,
+    "elements": [
+     "aside",
+     "div",
+     "span",
+     "img"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.09)",
+    "count": 35,
+    "elements": [
+     "card",
+     "span",
+     "div"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "0px 0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.06)",
+    "count": 31,
+    "elements": [
+     "button",
+     "span"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.08)",
+    "count": 20,
+    "elements": [
+     "div"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(0, 0, 0, 0.08)",
+    "count": 14,
+    "elements": [
+     "nav",
+     "li"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.1)",
+    "count": 14,
+    "elements": [
+     "div",
+     "span",
+     "card"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.07)",
+    "count": 13,
+    "elements": [
+     "article"
+    ],
+    "confidence": "high"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.07)",
+    "count": 10,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.06)",
+    "count": 10,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(0, 0, 0, 0.08)",
+    "count": 9,
+    "elements": [
+     "div",
+     "card",
+     "span",
+     "input",
+     "group"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(0, 0, 0, 0.08)",
+    "count": 9,
+    "elements": [
+     "div",
+     "footer"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.06)",
+    "count": 8,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.14)",
+    "count": 6,
+    "elements": [
+     "span",
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(0, 0, 0, 0.05)",
+    "count": 6,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.16)",
+    "count": 5,
+    "elements": [
+     "span"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "dashed",
+    "color": "rgba(255, 255, 255, 0.18)",
+    "count": 4,
+    "elements": [
+     "div",
+     "span"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.15)",
+    "count": 4,
+    "elements": [
+     "span"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.14)",
+    "count": 4,
+    "elements": [
+     "a",
+     "button"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "0px 0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.1)",
+    "count": 4,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.2)",
+    "count": 4,
+    "elements": [
+     "span"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgb(226, 220, 207)",
+    "count": 4,
+    "elements": [
+     "div",
+     "span"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.07)",
+    "count": 4,
+    "elements": [
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.06)",
+    "count": 4,
+    "elements": [
+     "li",
+     "div"
+    ],
+    "confidence": "medium"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.12)",
+    "count": 3,
+    "elements": [
+     "aside",
+     "span"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.06)",
+    "count": 2,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.067)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.07)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "dashed",
+    "color": "rgba(255, 255, 255, 0.2)",
+    "count": 1,
+    "elements": [
+     "span"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgb(102, 176, 139)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.09)",
+    "count": 1,
+    "elements": [
+     "span"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.55)",
+    "count": 1,
+    "elements": [
+     "img"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.08)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "dashed",
+    "color": "rgba(245, 181, 68, 0.533)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.07)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.07)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.1)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.08)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "0px 0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.4)",
+    "count": 1,
+    "elements": [
+     "figure"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(17, 17, 17, 0.22)",
+    "count": 1,
+    "elements": [
+     "img"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.06)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "0px 0px 1px",
+    "style": "solid",
+    "color": "rgba(255, 255, 255, 0.06)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   },
+   {
+    "width": "1px 0px 0px",
+    "style": "solid",
+    "color": "rgba(0, 0, 0, 0.05)",
+    "count": 1,
+    "elements": [
+     "div"
+    ],
+    "confidence": "low"
+   }
+  ]
+ },
+ "shadows": [
+  {
+   "shadow": "rgba(255, 255, 255, 0.05) 0px 1px 1px 0px, rgba(255, 255, 255, 0.09) 0px 4px 10px -3px, rgba(255, 255, 255, 0.3) 0px 26px 48px -18px",
+   "count": 42,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.035) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 1px 0px, rgba(0, 0, 0, 0.05) 0px 3px 6px -2px, rgba(0, 0, 0, 0.14) 0px 16px 32px -14px",
+   "count": 33,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.18) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.16) 0px 1px 1.5px 0px, rgba(0, 0, 0, 0.22) 0px 3px 6px -1px, rgba(0, 0, 0, 0.18) 0px 8px 14px -4px",
+   "count": 19,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px, rgba(0, 0, 0, 0.2) 0px 14px 32px -14px",
+   "count": 18,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 1px 0px, rgba(0, 0, 0, 0.05) 0px 4px 8px -3px, rgba(0, 0, 0, 0.18) 0px 22px 44px -18px",
+   "count": 11,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(255, 255, 255, 0.9) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px -1px 0px 0px inset",
+   "count": 6,
+   "confidence": "high"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.04) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.05) 0px 1px 2px 0px, rgba(0, 0, 0, 0.08) 0px 4px 10px -4px",
+   "count": 4,
+   "confidence": "medium"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.9) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px -1px 0px 0px inset",
+   "count": 3,
+   "confidence": "medium"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+   "count": 3,
+   "confidence": "medium"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.3) 0px 1px 2px 0px",
+   "count": 3,
+   "confidence": "medium"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0.035) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 1px 0px, rgba(0, 0, 0, 0.05) 0px 3px 6px -2px, rgba(0, 0, 0, 0.14) 0px 16px 32px -14px",
+   "count": 2,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset",
+   "count": 2,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
+   "count": 2,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.024) 0px 1px 0px 0px inset",
+   "count": 2,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.04) 0px 1px 0px 0px inset",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.06) 0px 1px 0px 0px inset",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.95) 0px 55px 150px -50px, rgba(92, 151, 118, 0.16) 0px 18px 55px -25px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.2) 0px 6px 24px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.14) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.12) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.22) 0px 1px 1px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgb(255, 255, 255) 0px 0px 0px 0px inset, rgba(255, 255, 255, 0.08) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.42) 0px 20px 42px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0.24) 0px 8px 24px 0px, rgba(245, 158, 11, 0.25) 0px 0px 10px -2px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0.24) 0px 8px 24px 0px, rgba(96, 165, 250, 0.25) 0px 0px 10px -2px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0.24) 0px 8px 24px 0px, rgba(167, 139, 250, 0.25) 0px 0px 10px -2px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.9) 0px 30px 60px -24px, rgba(0, 0, 0, 0.35) 0px 4px 14px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.5) 0px 18px 48px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.6) 0px 30px 80px -30px, rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.4) 0px 4px 10px -2px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(255, 255, 255, 0.12) 0px 0px 0px 2px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(22, 22, 22) 0px 0px 0px 2px, rgba(255, 255, 255, 0.35) 0px 0px 0px 3px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0.06) 0px 1px 2px 0px, rgba(0, 0, 0, 0.22) 0px 18px 36px -16px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset, rgba(255, 255, 255, 0.12) 0px 0px 0px 1px, rgba(245, 181, 68, 0.4) 0px 6px 14px -6px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(255, 255, 255, 0.12) 0px 1px 0px 0px inset, rgba(245, 181, 68, 0.2) 0px 0px 0px 1px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(74, 158, 255, 0.7) 0px 0px 6px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgb(255, 255, 255) 0px 0px 0px 1.5px, rgba(17, 17, 17, 0.8) 0px 0px 0px 3px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.035) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 1px 0px, rgba(0, 0, 0, 0.05) 0px 4px 8px -3px, rgba(0, 0, 0, 0.16) 0px 24px 48px -20px",
+   "count": 1,
+   "confidence": "low"
+  },
+  {
+   "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.12) 0px 1px 2px 0px, rgba(0, 0, 0, 0.45) 0px 10px 28px -12px",
+   "count": 1,
+   "confidence": "low"
+  }
+ ],
+ "gradients": [
+  {
+   "gradient": "linear-gradient(rgb(17, 17, 17), rgb(43, 43, 43))",
+   "type": "linear",
+   "stopColors": [
+    "rgb(17, 17, 17)",
+    "rgb(43, 43, 43)"
+   ],
+   "count": 8
+  },
+  {
+   "gradient": "linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.067), rgba(255, 255, 255, 0.035))",
+   "type": "linear",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.1)",
+    "rgba(255, 255, 255, 0.067)",
+    "rgba(255, 255, 255, 0.035)"
+   ],
+   "count": 3
+  },
+  {
+   "gradient": "radial-gradient(60% 60%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 42%, rgba(0, 0, 0, 0) 72%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.1)",
+    "rgba(255, 255, 255, 0.035)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 3
+  },
+  {
+   "gradient": "radial-gradient(rgba(18, 18, 18, 0.11) 1px, rgba(0, 0, 0, 0) 1.4px)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(18, 18, 18, 0.11)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 3
+  },
+  {
+   "gradient": "radial-gradient(closest-side, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03) 50%, rgba(0, 0, 0, 0))",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.08)",
+    "rgba(255, 255, 255, 0.03)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 3
+  },
+  {
+   "gradient": "radial-gradient(70% 50% at 50% 0px, rgba(255, 255, 255, 0.043), rgba(0, 0, 0, 0) 70%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.043)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 2
+  },
+  {
+   "gradient": "radial-gradient(70% 55% at 50% 0%, rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0) 65%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.07)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 2
+  },
+  {
+   "gradient": "radial-gradient(80% 60% at 50% 0px, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0) 70%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.01)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(60% 50% at 50% 55%, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.07) 38%, rgba(255, 255, 255, 0.02) 62%, rgba(0, 0, 0, 0) 82%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.17)",
+    "rgba(255, 255, 255, 0.07)",
+    "rgba(255, 255, 255, 0.02)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(rgba(92, 151, 118, 0.14), rgba(255, 255, 255, 0.03) 42%, rgba(0, 0, 0, 0) 72%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(92, 151, 118, 0.14)",
+    "rgba(255, 255, 255, 0.03)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.11) 24%, rgba(255, 255, 255, 0.043) 62%, rgba(255, 255, 255, 0.12))",
+   "type": "linear",
+   "stopColors": [
+    "rgba(255, 255, 255, 0.24)",
+    "rgba(255, 255, 255, 0.11)",
+    "rgba(255, 255, 255, 0.043)",
+    "rgba(255, 255, 255, 0.12)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(rgb(44, 44, 44), rgb(29, 29, 29))",
+   "type": "linear",
+   "stopColors": [
+    "rgb(44, 44, 44)",
+    "rgb(29, 29, 29)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(to top, rgb(17, 17, 17), rgba(18, 18, 18, 0.55), rgba(0, 0, 0, 0))",
+   "type": "linear",
+   "stopColors": [
+    "rgb(17, 17, 17)",
+    "rgba(18, 18, 18, 0.55)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(to top, rgb(33, 33, 33), rgba(0, 0, 0, 0))",
+   "type": "linear",
+   "stopColors": [
+    "rgb(33, 33, 33)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(to top, rgb(17, 17, 17), rgba(18, 18, 18, 0.7), rgba(0, 0, 0, 0))",
+   "type": "linear",
+   "stopColors": [
+    "rgb(17, 17, 17)",
+    "rgba(18, 18, 18, 0.7)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(34% 46% at 50% 8%, rgba(153, 120, 235, 0.2), rgba(0, 0, 0, 0) 72%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(153, 120, 235, 0.2)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(26% 36% at 36% 18%, rgba(92, 209, 204, 0.11), rgba(0, 0, 0, 0) 70%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(92, 209, 204, 0.11)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(26% 36% at 64% 18%, rgba(247, 143, 199, 0.11), rgba(0, 0, 0, 0) 70%)",
+   "type": "radial",
+   "stopColors": [
+    "rgba(247, 143, 199, 0.11)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(92, 209, 204, 0.55) 28%, rgba(153, 120, 235, 0.75) 50%, rgba(247, 143, 199, 0.55) 72%, rgba(0, 0, 0, 0))",
+   "type": "linear",
+   "stopColors": [
+    "rgba(0, 0, 0, 0)",
+    "rgba(92, 209, 204, 0.55)",
+    "rgba(153, 120, 235, 0.75)",
+    "rgba(247, 143, 199, 0.55)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  },
+  {
+   "gradient": "radial-gradient(50% 100% at 50% 0px, rgba(153, 120, 235, 0.18), rgba(0, 0, 0, 0))",
+   "type": "radial",
+   "stopColors": [
+    "rgba(153, 120, 235, 0.18)",
+    "rgba(0, 0, 0, 0)"
+   ],
+   "count": 1
+  }
+ ],
+ "motion": {
+  "durations": [
+   {
+    "value": "0.15s",
+    "ms": 150,
+    "count": 75
+   },
+   {
+    "value": "0.2s",
+    "ms": 200,
+    "count": 65
+   },
+   {
+    "value": "0.3s",
+    "ms": 300,
+    "count": 17
+   },
+   {
+    "value": "0.4s",
+    "ms": 400,
+    "count": 1
+   },
+   {
+    "value": "0.5s",
+    "ms": 500,
+    "count": 2
+   },
+   {
+    "value": "0.7s",
+    "ms": 700,
+    "count": 28
+   }
+  ],
+  "easings": [
+   {
+    "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "type": "custom",
+    "count": 126
+   },
+   {
+    "value": "cubic-bezier(0, 0, 0.2, 1)",
+    "type": "ease-out",
+    "count": 33
+   },
+   {
+    "value": "cubic-bezier(0.22, 0.68, 0.35, 1)",
+    "type": "custom",
+    "count": 16
+   },
+   {
+    "value": "ease-out",
+    "type": "ease-out",
+    "count": 12
+   },
+   {
+    "value": "ease",
+    "type": "ease",
+    "count": 8
+   },
+   {
+    "value": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+    "type": "custom",
+    "count": 1
+   }
+  ],
+  "animations": [
+   {
+    "name": "eden-caret-blink",
+    "duration": "1.05s",
+    "easing": "steps(1)",
+    "count": 2,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "eden-leaf-grow",
+    "duration": "1.35s",
+    "easing": "ease-out",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "eden-leaf-grow-bottom",
+    "duration": "1.35s",
+    "easing": "ease-out",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "eden-sparkle-grow",
+    "duration": "1.35s",
+    "easing": "ease-out",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "eve-answer-in",
+    "duration": "0.42s",
+    "easing": "ease-out",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "efv-blink",
+    "duration": "1.05s",
+    "easing": "steps(2",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   },
+   {
+    "name": "pulse",
+    "duration": "2s",
+    "easing": "cubic-bezier(0.4",
+    "count": 1,
+    "contexts": [
+     "other"
+    ]
+   }
+  ],
+  "contexts": {
+   "nav": {
+    "count": 2,
+    "durations": [
+     "0.3s",
+     "0.15s"
+    ],
+    "easing": "cubic-bezier(0, 0, 0.2, 1)",
+    "easingType": "ease-out",
+    "props": [
+     "transform"
+    ]
+   },
+   "button": {
+    "count": 25,
+    "durations": [
+     "0.15s",
+     "0.3s"
+    ],
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "easingType": "custom",
+    "props": [
+     "color",
+     "background-color",
+     "border-color",
+     "text-decoration-color"
+    ]
+   },
+   "link": {
+    "count": 62,
+    "durations": [
+     "0.15s",
+     "0.2s"
+    ],
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "easingType": "custom",
+    "props": [
+     "color",
+     "background-color",
+     "border-color",
+     "text-decoration-color"
+    ]
+   },
+   "card": {
+    "count": 1,
+    "durations": [
+     "0.15s"
+    ],
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "easingType": "custom",
+    "props": [
+     "color",
+     "background-color",
+     "border-color",
+     "text-decoration-color"
+    ]
+   }
+  },
+  "interactiveDeltas": [
+   {
+    "tag": "button",
+    "text": "Features",
+    "pattern": "color-shift",
+    "delta": {
+     "color": {
+      "from": "rgb(82, 80, 76)",
+      "to": "rgb(17, 17, 17)"
+     }
+    }
+   },
+   {
+    "tag": "a",
+    "text": "Eve AI",
+    "pattern": "color-shift",
+    "delta": {
+     "background": {
+      "from": "rgba(0, 0, 0, 0)",
+      "to": "rgb(245, 244, 241)"
+     },
+     "color": {
+      "from": "rgb(82, 80, 76)",
+      "to": "rgb(17, 17, 17)"
+     }
+    }
+   },
+   {
+    "tag": "a",
+    "text": "Boards",
+    "pattern": "color-shift",
+    "delta": {
+     "background": {
+      "from": "rgba(0, 0, 0, 0)",
+      "to": "rgb(245, 244, 241)"
+     },
+     "color": {
+      "from": "rgb(82, 80, 76)",
+      "to": "rgb(17, 17, 17)"
+     }
+    }
+   },
+   {
+    "tag": "a",
+    "text": "Reader",
+    "pattern": "color-shift",
+    "delta": {
+     "background": {
+      "from": "rgba(0, 0, 0, 0)",
+      "to": "rgb(245, 244, 241)"
+     },
+     "color": {
+      "from": "rgb(82, 80, 76)",
+      "to": "rgb(17, 17, 17)"
+     }
+    }
+   },
+   {
+    "tag": "a",
+    "text": "Highlights",
+    "pattern": "color-shift",
+    "delta": {
+     "background": {
+      "from": "rgba(0, 0, 0, 0)",
+      "to": "rgb(245, 244, 241)"
+     },
+     "color": {
+      "from": "rgb(82, 80, 76)",
+      "to": "rgb(17, 17, 17)"
+     }
+    }
+   }
+  ]
+ },
+ "components": {
+  "buttons": [
+   {
+    "states": {
+     "default": {
+      "backgroundColor": "rgb(255, 255, 255)",
+      "color": "rgb(10, 10, 10)",
+      "padding": "0px 12px",
+      "borderRadius": "9px",
+      "border": "0px solid rgb(229, 231, 235)",
+      "fontSize": "12.5px",
+      "fontWeight": "500"
+     }
+    },
+    "fontWeight": "500",
+    "fontSize": "12.5px",
+    "text": "New",
+    "confidence": "high"
+   },
+   {
+    "states": {
+     "default": {
+      "backgroundColor": "rgba(255, 255, 255, 0.09)",
+      "color": "rgb(255, 255, 255)",
+      "padding": "0px 12px",
+      "borderRadius": "9px",
+      "border": "0px solid rgb(229, 231, 235)",
+      "fontSize": "12.5px",
+      "fontWeight": "500"
+     }
+    },
+    "fontWeight": "500",
+    "fontSize": "12.5px",
+    "text": "Last 14 days",
+    "confidence": "high"
+   },
+   {
+    "states": {
+     "default": {
+      "backgroundColor": "rgba(255, 255, 255, 0.07)",
+      "color": "rgba(255, 255, 255, 0.75)",
+      "padding": "0px 16px",
+      "borderRadius": "10px",
+      "border": "0px solid rgb(229, 231, 235)",
+      "fontSize": "13.5px",
+      "fontWeight": "500"
+     }
+    },
+    "fontWeight": "500",
+    "fontSize": "13.5px",
+    "text": "Manage products",
+    "confidence": "high"
+   },
+   {
+    "states": {
+     "default": {
+      "backgroundColor": "rgba(17, 17, 17, 0.05)",
+      "color": "rgb(17, 17, 17)",
+      "padding": "10px 24px",
+      "borderRadius": "12px",
+      "border": "1px solid rgba(17, 17, 17, 0.14)",
+      "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.04) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.05) 0px 1px 2px 0px, rgba(0, 0, 0, 0.08) 0px 4px 10px -4px",
+      "fontSize": "15.2px",
+      "fontWeight": "500"
+     }
+    },
+    "fontWeight": "500",
+    "fontSize": "15.2px",
+    "text": "Load more",
+    "confidence": "high"
+   },
+   {
+    "states": {
+     "default": {
+      "backgroundColor": "rgb(255, 255, 255)",
+      "color": "rgb(17, 17, 17)",
+      "padding": "16px",
+      "borderRadius": "0px",
+      "border": "0px solid rgb(229, 231, 235)",
+      "fontSize": "16px",
+      "fontWeight": "400"
+     }
+    },
+    "fontWeight": "400",
+    "fontSize": "16px",
+    "text": "Your storeEvery product on one page, pai",
+    "confidence": "medium"
+   }
+  ],
+  "inputs": {
+   "text": [
+    {
+     "specificType": "email",
+     "states": {
+      "default": {
+       "backgroundColor": "rgb(245, 244, 241)",
+       "color": "rgb(17, 17, 17)",
+       "border": "1px solid rgba(0, 0, 0, 0.08)",
+       "borderRadius": "9999px",
+       "padding": "8px 14px",
+       "boxShadow": "none",
+       "outline": "rgba(0, 0, 0, 0) solid 2px"
+      },
+      "focus": null
+     }
+    }
+   ],
+   "checkbox": [],
+   "radio": [],
+   "select": []
+  },
+  "links": [
+   {
+    "color": "rgb(17, 17, 17)",
+    "textDecoration": "none",
+    "fontWeight": "400",
+    "states": {
+     "default": {
+      "color": "rgb(17, 17, 17)",
+      "textDecoration": "none"
+     },
+     "hover": {}
+    }
+   },
+   {
+    "color": "rgb(82, 80, 76)",
+    "textDecoration": "none",
+    "fontWeight": "400",
+    "states": {
+     "default": {
+      "color": "rgb(82, 80, 76)",
+      "textDecoration": "none"
+     },
+     "hover": {}
+    }
+   },
+   {
+    "color": "rgb(252, 252, 250)",
+    "textDecoration": "none",
+    "fontWeight": "500",
+    "states": {
+     "default": {
+      "color": "rgb(252, 252, 250)",
+      "textDecoration": "none"
+     },
+     "hover": {}
+    }
+   },
+   {
+    "color": "rgb(255, 255, 255)",
+    "textDecoration": "none",
+    "fontWeight": "400",
+    "states": {
+     "default": {
+      "color": "rgb(255, 255, 255)",
+      "textDecoration": "none"
+     },
+     "hover": {}
+    }
+   },
+   {
+    "color": "rgb(112, 110, 105)",
+    "textDecoration": "none",
+    "fontWeight": "400",
+    "states": {
+     "default": {
+      "color": "rgb(112, 110, 105)",
+      "textDecoration": "none"
+     },
+     "hover": {}
+    }
+   }
+  ],
+  "badges": {
+   "all": [],
+   "byVariant": {
+    "error": [],
+    "warning": [],
+    "success": [],
+    "info": [],
+    "neutral": []
+   }
+  }
+ },
+ "breakpoints": [
+  {
+   "px": "359px"
+  },
+  {
+   "px": "400px"
+  },
+  {
+   "px": "480px"
+  },
+  {
+   "px": "640px"
+  },
+  {
+   "px": "768px"
+  },
+  {
+   "px": "1024px"
+  },
+  {
+   "px": "1280px"
+  },
+  {
+   "px": "1350px"
+  },
+  {
+   "px": "1536px"
+  }
+ ],
+ "iconSystem": [
+  {
+   "name": "Tabler Icons",
+   "type": "svg"
+  }
+ ],
+ "frameworks": [
+  {
+   "name": "React",
+   "confidence": "high",
+   "evidence": "DOM property __reactFiber$, window.renderer:react-dom",
+   "category": "js-framework",
+   "version": "19.2.4",
+   "coverage": 1
+  },
+  {
+   "name": "Gatsby",
+   "confidence": "high",
+   "evidence": "#___gatsby, window.___loader",
+   "category": "meta-framework",
+   "version": "5.16.1"
+  },
+  {
+   "name": "Tailwind CSS",
+   "confidence": "high",
+   "evidence": "banner tailwindcss v3.4.17, CSS variables --tw-*",
+   "category": "css-framework",
+   "version": "3.4.17"
+  }
+ ]
+}
