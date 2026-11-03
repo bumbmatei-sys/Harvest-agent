@@ -1,0 +1,50 @@
+/*
+ * Tailwind v4 theme extracted from https://app.eden.so/sign-in on 2026-11-03T20:39:59.072Z
+ * dembrandt v0.39.2
+ *
+ * Observed values only. Every token below was measured on the page; no
+ * shades, states or scale steps were generated. Tailwind defaults still
+ * apply for anything not listed here, so extend rather than replace.
+ *
+ * This is a draft to check, not a source of truth. Each token carries the
+ * evidence behind it; read down the counts and drop what the page only did
+ * once before you build on this file.
+ */
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-primary: #686764;     /* semantic */
+  --color-background: #fcfcfa;  /* semantic */
+  --color-text: #272523;        /* semantic */
+
+  /* Typography */
+  --font-geist: Geist, ui-sans-serif, system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";  /* heading-1 */
+  --text-heading-1: 28px;                                                                                                       /* heading-1 */
+  --text-heading-1--line-height: 1.25;
+  --text-body: 16px;                                                                                                            /* body */
+  --text-body--line-height: 1.5;
+  --text-ui: 15px;                                                                                                              /* ui */
+  --text-ui--line-height: 1.5;
+  --text-caption: 12px;                                                                                                         /* caption */
+  --text-caption--line-height: 1.33;
+  --font-weight-semibold: 600;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-light: 300;
+  --tracking-heading-1: -0.7px;                                                                                                 /* heading-1 */
+  --tracking-body: -0.3333px;                                                                                                   /* body */
+
+  /* Spacing */
+  --spacing: 4px;  /* 4px scale */
+
+  /* Radius */
+  --radius-full: 9999px;  /* 1x */
+
+  /* Breakpoints */
+  --breakpoint-sm: 560px;
+  --breakpoint-md: 639px;
+  --breakpoint-lg: 640px;
+  --breakpoint-xl: 760px;
+  --breakpoint-2xl: 1023px;
+}

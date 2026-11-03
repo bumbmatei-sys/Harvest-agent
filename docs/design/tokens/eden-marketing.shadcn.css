@@ -1,0 +1,40 @@
+/* shadcn/ui theme, measured from https://eden.so/.
+ * Written by dembrandt 0.39.2.
+ * 12 of 18 slots were observed on the page.
+ * Not observed, so left to shadcn defaults: popover, popover-foreground, muted, muted-foreground, destructive, ring.
+ */
+
+:root {
+  --background: oklch(99.0514% 0.00263 106.447);
+  --foreground: oklch(17.7638% 0 0);
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(0% 0 0);
+  --primary: oklch(69.8348% 0.09291 160.912);
+  --primary-foreground: oklch(0% 0 0);
+  --secondary: oklch(100% 0 0);
+  --secondary-foreground: oklch(0% 0 0);
+  --accent: oklch(85.545% 0.03708 28.371);
+  --accent-foreground: oklch(0% 0 0);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(0, 0, 0, 0.08);
+  --radius: 9999px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

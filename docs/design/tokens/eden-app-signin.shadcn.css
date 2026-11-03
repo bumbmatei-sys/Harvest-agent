@@ -1,0 +1,23 @@
+/* shadcn/ui theme, measured from https://app.eden.so/sign-in.
+ * Written by dembrandt 0.39.2.
+ * 6 of 18 slots were observed on the page.
+ * Not observed, so left to shadcn defaults: card, card-foreground, popover, popover-foreground, secondary, secondary-foreground, muted, muted-foreground, accent, accent-foreground, destructive, border.
+ */
+
+:root {
+  --background: oklch(99.0514% 0.00263 106.447);
+  --foreground: oklch(26.5885% 0.00473 67.622);
+  --primary: oklch(51.3725% 0.00482 91.49);
+  --primary-foreground: oklch(100% 0 0);
+  --input: oklch(26.5885% 0.00473 67.622);
+  --ring: oklch(0% 0 0 / 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
