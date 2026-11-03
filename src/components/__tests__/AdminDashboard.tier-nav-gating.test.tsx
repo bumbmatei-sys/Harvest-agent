@@ -264,6 +264,11 @@ function expectedNav(plan: TenantPlan): string[] {
   const f = getPlanFeatures(plan);
   const labels = TABS
     .filter((t) => {
+      // 🔴 AI Knowledge is the derivation's ONE row no tier shows: the section is
+      // hidden for everyone while AI_KNOWLEDGE_NAV_ENABLED is false (the founder:
+      // "hide ai knowledge for now"), so it is dropped HERE rather than deleted
+      // from TABS — the row stays named, and named as hidden.
+      if (t.label === 'AI Knowledge') return false;
       // THE-373 — Individual has no Reach group. Check-In is the only Reach tab
       // whose cell is null, so without this it is the group.
       if (plan === 'church' && t.label === 'Check-In') return false;
@@ -400,14 +405,22 @@ afterEach(async () => {
 });
 
 // ── 1 ────────────────────────────────────────────────────────────────────────
-describe('1 — a free tenant sees all eighteen nav items', () => {
-  it('a free tenant sees all eighteen nav items', async () => {
+describe('1 — a free tenant sees all nineteen nav items', () => {
+  it('a free tenant sees all nineteen nav items', async () => {
     const { nav } = await navFor('free');
 
     // 🔴 THE POINT OF THE TIER. Named individually, not counted, so a nav that
     // lost one and gained another cannot pass on arithmetic.
     for (const tab of TABS) {
       const label = tab.label;
+      // 🔴 AI Knowledge is the ONE row that is not shown, and no tier took it:
+      // the section is hidden for everyone while AI_KNOWLEDGE_NAV_ENABLED is
+      // false, so the row is still named here — as hidden.
+      if (label === 'AI Knowledge') {
+        expect(nav, 'AI Knowledge is back in the free nav while AI_KNOWLEDGE_NAV_ENABLED is false')
+          .not.toContain(label);
+        continue;
+      }
       expect(nav, `a free admin lost "${label}" — free must see every feature`).toContain(label);
     }
     // ⚠️ Seventeen since THE-277: Signups split out of the CRM screen, taking
@@ -417,7 +430,10 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // every tier that had Events gained a row and no tier's reach changed.
     // ⚠️ NINETEEN with the Products page: it is reported together with Courses (see navLabels), so
     // every tier that reaches Courses gains one row and no tier's reach changes.
-    expect(nav.length, '#557 adds sign-up pages to the Free nav').toBe(20);
+    // ⚠️ TWENTY with #557's sign-up pages — and NINETEEN AGAIN now that AI
+    // Knowledge is hidden behind its own master switch (AI_KNOWLEDGE_NAV_ENABLED,
+    // false): one row gone from EVERY tier, free included, and nothing else moved.
+    expect(nav.length, 'the free nav does not hold the nineteen rows it should while AI Knowledge is hidden').toBe(19);
     expect(nav).toEqual(expectedNav('free'));
 
     // And it is genuinely the see-everything case: free's own cells unlock only
@@ -544,8 +560,12 @@ describe('3 — a stored retired plan id shows the nav of the tier it became', (
  *
  * `the-253-ai-chat-addon.test.ts` pins that neither component calls
  * `getPlanFeatures`, which is the structural half. This is the other half: mount
- * the real AdminDashboard with the add-on held and watch the nav entry appear.
- * A source guard can be satisfied by an unused import; this cannot. */
+ * the real AdminDashboard with the add-on held and watch what the surface does.
+ * While AI_KNOWLEDGE_NAV_ENABLED is false the section is hidden for EVERY tenant
+ * — add-on or not, Ministry or not — so what this suite pins now is that the
+ * add-on does not put a hidden entry back in the nav and that a typed /admin/ai
+ * mounts neither AdminRAG nor the upgrade wall. A source guard can be satisfied
+ * by an unused import; this cannot. */
 describe('3b — an entitled admin is not refused at the surface', () => {
   const OWNS_ADDON = {
     aiAssistant: 1, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0, socialScheduler: 0,
@@ -560,35 +580,46 @@ describe('3b — an entitled admin is not refused at the surface', () => {
      that cannot buy this add-on at all: no Dodo subscription to attach it to,
      and `queryTokensPerMonth: 0` if one ever arrived. Both facts are pinned in
      the-253-ai-chat-addon.test.ts. */
-  it('church: the AI Knowledge entry appears when the add-on is held', async () => {
+  it('church: the AI Knowledge entry stays hidden when the add-on is held', async () => {
     const without = await navFor('church', {}, '', { ...OWNS_NOTHING });
     expect(without.nav, 'church shows AI Knowledge owning nothing').not.toContain('AI Knowledge');
 
     const withAddon = await navFor('church', {}, '', { ...OWNS_ADDON });
-    expect(withAddon.nav, 'church BOUGHT the add-on and was still refused').toContain('AI Knowledge');
+    expect(withAddon.nav, 'the add-on put a hidden section back in the nav').not.toContain('AI Knowledge');
   });
 
-  it('ministry: the AI Knowledge entry comes with the tier, and the add-on does not remove it', async () => {
-    // The spec lists the knowledge base under Ministry, so the cell is true there.
+  it('ministry: the knowledge base the tier includes is hidden with the section, add-on or not', async () => {
+    // The spec lists the knowledge base under Ministry, so the cell is true
+    // there — and it hides nothing less: AI_KNOWLEDGE_NAV_ENABLED hides the
+    // section from every tier alike.
     const without = await navFor('ministry', {}, '', { ...OWNS_NOTHING });
-    expect(without.nav, 'ministry lost the knowledge base it includes').toContain('AI Knowledge');
+    expect(without.nav, 'ministry shows AI Knowledge while the section is hidden').not.toContain('AI Knowledge');
     const withAddon = await navFor('ministry', {}, '', { ...OWNS_ADDON });
-    expect(withAddon.nav).toContain('AI Knowledge');
+    expect(withAddon.nav, 'the add-on put a hidden section back in the nav').not.toContain('AI Knowledge');
   });
 
-  it('🔴 the AI Knowledge SCREEN renders for an entitled admin, not an upgrade wall', async () => {
-    // The nav entry appearing is not enough: THE-213's defect was a tab hidden
-    // from the nav that still rendered by URL, and this is its mirror — a tab
-    // the church is entitled to that answers with a wall when reached.
+  it('🔴 a typed /admin/ai mounts neither AdminRAG nor the upgrade wall', async () => {
+    // The nav entry being gone is not enough: THE-213's defect was a tab hidden
+    // from the nav that still rendered by URL. While AI_KNOWLEDGE_NAV_ENABLED is
+    // false the branch answers the newsletter's "Page not found." — NOT
+    // PlanUpgradeScreen, which would sell the very feature being hidden — for an
+    // entitled admin and an unentitled one alike.
     const { screen, wall } = await navFor('church', {}, 'ai-knowledge', { ...OWNS_ADDON });
-    expect(wall, 'an entitled admin got an upgrade wall').toBeNull();
-    expect(screen, 'the AI Knowledge screen did not render for an entitled admin').toBe('AdminRAG');
+    expect(screen, 'the AI Knowledge screen still rendered while the section is hidden').toBeNull();
+    expect(wall, 'a typed /admin/ai sold the hidden feature').toBeNull();
+
+    store.current = { ...store.current, tenantPlan: 'church' };
+    ctx.current = { ...ctx.current, tenantPlan: 'church', tenantAddons: { ...OWNS_ADDON } };
+    await mount({}, 'ai-knowledge');
+    expect(container.textContent, 'a typed /admin/ai is not the "Page not found." the newsletter branch gives')
+      .toContain('Page not found.');
+    await unmount();
   });
 
-  it('and an unentitled admin still gets the wall, so the gate is real', async () => {
+  it('and an unentitled admin gets the same treatment, so hiding is not the plan gate', async () => {
     const { screen, wall } = await navFor('church', {}, 'ai-knowledge', { ...OWNS_NOTHING });
     expect(screen, 'Church reached AI Knowledge without the add-on').not.toBe('AdminRAG');
-    expect(wall, 'no upgrade wall for an unentitled admin').not.toBeNull();
+    expect(wall, 'a typed /admin/ai sold the hidden feature').toBeNull();
   });
 });
 
@@ -598,19 +629,29 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
    *  ⚠️ Was sixteen. 'AI Knowledge' is no longer among them — THE-253 made it
    *  part of the AI Assistant add-on, so even Ministry does not get it by
    *  paying for the tier. It returns for a Ministry tenant that holds the
-   *  add-on, through `getEffectiveFeatures`. */
+   *  add-on, through `getEffectiveFeatures` — but the SECTION is hidden for every
+   *  tier while AI_KNOWLEDGE_NAV_ENABLED is false, so no tenant sees the entry
+   *  at all right now. */
   it('a Ministry tenant sees exactly its expected set', async () => {
     const { nav } = await navFor('ministry');
     // The spec lists the AI knowledge base under Ministry, so the cell is true
-    // there and the tab appears with the tier — add-on or not.
+    // there — and the tab still does not appear with the tier: the section is
+    // hidden for EVERYONE while AI_KNOWLEDGE_NAV_ENABLED is false.
     for (const tab of TABS) {
+      if (tab.label === 'AI Knowledge') {
+        expect(nav, 'AI Knowledge is back in the Ministry nav while AI_KNOWLEDGE_NAV_ENABLED is false')
+          .not.toContain(tab.label);
+        continue;
+      }
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).not.toContain('Branding');
     // ⚠️ SEVENTEEN SINCE THE-326 — Services joined the set on the
     // `eventRegistration` cell Ministry already holds, so the tier gained the
     // row it was always entitled to and lost nothing.
-    expect(nav.length, '#557 adds sign-up pages to Ministry').toBe(20);
+    // ⚠️ NINETEEN since AI Knowledge went behind its own master switch: twenty
+    // with #557's sign-up pages, minus the one row every tier lost.
+    expect(nav.length, 'the Ministry nav does not hold the nineteen rows it should while AI Knowledge is hidden').toBe(19);
     expect(nav).toEqual(expectedNav('ministry'));
   });
 
@@ -637,6 +678,13 @@ describe('5 — a super admin still sees everything through platformOverride', (
     // On the cheapest tier there is, which is where a lost bypass would show.
     const { nav } = await navFor('church', { role: 'super_admin' });
     for (const tab of TABS) {
+      // 🔴 platformOverride bypasses the PLAN gate, not a master switch:
+      // AI Knowledge stays hidden while AI_KNOWLEDGE_NAV_ENABLED is false.
+      if (tab.label === 'AI Knowledge') {
+        expect(nav, 'platformOverride put a hidden section back in the nav')
+          .not.toContain(tab.label);
+        continue;
+      }
       expect(nav, `platformOverride lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).not.toContain('Branding');
@@ -734,7 +782,9 @@ describe('7 — a hidden tab still refuses when reached by URL', () => {
     // 🔴 The render-time layer is the one that cannot be bypassed by typing a
     // path, and THE-220 did not touch it. Every tab now absent from an
     // Individual nav must still answer PlanUpgradeScreen — never its screen —
-    // when `/admin/<section>` is opened directly.
+    // when `/admin/<section>` is opened directly. AI Knowledge is the one that
+    // answers "Page not found." instead: it is hidden by its own master switch,
+    // and an upgrade wall would advertise the feature being hidden.
     const f = getPlanFeatures('church');
     const hidden = TABS.filter((t) => t.cell !== null && !t.cell(f));
     // Eight: AI Knowledge, Newsletter, Events, Services, Giving records, Forms,
@@ -744,6 +794,13 @@ describe('7 — a hidden tab still refuses when reached by URL', () => {
     for (const tab of hidden) {
       const { screen, wall } = await navFor('church', {}, tab.section);
       expect(screen, `"${tab.label}" rendered its screen when reached by URL`).toBeNull();
+      // 🔴 AI Knowledge is hidden by AI_KNOWLEDGE_NAV_ENABLED, not by the plan
+      // gate, so it must answer with neither AdminRAG nor an upgrade wall — the
+      // newsletter branch's "Page not found." is the treatment.
+      if (tab.label === 'AI Knowledge') {
+        expect(wall, `"${tab.label}" was sold on an upgrade wall while the section is hidden`).toBeNull();
+        continue;
+      }
       expect(wall, `"${tab.label}" showed no upgrade wall when reached by URL`).not.toBeNull();
     }
   });

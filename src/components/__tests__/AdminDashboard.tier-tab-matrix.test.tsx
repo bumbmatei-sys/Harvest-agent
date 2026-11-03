@@ -411,7 +411,7 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.size).toBe(TABS.length);
   });
 
-  it('resolves the free column to eighteen visible tabs', async () => {
+  it('resolves the free column to seventeen visible tabs', async () => {
     const matrix = await buildMatrix();
     const visible = TABS.filter((r) => matrix.get(r.label)!.get('free')!.cell !== 'hidden');
     // ⚠️ Seventeen since THE-277, and free bought nothing to get the extra row:
@@ -420,7 +420,10 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     // ⚠️ EIGHTEEN since THE-326, by exactly that mechanism again: Services split
     // out of the Events screen carrying the same `eventRegistration` cell, so
     // one entitlement now opens two tabs there too.
-    expect(visible.length, 'free must see all eighteen').toBe(18);
+    // ⚠️ SEVENTEEN AGAIN — AI Knowledge left every column at once when its
+    // section went behind AI_KNOWLEDGE_NAV_ENABLED (false). Free did not lose it
+    // to its own cells; no tier shows the row now.
+    expect(visible.length, 'free must see all seventeen').toBe(17);
   });
 
   it('resolves the Church column without Reach', async () => {
@@ -531,18 +534,29 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
           expect(resolved.redirected, 'Church Check-In URL was not bounced').toBe(true);
           continue;
         }
+        // 🔴 AI Knowledge is the same shape of exception on EVERY tier: hidden by
+        // its own master switch (AI_KNOWLEDGE_NAV_ENABLED, false), not by a cell,
+        // so a typed /admin/ai is "page not found" — never AdminRAG, and never
+        // PlanUpgradeScreen, which would advertise the feature being hidden.
+        if (row.label === 'AI Knowledge') {
+          expect(resolved.wall, `${row.label}/${plan} became an upgrade wall`).toBeNull();
+          expect(resolved.screen, `${row.label}/${plan} still mounted AdminRAG`).not.toBe('AdminRAG');
+          expect(resolved.redirected, `${row.label}/${plan} URL was not bounced`).toBe(true);
+          continue;
+        }
         expect(resolved.wall, `${row.label}/${plan} refused with no upgrade screen`).not.toBeNull();
         checked += 1;
       }
     }
     // A guard on the guard: if the nav gate ever stopped hiding anything, the
-    // loop above would pass by never running. Eight cells, all on Church:
-    // AI Knowledge, Newsletter, Events, Services, Giving records, Forms,
-    // Livestream and SMS. (Check-In is hidden there too, but is counted by the
-    // bounce above.) Free sees every tab and Ministry holds every cell, so
-    // neither hides anything. Branding left the sidebar for Settings, so it is
-    // not a row.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(8);
+    // loop above would pass by never running. Seven cells, all on Church:
+    // Newsletter, Events, Services, Giving records, Forms, Livestream and SMS.
+    // (Check-In is hidden there too, but is counted by the bounce above; AI
+    // Knowledge is hidden on EVERY tier behind AI_KNOWLEDGE_NAV_ENABLED and is
+    // counted by its own exception.) Free sees every tab and Ministry holds
+    // every cell, so neither hides anything. Branding left the sidebar for
+    // Settings, so it is not a row.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(7);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

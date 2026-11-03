@@ -37,13 +37,14 @@ import {
  *
  * Two icon-only sides, matching Eden's workspace / store switch:
  *   people — home, people, giving (Boards is a section of its own, drawn by the sidebar)
- *   public — channels (social, newsletter, blog), engage
- *            (forms, events, check-in), products
+ *   public — social media, website (storefront, blog), engage
+ *            (newsletter, events, forms, sign-up pages, check-in, livestream, sms),
+ *            products
  *
  * Community has no row. It is the menu in the top bar.
  *
  * Livestream lives inside the community: it opens from the Communities page,
- * and has a Channels row only for an admin who cannot open that page.
+ * and has an Engage row only for an admin who cannot open that page.
  *
  * Branding is not a sidebar group. It lives in Settings > Campus & branding.
  * A branding-only admin, who cannot open Settings, still gets one row from
@@ -170,19 +171,6 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     ],
   },
   {
-    id: 'social',
-    label: 'Channels',
-    icon: Radio,
-    items: [
-      { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
-      // The founder moved Livestream into the community: it opens from the main
-      // community on the Communities page. An admin who may run the stream but
-      // not Communities keeps this row, or they would have no way in.
-      { id: 'livestream', label: 'Livestream', icon: Radio, onlyWithout: 'community-setup' },
-      { id: 'sms', label: 'SMS', icon: MessageSquare },
-    ],
-  },
-  {
     // The founder's Website section: the Storefront (link in bio) and the Blog
     // together, since the Storefront's Blog block shows what the Blog publishes.
     id: 'website',
@@ -198,10 +186,16 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     label: 'Engage',
     icon: CalendarCheck,
     items: [
+      { id: 'newsletter', label: 'Newsletter', icon: NAV_ICONS.newsletter },
+      { id: 'events', label: 'Events', icon: CalendarCheck },
       { id: 'forms', label: 'Forms', icon: ClipboardList },
       { id: 'signup-pages', label: 'Sign-up pages', icon: ClipboardList },
-      { id: 'events', label: 'Events', icon: CalendarCheck },
       { id: 'checkin', label: 'Check-in', icon: QrCode },
+      // The founder moved Livestream into the community: it opens from the main
+      // community on the Communities page. An admin who may run the stream but
+      // not Communities keeps this row, or they would have no way in.
+      { id: 'livestream', label: 'Livestream', icon: Radio, onlyWithout: 'community-setup' },
+      { id: 'sms', label: 'SMS', icon: MessageSquare },
     ],
   },
   {

@@ -82,6 +82,13 @@ import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
+
+// Founder: hide ai knowledge for now. Master switch for the nav entry: while it
+// is false nobody gets the entry and /admin/ai shows "Page not found."; AdminRAG
+// is kept, so flipping this back to `true` restores the exact previous entry (plan
+// and permission clauses below are untouched).
+const AI_KNOWLEDGE_NAV_ENABLED = false;
+
 /**
  * THE-351 — the PER-TENANT inbox: someone said they paid for a ticket and a
  * church admin has to go and confirm it.
@@ -799,7 +806,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // same plan cell and the same permission, so it adds no new entitlement.
     navAllows(features?.blog) &&
       (hasFullAccess || perms.writeArticles) && { id: 'storefront', label: 'Storefront', icon: Store },
-    navAllows(features?.aiKnowledge) &&
+    AI_KNOWLEDGE_NAV_ENABLED &&
+      navAllows(features?.aiKnowledge) &&
       (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — Small Team and above; free sees it walled.
     // Master switch first, exactly as the SMS entry above does it and for the
@@ -920,8 +928,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // mobile drawer, where the screen shows the upgrade wall. The desktop
     // sidebar drops it unless the add-on is held or the viewer is a super
     // admin. Gating the entry on the plan cell would hide the wall, because
-    // that cell is false everywhere.
-    hasFullAccess && { id: 'social', label: 'Social', icon: Radio },
+    // that cell is false everywhere. The plan owner is kept in as well: an
+    // owner whose role is not church_admin has no `hasFullAccess`, yet
+    // `hasSocialFullAccess` (src/lib/social/access.ts) admits them by
+    // `tenants.ownerId`, so the two gates must agree.
+    (hasFullAccess || isPlanOwner) && { id: 'social', label: 'Social', icon: Radio },
     // SMS Automation (Twilio)
     // Master switch first, exactly as the Affiliate entry below does it: while
     // SMS is hidden NOBODY gets the entry, super admin included. The plan and
@@ -1409,7 +1420,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
               : <PlanUpgradeScreen featureName="Courses" featureKey="maxCourses" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'ai' ? (
-            knowledgeBaseEnabled
+            // With AI Knowledge hidden the nav entry is gone, so this branch only
+            // catches a typed or bookmarked /admin/ai — and it must not mount
+            // AdminRAG (THE-213's defect in reverse).
+            //
+            // 🔴 NOT PlanUpgradeScreen, for the reason the newsletter branch below
+            // is not one either: that screen sells the tier that includes the
+            // feature, which would advertise AI Knowledge on the very screen meant
+            // to hide it. Same "Page not found." treatment. Flip
+            // AI_KNOWLEDGE_NAV_ENABLED to bring the section, and its plan gate,
+            // back exactly as they were.
+            !AI_KNOWLEDGE_NAV_ENABLED
+              ? <div className="flex flex-col items-center justify-center h-full text-faint">
+                  <p className="text-lg font-medium">Page not found.</p>
+                </div>
+              : knowledgeBaseEnabled
               ? <div className="p-4 lg:p-0"><AdminRAG /></div>
               : <PlanUpgradeScreen featureName="AI Knowledge" featureKey="aiKnowledge" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'newsletter' ? (

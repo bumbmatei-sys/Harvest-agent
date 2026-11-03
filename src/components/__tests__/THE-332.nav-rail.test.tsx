@@ -401,10 +401,19 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       // (/admin/livestream resolves), and an admin who cannot open Communities keeps
       // a Channels row; this admin can, so it has none.
       'livestream',
+      // APPENDED, nothing above removed: AI Knowledge is behind its own master
+      // switch now (AI_KNOWLEDGE_NAV_ENABLED, false — the founder: "hide ai
+      // knowledge for now"), so the entry is never built — for any tier and not
+      // even for a super admin. The id stays a known tab (/admin/ai resolves to
+      // the same "Page not found." the hidden newsletter gets), and flipping the
+      // constant restores the entry and takes this id out of this list in one
+      // motion.
+      'ai',
     ];
     const missing = [...named].filter((id) => !reached.has(id));
 
-    /* 🔴 `affiliate` IS THE ONE ID THAT IS NAMED AND NOT REACHABLE, and that is
+    /* 🔴 `affiliate` IS ONE OF THE IDS THAT ARE NAMED AND NOT REACHABLE — see
+       `behindAKillSwitch` above for the full, derived list — and that is
        pre-existing and deliberate, not something this rail broke.
        `AFFILIATE_PROGRAM_ENABLED` is `false` in plan-features.ts, so the entry
        is never built even for a super admin; the id stays listed in BOTH nav
@@ -423,7 +432,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     /* The ticket's "23 tabs" (24 since `products` joined them) is exactly DESKTOP_NAV_GROUPS' id count; Dashboard
        is pinned OUTSIDE the groups on the rail and Settings sits in the account
        menu at the rail's floor, so the nav names 26 destinations in all. 24 of them are reachable today — `affiliate` is
-       the kill-switched one. Every reachable id is enumerated below, so hiding
+       the kill-switched one, and `ai` is hidden behind AI_KNOWLEDGE_NAV_ENABLED.
+       Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
     // Community setup adds one destination to both the group and the named set.
     expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 26 tabs').toBe(26);

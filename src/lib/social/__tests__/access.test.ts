@@ -95,7 +95,28 @@ describe('requireSocialAccess', () => {
     if (!(response instanceof NextResponse)) return;
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'Admin access required' });
-    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).not.toContain('tenants');
+    // The owner lookup reads `tenants`, so this path no longer stops before the
+    // tenant doc; the refusal above is the behaviour that matters.
+    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).toContain('tenants');
+  });
+
+  it('lets the tenant owner through even when the role alone would refuse', async () => {
+    h.tenantDoc = { plan: 'plus', addons: { socialScheduler: 1 }, ownerId: 'admin-1' };
+    h.userDoc = { role: 'admin', permissions: { manageEvents: true } };
+    const response = await call();
+    expect(response).toMatchObject({ tenantId: 'tenant-a', entitled: true, sample: true });
+    expect(h.set).not.toHaveBeenCalled();
+    expect(h.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses the same admin when they are not the tenant owner', async () => {
+    h.tenantDoc = { plan: 'plus', addons: { socialScheduler: 1 }, ownerId: 'owner-elsewhere' };
+    h.userDoc = { role: 'admin', permissions: { manageEvents: true } };
+    const response = await call();
+    expect(response).toBeInstanceOf(NextResponse);
+    if (!(response instanceof NextResponse)) return;
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Admin access required' });
   });
 
   it('refuses a roster email that is not verified', async () => {
@@ -114,7 +135,9 @@ describe('requireSocialAccess', () => {
     if (!(response instanceof NextResponse)) return;
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'Admin access required' });
-    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).not.toContain('tenants');
+    // The owner lookup reads `tenants` now, so this path no longer stops before
+    // the tenant doc; the refusal above is the behaviour that matters.
+    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).toContain('tenants');
   });
 
   it('reaches the add-on wall for a roster admin without the add-on', async () => {
