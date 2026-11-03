@@ -16,7 +16,29 @@ section's Open Questions. Nothing here is invented fact dressed up as a decision
 > organization. This document uses "ministry" and "tenant" interchangeably for the organization
 > that signs up, and "owner/admin," "member," and "visitor" for the three faces of the product.
 
+## Needs attention now (3 Nov 2026)
+
+From Matei, 3 Nov 2026. The full list with its Craft source is in [`docs/improvements/HARVEST-IMPROVEMENTS.md`](../improvements/HARVEST-IMPROVEMENTS.md). Sections changed by these items are marked *updated 3 Nov 2026*.
+
+1. [ ] **Settings > Campus setup:** remove the onboarding questions; the Sign-up page replaces them.
+2. [ ] **Settings > Social accounts** says it's not set up / not open for this account even on the top (Ministry) plan. Cause found: `hasSocialFullAccess` in `src/lib/social/access.ts` never checks the tenant owner (`ownerId`); it only allows super admin, verified email on `tenant_private.adminEmails`, role `church_admin`, or `permissions.fullAccess`. Owners must always have access: add `ownerId === uid` there and in the matching nav `hasFullAccess` check. `ZERNIO_SOCIAL_LIVE=1` is already set in Vercel production.
+3. [ ] **Sidebar top, next to the logo:** Matei's words: "always keep eden, not the name of the user ministry". Don't show the ministry's name there. *Claude: confirm with Matei whether he means the Eden-style product brand (The Harvest).*
+4. [ ] **Public page:** move Products into the Website section.
+5. [ ] **Communities and Discovery** at the top, under Home.
+6. [ ] **Remove the "Channels" group name;** put Newsletter under "Engage", in this order: Newsletter, Events, Forms, Sign up pages, Check in.
+7. [ ] **Hide AI Knowledge** everywhere for now.
+8. [ ] **Bug:** clicking an item on the public side opens it, but the active sidebar tab jumps to People.
+9. [ ] **Default community** must use the same style as communities the owner creates, and every created community must have the same features as the default.
+10. [ ] **Top-right "Community" switcher** dropdown must list all communities the owner created.
+11. [ ] **Discovery page per community** (like Skool) isn't built yet for all communities.
+12. [ ] **Storefront / link in bio** must be finished.
+13. [ ] **Products > New product:** remove "Community" as a product type (communities have their own section).
+
+**Future item (not now):** Eden-style email one-time-code sign-in (enter email, get code, paste, signed in). Prefer Neon Auth / Better Auth email OTP, since we're moving to Neon. Until the migration, mint a Firebase custom token after verifying the code. Keep password users working during the transition. Rate-limit code sends.
+
 ## Table of contents
+
+- [Needs attention now (3 Nov 2026)](#needs-attention-now-3-nov-2026)
 
 1. [Vision, positioning & personas](#1-vision-positioning--personas)
 2. [Accounts & tenancy](#2-accounts--tenancy)
@@ -384,6 +406,8 @@ The future ministry owner only; nobody else is present during onboarding.
 - Free's after-submit path can offer joining a community or a product immediately — this is the
   same after-submit card mechanism as forms ([§9.4](#94-after-submit-card)), applied to the
   sign-up flow itself.
+- **Campus setup has no onboarding questions** *(updated 3 Nov 2026)*: remove the onboarding
+  questions from Settings > Campus setup. The Sign-up page ([§9](#9-forms--sign-ups)) replaces them.
 
 ### 4.4 Eden parity
 No Eden reference screenshots are indexed in the restricted Eden image set for this section —
@@ -441,6 +465,10 @@ icon, About text, visibility, pricing and joining mode. `loadCommunities()` alwa
 default community first (unless the ministry has closed it, in which case it's omitted
 entirely — `defaultClosed`), then the rest in creation order.
 
+*Updated 3 Nov 2026:* the default community must look the same as the communities an owner creates
+(same style and editor), and every created community must have the same features as the default
+one. The storage difference above stays an implementation detail, invisible to owners and members.
+
 ### 5.4 Functional requirements
 - **Create:** an owner with `manageCommunity` creates a community from a name; the server
   derives a unique, URL-safe id (`communityIdFor`) and the ministry's `maxCommunities` plan cap
@@ -480,6 +508,10 @@ entirely — `defaultClosed`), then the rest in creation order.
 - **Join/leave** mechanics, the owner CRM contact they create, and the consent/erasure model are
   specified in full in [§6](#6-community-join--crm) — they are one feature, split into two
   sections here only because §6 also covers the cross-community CRM.
+- **Community switcher** *(updated 3 Nov 2026)*: the top-right "Community" dropdown lists every community
+  the owner created, plus the default community.
+- **Discovery page per community** *(updated 3 Nov 2026)*: each community gets its own Skool-style
+  discovery page. Not built yet for all communities.
 
 ### 5.5 Eden parity notes
 This is the single largest Eden-parity surface in the product: the 95 reference screens for
@@ -1025,7 +1057,7 @@ it is refreshingly explicit about its own roadmap:
 | **Digital download / Ebook** | `true` | Built — `src/app/api/digital-products/*`: upload, claim, download, entitlement-gated. |
 | **Coaching** | `false` | Listed only — "One-to-one or small-group sessions you book with people." No booking/calendar code exists for it. |
 | **Bundle** | `false` | Listed only. |
-| **Community (as a product)** | `false` | Listed only — distinct from the Communities feature in [§5](#5-communities), which already exists; this entry is about offering a community *as a purchasable product* in this picker, not built. |
+| ~~**Community (as a product)**~~ | `false` | **Remove from New product** *(updated 3 Nov 2026)*: communities have their own section ([§5](#5-communities)), so "Community" is not a product type. Previously: listed only — distinct from the Communities feature in [§5](#5-communities), which already exists; this entry is about offering a community *as a purchasable product* in this picker, not built. |
 | **"More coming soon"** | `false` | A placeholder card, not a real type. |
 
 So: **Coaching, calls & calendar booking, and the "other Eden product types" (cohort, workshop,
@@ -1627,6 +1659,14 @@ than a collection of screens built at different times.
   `NavEntitlementCatalog.tsx` that ties sidebar nav items to plan/add-on entitlement — i.e. the
   sidebar itself already knows which items a given tenant is allowed to see, rather than every
   page re-deriving that independently.
+- **Sidebar grouping** *(updated 3 Nov 2026)*:
+  - Top, next to the logo: always the product brand, never the ministry's name (Matei: "always keep eden,
+    not the name of the user ministry"; confirm with Matei that this means The Harvest brand).
+  - Communities and Discovery sit at the top, directly under Home.
+  - No "Channels" group name. "Engage" holds, in order: Newsletter, Events, Forms, Sign up pages, Check in.
+  - Products moves out of the Public page group into the Website section.
+  - AI Knowledge is hidden everywhere for now.
+  - Bug to fix: opening an item on the public side must keep its own sidebar tab active (today it jumps to People).
 - **Command palette (Cmd-K):** `AdminSearchPalette.tsx` + `admin-search.ts` already exist — this
   is built, not aspirational. (No Eden reference screenshot is indexed specifically for Cmd-K in
   the restricted image set used for this document; see [§16.6](#166-screenshots).)
