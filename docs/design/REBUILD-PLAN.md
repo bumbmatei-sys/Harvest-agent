@@ -1,6 +1,6 @@
 # The Harvest — Rebuild Plan (Phase 2)
 
-Phase 2 rebuilds every page to match the visual language in `docs/design/DESIGN.md`, one PR at a time. Matei approves each PR before the next coding run begins. Nothing merges or deploys without Matei.
+Phase 2 adds **Studio**, a second selectable theme built from the visual language in `docs/design/DESIGN.md`, and then makes every page look right in both themes, one PR at a time. The current Harvest look stays the default theme and must not regress. "Studio" is a placeholder name; nothing user-facing mentions Eden. Matei approves each PR before the next coding run begins. Nothing merges or deploys without Matei.
 
 ## Per-PR rules (apply to every PR)
 
@@ -8,14 +8,17 @@ Phase 2 rebuilds every page to match the visual language in `docs/design/DESIGN.
 - Harvest copy and Harvest illustrations only. No Eden logos, images, illustrations, or text.
 - Light **and** dark screenshots at 1440 and 390, placed next to the mapped Eden screenshots.
 - Guard checksum/fixture updates are called out explicitly in the PR body.
-- Contrast test must be green (`src/__tests__/theming-shadcn-tokens.test.ts`).
+- Contrast test must be green (`src/__tests__/theming-shadcn-tokens.test.ts`) for all four palettes: Harvest light/dark and Studio light/dark.
+- Screenshots in both themes: Harvest (default, must match `main`) and Studio (next to the mapped Eden shots).
+- Primary buttons are gold (`--brand-color`, `--earth` `#2D2519` text, 5.69:1) in both themes. Decided by Matei 2026-11-03.
+- Layout changes: purely visual differences go through theme-scoped CSS variables (for example `--shell-inset`, `--shell-radius`, `--sidebar-item-height`), never through components branching on the theme name. Structural changes (moved elements, new panes) must either work in both themes and be approved for Harvest too, or be gated by a theme-scoped variable/attribute so Harvest is unchanged.
 
 ## PR summary
 
 | PR | Scope | Harvest files / sections | Size |
 |----|-------|--------------------------|------|
-| PR1 | Theme tokens + app shell | `src/app/globals.css`, `src/components/admin-shell/*`, `src/components/layout/*` | L |
-| PR2 | Shared primitives | `src/components/ui` | M |
+| PR1 | Theme infrastructure + Studio token set + theme picker | `src/lib/theme.ts`, `src/app/layout.tsx`, `src/app/globals.css`, `AdminBranding.tsx`, theme toggle/menu | L |
+| PR2 | App shell + shared primitives working in both themes | `src/components/admin-shell/*`, `src/components/layout/*`, `src/components/ui` | L |
 | PR3 | Dashboard home | `AdminHome`, `AdminDashboardHome`, `home-kpis`, `BoardsSection` | M |
 | PR4 | People / CRM | `AdminCRM`, `AdminSignups`, `AdminRoles`, member detail | M |
 | PR5 | Communities | `AdminCommunity`, community-setup editor, member community space | L |
@@ -31,45 +34,45 @@ Phase 2 rebuilds every page to match the visual language in `docs/design/DESIGN.
 | PR15 | Public tenant pages + auth | `src/app` public routes, `AuthPage.tsx` | L |
 | PR16 | Super-admin | tenants, campuses, library, platform inbox | S |
 
-Order rationale: tokens and primitives first so later page PRs are mostly layout; high-traffic admin pages next; member and public pages after; super-admin last. Each S/M page PR is ~0.5–1 coding run; each L PR is ~2 runs.
+Order rationale: theme infrastructure and tokens first, then shell and primitives, so later page PRs are mostly layout; high-traffic admin pages next; member and public pages after; super-admin last. Each S/M page PR is ~0.5–1 coding run; each L PR is ~2 runs.
 
 ---
 
-## PR1 — Theme tokens + app shell (L)
+## PR1 — Theme infrastructure + Studio token set + picker (L)
 
 Scope:
-- Remap `src/app/globals.css` light and dark tokens per the PROPOSED MAPPING tables in `docs/design/DESIGN.md` (surfaces, borders, text, sidebar, radii, shadows, motion, badge palette `category-*`).
-- Geist for `--font-sans` (npm `geist`, GeistSans via next/font); Geist Mono for code; keep `--font-display` / `--font-serif` (Fraunces, Newsreader).
-- Radii: `--radius` 10px (controls), `--ds-radius-card` 16px, new `--radius-chip` 9px, shell floating panels 18px.
-- Shadows: `--ds-sh-md`, `--ds-sh-lg`, `--ds-sh-xl` (floating dialog), new `--shadow-popover`.
-- Motion: 150ms cubic-bezier(.4,0,.2,1) default, 300ms panels.
-- Badge palette from the Eden category tint/ink pairs, renamed `category-*`.
-- `AdminDesktopSidebar` as floating inset panel: workspace logo + name + icon toggles, "+ New" + search row, nav items (16px icon + 13px label, 28–32px rows, active chip), 12px muted section labels, collapsible groups with dot sub-items, workspace switcher row, collapse icon, mobile sheet.
-- `PageHeader`: H1, one-line muted description, primary action button on the right.
-- Update guard checksums/fixtures deliberately and the contrast tests.
+- Second theme axis: `BRAND_THEMES` in `src/lib/theme.ts` becomes `['harvest', 'studio']`; `applyTheme` stamps `data-brand-theme`; `data-theme` stays light/dark.
+- Studio token set in `src/app/globals.css`: one light block `:root[data-brand-theme="studio"]` and one dark block `:root[data-brand-theme="studio"][data-theme="dark"]` (plus the `.dark` twin), overriding only the variables in the DESIGN.md §6 tables (surfaces, borders, text, sidebar, radii, shadows, motion, `category-*` badge palette, `--font-sans` = Geist). Harvest `:root` / dark values stay byte-identical.
+- Gold primary in both themes: `--primary` / `--action` = `--brand-color`, text `--earth` `#2D2519` (5.69:1 on `#C9963A`). Fix the hover: light `--action-hover` today is `#A17C3A` (3.93:1 with earth, fails AA); use `color-mix(in srgb, var(--brand-color) 90%, white)` = `#CEA04E` (6.30:1) in Studio and, with Matei's OK, in Harvest too. For tenant brand colours, pick earth or white per colour via `contrastRatio()`, whichever reaches 4.5:1.
+- Per-theme dark grounds for `deriveOnDarkAccent` / `deriveOnTintAccent` (Harvest `#171717` / `#202020`, Studio `#1A1A1A` / `#212121`).
+- Picker: "Appearance" card in Admin → Branding (tenant default Harvest / Studio, live preview). Optional per-user override in the profile/account menu next to light/dark ("Use ministry default" / Harvest / Studio).
+- Persistence: tenant `brandTheme` on branding settings (absent = `harvest`, so no migration); user override in `localStorage` `harvest-brand-theme` (optionally on the profile). Resolution: user → tenant → `harvest`.
+- No flash: server layout injects the tenant's `brandTheme`; the pre-paint script in `layout.tsx` stamps `data-brand-theme` before paint. Public tenant pages follow the tenant setting only.
+- Tests/checksums: update deliberately and list in the PR body: `eden-shell-brand-theme.test.ts` (pins "Harvest is the only brand theme" and no third custom-property scope), `the-271-one-theme-system.test.tsx`, `theming-neutral-palette.test.ts`, `the-266-shadcn-batch-a.test.ts`, `tailwind-v4-migration.test.ts`, the storage-key/pre-paint pin for `layout.tsx`, `ds-primitives.test.tsx` (if `tailwind.config.ts` changes), `AdminBranding`/`AdminDashboard` ownership fixtures (`THE-NNN.json` / `#NNN.json`), and Firestore rules + rules digest if the `brandTheme` field needs allowing. Extend `theming-shadcn-tokens.test.ts` to all four palettes.
+- No layout changes in this PR: pages look the same in both themes apart from tokens.
 
-Harvest files: `src/app/globals.css`, `src/components/admin-shell/AdminDesktopSidebar`, `src/components/admin-shell/AdminHome`, `src/components/admin-shell/PageHeader`, `src/components/admin-shell/SegmentedTabs`, `src/components/admin-shell/data-table`, `src/components/admin-shell/AdminContentBar`, `src/components/admin-shell/BoardsSection`, `src/components/layout/nav-rail`, `src/components/layout/nav-groups`, `src/components/layout/DesktopLayout`, `src/components/AdminDashboard.tsx`, `src/__tests__/__fixtures__/ownership/THE-NNN.json` or `#NNN.json`, `src/__tests__/theming-shadcn-tokens.test.ts`, `src/components/ui/__tests__/ds-primitives.test.tsx`, `tailwind.config.ts`.
+Harvest files: `src/lib/theme.ts`, `src/app/layout.tsx`, `src/app/globals.css`, `src/components/AdminBranding.tsx`, `src/components/ThemeToggle.tsx`, `src/components/admin-shell/use-shell-theme.ts`, `src/components/MyAccountMenu.tsx`, tests listed above.
 
-Eden screenshot references:
+Eden screenshot references (token check only):
 - eden-archive/00-map/01-home
-- eden-archive/00-map/22-sidebar-new-menu
-- eden-archive/00-map/23-sidebar-chats-more-expanded
-- eden-archive/00-map/57-workspace-menu
-- eden-archive/00-map/80-workspace-menu-apps-extras
+- eden-archive/00-map/59-settings-preferences
+- eden-archive/00-map/71-settings-personalization
 - reference-shots/eden-2026-10-17/light-02-sidebar
 - reference-shots/eden-2026-10-17/dark-02-sidebar
-- eden-archive/mobile/01-home
 
 Acceptance checks:
-- [ ] Light and dark screenshots at 1440 and 390 sit next to the mapped Eden shots.
-- [ ] `--brand-color` stays `#C9963A` and remains tenant-overridable; Eden green `#66B08B` is not adopted as brand.
-- [ ] White card decision confirmed with side-by-side screenshots (open decision from 1 Nov).
+- [ ] Default theme is Harvest for every existing tenant and user; Harvest screenshots match `main` and Harvest CSS digests are unchanged.
+- [ ] Switching to Studio in Branding changes tokens app-wide with no flash on reload, light and dark.
+- [ ] Optional user override works and "Use ministry default" falls back to the tenant setting.
+- [ ] Primary buttons are gold with `#2D2519` text in both themes; button text and hover pass 4.5:1 (contrast test covers all four palettes).
+- [ ] The user-facing theme name does not mention Eden.
+- [ ] Studio card whiteness confirmed with side-by-side screenshots (open decision from 1 Nov).
 - [ ] Guard checksum/fixture updates listed in the PR body.
-- [ ] Contrast test green.
 
-## PR2 — Shared primitives (M)
+## PR2 — App shell + shared primitives in both themes (L)
 
 Scope:
+- App shell (moved here from the old PR1): `AdminDesktopSidebar` floating inset panel, nav rows, 12px section labels, collapsible groups with dot sub-items, workspace switcher row, mobile sheet, `PageHeader` (title, one-line description, gold primary action). Inset, radius and row heights come from theme-scoped variables, so Harvest keeps its current shell unless Matei approves the change for both.
 - `Button` variants (primary/secondary/ghost/destructive, 32px), `Input`/`Select`/`Textarea`, search field, filter chip, `SegmentedTabs`, `Dialog`/`Sheet`, `DropdownMenu`/`Popover`, `Badge`, `Table` (`data-table`), `EmptyState` split card, `Toast`.
 - Patterns per `docs/design/DESIGN.md` component patterns (search field 36px radius 10px, chips 28px radius 9px, dialogs 300–480px radius 16px, empty state split card with Harvest illustration or live UI preview).
 
@@ -88,15 +91,25 @@ Eden screenshot references:
 - eden-archive/01-create/26-publish-schedule-switcher-menu
 - eden-archive/01-create/05-library-filter-menu
 
+Additional Eden screenshot references (shell):
+- eden-archive/00-map/22-sidebar-new-menu
+- eden-archive/00-map/23-sidebar-chats-more-expanded
+- eden-archive/00-map/57-workspace-menu
+- eden-archive/00-map/80-workspace-menu-apps-extras
+- eden-archive/mobile/01-home
+
 Acceptance checks:
-- [ ] Every primitive renders per the DESIGN.md pattern spec at 1440 and 390, light and dark.
+- [ ] Shell and every primitive render per the DESIGN.md spec in Studio at 1440 and 390, light and dark.
+- [ ] Harvest (default) shell and primitives unchanged or changed only where Matei approved, with before/after screenshots.
+- [ ] No component branches on the theme name; differences come from theme-scoped variables.
+- [ ] Primary buttons gold (`--brand-color`, `#2D2519` text) in both themes; destructive uses `#C0272E`.
 - [ ] Empty states use Harvest illustrations or live UI previews only.
 - [ ] Guard checksum/fixture updates listed in the PR body.
-- [ ] Contrast test green.
+- [ ] Contrast test green for all four palettes.
 
 ## PR3 — Dashboard home (M)
 
-Scope: Rebuild `AdminHome` / `AdminDashboardHome`, `home-kpis`, `BoardsSection` to the Eden shell and card patterns.
+Scope: Rebuild `AdminHome` / `AdminDashboardHome`, `home-kpis`, `BoardsSection` to the Studio shell and card patterns, working in both themes.
 
 Harvest files: `src/components/admin-shell/AdminHome`, `AdminDashboardHome`, `home-kpis`, `src/components/admin-shell/BoardsSection`, `src/components/AdminDashboard.tsx`.
 

@@ -1,6 +1,6 @@
-# Design: matching Eden's visual language in The Harvest
+# Design: the Studio theme (second selectable theme)
 
-This document records the visual language extracted from Eden (app.eden.so and eden.so) on 3 Nov 2026, and how Harvest maps onto it. It is the reference for all theme and component work described in [REBUILD-PLAN.md](./REBUILD-PLAN.md).
+This document records the visual language extracted from Eden (app.eden.so and eden.so) on 3 Nov 2026 and turns it into **Studio**, a second selectable Harvest theme. Studio does not replace anything. The current Harvest look stays the default theme, and a tenant (optionally a user) can switch to Studio in settings. "Studio" is a placeholder name; the user-facing name must never mention Eden. It is the reference for all theme and component work described in [REBUILD-PLAN.md](./REBUILD-PLAN.md).
 
 ## 1. Purpose and ground rules
 
@@ -8,6 +8,9 @@ The purpose is to match Eden's **visual language only**: tokens, spacing, radii,
 
 Ground rules:
 
+- Studio is an additional theme. The current Harvest theme stays the default for every tenant and user who has not picked Studio, and it is not changed by this work.
+- The user-facing theme name never mentions Eden (placeholder: "Studio"). Eden appears only in internal docs as the reference.
+- Primary buttons are Harvest gold (`--brand-color`) in **both** themes, admin app included (decided by Matei, 2026-11-03).
 - Keep Harvest's own branding. Do not copy Eden logos, illustrations, images, copy/text, or the Eden name into the product.
 - The tenant-overridable action colour stays `--brand-color` (Wheat Gold `#C9963A` by default). Eden's green `#66B08B` is **not** adopted as Harvest's brand colour.
 - Where Eden uses its green for selected states, Harvest uses `--brand-color` (see the selected-background row in the mapping tables).
@@ -116,7 +119,7 @@ Note: the marketing site (eden.so) uses a different type system (EB Garamond dis
 | Selected background (12%) | background-primary-selected | `#66b08b1f` |
 | Gradient dark | gradient-dark | `linear-gradient(90deg,#062a19 0%,#26553f 100%)` |
 
-**Primary button**: background `#000000`, text `#ffffff` (`button-primary-default`). Buttons are ink/black, not green.
+**Primary button (Eden reference only)**: background `#000000`, text `#ffffff` (`button-primary-default`). **Not adopted**: Harvest primary buttons stay gold in both themes (see §6).
 
 **Danger**: `#e36a66`; hover `#d95d59`.
 
@@ -155,7 +158,7 @@ Note: the marketing site (eden.so) uses a different type system (EB Garamond dis
 | Divider | divider | `#ffffff1a` |
 | Neutral dark 10 | neutral-dark-10 | `#ffffff14` |
 
-**Primary / accent (dark)**: `primary #73b490` (scale 100 `#9dd4b5` … 50 `#2e6444`); selected background `#73b49026`. Button primary: background `#ffffff`, text `#000000`.
+**Primary / accent (dark)**: `primary #73b490` (scale 100 `#9dd4b5` … 50 `#2e6444`); selected background `#73b49026`. Eden's dark primary button is background `#ffffff`, text `#000000` (reference only; not adopted, Harvest stays gold).
 
 Each dark surface = `color-mix(in srgb, <base>, var(--mood-tint-dark) 5–8%)` (eden mood tint dark `#5fb07f`).
 
@@ -260,11 +263,11 @@ Component patterns below are measured from light-mode screenshots; dark behaviou
 
 ### Page header
 
-H1 ~24–28px semibold, tight tracking; one-line muted description (13–14px) under it; primary action button on the right (black pill / rounded-10 button, white text, leading + icon, 32px tall, 13px / 500).
+H1 ~24–28px semibold, tight tracking; one-line muted description (13–14px) under it; primary action button on the right (rounded-10 button, leading + icon, 32px tall, 13px / 500). Eden paints it black; Harvest paints it gold (`--action` = `--brand-color`, text `--earth` `#2D2519`).
 
 ### Buttons
 
-Primary button: background `#000000`, text `#ffffff`, 32px tall. Secondary, ghost and destructive variants follow the dialog/footer patterns below. Marketing secondary button specs are listed under Typography (marketing only).
+Primary button (both themes): background `--action` = `--brand-color` (default wheat gold `#C9963A`), text `--action-foreground` = `--primary-foreground` = `--earth` `#2D2519`, 32px tall, radius 10px, 13px / 500. Contrast: `#2D2519` on `#C9963A` is **5.69:1** (passes AA 4.5:1). White on gold is 2.66:1 and is never used. Hover must also keep ≥4.5:1: the current light hover (`--action-hover`, gold 78% mixed toward navy-800 = `#A17C3A`) gives only **3.93:1** with `#2D2519`, so Studio uses a lighter hover, gold 90% + white 10% = `#CEA04E` (**6.30:1**), and PR1 should apply the same fix to the Harvest default. Dark mode: the button uses `--brand-color-on-dark`, hover mixes toward white (already lighter, so `#2D2519` text keeps passing). Tenant-overridden brand colours: PR1 must pick the button text per brand colour (`--earth` or white, whichever reaches ≥4.5:1, via `contrastRatio()` in `src/lib/theme.ts`) instead of assuming earth. Secondary, ghost and destructive variants follow the dialog/footer patterns below. Marketing secondary button specs are listed under Typography (marketing only).
 
 ### Inputs and search
 
@@ -291,7 +294,7 @@ Small pills 18–20px tall, radius 6–9px, tint/ink pairs from the category pal
 
 ### Dialogs
 
-Centred, white, radius ~16px, width ~300–480px; header row with title 14–15px / 600 + close X; hairline under the header; body with label above fields (12–13px / 500) and helper text muted 12px; footer right: ghost "Cancel" + black primary. Backdrop light dim (~black 20%), no blur.
+Centred, white, radius ~16px, width ~300–480px; header row with title 14–15px / 600 + close X; hairline under the header; body with label above fields (12–13px / 500) and helper text muted 12px; footer right: ghost "Cancel" + gold primary. Backdrop light dim (~black 20%), no blur.
 
 ### Menus / popovers
 
@@ -315,17 +318,17 @@ Narrow icon rail (~48px, icons with 10px labels: Chat, Forum, Events, Products, 
 
 ### Editor pages
 
-Broadcast/composer: centred document card with title/subject field, right rail of actions (Design, Check it, Templates, Duplicate, Delete in red), top-right stepper "Write › Send" + "Saved" + black/white "Next →" button.
+Broadcast/composer: centred document card with title/subject field, right rail of actions (Design, Check it, Templates, Duplicate, Delete in red), top-right stepper "Write › Send" + "Saved" + gold "Next →" button (Eden shows black/white).
 
 ### Dark mode notes
 
-Same layouts; surfaces `#1a1a1a`–`#2a2a2a`; the primary button flips to white with black text. Fields are lighter than panes in dark mode.
+Same layouts; surfaces `#1a1a1a`–`#2a2a2a`; Eden flips its primary button to white; Harvest keeps it gold (`--brand-color-on-dark`, `#2D2519` text). Fields are lighter than panes in dark mode.
 
 ## 5. Layout patterns
 
 - Floating inset shell panels (sidebar, optional assistant pane) with 8px gutters and 18px radius; content on the page canvas.
 - Centred content column, ~860–960px at 1440 wide, generous top padding.
-- Page header = title + one-line description left, primary action right.
+- Page header = title + one-line description left, primary action right (gold in both themes).
 - List pages = search bar, filter chips / dropdown filters / segmented controls, then a table or card grid.
 - Card grids: 3 columns, 8–12px gap; product cards with a coloured gradient cover strip.
 - Settings = separate settings nav + narrow centred column of grouped list cards.
@@ -333,11 +336,18 @@ Same layouts; surfaces `#1a1a1a`–`#2a2a2a`; the primary button flips to white 
 - Editors = centred document card + right action rail + top-right stepper.
 - Mobile: `max-width: 640` rules; the shell switches at `lg` (1024px).
 
-## 6. Mapping to Harvest theme variables
+## 6. Studio token set (mapping to Harvest theme variables)
 
-Two open decisions are called out inline and repeated after the tables.
+These tables define the **Studio** theme. The "now" column is the Harvest default theme, which stays exactly as it is. The "proposed" column is the value Studio sets for the same variable. Studio declares them only inside its own scope:
 
-### LIGHT — `globals.css :root`
+- light: `:root[data-brand-theme="studio"]`
+- dark: `:root[data-brand-theme="studio"][data-theme="dark"]` (and the `.dark` twin)
+
+`data-theme` stays the light/dark mode axis; `data-brand-theme` (already stamped as `harvest` by `applyTheme`, see `src/lib/theme.ts` and `--brand-theme` in `globals.css`) is the theme axis. Components never branch on the theme name; they read the same variables. See §7 for the switch.
+
+One open decision is called out inline and repeated after the tables.
+
+### LIGHT — Studio scope `:root[data-brand-theme="studio"]`
 
 | Harvest var | now | proposed | Eden source |
 | --- | --- | --- | --- |
@@ -365,7 +375,9 @@ Two open decisions are called out inline and repeated after the tables.
 | `--ds-sh-xl` | `0 32px 80px rgba(12,21,38,.22)` | `0 24px 80px #0000001A, inset 0 .5px #FFFFFF99` | floating dialog |
 | new `--shadow-popover` | — | `0 10px 24px #0F172A14, inset 0 1px #FFFFFF0D` | menus/popovers |
 | `--seg-track` / `--seg-active` | `rgb(0 0 0/4.5%)` / surface-raised | `#F5F5F3` / `#FFFFFF` + `0 1px 2px rgb(0 0 0/8%)` | segmented controls |
-| `--action` (primary button) | `var(--brand-color)` gold | OPEN DECISION A: `#000000` bg / `#FFFFFF` text in the admin app (Eden button-primary), brand gold kept for selected states, links, focus ring and ALL public tenant pages (white-label). B: keep gold everywhere. Recommend A. |
+| `--primary` / `--action` (primary button) | `var(--color-primary)` / `var(--brand-color)` gold | unchanged: `var(--brand-color)` (default `#C9963A`), gold in both themes. DECIDED 2026-11-03 (Matei) | not Eden (Eden uses black) |
+| `--primary-foreground` / `--action-foreground` | `var(--earth)` `#2D2519` | unchanged: `var(--earth)` `#2D2519` (5.69:1 on `#C9963A`); per-tenant fallback to white only where earth fails | — |
+| `--action-hover` | gold 78% + navy-800 = `#A17C3A` (3.93:1 with earth, fails AA) | `color-mix(in srgb, var(--brand-color) 90%, white)` = `#CEA04E` (6.30:1) | — |
 | selected nav/background | — | `color-mix(in srgb, var(--brand-color) 12%, transparent)` | background-primary-selected (Eden uses its green; Harvest uses its brand colour) |
 | `--brand-danger` / destructive | `#C4553B` / `rgb(162 60 40)` | destructive buttons and error text `#C0272E` (5.88:1 on white); `#E36A66` (hover `#D95D59`) only for icons, dots and tinted fills since white text on it is 3.22:1 | danger / text-dark-error |
 | `--font-sans` | Inter | Geist (npm `geist`, GeistSans via `next/font`); Geist Mono for code | font-eden |
@@ -376,7 +388,7 @@ Brand colour (`#C9963A` wheat gold, tenant-overridable `--brand-color`) is uncha
 
 Status/category colours: adopt the tint/ink pairs from the category palette as Harvest's badge palette (rename `category-*`, e.g. `category-green` `#66B08B` / `#DDEEE5` / `#274335`), replacing ad-hoc `c-*`/`ink-*` pairs over time.
 
-### DARK — `[data-theme=dark]`
+### DARK — Studio scope `:root[data-brand-theme="studio"][data-theme="dark"]`
 
 | Harvest var | now | proposed | Eden source |
 | --- | --- | --- | --- |
@@ -392,17 +404,33 @@ Status/category colours: adopt the tint/ink pairs from the category palette as H
 | `--text-muted` | `#ABABAB` | `#919191` | text-dark-secondary |
 | `--text-faint` | `#969696` | `#969696` (unchanged) | — |
 | `--sidebar` | — | `#1A1A1A` | background-sidebar |
-| `--action` (decision A) | gold | `#FFFFFF` bg / `#000000` text | button-primary dark |
+| `--primary` / `--action` | `var(--brand-color-on-dark, var(--brand-color))` gold | unchanged, gold. DECIDED 2026-11-03 | not Eden (Eden uses white) |
+| `--primary-foreground` / `--action-foreground` | `var(--earth)` `#2D2519` | unchanged `#2D2519` (gold `#C9963A` vs `#2D2519` = 5.69:1) | — |
+| `--action-hover` | gold 84% + white | unchanged (lighter than gold, earth text passes) | — |
 
 Optional later: 5% brand-colour mood tint mixed into dark surfaces (Eden mixes its accent at 5–8%).
 
 ### OPEN DECISIONS
 
-1. **Card whiteness** — `--surface-raised` proposed as `#FFFFFF` (Eden: white cards on `#F7F7F5`). Matei asked on 1 Nov for less white. Default: follow Eden; confirm with side-by-side screenshots in PR1.
-2. **Primary button: ink vs gold** — Decision A: `#000000` background / `#FFFFFF` text in the admin app (Eden `button-primary`), with brand gold kept for selected states, links, focus ring and all public tenant pages (white-label). Decision B: keep gold everywhere. Recommended: A.
+1. **Card whiteness (Studio only)**: Studio `--surface-raised` proposed as `#FFFFFF` (Eden: white cards on `#F7F7F5`). Matei asked on 1 Nov for less white. Since Studio is opt-in and Harvest stays the default, the default is to follow Eden in Studio; confirm with side-by-side screenshots in PR1.
 
-## 7. Implementation notes and constraints
+### DECIDED
 
+- **2026-11-03, primary buttons**: gold (`--brand-color`) with `--earth` `#2D2519` text in both themes, admin app included. Eden's black/white button is not adopted.
+
+## 7. How the theme switch works
+
+1. **Two axes on `<html>`**: `data-theme` = `light` | `dark` (unchanged), `data-brand-theme` = `harvest` (default) | `studio`. `BRAND_THEMES` in `src/lib/theme.ts` grows from `['harvest']` to `['harvest', 'studio']`.
+2. **CSS**: Harvest values stay on `:root` / dark as today. Studio adds one light block and one dark block (selectors in §6) that override only the variables in the tables. No component checks the theme name. Fonts: Studio sets `--font-sans` to Geist; Harvest keeps Inter. Both fonts are loaded with `next/font` (Geist only when Studio is active if the bundle cost matters).
+3. **Picker**: an "Appearance" card in Admin → Branding (tenant default: Harvest / Studio, with a live preview) and, optionally, a per-user override in the member/admin profile menu next to the light/dark toggle ("Use ministry default" / Harvest / Studio).
+4. **Persistence**: tenant choice saved on the tenant's branding settings (e.g. `brandTheme: 'harvest' | 'studio'`, default `harvest` when absent, so existing tenants see no change). The optional user override is stored in `localStorage` (`harvest-brand-theme`) and, if wanted across devices, on the user profile. Resolution: user override → tenant setting → `harvest`.
+5. **No flash**: the server layout injects the tenant's `brandTheme` and the pre-paint script in `layout.tsx` stamps `data-brand-theme` before first paint (same pattern as `data-theme`); `applyTheme` keeps it in sync after hydration. Public tenant pages use the tenant setting only.
+6. **Dark accent ground**: `deriveOnDarkAccent` / `deriveOnTintAccent` correct the tenant accent against `DARK_SURFACE` (`#171717`) / `DARK_SURFACE_RAISED` (`#202020`). Studio dark uses `#1A1A1A` / `#212121`, so those grounds become per-theme (the server derives `--brand-color-on-dark` for the active theme's ground).
+
+## 8. Implementation notes and constraints
+
+- **Theme-related tests that must change deliberately in PR1** (they currently pin "Harvest is the only brand theme" and "custom properties only on `:root` and `.dark`"): `src/__tests__/eden-shell-brand-theme.test.ts`, `src/__tests__/the-271-one-theme-system.test.tsx`, `src/__tests__/theming-neutral-palette.test.ts`, `src/__tests__/the-266-shadcn-batch-a.test.ts`, `src/__tests__/tailwind-v4-migration.test.ts`, and the pre-paint/storage-key pin for `layout.tsx`. `theming-shadcn-tokens.test.ts` must run its contrast matrix for all four palettes (Harvest light/dark, Studio light/dark). Harvest's own digests must stay identical, which proves the default theme did not move.
+- If the tenant `brandTheme` field is written to Firestore, the rules and their tests (`firestore.rules`, rules digest register) need the field allowed; no data migration is needed because absent = `harvest`.
 - `src/components/ui/__tests__/ds-primitives.test.tsx` hashes the non-comment content of `tailwind.config.ts`. Token changes that touch the config must update that expectation deliberately.
 - Roughly 17 guard suites read `tailwind.config.ts`; update them as part of any token PR.
 - Contrast for all foreground/background pairs is asserted in `src/__tests__/theming-shadcn-tokens.test.ts`. Keep every mapped pair passing AA — this is why `--text-faint` stays `#696969` and why `#E36A66` is restricted to icons, dots and tinted fills.
@@ -412,6 +440,6 @@ Optional later: 5% brand-colour mood tint mixed into dark surfaces (Eden mixes i
 - The accent mood tint is optional: if added, mix 5% of the brand colour into dark surfaces the way Eden mixes its accent at 5–8%.
 - Harvest copy and illustrations only; never ship Eden logos, illustrations, images, copy, or name.
 
-## 8. Rebuild plan
+## 9. Rebuild plan
 
-The full PR-by-PR plan for applying this design — inventory of admin, member and public surfaces, per-PR scope (PR1 theme tokens + app shell through PR16 super-admin), owners, screenshot references, order rationale, and the per-PR working rules (pull latest `main`, never force-push, light+dark screenshots at 1440 and 390 against the mapped Eden shots, deliberate guard checksum/fixture updates, Harvest copy and illustrations only) — is in [docs/design/REBUILD-PLAN.md](./REBUILD-PLAN.md). Read it together with this document: this file defines what to build and how it should look; the rebuild plan defines when and where each piece lands.
+The full PR-by-PR plan for applying this design — inventory of admin, member and public surfaces, per-PR scope (PR1 theme tokens + app shell through PR16 super-admin), owners, screenshot references, order rationale, and the per-PR working rules (pull latest `main`, never force-push, light+dark screenshots at 1440 and 390 against the mapped Eden shots, deliberate guard checksum/fixture updates, Harvest copy and illustrations only) — is in [docs/design/REBUILD-PLAN.md](./REBUILD-PLAN.md). Read it together with this document: this file defines the Studio theme and how it should look; the rebuild plan defines when and where each piece lands.
